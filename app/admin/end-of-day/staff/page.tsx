@@ -92,7 +92,7 @@ export default function EndOfDayStaffPage() {
     if (!branch || !user) return
     setSaving(true); setErr(''); setSaved(false)
     try {
-      await saveBranchStaff(branch, staff, user.uid)
+      await saveBranchStaff(branch, staff)
       setSaved(true)
     } catch {
       setErr('Save failed — please try again.')

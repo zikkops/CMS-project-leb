@@ -3,6 +3,7 @@ import {
   orderBy, limit, getDocs, serverTimestamp, type Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { authedFetch, unwrap } from './apiClient'
 
 export const EXCHANGE_RATE = 90000
 
@@ -140,15 +141,35 @@ export async function getEndOfDayReport(branch: string, date: string): Promise<E
   return { id: snap.id, ...snap.data() } as EndOfDayReport
 }
 
-export async function saveEndOfDayReport(report: EndOfDayReport, uid: string): Promise<void> {
-  const id = reportDocId(report.branch, report.date)
-  await setDoc(doc(db, 'endOfDayReports', id), {
-    ...report,
-    id,
-    submittedAt: report.submittedAt ?? serverTimestamp(),
-    updatedAt:   serverTimestamp(),
-    updatedBy:   uid,
+// Saving runs SERVER-SIDE (Phase 00 standing rule). See
+// app/lib/server/endOfDay.ts.
+//
+// This is the closest thing the app has to a till: drawer counts, what the
+// system said, and tips — which feed the monthly payroll figure. The client
+// version did `setDoc({ ...report })`, writing whatever object the browser
+// handed it, with no validation, no branch scoping, and the submitter's uid
+// supplied by the caller.
+//
+// `uid` is no longer a parameter: the server takes the actor from the verified
+// token. The endOfDayLogs audit entry is written in the same call, so a
+// submission can no longer exist without one.
+export async function saveEndOfDayReport(report: EndOfDayReport): Promise<{ id: string; created: boolean }> {
+  const res = await authedFetch('/api/admin/end-of-day', 'POST', {
+    branch: report.branch,
+    date: report.date,
+    exchangeRate: report.exchangeRate,
+    cashLbp: report.cashLbp,
+    cashUsd: report.cashUsd,
+    systemLbp: report.systemLbp,
+    systemUsd: report.systemUsd,
+    tipsUsd: report.tipsUsd,
+    expenses: report.expenses,
+    income: report.income,
+    attendance: report.attendance,
+    notes: report.notes,
   })
+  const data = await unwrap(res)
+  return data as unknown as { id: string; created: boolean }
 }
 
 export async function listEndOfDayReports(branch: string | 'all', limitCount = 90): Promise<EndOfDayReport[]> {
@@ -160,12 +181,11 @@ export async function listEndOfDayReports(branch: string | 'all', limitCount = 9
   return snap.docs.map(d => ({ id: d.id, ...d.data() }) as EndOfDayReport)
 }
 
-export async function updateEodTips(branch: string, date: string, tipsUsd: number, uid: string): Promise<void> {
-  await updateDoc(doc(db, 'endOfDayReports', reportDocId(branch, date)), {
-    tipsUsd,
-    updatedAt: serverTimestamp(),
-    updatedBy: uid,
+export async function updateEodTips(branch: string, date: string, tipsUsd: number): Promise<void> {
+  const res = await authedFetch('/api/admin/end-of-day', 'PATCH', {
+    action: 'tips', branch, date, tipsUsd,
   })
+  await unwrap(res)
 }
 
 export async function getBranchStaff(branch: string): Promise<BranchStaffConfig | null> {
@@ -174,13 +194,11 @@ export async function getBranchStaff(branch: string): Promise<BranchStaffConfig 
   return snap.data() as BranchStaffConfig
 }
 
-export async function saveBranchStaff(branch: string, staff: string[], uid: string): Promise<void> {
-  await setDoc(doc(db, 'branchStaff', branch), {
-    branch,
-    staff,
-    updatedAt: serverTimestamp(),
-    updatedBy: uid,
+export async function saveBranchStaff(branch: string, staff: string[]): Promise<void> {
+  const res = await authedFetch('/api/admin/end-of-day', 'PATCH', {
+    action: 'staff', branch, staff,
   })
+  await unwrap(res)
 }
 
 export interface StaffUser {
@@ -222,11 +240,10 @@ export interface EndOfDayLog {
   createdAt:   { seconds: number } | null
 }
 
-export async function logEndOfDayAction(
-  entry: Omit<EndOfDayLog, 'id' | 'createdAt'>
-): Promise<void> {
-  await addDoc(collection(db, 'endOfDayLogs'), { ...entry, createdAt: serverTimestamp() })
-}
+// logEndOfDayAction() is gone. The audit entry is written by the route, in
+// the same call as the report itself — the client used to make two independent
+// calls, so a saved report could end up with no log entry if the second
+// failed, and the log recorded whichever uid the browser supplied.
 
 export async function listEndOfDayLogs(limitCount = 150): Promise<EndOfDayLog[]> {
   const snap = await getDocs(

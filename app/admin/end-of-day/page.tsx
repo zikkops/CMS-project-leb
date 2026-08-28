@@ -10,7 +10,7 @@ import { BRANCHES } from '../../lib/branches'
 import {
   LBP_DENOMS, USD_DENOMS, SHIFT_LABELS, EXCHANGE_RATE,
   computeTotals, emptyReport, getEndOfDayReport, saveEndOfDayReport,
-  getBranchStaff, listAllStaff, defaultEodDateStr, formatLbp, formatUsd, logEndOfDayAction,
+  getBranchStaff, listAllStaff, defaultEodDateStr, formatLbp, formatUsd,
   type AttendanceEntry, type EndOfDayReport, type StaffUser,
 } from '../../lib/endOfDay'
 import { ROLE_LABELS } from '../../lib/adminAuth'
@@ -206,7 +206,6 @@ function EndOfDayInner() {
     if (!date)   { setErr('Please select a date.'); return }
     if (!user)   { setErr('Not signed in.'); return }
 
-    const isUpdate = existingId !== null
     setSaving(true); setErr('')
     try {
       const report = emptyReport(branch, date, user.uid, user.email ?? '')
@@ -223,16 +222,10 @@ function EndOfDayInner() {
         report.submittedBy      = user.uid
         report.submittedByEmail = user.email ?? ''
       }
-      await saveEndOfDayReport(report, user.uid)
-      await logEndOfDayAction({
-        action:      isUpdate ? 'update' : 'submit',
-        reportDocId: report.id,
-        branch,
-        date,
-        staffUid:    user.uid,
-        staffEmail:  user.email ?? '',
-      })
-      setExistingId(report.id)
+      // One call. The route writes the report and its endOfDayLogs entry
+      // together, so the two can no longer disagree.
+      const { id } = await saveEndOfDayReport(report)
+      setExistingId(id)
       setSaved(true)
     } catch {
       setErr('Save failed — please try again.')

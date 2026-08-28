@@ -91,7 +91,7 @@ function EndOfDaySummaryInner() {
     if (!branch || !date || !user) return
     setSaving(true); setErr('')
     try {
-      await updateEodTips(branch, date, Number(tips) || 0, user.uid)
+      await updateEodTips(branch, date, Number(tips) || 0)
       setReport(prev => prev ? { ...prev, tipsUsd: Number(tips) || 0 } : prev)
       setSaved(true)
     } catch {
