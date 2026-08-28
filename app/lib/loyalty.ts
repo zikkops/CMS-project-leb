@@ -6,13 +6,13 @@ import {
   updateDoc, writeBatch, serverTimestamp, documentId, type Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import { getLevelFromXP } from './levelConfig'
 import { logCreate, logUpdate } from './activityLog'
+import { authedFetch, unwrap } from './apiClient'
 
 // Mirrors the shape created by the customer submit-check flow
 // (app/(customer)/customer/submit-check/page.tsx) and read on the profile
-// page — xpAmount/coinsAmount are already the per-person share, computed at
-// submission time, so approval just adds them directly to each user's total.
+// page — pointsAmount is already the per-person share, computed at submission
+// time, so approval just adds it directly to each account.
 export interface Transaction {
   id: string
   // Was 'check' | 'event' | 'dnd'. The D&D Session Attendance panel went with
@@ -21,8 +21,9 @@ export interface Transaction {
   // recognise rather than crashing on them.
   type: 'check' | 'event'
   userId: string[]
-  xpAmount: number
-  coinsAmount: number
+  // One figure. This was pointsAmount + pointsAmount — two currencies awarded at
+  // two different rates for the same purchase. See app/lib/loyaltyTiers.ts.
+  pointsAmount: number
   status: 'pending' | 'approved' | 'rejected' | 'cancelled'
   submittedBy: string
   approvedBy?: string | null
@@ -39,12 +40,10 @@ export interface Transaction {
   createdAt: Timestamp | null
 }
 
-// Fixed per-person awards for staff-logged attendance — flat rates, unlike
-// check submissions where xp/coins scale with the amount spent.
-export const EVENT_XP_PER_PERSON = 250
-export const EVENT_COINS_PER_PERSON = 50
-export const TABLE_XP = 150
-export const TABLE_COINS = 30
+// The earn rates live in ./loyaltyTiers, which the server can also import.
+// Re-exported so existing call sites keep working.
+import { EVENT_POINTS_PER_PERSON } from './loyaltyTiers'
+export { POINTS_PER_DOLLAR, EVENT_POINTS_PER_PERSON, TABLE_CHECKIN_POINTS } from './loyaltyTiers'
 
 export interface ResolvedProfile {
   displayName: string
@@ -149,69 +148,41 @@ export async function resolveStaffEmails(uids: string[]): Promise<Map<string, st
   return map
 }
 
-function txLabel(tx: Transaction): string {
-  if (tx.type === 'check') return `Check #${tx.checkNumber || tx.id} — $${(tx.totalAmount ?? 0).toFixed(2)}`
-  return `Event — ${tx.eventName || tx.id}`
+// Approving and rejecting run SERVER-SIDE now — the Phase 00 standing rule
+// applied to the highest-stakes mutation in the app.
+//
+// The browser used to read each account's balance, add the award and write the
+// new total back. Three problems, none of which a Firestore rule can catch:
+// the browser supplied the resulting figure, a rule cannot check arithmetic,
+// and two managers approving for the same customer at the same moment both
+// read the same starting balance so one credit vanished.
+//
+// app/lib/server/loyalty.ts takes the amount from the STORED transaction and
+// applies it with an atomic increment, inside one Firestore transaction with
+// the status flip. It also enforces branch scoping, which was previously only
+// a property of the query that built the queue.
+//
+// Note what is no longer a parameter: managerUid. The server reads the actor
+// from the verified ID token. A caller naming its own actor was always the
+// weaker half of the old signature.
+async function resolve(tx: Transaction, action: 'approve' | 'reject', reason?: string): Promise<void> {
+  const res = await authedFetch('/api/admin/loyalty/transactions', 'PATCH', {
+    id: tx.id, action, reason,
+  })
+  const data = await unwrap(res)
+
+  // The route still resolves the submission when an account named on a split
+  // has since been deleted; the rest of the split is credited. Surfacing that
+  // beats a silent partial credit nobody reconciles later.
+  if (typeof data.warning === 'string') alert(data.warning)
 }
 
-// Reads (current xp/obCoins per user) happen before the batch is built —
-// Firestore batches are write-only, so this isn't itself atomic with the
-// writes, but the writes (every user update + the transaction status flip +
-// the log entry) commit together as one unit, which is what the batch
-// guarantees.
-export async function approveTransaction(tx: Transaction, managerUid: string): Promise<void> {
-  const batch = writeBatch(db)
-
-  const userSnaps = await Promise.all(tx.userId.map(uid => getDoc(doc(db, 'users', uid))))
-
-  userSnaps.forEach((snap, i) => {
-    if (!snap.exists()) return
-    const uid = tx.userId[i]
-    const data = snap.data() as { xp?: number; obCoins?: number }
-    const newXp = (data.xp ?? 0) + tx.xpAmount
-    const newCoins = (data.obCoins ?? 0) + tx.coinsAmount
-    const { level, levelTitle } = getLevelFromXP(newXp)
-    batch.update(doc(db, 'users', uid), { xp: newXp, obCoins: newCoins, level, levelTitle })
-  })
-
-  batch.update(doc(db, 'transactions', tx.id), {
-    status: 'approved',
-    approvedBy: managerUid,
-    approvedAt: serverTimestamp(),
-  })
-
-  batch.set(doc(collection(db, 'transactionLog')), {
-    transactionId: tx.id,
-    action: 'approved',
-    performedBy: managerUid,
-    branchId: tx.branchId,
-    createdAt: serverTimestamp(),
-  })
-
-  await batch.commit()
-  await logUpdate('Loyalty Management', txLabel(tx), { status: 'pending' }, { status: 'approved' })
+export async function approveTransaction(tx: Transaction): Promise<void> {
+  await resolve(tx, 'approve')
 }
 
-export async function rejectTransaction(tx: Transaction, managerUid: string, reason: string): Promise<void> {
-  const batch = writeBatch(db)
-
-  batch.update(doc(db, 'transactions', tx.id), {
-    status: 'rejected',
-    rejectedBy: managerUid,
-    rejectedAt: serverTimestamp(),
-    rejectionReason: reason,
-  })
-
-  batch.set(doc(collection(db, 'transactionLog')), {
-    transactionId: tx.id,
-    action: 'rejected',
-    performedBy: managerUid,
-    branchId: tx.branchId,
-    createdAt: serverTimestamp(),
-  })
-
-  await batch.commit()
-  await logUpdate('Loyalty Management', txLabel(tx), { status: 'pending' }, { status: 'rejected', rejectionReason: reason })
+export async function rejectTransaction(tx: Transaction, reason: string): Promise<void> {
+  await resolve(tx, 'reject', reason)
 }
 
 // Customer-initiated — withdrawing their own submission before staff act on
@@ -234,8 +205,7 @@ export async function createEventAttendanceTransaction(input: {
   await addDoc(collection(db, 'transactions'), {
     type: 'event',
     userId: input.attendeeUids,
-    xpAmount: EVENT_XP_PER_PERSON,
-    coinsAmount: EVENT_COINS_PER_PERSON,
+    pointsAmount: EVENT_POINTS_PER_PERSON,
     status: 'pending',
     submittedBy: input.submittedBy,
     approvedBy: null,
@@ -249,43 +219,27 @@ export async function createEventAttendanceTransaction(input: {
     branchId: input.branchId,
     eventDate: input.eventDate,
     attendees: input.attendeeUids.length,
-    xpAmount: EVENT_XP_PER_PERSON,
-    coinsAmount: EVENT_COINS_PER_PERSON,
+    pointsAmount: EVENT_POINTS_PER_PERSON,
   })
 }
 
 // Instant check-in award for a table reservation — no pending/approve cycle
 // needed since the staff member doing the check-in is already authorized.
-// Mirrors approveTransaction's read-then-batch pattern: reads the user doc
-// first (to compute new level) then commits the user update + the reservation
-// status flip + the log entry as one batch.
-export async function awardTableCheckin(input: {
-  userId: string
-  reservationId: string
-  branch: string
-  tableNumbers: number[]
-  staffUid: string
-}): Promise<void> {
-  const userSnap = await getDoc(doc(db, 'users', input.userId))
-  if (!userSnap.exists()) throw new Error('user-not-found')
-  const data = userSnap.data() as { xp?: number; obCoins?: number }
-  const newXp    = (data.xp    ?? 0) + TABLE_XP
-  const newCoins = (data.obCoins ?? 0) + TABLE_COINS
-  const { level, levelTitle } = getLevelFromXP(newXp)
-
-  const batch = writeBatch(db)
-  batch.update(doc(db, 'users', input.userId), { xp: newXp, obCoins: newCoins, level, levelTitle })
-  batch.update(doc(db, 'tableReservations', input.reservationId), {
-    checkedIn: true,
-    checkedInAt: serverTimestamp(),
-    checkedInBy: input.staffUid,
-  })
-  await batch.commit()
-
-  await logUpdate(
-    'Table Reservation',
-    `${input.branch} — Table${input.tableNumbers.length > 1 ? 's' : ''} ${input.tableNumbers.join(', ')}`,
-    { checkedIn: false },
-    { checkedIn: true, xpAwarded: TABLE_XP, coinsAwarded: TABLE_COINS }
-  )
+// Runs SERVER-SIDE (Phase 00 standing rule).
+//
+// The client version had a defect the other award paths didn't: nothing
+// stopped it running twice. It read the balance, added the award and wrote
+// the total, so checking the same reservation in again simply awarded again.
+// The route re-reads `checkedIn` inside a Firestore transaction, which is the
+// only place that can be checked without a race.
+//
+// The caller passes a reservation id and nothing else. Branch, table numbers,
+// the customer and the award all come from the stored document — a browser
+// naming its own award amount was the shape of the old signature.
+export async function awardTableCheckin(reservationId: string): Promise<void> {
+  const res = await authedFetch('/api/admin/tables/checkin', 'POST', { reservationId })
+  const data = await unwrap(res)
+  // A booking made by phone number has no account to credit. Staff expect a
+  // check-in to award points, so say why it didn't rather than showing zero.
+  if (typeof data.note === 'string') alert(data.note)
 }

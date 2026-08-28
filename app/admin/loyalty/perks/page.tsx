@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useRequireRole, SECTION_ACCESS } from '../../../lib/adminAuth'
 import {
-  useLevelPerks, seedLevelPerksIfEmpty, createLevelPerk, updateLevelPerk, deleteLevelPerk,
-  type LevelPerk,
-} from '../../../lib/levelPerks'
-import { getTierFromLevel, TIER_COLORS, MAX_LEVEL } from '../../../lib/levelConfig'
+  useTierPerks, seedTierPerksIfEmpty, createTierPerk, updateTierPerk, deleteTierPerk,
+  type TierPerk,
+} from '../../../lib/tierPerks'
+import { TIER_LABELS, tierColor } from '../../../lib/loyaltyTiers'
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false)
@@ -19,7 +19,7 @@ function useIsMobile(breakpoint = 768) {
   return isMobile
 }
 
-const EMPTY_FORM = { level: 5, perk: '' }
+const EMPTY_FORM = { tier: TIER_LABELS[0], perk: '' }
 
 const inputStyle = {
   width: '100%',
@@ -43,18 +43,18 @@ const labelStyle = {
   fontFamily: 'var(--font-inter)',
 }
 
-export default function LevelPerksPage() {
+export default function TierPerksPage() {
   const { checking } = useRequireRole(SECTION_ACCESS.loyalty)
   const isMobile = useIsMobile()
-  const { perks, loading } = useLevelPerks()
+  const { perks, loading } = useTierPerks()
 
   const [open, setOpen]       = useState(false)
-  const [editing, setEditing] = useState<LevelPerk | null>(null)
+  const [editing, setEditing] = useState<TierPerk | null>(null)
   const [form, setForm]       = useState({ ...EMPTY_FORM })
   const [saving, setSaving]   = useState(false)
 
   useEffect(() => {
-    seedLevelPerksIfEmpty()
+    seedTierPerksIfEmpty()
   }, [])
 
   if (checking) return null
@@ -65,9 +65,9 @@ export default function LevelPerksPage() {
     setOpen(true)
   }
 
-  function openEdit(p: LevelPerk) {
+  function openEdit(p: TierPerk) {
     setEditing(p)
-    setForm({ level: p.level, perk: p.perk })
+    setForm({ tier: p.tier, perk: p.perk })
     setOpen(true)
   }
 
@@ -76,9 +76,9 @@ export default function LevelPerksPage() {
     setSaving(true)
     try {
       if (editing) {
-        await updateLevelPerk(editing.id, form)
+        await updateTierPerk(editing.id, form)
       } else {
-        await createLevelPerk(form)
+        await createTierPerk(form)
       }
       setOpen(false)
     } finally {
@@ -86,12 +86,12 @@ export default function LevelPerksPage() {
     }
   }
 
-  async function handleDelete(p: LevelPerk) {
-    if (!confirm(`Remove the Level ${p.level} perk? This won't affect customers who already unlocked it — it's display-only, not a credited reward.`)) return
-    await deleteLevelPerk(p.id)
+  async function handleDelete(p: TierPerk) {
+    if (!confirm(`Remove this ${p.tier} perk? It's display-only — nothing a customer already redeemed is affected.`)) return
+    await deleteTierPerk(p.id)
   }
 
-  const canSave = form.level >= 1 && form.level <= MAX_LEVEL && form.perk.trim() !== ''
+  const canSave = TIER_LABELS.includes(form.tier) && form.perk.trim() !== ''
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--black)', padding: isMobile ? '1.25rem' : '3rem' }}>
@@ -140,8 +140,8 @@ export default function LevelPerksPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
             {perks.map(p => {
-              const tier = getTierFromLevel(p.level)
-              const color = TIER_COLORS[tier]
+              const tier = p.tier
+              const color = tierColor(tier)
               return (
                 <div key={p.id} style={{
                   display: 'flex',
@@ -155,7 +155,7 @@ export default function LevelPerksPage() {
                   padding: isMobile ? '1rem 1.2rem' : '1rem 1.5rem',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexShrink: 0 }}>
-                    <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color, minWidth: '60px' }}>Lv {p.level}</span>
+                    <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color, minWidth: '80px' }}>{p.tier}</span>
                     <span style={{
                       fontSize: '0.62rem', padding: '0.2rem 0.6rem', borderRadius: '2px',
                       backgroundColor: `${color}25`, color,
@@ -206,12 +206,14 @@ export default function LevelPerksPage() {
 
             <form onSubmit={handleSave} style={{ padding: isMobile ? '1.5rem' : '2rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               <div>
-                <label style={labelStyle}>Level (1–{MAX_LEVEL})</label>
-                <input type="number" value={form.level} required min={1} max={MAX_LEVEL}
-                  onChange={e => setForm(f => ({ ...f, level: +e.target.value }))}
-                  style={inputStyle} />
+                <label style={labelStyle}>Tier</label>
+                <select value={form.tier} required
+                  onChange={e => setForm(f => ({ ...f, tier: e.target.value }))}
+                  style={inputStyle}>
+                  {TIER_LABELS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
                 <p style={{ marginTop: '0.5rem', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.35)' }}>
-                  Tier: {getTierFromLevel(form.level)} (derived automatically from the level)
+                  Customers see this once they reach {form.tier}.
                 </p>
               </div>
 

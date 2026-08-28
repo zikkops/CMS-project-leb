@@ -4,7 +4,7 @@
 // computed, which is precisely why it isn't in the browser.
 //
 // The existing admin panel writes almost everything client-side, and that was
-// survivable while the blast radius of a tampered client was loyalty XP. It is
+// survivable while the blast radius of a tampered client was loyalty points. It is
 // not survivable here: a delivery sets purchase cost, which feeds weighted
 // average cost, which feeds food cost % and every costing decision after it.
 // A browser must not be trusted to compute those numbers or to move stock.
@@ -27,7 +27,7 @@ const VALID_STATUS: DeliveryStatus[] = ['draft', 'received', 'disputed']
 const VALID_REASONS: RejectReason[] = ['damaged', 'expired', 'wrong-item', 'not-delivered']
 
 // A generous sanity ceiling, not a business rule — the same posture as
-// transactions' xpAmount caps in firestore.rules. It exists to turn a fat
+// transactions' pointsAmount caps in firestore.rules. It exists to turn a fat
 // finger or a corrupted payload into a clear error instead of a supply record
 // claiming forty thousand litres of milk.
 const MAX_QTY = 100000

@@ -6,6 +6,7 @@ import { onAuthStateChanged, signOut, type User } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import { ALL_ROLES, SECTION_ACCESS, hasSectionAccess, type Role, type SectionKey } from './roles'
+import { authedFetch, unwrap } from './apiClient'
 
 // Role, ALL_ROLES, SECTION_ACCESS and hasSectionAccess moved to ./roles so the
 // server layer can share one definition with the browser (a route handler
@@ -173,7 +174,7 @@ export function useAdminUser() {
         // users/{uid} either doesn't exist or has no isStaff: true.
         // First-time admins must be provisioned by hand in Firebase Console:
         // create users/{uid} with isStaff: true, role: 'admin', superadmin: true,
-        // xp: 0, obCoins: 0. See ARCHITECTURE.md.
+        // pointsEarned: 0, points: 0. See ARCHITECTURE.md.
         setRole(null)
         setBranchIds([])
         setOrderDepts([])
@@ -257,29 +258,10 @@ export function useRequireRole(allowed: Role[]) {
 
 // Every call into the server layer carries the caller's Firebase ID token; the
 // route verifies it with the Admin SDK and derives permissions from its claims.
-async function authedFetch(path: string, method: string, body: unknown): Promise<Response> {
-  const user = auth.currentUser
-  if (!user) throw new Error('Session expired — please sign in again.')
-  const token = await user.getIdToken()
+// authedFetch and unwrap moved to ./apiClient — every route-handler
+// migration under the Phase 00 rule needs them, and a second copy of ID-token
+// handling per module is how that drifts.
 
-  return fetch(path, {
-    method,
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify(body),
-  })
-}
-
-// The route returns { error } with a message already written for a human, so
-// pass it straight through rather than inventing a second set of copy.
-async function unwrap(res: Response): Promise<Record<string, unknown>> {
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    throw new Error(
-      typeof data?.error === 'string' ? data.error : 'Something went wrong. Please try again.'
-    )
-  }
-  return data
-}
 
 export async function createAccount(
   email: string,
@@ -320,7 +302,7 @@ export async function updateAccountAccess(
 }
 
 // Removes a person's staff standing while leaving their customer identity —
-// XP, coins, bookings, history — completely intact. Their login still works.
+// points, bookings, history — completely intact. Their login still works.
 //
 // This used to be a client `updateDoc` deleting isStaff/role/branchIds. It had
 // to move: with custom claims in play, clearing the document alone leaves the

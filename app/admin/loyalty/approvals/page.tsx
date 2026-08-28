@@ -82,7 +82,7 @@ export default function LoyaltyApprovalsPage() {
     if (!user) return
     setBusyId(tx.id)
     try {
-      await approveTransaction(tx, user.uid)
+      await approveTransaction(tx)
       setProcessedIds(prev => new Set(prev).add(tx.id))
     } finally {
       setBusyId(null)
@@ -93,7 +93,7 @@ export default function LoyaltyApprovalsPage() {
     if (!user || !rejectReason.trim()) return
     setBusyId(tx.id)
     try {
-      await rejectTransaction(tx, user.uid, rejectReason.trim())
+      await rejectTransaction(tx, rejectReason.trim())
       setProcessedIds(prev => new Set(prev).add(tx.id))
       setRejectingId(null)
       setRejectReason('')
@@ -375,7 +375,7 @@ export default function LoyaltyApprovalsPage() {
                       </div>
                       <div>
                         <p style={{ ...fieldLabelStyle, fontFamily: 'var(--font-inter)', fontSize: '0.82rem', marginBottom: '0.5rem' }}>
-                          Will receive XP ({tx.userId.length})
+                          Will receive points ({tx.userId.length})
                         </p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                           {tx.userId.map(uid => (
@@ -396,7 +396,7 @@ export default function LoyaltyApprovalsPage() {
                   <div style={fieldRowStyle}>
                     <span style={fieldLabelStyle}>Each person receives</span>
                     <span style={{ ...fieldValueStyle, color: 'var(--teal)' }}>
-                      +{tx.xpAmount} XP · +{tx.coinsAmount} OB Coins
+                      +{tx.pointsAmount} points
                     </span>
                   </div>
 

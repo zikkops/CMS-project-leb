@@ -10,7 +10,7 @@ import { usePendingTransactions } from '../lib/loyalty'
 import { usePendingRedemptions } from '../lib/redemptions'
 import { usePendingEventReservations } from '../lib/eventReservations'
 import { usePendingTableReservations } from '../lib/tableReservations'
-import { checkAndRunLoyaltyReset, migratePrivateFieldsOnce, migrateNameFieldsOnce } from '../lib/customerManagement'
+import { migratePrivateFieldsOnce, migrateNameFieldsOnce } from '../lib/customerManagement'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faCashRegister, faReceipt, faDice, faUtensils, faCalendar, faCalendarCheck,
@@ -75,12 +75,15 @@ export default function AdminPage() {
   }, [checking, role, branchIds])
   const { reservations: pendingTableReservations } = usePendingTableReservations(tableReservationFilter)
 
-  // No server/cron job exists in this app — the annual points reset is
-  // checked passively here instead, the first time an admin opens the
-  // dashboard on or after the configured date. See checkAndRunLoyaltyReset.
+  // The annual points reset used to be triggered from here — the first admin
+  // to open the dashboard on or after the date ran it, in their browser. It is
+  // a scheduled server job now (Vercel Cron → /api/admin/loyalty/reset), so
+  // opening a dashboard no longer wipes anybody's balance.
+  //
+  // The two migrations below are still client-side one-shots, and are on the
+  // list npm run audit:writes tracks.
   useEffect(() => {
     if (!checking && role === 'admin') {
-      checkAndRunLoyaltyReset()
       migratePrivateFieldsOnce()
       migrateNameFieldsOnce()
     }
@@ -148,15 +151,15 @@ export default function AdminPage() {
       title: 'Loyalty Approvals',
       color: 'var(--navy)',
       cards: [
-        { label: 'Loyalty Approvals',   icon: faThumbsUp, daily: true, desc: 'Approve or reject pending XP and OB Coin submissions',  href: '/admin/loyalty/approvals',   access: SECTION_ACCESS.loyalty, badge: pendingLoyalty.length },
-        { label: 'Redemption Requests', icon: faGift,     daily: true, desc: 'Confirm or reject pending OB Coin redemption requests', href: '/admin/loyalty/redemptions', access: SECTION_ACCESS.loyalty, badge: pendingRedemptions.length },
+        { label: 'Loyalty Approvals',   icon: faThumbsUp, daily: true, desc: 'Approve or reject pending point submissions',  href: '/admin/loyalty/approvals',   access: SECTION_ACCESS.loyalty, badge: pendingLoyalty.length },
+        { label: 'Redemption Requests', icon: faGift,     daily: true, desc: 'Confirm or reject pending Point redemption requests', href: '/admin/loyalty/redemptions', access: SECTION_ACCESS.loyalty, badge: pendingRedemptions.length },
       ],
     },
     {
       title: 'Loyalty Catalog',
       color: 'var(--navy)',
       cards: [
-        { label: 'Redemption Items', icon: faTag,    daily: false, desc: 'Add, edit or deactivate items customers can redeem with OB Coins',        href: '/admin/loyalty/redemption-items', access: SECTION_ACCESS.loyalty },
+        { label: 'Redemption Items', icon: faTag,    daily: false, desc: 'Add, edit or deactivate items customers can redeem with Points',        href: '/admin/loyalty/redemption-items', access: SECTION_ACCESS.loyalty },
         { label: 'Level Perks',      icon: faTrophy, daily: false, desc: 'Edit the perks customers unlock at each level, shown on the Loyalty page', href: '/admin/loyalty/perks',            access: SECTION_ACCESS.loyalty },
       ],
     },
@@ -164,7 +167,7 @@ export default function AdminPage() {
       title: 'Customer Accounts',
       color: 'var(--navy)',
       cards: [
-        { label: 'Manage Customers', icon: faUser,            daily: false, desc: 'Edit XP and OB Coins, resend password resets, delete accounts, and set the annual points reset date', href: '/admin/loyalty/customers', access: ['admin'] as Role[] },
+        { label: 'Manage Customers', icon: faUser,            daily: false, desc: 'Edit points, resend password resets, delete accounts, and set the annual points reset date', href: '/admin/loyalty/customers', access: ['admin'] as Role[] },
         { label: 'Loyalty Activity', icon: faClockRotateLeft, daily: false, desc: 'Submissions, approvals, rejections, and redemption item changes',                                     href: '/admin/loyalty/activity',  access: SECTION_ACCESS.loyalty },
       ],
     },

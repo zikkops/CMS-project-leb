@@ -11,8 +11,8 @@ import Skeleton from '../components/Skeleton'
 import { useIsMobile } from '../lib/useIsMobile'
 import { useRedemptionItems, type RedemptionItem } from '../lib/redemptions'
 import { PLACEHOLDER } from '../lib/placeholderAssets'
-import { useLevelPerks } from '../lib/levelPerks'
-import { TIERS, TIER_COLORS, LEVEL_TITLES, getTierFromLevel } from '../lib/levelConfig'
+import { useTierPerks } from '../lib/tierPerks'
+import { TIERS, tierColor } from '../lib/loyaltyTiers'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faGoogle } from '@fortawesome/free-brands-svg-icons'
 import {
@@ -20,29 +20,21 @@ import {
   faArrowRight, faMugHot, faMugSaucer, faBurger, faTicket, faGift,
 } from '@fortawesome/free-solid-svg-icons'
 
-const TIER_DESCRIPTIONS: Record<string, string> = {
-  Apprentice: "You're new to the table — welcome.",
-  Adventurer: 'A familiar face. The staff know your order.',
-  Champion:   'Respected regular. Feared at the table.',
-  Legend:     'Your reputation spans all three branches.',
-  Mythic:     'You are Onboard.',
-}
-
 const EARN_CARDS = [
   {
     icon: faReceipt,
     color: 'var(--teal)',
     title: 'Order at any branch',
-    desc: 'Every dollar you spend earns you XP and OB Coins. Submit your check through your profile after your visit.',
-    xp: 10, coins: 1, unit: 'per $1 spent',
+    desc: 'Every dollar you spend earns you points. Submit your check through your profile after your visit.',
+    pointsEarned: 10, coins: 1, unit: 'per $1 spent',
     note: 'Tip — split the bill and share the reward',
   },
   {
     icon: faCalendarDay,
     color: 'var(--red)',
     title: 'Attend an event',
-    desc: 'Come to any Onboard event — board game nights, tournaments, themed evenings — and earn a big XP and coin bonus just for showing up.',
-    xp: 250, coins: 50, unit: 'per event',
+    desc: 'Come to any Onboard event — board game nights, tournaments, themed evenings — and earn a big point bonus just for showing up.',
+    pointsEarned: 250, coins: 50, unit: 'per event',
   },
 ]
 
@@ -52,7 +44,7 @@ const SUBMIT_STEPS = [
   'Go to your profile and tap "Submit a check"',
   'Enter the check number, branch, total amount, and upload a photo of your check',
   'Optionally split it with friends — everyone earns equally',
-  'A manager reviews and approves — XP and OB Coins land in your account',
+  'A manager reviews and approves — points land in your account',
 ]
 
 function getRedemptionIcon(item: RedemptionItem) {
@@ -101,19 +93,12 @@ export default function LoyaltyPage() {
   const isMobile = useIsMobile()
   const { user } = useCustomerUser()
   const { items: redemptionItems, loading: loadingRedemptions } = useRedemptionItems(true)
-  const { perks: PERKS, loading: loadingPerks } = useLevelPerks()
-  const [activeTier, setActiveTier] = useState<string>(TIERS[0].label)
+  const { perks: PERKS, loading: loadingPerks } = useTierPerks()
   const [hoveredTierBtn, setHoveredTierBtn] = useState<string | null>(null)
   const [signInHovered, setSignInHovered] = useState(false)
   const [profileLinkHovered, setProfileLinkHovered] = useState(false)
   const [joinHovered, setJoinHovered] = useState(false)
-  const [leaderboardHovered, setLeaderboardHovered] = useState(false)
 
-  const activeTierRange = TIERS.find(t => t.label === activeTier) ?? TIERS[0]
-  const activeTierLevels = Array.from(
-    { length: activeTierRange.max - activeTierRange.min + 1 },
-    (_, i) => activeTierRange.min + i
-  )
 
   return (
     <>
@@ -194,7 +179,7 @@ export default function LoyaltyPage() {
               maxWidth: '520px',
               margin: '0 auto 2.5rem',
             }}>
-              Loyal customers earn XP to level up and unlock permanent perks, and OB Coins
+              Loyal customers earn points to level up and unlock permanent perks, and Points
               to redeem for free food and drinks. The more you play and visit, the more
               Onboard gives back.
             </p>
@@ -314,7 +299,7 @@ export default function LoyaltyPage() {
           {/* 2. The two currencies */}
           <Reveal>
             <section style={{ marginBottom: isMobile ? '4rem' : '7rem' }}>
-              <SectionHeading eyebrow="How It Works" title="Two currencies, one program" isMobile={isMobile} color="var(--purple)" />
+              <SectionHeading eyebrow="How It Works" title="How points work" isMobile={isMobile} color="var(--purple)" />
 
               <div style={{
                 display: 'grid',
@@ -337,10 +322,10 @@ export default function LoyaltyPage() {
                     <FontAwesomeIcon icon={faChartLine} style={{ width: '20px', color: 'var(--teal)' }} />
                   </div>
                   <h3 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.3rem', color: 'var(--offwhite)', marginBottom: '0.9rem' }}>
-                    XP — Experience Points
+                    points — Experience Points
                   </h3>
                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: isMobile ? '0.85rem' : '0.9rem', color: 'rgba(245,242,236,0.55)', lineHeight: 1.8 }}>
-                    XP is your progression currency. It accumulates as you visit, play, and attend
+                    points is your progression currency. It accumulates as you visit, play, and attend
                     events. It never gets spent — it only grows and levels you up, unlocking
                     permanent perks along the way.
                   </p>
@@ -362,10 +347,10 @@ export default function LoyaltyPage() {
                     <FontAwesomeIcon icon={faCoins} style={{ width: '20px', color: 'var(--purple)' }} />
                   </div>
                   <h3 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.3rem', color: 'var(--offwhite)', marginBottom: '0.9rem' }}>
-                    OB Coins
+                    Points
                   </h3>
                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: isMobile ? '0.85rem' : '0.9rem', color: 'rgba(245,242,236,0.55)', lineHeight: 1.8 }}>
-                    OB Coins are your reward currency. Earn them alongside XP and spend them on
+                    Points are your reward currency. Earn them alongside points and spend them on
                     free coffees, drinks, burgers, event tickets, and D&amp;D sessions at any branch.
                   </p>
                 </div>
@@ -412,7 +397,7 @@ export default function LoyaltyPage() {
 
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', marginTop: 'auto' }}>
                       <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem', color: card.color }}>
-                        +{card.xp} XP
+                        +{card.pointsEarned} points
                       </span>
                       <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.3)' }}>+</span>
                       <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem', color: card.color }}>
@@ -437,7 +422,7 @@ export default function LoyaltyPage() {
           {/* 4. Tier system */}
           <Reveal>
             <section style={{ marginBottom: isMobile ? '4rem' : '7rem' }}>
-              <SectionHeading eyebrow="Climb The Ranks" title="The tier system" isMobile={isMobile} color="var(--red)" />
+              <SectionHeading eyebrow="Your Status" title="Four tiers" isMobile={isMobile} color="var(--red)" />
 
               {isMobile ? (
                 <div style={{ position: 'relative', paddingLeft: '2.2rem' }}>
@@ -446,7 +431,7 @@ export default function LoyaltyPage() {
                     width: '2px', backgroundColor: 'rgba(255,255,255,0.08)',
                   }} />
                   {TIERS.map(tier => {
-                    const color = TIER_COLORS[tier.label]
+                    const color = tier.color
                     return (
                       <div key={tier.label} style={{ position: 'relative', marginBottom: '1.5rem' }}>
                         <div style={{
@@ -463,10 +448,10 @@ export default function LoyaltyPage() {
                         }}>
                           <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.05rem', color }}>{tier.label}</p>
                           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)', margin: '0.3rem 0 0.6rem' }}>
-                            Levels {tier.min}–{tier.max}
+                            {tier.threshold === 0 ? 'From your first visit' : `${tier.threshold.toLocaleString()}+ points earned`}
                           </p>
                           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.83rem', color: 'rgba(245,242,236,0.55)', lineHeight: 1.6 }}>
-                            {TIER_DESCRIPTIONS[tier.label]}
+                            {tier.blurb}
                           </p>
                         </div>
                       </div>
@@ -476,7 +461,7 @@ export default function LoyaltyPage() {
               ) : (
                 <div style={{ display: 'flex', alignItems: 'stretch' }}>
                   {TIERS.map((tier, i) => {
-                    const color = TIER_COLORS[tier.label]
+                    const color = tier.color
                     return (
                       <div key={tier.label} style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
                         <div style={{
@@ -494,10 +479,10 @@ export default function LoyaltyPage() {
                         }}>
                           <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color, marginBottom: '0.4rem' }}>{tier.label}</p>
                           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)', marginBottom: '0.8rem' }}>
-                            Lv {tier.min}–{tier.max}
+                            {tier.threshold === 0 ? 'To start' : `${tier.threshold.toLocaleString()}+`}
                           </p>
                           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.76rem', color: 'rgba(245,242,236,0.5)', lineHeight: 1.6 }}>
-                            {TIER_DESCRIPTIONS[tier.label]}
+                            {tier.blurb}
                           </p>
                         </div>
                         {i < TIERS.length - 1 && (
@@ -511,73 +496,10 @@ export default function LoyaltyPage() {
             </section>
           </Reveal>
 
-          {/* 5. All 50 level titles */}
+          {/* 6. Perks by tier */}
           <Reveal>
             <section style={{ marginBottom: isMobile ? '4rem' : '7rem' }}>
-              <SectionHeading eyebrow="Name Your Journey" title="All 50 level titles" isMobile={isMobile} color="var(--navy)" />
-
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.75rem' }}>
-                {TIERS.map(tier => {
-                  const color = TIER_COLORS[tier.label]
-                  const active = activeTier === tier.label
-                  const hov = hoveredTierBtn === tier.label
-                  return (
-                    <button
-                      key={tier.label}
-                      onClick={() => setActiveTier(tier.label)}
-                      onMouseEnter={() => setHoveredTierBtn(tier.label)}
-                      onMouseLeave={() => setHoveredTierBtn(null)}
-                      style={{
-                        flex: isMobile ? '1 1 calc(50% - 0.25rem)' : 'initial',
-                        backgroundColor: active ? color : hov ? `${color}25` : 'transparent',
-                        border: `1px solid ${active || hov ? color : 'rgba(255,255,255,0.12)'}`,
-                        color: active ? '#fff' : hov ? 'var(--offwhite)' : 'rgba(245,242,236,0.55)',
-                        padding: '0.65rem 1.4rem',
-                        borderRadius: '2px',
-                        fontSize: '0.75rem',
-                        letterSpacing: '0.06em',
-                        textTransform: 'uppercase',
-                        cursor: 'pointer',
-                        fontFamily: 'var(--font-inter)',
-                        transition: 'all 0.2s ease',
-                      }}
-                    >{tier.label}</button>
-                  )
-                })}
-              </div>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)',
-                gap: '0.7rem',
-              }}>
-                {activeTierLevels.map(level => {
-                  const color = TIER_COLORS[activeTier]
-                  return (
-                    <div key={level} style={{
-                      border: `1px solid ${color}30`,
-                      borderLeft: `3px solid ${color}`,
-                      borderRadius: '2px',
-                      background: `${color}0a`,
-                      padding: '0.8rem 1rem',
-                    }}>
-                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.08em', color, marginBottom: '0.25rem' }}>
-                        LV {level}
-                      </p>
-                      <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>
-                        {LEVEL_TITLES[level - 1]}
-                      </p>
-                    </div>
-                  )
-                })}
-              </div>
-            </section>
-          </Reveal>
-
-          {/* 6. Perks unlocked by level */}
-          <Reveal>
-            <section style={{ marginBottom: isMobile ? '4rem' : '7rem' }}>
-              <SectionHeading eyebrow="The Payoff" title="Perks unlocked by level" isMobile={isMobile} color="var(--purple)" />
+              <SectionHeading eyebrow="The Payoff" title="What each tier gets you" isMobile={isMobile} color="var(--purple)" />
 
               {loadingPerks ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
@@ -586,7 +508,7 @@ export default function LoyaltyPage() {
               ) : isMobile ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
                   {PERKS.map(p => {
-                    const color = TIER_COLORS[getTierFromLevel(p.level)]
+                    const color = tierColor(p.tier)
                     return (
                       <div key={p.id} style={{
                         border: `1px solid ${color}30`,
@@ -596,8 +518,8 @@ export default function LoyaltyPage() {
                         padding: '1.1rem 1.25rem',
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                          <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', color }}>Level {p.level}</span>
-                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color }}>{getTierFromLevel(p.level)}</span>
+                          <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', color }}>{p.tier}</span>
+                          
                         </div>
                         <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.6)', lineHeight: 1.6 }}>{p.perk}</p>
                       </div>
@@ -607,7 +529,7 @@ export default function LoyaltyPage() {
               ) : (
                 <div style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
                   {PERKS.map((p, i) => {
-                    const color = TIER_COLORS[getTierFromLevel(p.level)]
+                    const color = tierColor(p.tier)
                     return (
                       <div key={p.id} style={{
                         display: 'grid',
@@ -618,8 +540,7 @@ export default function LoyaltyPage() {
                         borderBottom: i < PERKS.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
                         background: i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent',
                       }}>
-                        <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color }}>Lv {p.level}</span>
-                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color }}>{getTierFromLevel(p.level)}</span>
+                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color }}>{p.tier}</span>
                         <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(245,242,236,0.7)' }}>{p.perk}</span>
                       </div>
                     )
@@ -629,10 +550,10 @@ export default function LoyaltyPage() {
             </section>
           </Reveal>
 
-          {/* 7. OB Coin redemptions */}
+          {/* 7. Point redemptions */}
           <Reveal>
             <section style={{ marginBottom: isMobile ? '4rem' : '7rem' }}>
-              <SectionHeading eyebrow="Spend Your Coins" title="Redeem OB Coins" isMobile={isMobile} color="var(--teal)" />
+              <SectionHeading eyebrow="Spend Your Points" title="Redeem your points" isMobile={isMobile} color="var(--teal)" />
 
               {loadingRedemptions ? (
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '1.25rem' }}>
@@ -814,20 +735,6 @@ export default function LoyaltyPage() {
                 {user ? 'Go to your profile' : 'Join the loyalty program'}
               </Link>
 
-              <div>
-                <Link href="/customer/leaderboard"
-                  onMouseEnter={() => setLeaderboardHovered(true)}
-                  onMouseLeave={() => setLeaderboardHovered(false)}
-                  style={{
-                    fontFamily: 'var(--font-inter)',
-                    fontSize: '0.8rem',
-                    color: leaderboardHovered ? 'var(--teal)' : 'rgba(245,242,236,0.45)',
-                    textDecoration: 'underline',
-                    transition: 'color 0.2s ease',
-                  }}>
-                  View the leaderboard
-                </Link>
-              </div>
             </div>
           </section>
         </Reveal>

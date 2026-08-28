@@ -173,7 +173,7 @@ service cloud.firestore {
     match /menuItems/{id}      { allow read: if true; allow write: if canMenu(); }
     match /events/{id}         { allow read: if true; allow write: if canEvents(); }
     match /eventTypes/{id}     { allow read: if true; allow write: if canEvents(); }
-    match /levelPerks/{id}     { allow read: if true; allow write: if canLoyalty(); }
+    match /tierPerks/{id}      { allow read: if true; allow write: if canLoyalty(); }
 
     // ---- Audit log ----
     // Every staff mutation writes here, so create must stay open to all staff.
@@ -220,16 +220,16 @@ service cloud.firestore {
 
     // ---- Accounts ----
     // A customer may freely edit their own profile fields (avatar, theme,
-    // username, the level/levelTitle display cache), but xp/obCoins must stay
-    // unchanged in a customer-initiated update — the only legitimate way to
-    // change a balance is a staff-approved transaction or redemption (see
-    // approveTransaction in app/lib/loyalty.ts and confirmRedemption in
-    // app/lib/redemptions.ts). On creation, a customer may only set xp/obCoins
-    // to 0, matching what ensureCustomerDoc always writes.
+    // username), but points/pointsEarned must stay unchanged in a
+    // customer-initiated update — the only legitimate way to move either is a
+    // staff-approved transaction or redemption (see approveTransaction in
+    // app/lib/loyalty.ts and confirmRedemption in app/lib/redemptions.ts). On
+    // creation a customer may only set them to 0, matching what
+    // ensureCustomerDoc always writes.
     //
     // This top-level doc is readable by any signed-in customer (friend search
-    // and the leaderboard both read other customers' profiles), so anything
-    // that shouldn't be that widely exposed lives in one of the two private
+    // reads other customers' profiles), so anything that shouldn't be that
+    // widely exposed lives in one of the two private
     // sub-docs below instead — split into two, not one, because they need
     // different read access: a customer can read back their own
     // avatarDeleteUrl (the profile page's own avatar-cleanup flow needs it),
@@ -264,9 +264,25 @@ service cloud.firestore {
 
     // Balance fields. Only loyalty staff may move these, and only through the
     // approval flows — never the account's own owner.
+    // The loyalty currency. `points` is the spendable balance; `pointsEarned`
+    // is the running total that determines status.
+    //
+    // BOTH are locked, for different reasons. `points` is money. `pointsEarned`
+    // is not spendable, but it drives the tier — and the tier gates the perks
+    // (10% off, a free coffee every month, priority event registration), so a
+    // customer who could write it could award themselves every one of them.
+    //
+    // These replaced `xp`, `obCoins`, `level` and `levelTitle`. `level` and
+    // `levelTitle` used to be writable by the account itself, because the
+    // profile page recomputed them in the browser — which made the derived
+    // field a cheaper target than the balance it was derived from. There is no
+    // stored level any more: status is computed from pointsEarned on read.
+    //
+    // Loyalty staff can still write both, via the approvals and
+    // manual-adjustment flows.
     function touchesBalanceFields() {
       return request.resource.data.diff(resource.data).affectedKeys()
-        .hasAny(['xp', 'obCoins']);
+        .hasAny(['points', 'pointsEarned']);
     }
 
     // sectionGrants/sectionRevocations are still written from /admin/users
@@ -283,8 +299,8 @@ service cloud.firestore {
       allow create: if isSignedIn() && (
         // Regular customer self-signup: no staff tag, balances start at 0.
         (request.auth.uid == userId &&
-          request.resource.data.xp == 0 &&
-          request.resource.data.obCoins == 0 &&
+          request.resource.data.points == 0 &&
+          request.resource.data.pointsEarned == 0 &&
           request.resource.data.get('isStaff', false) != true) ||
         // DEPRECATED, delete alongside adminInvitations above. The old
         // staff-creation path; the route creates staff documents server-side.
@@ -296,9 +312,13 @@ service cloud.firestore {
         // The owner editing their own profile. Cannot move their own balance,
         // cannot grant themselves anything.
         (request.auth.uid == userId && !touchesBalanceFields() && !touchesGrantFields()) ||
-        // Loyalty staff adjusting a customer's balance or profile — the
-        // approvals and manual-adjustment flows. Narrowed from any staff.
-        (canLoyalty() && !touchesGrantFields()) ||
+        // Loyalty staff editing a customer's PROFILE — but no longer their
+        // balance. Every path that moves points runs on the server now:
+        // approving a submission, confirming a redemption, a table check-in,
+        // a manual correction, and the annual reset. The Admin SDK bypasses
+        // rules, so this branch giving up balance access costs nothing and
+        // closes the last client-side route to the currency.
+        (canLoyalty() && !touchesBalanceFields() && !touchesGrantFields()) ||
         // Admins editing per-user section grants from /admin/users.
         //
         // A superadmin's own document is theirs alone to change. /admin/users
@@ -338,12 +358,19 @@ service cloud.firestore {
     }
 
     // ---- Loyalty economy ----
-    // xpAmount/coinsAmount are bounds-checked on creation rather than trusted
-    // as-is — a customer submitting their own check is the only transaction
-    // type created directly by a customer (event/D&D attendance is logged by
-    // staff), so the caps are generous-but-bounded upper limits, not exact
-    // expected values. Customer self-submissions also require a verified
-    // email; staff-logged attendance is exempted since it isn't self-reported.
+    // pointsAmount is bounds-checked on creation rather than trusted as-is — a
+    // customer submitting their own check is the only transaction type created
+    // directly by a customer (event attendance is logged by staff), so the cap
+    // is a generous-but-bounded upper limit, not an exact expected value.
+    // Customer self-submissions also require a verified email; staff-logged
+    // attendance is exempted since it isn't self-reported.
+    //
+    // This checked `xpAmount` and `coinsAmount` until 29 Aug 2026. Those fields
+    // were replaced by the single `pointsAmount` when the loyalty programme
+    // dropped its two currencies — and because an absent field fails `is int`,
+    // the stale rule silently DENIED every new check submission. A field rename
+    // has to be applied to the rules in the same change as the code; there is
+    // no type checker spanning both.
     match /transactions/{id} {
       allow read: if isSignedIn() && (
         resource.data.status == 'approved' ||
@@ -354,22 +381,31 @@ service cloud.firestore {
         request.auth.uid == request.resource.data.submittedBy &&
         request.resource.data.status == 'pending' &&
         (isStaff() || request.auth.token.email_verified == true) &&
-        request.resource.data.xpAmount is int &&
-        request.resource.data.xpAmount >= 0 && request.resource.data.xpAmount <= 10000 &&
-        request.resource.data.coinsAmount is int &&
-        request.resource.data.coinsAmount >= 0 && request.resource.data.coinsAmount <= 2000;
+        request.resource.data.pointsAmount is int &&
+        request.resource.data.pointsAmount >= 0 &&
+        // 10 points per $1, so this caps one person's share of a bill at
+        // $1,000 — comfortably above any real check, low enough that a
+        // crafted submission can't mint a fortune before anyone reviews it.
+        request.resource.data.pointsAmount <= 10000;
       // Approving/rejecting is a loyalty-staff action, narrowed from any staff
       // — approving a transaction moves real currency.
       //
       // The self-approval guard stays and still matters: the same Firebase
       // account can be both staff and the beneficiary of a customer check, so
       // without it a manager could approve their own submission unreviewed.
-      allow update: if (canLoyalty() && !(request.auth.uid in resource.data.userId)) ||
-        (isSignedIn() &&
-          request.auth.uid == resource.data.submittedBy &&
-          resource.data.status == 'pending' &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
-          request.resource.data.status == 'cancelled');
+      // Approving and rejecting moved to /api/admin/loyalty/transactions,
+      // which takes the award from the stored document and applies it with an
+      // atomic increment. The only client update left is the submitter
+      // withdrawing their own pending submission.
+      //
+      // The old self-approval guard is gone from here because there is no
+      // longer a staff branch to guard — the route enforces it instead, along
+      // with branch scoping, which a rule could not express at all.
+      allow update: if isSignedIn() &&
+        request.auth.uid == resource.data.submittedBy &&
+        resource.data.status == 'pending' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+        request.resource.data.status == 'cancelled';
     }
 
     // Append-only history of transaction status changes — same reasoning as
@@ -377,7 +413,10 @@ service cloud.firestore {
     // editable after the fact.
     match /transactionLog/{id} {
       allow read:   if isStaff();
-      allow create: if canLoyalty();
+      // Written inside the same server transaction as the status change it
+      // records, so the log cannot be missing for a resolution that happened —
+      // or present for one that didn't.
+      allow create: if false;
       allow update, delete: if false;
     }
 
@@ -431,13 +470,15 @@ service cloud.firestore {
         request.resource.data.status == 'pending' &&
         request.resource.data.coinCost ==
           get(/databases/$(database)/documents/redemptionItems/$(request.resource.data.itemId)).data.coinCost;
-      // Confirming a redemption spends a customer's coins — loyalty staff only.
-      allow update: if canLoyalty() ||
-        (isSignedIn() &&
-          request.auth.uid == resource.data.requestedBy &&
-          resource.data.status == 'pending' &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
-          request.resource.data.status == 'cancelled');
+      // Confirming spends a customer's points, so it moved to
+      // /api/admin/loyalty/redemptions — which re-checks the balance inside
+      // the transaction rather than before it. What remains is the customer
+      // withdrawing their own pending request.
+      allow update: if isSignedIn() &&
+        request.auth.uid == resource.data.requestedBy &&
+        resource.data.status == 'pending' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+        request.resource.data.status == 'cancelled';
     }
 
     // ---- Bookings ----
@@ -539,14 +580,38 @@ service cloud.firestore {
     // Staff-only purchase orders — customers never touch this collection.
     // Write covers create (record a sale) and update (attach invoiceUrl after
     // the upload, or flip status to 'refunded').
+    // Sales and refunds are created by /api/admin/purchases only. The Admin
+    // SDK bypasses rules, so denying every client write costs nothing and
+    // removes the last way a browser could state its own prices.
+    //
+    // This is the collection that most needed it: the old client flow read a
+    // product's price from its own copy of the document, multiplied by the
+    // quantity, and sent the totals along with the order. A tampered client
+    // could record a $200 product as a one-cent sale.
     match /gamePurchaseOrders/{id} {
       allow read:  if isStaff();
-      allow write: if canGamePurchases();
+      allow write: if false;
     }
 
     // ---- App settings ----
-    // Global configuration. Narrowed from any-staff-writes to admin, with one
-    // deliberate exception below.
+    // Global configuration. Narrowed from any-staff-writes to admin, with the
+    // exceptions below.
+    //
+    // The invoice sequence is issued inside the same server transaction as the
+    // sale it belongs to (app/lib/server/purchases.ts). A browser that could
+    // write this document could hand itself a duplicate invoice number, or
+    // rewind the series so the next sale collides with an existing invoice.
+    match /appSettings/invoiceCounter {
+      allow read:  if isStaff();
+      allow write: if false;
+    }
+
+    // The SKU counter is issued the same way, by /api/admin/sku.
+    match /appSettings/skuCounter {
+      allow read:  if isStaff();
+      allow write: if false;
+    }
+
     match /appSettings/{id} {
       allow read:  if isStaff();
       allow write: if hasRole(['admin']);

@@ -16,7 +16,7 @@
 // one too), fold these cases into it and delete this file.
 
 import { execSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -32,8 +32,17 @@ execSync(
 
 // tsc emits bundler-style extensionless specifiers ("./branches"); Node's ESM
 // loader requires the extension. One rewrite is cheaper than a second tsconfig.
-const emitted = join(out, 'deliveryMath.js')
-writeFileSync(emitted, readFileSync(emitted, 'utf8').replace(/from '\.\/branches'/, "from './branches.js'"))
+//
+// Every emitted file, not just deliveryMath.js. The chain is deliveryMath →
+// branches → brand, and patching only the entry point left branches.js still
+// importing './brand', which failed at import time with a module-not-found
+// naming a temp directory — an error that says nothing about the real cause.
+// Rewriting the whole output directory means the next link added to that chain
+// doesn't break this script again.
+for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
+  const p = join(out, file)
+  writeFileSync(p, readFileSync(p, 'utf8').replace(/from '(\.\.?\/[^']+?)'/g, "from '$1.js'"))
+}
 
 const {
   weightedAverageCost, computeTotals, shortfall, isShort, priceChange,

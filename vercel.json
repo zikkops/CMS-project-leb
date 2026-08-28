@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+
+  "crons": [
+    {
+      "comment": "Annual loyalty points reset. Runs DAILY and does nothing on almost every one of those days — the handler checks appSettings/loyaltyReset and returns 'not-due' unless the configured date has passed. A daily no-op check is deliberate: an annual schedule would have exactly one chance a year to run, and a deploy, an outage or a timeout on that single day would silently skip the reset for twelve months. Daily means a missed run is retried tomorrow. Runs at 03:00 UTC, outside service hours in every branch.",
+      "path": "/api/admin/loyalty/reset",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}

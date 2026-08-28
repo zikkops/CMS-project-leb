@@ -7,6 +7,7 @@ import { db } from '../lib/firebase'
 import { categoryImage } from '../lib/menuCategoryImages'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
+import { PLACEHOLDER } from '../lib/placeholderAssets'
 import Skeleton from '../components/Skeleton'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faList } from '@fortawesome/free-solid-svg-icons'
@@ -120,7 +121,7 @@ export default function MenuPage() {
         }}>
           <div style={{
             position: 'absolute', inset: 0,
-            backgroundImage: 'url(https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&q=80)',
+            backgroundImage: `url(${PLACEHOLDER.menuHero})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }} />

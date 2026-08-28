@@ -30,7 +30,7 @@ export function useCustomerUser() {
 }
 
 // First-time sign-in only — if the doc already exists this is a no-op, so a
-// returning customer's xp/level/badges are never reset on repeat logins.
+// returning customer's points/badges are never reset on repeat logins.
 async function ensureCustomerDoc(
   user: User, username?: string, phoneNumber?: string, firstName?: string, lastName?: string
 ) {
@@ -44,10 +44,8 @@ async function ensureCustomerDoc(
     email: user.email ?? '',
     avatarUrl: user.photoURL ?? '',
     themeId: 'midnight',
-    xp: 0,
-    level: 1,
-    levelTitle: 'Newcomer',
-    obCoins: 0,
+    points: 0,
+    pointsEarned: 0,
     badges: [],
     createdAt: serverTimestamp(),
     role: 'customer',

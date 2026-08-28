@@ -63,11 +63,16 @@ export default function RedemptionsQueuePage() {
     setBusyId(r.id)
     setErrorById(prev => { const next = { ...prev }; delete next[r.id]; return next })
     try {
-      await confirmRedemption(r, user.uid)
+      await confirmRedemption(r)
       setProcessedIds(prev => new Set(prev).add(r.id))
     } catch (err) {
-      const message = err instanceof Error && err.message === 'insufficient-coins'
-        ? 'Customer no longer has enough coins for this redemption.'
+      // The route's message is already written for a human — 'That customer no
+      // longer has enough points for this reward', 'has already been redeemed',
+      // 'belongs to another branch'. This used to match on a thrown sentinel
+      // string and flatten everything else to one generic line, which hid the
+      // reason whenever it wasn't the one case that was special-cased.
+      const message = err instanceof Error && err.message
+        ? err.message
         : 'Something went wrong confirming this redemption.'
       setErrorById(prev => ({ ...prev, [r.id]: message }))
     } finally {
@@ -79,7 +84,7 @@ export default function RedemptionsQueuePage() {
     if (!user) return
     setBusyId(r.id)
     try {
-      await rejectRedemption(r, user.uid, rejectReason.trim())
+      await rejectRedemption(r, rejectReason.trim())
       setProcessedIds(prev => new Set(prev).add(r.id))
       setRejectingId(null)
       setRejectReason('')

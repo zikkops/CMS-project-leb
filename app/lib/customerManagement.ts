@@ -7,7 +7,7 @@ import {
 import { sendPasswordResetEmail } from 'firebase/auth'
 import { auth, db } from './firebase'
 import { logActivity, logUpdate, logDelete } from './activityLog'
-import { getLevelFromXP, LEVEL_TITLES } from './levelConfig'
+import { authedFetch, unwrap } from './apiClient'
 
 export interface CustomerAccount {
   id: string
@@ -18,10 +18,8 @@ export interface CustomerAccount {
   email: string
   phoneNumber: string
   avatarUrl: string
-  xp: number
-  level: number
-  levelTitle: string
-  obCoins: number
+  points: number
+  pointsEarned: number
 }
 
 function toCustomer(id: string, data: Record<string, unknown>): CustomerAccount {
@@ -34,10 +32,8 @@ function toCustomer(id: string, data: Record<string, unknown>): CustomerAccount 
     email: (data.email as string) || '',
     phoneNumber: '',
     avatarUrl: (data.avatarUrl as string) || '',
-    xp: (data.xp as number) ?? 0,
-    level: (data.level as number) ?? 1,
-    levelTitle: (data.levelTitle as string) || LEVEL_TITLES[0],
-    obCoins: (data.obCoins as number) ?? 0,
+    points: (data.points as number) ?? 0,
+    pointsEarned: (data.pointsEarned as number) ?? 0,
   }
 }
 
@@ -124,34 +120,41 @@ export function useAllCustomers() {
   return { customers: enriched, loading }
 }
 
-// XP and OB Coins are edited independently. Updating XP also recomputes
-// level/levelTitle so they never drift out of sync with the new value —
-// the same recompute the customer's own profile page does for itself.
-export async function updateCustomerXP(customer: CustomerAccount, newXp: number): Promise<void> {
-  const safeXp = Math.max(0, Math.round(newXp))
-  const info = getLevelFromXP(safeXp)
-  await updateDoc(doc(db, 'users', customer.id), {
-    xp: safeXp, level: info.level, levelTitle: info.levelTitle,
+// The balance and the earned-total are edited separately, because they answer
+// different questions: what the customer can spend, and what status they have
+// reached. Correcting a mis-award usually means moving both; a goodwill
+// top-up usually means moving only the balance.
+//
+// There is no longer a level to recompute — status is derived from
+// pointsEarned on read (see app/lib/loyaltyTiers.ts), so nothing can drift.
+// Both run SERVER-SIDE (Phase 00 standing rule). Firestore rules permit
+// loyalty staff to write balance fields and cannot check what is written, so
+// the audit entry was the only record of a correction — written by the same
+// browser making it, and trivially skippable. The route writes the document
+// and the log entry from one verified caller.
+//
+// Sent together in one request rather than as two calls: the form edits both
+// numbers at once, and two requests could half-apply.
+export async function updateCustomerBalance(
+  customer: CustomerAccount,
+  next: { points?: number; pointsEarned?: number },
+): Promise<void> {
+  const res = await authedFetch('/api/admin/loyalty/customers', 'PATCH', {
+    uid: customer.id, ...next,
   })
-  await logUpdate(
-    'Customer Account', customer.email || customer.username,
-    { xp: customer.xp, level: customer.level, levelTitle: customer.levelTitle },
-    { xp: safeXp, level: info.level, levelTitle: info.levelTitle }
-  )
+  await unwrap(res)
 }
 
-export async function updateCustomerCoins(customer: CustomerAccount, newCoins: number): Promise<void> {
-  const safeCoins = Math.max(0, Math.round(newCoins))
-  await updateDoc(doc(db, 'users', customer.id), { obCoins: safeCoins })
-  await logUpdate('Customer Account', customer.email || customer.username, { obCoins: customer.obCoins }, { obCoins: safeCoins })
-}
-
-// Deletes the customer's Firestore profile (XP, coins, history references,
-// theme, avatar) only. Their Firebase Auth login isn't touched — deleting
-// another user's auth account isn't possible without server-side Admin SDK
-// access, which this app deliberately doesn't have. If they sign back in
-// after this, they'd land on a brand-new blank profile, same as a first-time
+// Deletes the customer's Firestore profile (points, history references,
+// theme, avatar) only. Their Firebase Auth login isn't touched, so signing
+// back in lands them on a brand-new blank profile, same as a first-time
 // signup.
+//
+// This used to say true deletion 'isn't possible without server-side Admin SDK
+// access, which this app deliberately doesn't have'. That has been wrong since
+// Phase 00 — adminAuth().deleteUser() is available and the accounts route
+// already uses it for rollback. This function is simply still on the old path;
+// it is one of the privileged writes npm run audit:writes is tracking.
 export async function deleteCustomerAccount(customer: CustomerAccount): Promise<void> {
   // Firestore doesn't cascade-delete subcollections — the private/contact
   // and private/avatar docs (phone number, avatar delete-hash) would
@@ -213,45 +216,24 @@ export async function saveLoyaltyResetDate(dateStr: string, before: string | nul
   await logUpdate('Loyalty Reset Schedule', 'Next reset date', { nextResetDate: before }, { nextResetDate: dateStr })
 }
 
-// Auto-fires the reset for every customer once the configured date has
-// passed. There's no server/cron job in this app (client SDK only), so this
-// piggybacks on the first admin dashboard load on or after the date instead
-// of running automatically at midnight. The settings doc's date is pushed a
-// year forward *before* processing customers, so a second admin opening the
-// dashboard moments later sees the already-rescheduled future date and skips
-// — a double-run would just be a harmless no-op (zeroing already-zero values)
-// anyway, so no distributed lock is needed for an internal tool like this.
-export async function checkAndRunLoyaltyReset(): Promise<void> {
-  const snap = await getDoc(resetSettingsRef)
-  if (!snap.exists()) {
-    // Never configured — seed it to a year from today rather than silently
-    // never resetting anything.
-    await setDoc(resetSettingsRef, { nextResetDate: oneYearFromToday() }, { merge: true })
-    return
-  }
-
-  const nextResetDate = snap.data().nextResetDate as string
-  if (todayStr() < nextResetDate) return
-
-  const rescheduled = oneYearAfter(nextResetDate)
-  await updateDoc(resetSettingsRef, { nextResetDate: rescheduled })
-
-  const usersSnap = await getDocs(collection(db, 'users'))
-  const docs = usersSnap.docs
-  const zero = getLevelFromXP(0)
-
-  for (let i = 0; i < docs.length; i += 500) {
-    const batch = writeBatch(db)
-    docs.slice(i, i + 500).forEach(d => {
-      batch.update(d.ref, { xp: 0, level: zero.level, levelTitle: zero.levelTitle, obCoins: 0 })
-    })
-    await batch.commit()
-  }
-
-  await logActivity(
-    'update', 'Loyalty Reset Schedule',
-    `Annual points reset ran for ${docs.length} customer${docs.length === 1 ? '' : 's'} — next reset ${rescheduled}`
-  )
+// Runs SERVER-SIDE, on a schedule (Phase 00's "real cron"). See
+// app/api/admin/loyalty/reset — Vercel Cron calls it daily; this function is
+// the manual "run it now" for an admin.
+//
+// The old version ran in this browser, fired by the first admin to open the
+// dashboard on or after the date. Its comment argued no lock was needed
+// because a double run is a harmless no-op, which is true — but it advanced
+// the date a year BEFORE touching any customer, so closing the tab midway
+// left the schedule saying "not due" with half the customers un-reset, no
+// error and no retry.
+//
+// The server version is resumable by construction: it queries for accounts
+// that still have a balance, so anything already zeroed drops out of the set,
+// and the date advances only once a pass finds nothing left.
+export async function runLoyaltyResetNow(force = false): Promise<{ status: string; customersReset: number; nextResetDate?: string }> {
+  const res = await authedFetch('/api/admin/loyalty/reset', 'POST', { force })
+  const data = await unwrap(res)
+  return data as { status: string; customersReset: number; nextResetDate?: string }
 }
 
 const privateFieldsMigrationRef = doc(db, 'appSettings', 'privateFieldsMigration')
@@ -362,10 +344,8 @@ export async function exportCustomersToExcel(customers: CustomerAccount[]): Prom
     { header: 'Username', key: 'username', width: 18 },
     { header: 'Email', key: 'email', width: 28 },
     { header: 'Phone Number', key: 'phoneNumber', width: 18 },
-    { header: 'Level', key: 'level', width: 8 },
-    { header: 'Level Title', key: 'levelTitle', width: 18 },
-    { header: 'XP', key: 'xp', width: 10 },
-    { header: 'OB Coins', key: 'obCoins', width: 10 },
+    { header: 'Points', key: 'points', width: 10 },
+    { header: 'Points Earned', key: 'pointsEarned', width: 14 },
   ]
   sheet.getRow(1).font = { bold: true }
 
@@ -376,10 +356,8 @@ export async function exportCustomersToExcel(customers: CustomerAccount[]): Prom
       username: c.username,
       email: c.email,
       phoneNumber: c.phoneNumber,
-      level: c.level,
-      levelTitle: c.levelTitle,
-      xp: c.xp,
-      obCoins: c.obCoins,
+      points: c.points,
+      pointsEarned: c.pointsEarned,
     })
   })
 

@@ -56,6 +56,12 @@ const PHOTO = {
   sandwich:     'photo-1553909489-cd47e0907980',
   cookies:      'photo-1499636136210-6f4ee915583e',
   storefront:   'photo-1559925393-8be0ec4767c8',
+  // Page-hero backgrounds. These three were inlined in menu/, events/ and
+  // shop/page.tsx as raw URLs — outside this manifest, so nothing checked
+  // their host against the CSP or their prefix against Unsplash+.
+  menuHero:     'photo-1414235077428-338989a2e8c0',
+  eventsHero:   'photo-1605870445919-838d190e8e1b',
+  shopHero:     'photo-1610890716171-6b1bb98ffd09',
   // Retail shelving. The catalogue's stand-in for "a product we have no photo
   // of" — deliberately not food, so it reads as merchandise next to a price
   // and a stock count rather than as another menu item.
@@ -76,6 +82,11 @@ export const PLACEHOLDER = {
 
   /** Shop catalogue card and product page, when the product has no image. */
   product: unsplash(PHOTO.shelves, 800, 600),
+
+  /** Page-hero backgrounds, one per public section. */
+  menuHero: unsplash(PHOTO.menuHero, 1600, 900),
+  eventsHero: unsplash(PHOTO.eventsHero, 1600, 900),
+  shopHero: unsplash(PHOTO.shopHero, 1600, 900),
 
   /** Generic fallback wherever a photo is missing. */
   generic: unsplash(PHOTO.cafeCounter, 800, 600),

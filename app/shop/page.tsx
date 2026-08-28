@@ -450,7 +450,7 @@ export default function ShopPage() {
         }}>
           <div style={{
             position: 'absolute', inset: 0,
-            backgroundImage: 'url(https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?w=1200&q=80)',
+            backgroundImage: `url(${PLACEHOLDER.shopHero})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }} />

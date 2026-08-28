@@ -43,6 +43,19 @@ NEXT_PUBLIC_FIREBASE_APP_ID=
 
 FIREBASE_SERVICE_ACCOUNT=
 
+# ── Scheduled jobs ───────────────────────────────────────────────────────────
+# Shared secret for Vercel Cron. Vercel sends it as `Authorization: Bearer
+# <value>` on every scheduled request, and /api/admin/loyalty/reset compares it
+# before doing anything.
+#
+# That route zeroes every customer's points balance, so the handler FAILS
+# CLOSED when this is unset — it returns 503 rather than running. An unset
+# secret must never mean "anyone may call this", because unset is exactly the
+# state nobody is watching for.
+#
+# Any long random string. Set the same value in the Vercel project settings.
+CRON_SECRET=
+
 
 # ── 3. Image hosting (imgbb) ────────────────────────────────────────────────
 # Use a SEPARATE imgbb account from production. Sharing the key means demo

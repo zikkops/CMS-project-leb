@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRequireRole } from '../../../lib/adminAuth'
 import {
   useAllCustomers, useLoyaltyResetSettings, saveLoyaltyResetDate,
-  updateCustomerXP, updateCustomerCoins, deleteCustomerAccount, resendCustomerPasswordReset,
+  updateCustomerBalance, deleteCustomerAccount, resendCustomerPasswordReset,
   exportCustomersToExcel, type CustomerAccount,
 } from '../../../lib/customerManagement'
-import { TIER_COLORS, getTierFromLevel } from '../../../lib/levelConfig'
+import { getTier } from '../../../lib/loyaltyTiers'
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false)
@@ -97,8 +97,8 @@ export default function ManageCustomersPage() {
 
   function openEdit(customer: CustomerAccount) {
     setEditing(customer)
-    setXpInput(String(customer.xp))
-    setCoinsInput(String(customer.obCoins))
+    setXpInput(String(customer.pointsEarned))
+    setCoinsInput(String(customer.points))
     setError('')
   }
 
@@ -113,8 +113,10 @@ export default function ManageCustomersPage() {
     setSaving(true)
     setError('')
     try {
-      if (xp !== editing.xp) await updateCustomerXP(editing, xp)
-      if (coins !== editing.obCoins) await updateCustomerCoins(editing, coins)
+      // One request, both figures — two calls could half-apply.
+      if (xp !== editing.pointsEarned || coins !== editing.points) {
+        await updateCustomerBalance(editing, { pointsEarned: xp, points: coins })
+      }
       setEditing(null)
     } catch {
       setError('Something went wrong saving — please try again.')
@@ -145,7 +147,7 @@ export default function ManageCustomersPage() {
 
   async function handleDelete(customer: CustomerAccount) {
     if (!confirm(
-      `Delete ${customer.displayName}'s account? This permanently removes their XP, OB Coins, and profile data — it cannot be undone. ` +
+      `Delete ${customer.displayName}'s account? This permanently removes their points, and profile data — it cannot be undone. ` +
       `Their login isn't deleted (that requires server access this app doesn't have); if they sign in again afterward, they'd get a brand-new blank profile.`
     )) return
     await deleteCustomerAccount(customer)
@@ -212,7 +214,7 @@ export default function ManageCustomersPage() {
             color: 'var(--navy)', fontFamily: 'var(--font-inter)', marginBottom: '0.6rem',
           }}>Annual Points Reset</p>
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.45)', lineHeight: 1.6, marginBottom: '1.2rem' }}>
-            On this date, every customer&apos;s XP and OB Coins reset to 0 (level resets to 1 too). There's no background
+            On this date, every customer&apos;s points reset to 0 (level resets to 1 too). There's no background
             server job in this app, so the reset fires automatically the next time any admin opens the dashboard on or
             after this date — then reschedules itself a year out.
             {!loadingSettings && !settings && ' Defaulted to one year from today — save to confirm it.'}
@@ -265,7 +267,9 @@ export default function ManageCustomersPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
             {filtered.map(customer => {
-              const tierColor = TIER_COLORS[getTierFromLevel(customer.level)]
+              // Status is derived from the earned-total on read, so there is
+              // no stored tier that can disagree with the number beside it.
+              const tierColor = getTier(customer.pointsEarned).color
               return (
                 <div key={customer.id} style={{
                   ...cardStyle,
@@ -304,19 +308,19 @@ export default function ManageCustomersPage() {
                     </div>
                   </div>
 
-                  {/* Level / XP / Coins */}
+                  {/* Tier / earned / balance */}
                   <div style={{ display: 'flex', gap: '1.5rem', flexShrink: 0 }}>
                     <div>
-                      <p style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Level</p>
-                      <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: tierColor ?? 'var(--offwhite)' }}>{customer.level}</p>
+                      <p style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Tier</p>
+                      <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: tierColor }}>{getTier(customer.pointsEarned).tier}</p>
                     </div>
                     <div>
-                      <p style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>XP</p>
-                      <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--teal)' }}>{customer.xp.toLocaleString()}</p>
+                      <p style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Earned</p>
+                      <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--teal)' }}>{customer.pointsEarned.toLocaleString()}</p>
                     </div>
                     <div>
-                      <p style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>OB Coins</p>
-                      <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--purple)' }}>{customer.obCoins.toLocaleString()}</p>
+                      <p style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Points</p>
+                      <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--purple)' }}>{customer.points.toLocaleString()}</p>
                     </div>
                   </div>
 
@@ -378,7 +382,7 @@ export default function ManageCustomersPage() {
               </div>
 
               <div>
-                <label style={labelStyle}>OB Coins</label>
+                <label style={labelStyle}>Points</label>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <input type="number" min={0} value={coinsInput} onChange={e => setCoinsInput(e.target.value)} style={{ ...inputStyle, flex: 1 }} />
                   <button type="button" onClick={() => setCoinsInput('0')} style={{ ...actionBtnStyle, flexShrink: 0 }}>Reset to 0</button>

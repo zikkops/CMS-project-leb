@@ -1,0 +1,232 @@
+{
+  "//": [
+    "Composite indexes, version-controlled alongside firestore.rules.",
+    "",
+    "Firestore auto-indexes every field on its own. A COMPOSITE index is needed",
+    "the moment a query filters on one field and orders by another — which is",
+    "most of the pending-work queues in this app. Without one the query does not",
+    "return empty, it THROWS failed-precondition, so the badge or the list is not",
+    "just wrong, the page is broken.",
+    "",
+    "The Console prints a create-this-index link in the error. Clicking it works,",
+    "but it creates the index only in whichever project you were signed in to,",
+    "leaves nothing in the repo, and has to be repeated per environment by",
+    "whoever happens to hit the error first. This file is the same thing, in git,",
+    "deployed with: npx firebase deploy --only firestore:indexes",
+    "",
+    "'in' filters count as equality for index purposes, so a branch-scoped",
+    "manager query needs the same shape as the unscoped admin one plus the",
+    "branch field in front.",
+    "",
+    "Indexes are additive and non-destructive: deploying builds them in the",
+    "background and breaks nothing while they build. This is NOT true of",
+    "firestore.rules — see docs/rules-rollout.md."
+  ],
+
+  "indexes": [
+    {
+      "//": "Navbar invite badge — fires for every signed-in user, so this is the first index anyone hits.",
+      "collectionGroup": "participantInvites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "inviteeUid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+
+    {
+      "//": "Loyalty approvals queue — admin (unscoped).",
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Loyalty approvals queue — manager, scoped to their branches.",
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "branchId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Customer profile — their own transaction history.",
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Customer profile — their own pending submissions.",
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+
+    {
+      "collectionGroup": "redemptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "redemptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "branchId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "redemptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Public loyalty page — active redeemable items, cheapest first.",
+      "collectionGroup": "redemptionItems",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "coinCost", "order": "ASCENDING" }
+      ]
+    },
+
+    {
+      "collectionGroup": "eventReservations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "eventReservations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "branch", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "eventReservations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+
+    {
+      "collectionGroup": "tableReservations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "startAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tableReservations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "branch", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "startAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tableReservations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "startAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Today's floor — approved but not yet checked in. The != on checkedIn puts it in the index too.",
+      "collectionGroup": "tableReservations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "checkedIn", "order": "ASCENDING" },
+        { "fieldPath": "startAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tableReservations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "branch", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "checkedIn", "order": "ASCENDING" },
+        { "fieldPath": "startAt", "order": "ASCENDING" }
+      ]
+    },
+
+    {
+      "//": "Customer notification bell — unread first.",
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "read", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+
+    {
+      "collectionGroup": "wholesaleOrders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "accountUid", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+
+    {
+      "//": "Branch-scoped history views: daily counts, end-of-day, goods receiving.",
+      "collectionGroup": "dailyInventoryCounts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "branch", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "endOfDayReports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "branch", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "deliveries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "branch", "order": "ASCENDING" },
+        { "fieldPath": "deliveredAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+
+  "fieldOverrides": []
+}

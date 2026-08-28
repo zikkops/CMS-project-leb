@@ -7,6 +7,7 @@ import {
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { logCreate, logUpdate, logDelete } from './activityLog'
+import { authedFetch, unwrap } from './apiClient'
 
 // Kept in its own file, separate from app/lib/loyalty.ts — redemptions are a
 // distinct flow (spending coins) from transactions (earning them), with
@@ -241,68 +242,30 @@ export function usePendingRedemptions(branchFilter: string[] | 'all' | null) {
   return { redemptions, loading }
 }
 
-// Throws if the customer's balance is somehow insufficient by the time this
-// runs (e.g. spent elsewhere between request and confirmation) — caller
-// shows that as an error rather than silently deducting into the negative.
-export async function confirmRedemption(redemption: Redemption, managerUid: string): Promise<void> {
-  const userRef = doc(db, 'users', redemption.userId)
-  const userSnap = await getDoc(userRef)
-  if (!userSnap.exists()) throw new Error('user-not-found')
-
-  const currentCoins = (userSnap.data().obCoins as number) ?? 0
-  if (currentCoins < redemption.coinCost) throw new Error('insufficient-coins')
-
-  const batch = writeBatch(db)
-
-  batch.update(userRef, { obCoins: currentCoins - redemption.coinCost })
-
-  batch.update(doc(db, 'redemptions', redemption.id), {
-    status: 'redeemed',
-    confirmedBy: managerUid,
-    confirmedAt: serverTimestamp(),
+// Confirming and rejecting both run SERVER-SIDE now (Phase 00 standing rule).
+//
+// The browser used to read the customer's balance, subtract the cost, and
+// write the remainder — so the browser supplied the resulting figure, and no
+// Firestore rule can check subtraction. The sufficiency check had the same
+// race as the credit path in loyalty.ts: two confirmations at once both saw
+// enough balance, and one deduction was lost.
+//
+// app/lib/server/loyalty.ts takes the cost from the stored redemption,
+// re-checks the balance INSIDE the transaction, and deducts with an atomic
+// increment. `managerUid` is gone — the server reads the actor from the token.
+async function resolve(redemption: Redemption, action: 'approve' | 'reject', reason?: string): Promise<void> {
+  const res = await authedFetch('/api/admin/loyalty/redemptions', 'PATCH', {
+    id: redemption.id, action, reason,
   })
-
-  batch.set(doc(collection(db, 'transactionLog')), {
-    type: 'redemption',
-    action: 'confirmed',
-    redemptionId: redemption.id,
-    userId: redemption.userId,
-    itemId: redemption.itemId,
-    itemName: redemption.itemName,
-    coinCost: redemption.coinCost,
-    performedBy: managerUid,
-    branchId: redemption.branchId,
-    createdAt: serverTimestamp(),
-  })
-
-  await batch.commit()
-  await logUpdate('Loyalty Management', `Redemption — ${redemption.itemName}`, { status: 'pending' }, { status: 'redeemed' })
+  await unwrap(res)
 }
 
-export async function rejectRedemption(redemption: Redemption, managerUid: string, reason: string): Promise<void> {
-  const batch = writeBatch(db)
+export async function confirmRedemption(redemption: Redemption): Promise<void> {
+  await resolve(redemption, 'approve')
+}
 
-  batch.update(doc(db, 'redemptions', redemption.id), {
-    status: 'rejected',
-    rejectedAt: serverTimestamp(),
-    rejectionReason: reason || null,
-  })
-
-  batch.set(doc(collection(db, 'transactionLog')), {
-    type: 'redemption',
-    action: 'rejected',
-    redemptionId: redemption.id,
-    userId: redemption.userId,
-    itemId: redemption.itemId,
-    itemName: redemption.itemName,
-    coinCost: redemption.coinCost,
-    performedBy: managerUid,
-    branchId: redemption.branchId,
-    createdAt: serverTimestamp(),
-  })
-
-  await batch.commit()
-  await logUpdate('Loyalty Management', `Redemption — ${redemption.itemName}`, { status: 'pending' }, { status: 'rejected', rejectionReason: reason })
+export async function rejectRedemption(redemption: Redemption, reason: string): Promise<void> {
+  await resolve(redemption, 'reject', reason)
 }
 
 // Customer-initiated — withdrawing their own request before staff act on

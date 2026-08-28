@@ -13,7 +13,9 @@
     "audit:branding": "node scripts/audit-branding.mjs",
     "seed:demo": "node --env-file=.env.local scripts/seed-demo.mjs",
     "check:env": "node --env-file=.env.local scripts/check-env.mjs",
-    "fix:env": "node scripts/fix-env.mjs"
+    "fix:env": "node scripts/fix-env.mjs",
+    "audit:writes": "node scripts/audit-client-writes.mjs",
+    "add:index": "node scripts/add-index.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

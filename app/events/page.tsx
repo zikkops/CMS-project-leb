@@ -5,6 +5,7 @@ import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
+import { PLACEHOLDER } from '../lib/placeholderAssets'
 import Skeleton from '../components/Skeleton'
 import EventReservationModal from '../components/events/EventReservationModal'
 
@@ -315,7 +316,7 @@ export default function EventsPage() {
         }}>
           <div style={{
             position: 'absolute', inset: 0,
-            backgroundImage: 'url(https://images.unsplash.com/photo-1605870445919-838d190e8e1b?w=1200&q=80)',
+            backgroundImage: `url(${PLACEHOLDER.eventsHero})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }} />

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRequireRole, SECTION_ACCESS } from '../../../lib/adminAuth'
-import { createEventAttendanceTransaction, EVENT_XP_PER_PERSON, EVENT_COINS_PER_PERSON } from '../../../lib/loyalty'
+import { createEventAttendanceTransaction, EVENT_POINTS_PER_PERSON } from '../../../lib/loyalty'
 import { BRANCHES, resolveBranchName } from '../../../lib/branches'
 import { type DirectoryUser } from '../../../lib/friends'
 import AttendeeSearch from '../../../components/admin/AttendeeSearch'
@@ -130,7 +130,7 @@ export default function LoyaltyEventsPage() {
             Event attendance submitted for manager approval
           </h1>
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.5)', marginBottom: '2rem' }}>
-            Attendees will receive their XP and OB Coins once a manager approves it.
+            Attendees will receive their points once a manager approves it.
           </p>
 
           <div style={{
@@ -254,7 +254,7 @@ export default function LoyaltyEventsPage() {
           </div>
 
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--teal)' }}>
-            Each attendee will receive {EVENT_XP_PER_PERSON} XP and {EVENT_COINS_PER_PERSON} OB Coins pending manager approval
+            Each attendee will receive {EVENT_POINTS_PER_PERSON} points pending manager approval
           </p>
 
           <button type="submit" disabled={!canSubmit} style={{

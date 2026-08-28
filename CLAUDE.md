@@ -98,10 +98,21 @@ of the same name is the older home of the same plan.)
 
 Six phases, 00 → 05, ending at a sellable POS. Current position:
 
-- **00 (server layer) and 01 (stock receiving): built, NOT deployed.** Both
-  exist only as code. This is the gate — nothing downstream moves until
-  `service account → push → backfill claims → verify a real token → deploy
-  rules` has actually run.
+- **00 (server layer): done.** Verified 28 Aug 2026 against the live project,
+  not from these notes — service account installed, claims backfilled and
+  present on the Auth user, and a **claims-based ruleset is deployed** (live
+  since 2026-08-28T17:07Z). Older notes saying "built, not deployed" are stale.
+  - **One outstanding drift:** the live rules are the pre-D&D-removal revision.
+    They still define `isDm()`, `canDnd*()`, `dndCampaigns`, `dndReservations`,
+    `dndDmLocks`, `lfpEntries` and `dndGroups` — about 134 lines governing
+    collections no code touches any more. `firestore.rules` here is the
+    stripped version; deploying it is the cleanup. Diffed 28 Aug: the D&D
+    removal is the *only* difference, so it is safe, but a rules deploy still
+    has no gradual rollout.
+- **01 (stock receiving): built, and now testable.** `npm run seed:demo`
+  writes a submitted weekly order, so the order → receive → count chain can
+  finally be exercised end to end. That chain working is the phase's
+  acceptance criterion.
 - **02 (fix the app, unify constants):** the constants half is largely done here
   by the fork. The other half is three loyalty-economy bugs in the **Onboard App**
   (React Native), not this repo, and they are actively producing wrong points and

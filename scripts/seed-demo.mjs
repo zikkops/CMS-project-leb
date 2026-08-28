@@ -111,6 +111,19 @@ const BRANCHES = (process.env.NEXT_PUBLIC_BRANCHES ?? 'Main,Second,Third')
 
 const zeroStock = () => Object.fromEntries(BRANCHES.map(b => [b, 0]))
 
+const slugify = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+
+// Duplicated from app/lib/skuFormat.ts for the same reason BRANCHES is read
+// from env above: this is a plain .mjs script run by node directly, and it
+// can't import a TypeScript module. Keep the two in step — skuFormat.ts owns
+// the format, and SKU_PATTERN there validates what this produces.
+const skuLetters = name => {
+  const letters = (name ?? '').replace(/[^a-zA-Z]/g, '').toUpperCase()
+  return letters.length === 0 ? 'XXX' : letters.slice(0, 3).padEnd(3, 'X')
+}
+const formatSku = (name, sequence) =>
+  `ob-${skuLetters(name)}${String(sequence).padStart(4, '0')}`
+
 // ── The data ───────────────────────────────────────────────────────────────
 // Generic on purpose. Real enough to exercise every code path, obviously fake
 // enough that nobody mistakes a demo for a customer's live catalogue.
@@ -204,6 +217,207 @@ function weekStart() {
   }
 }
 
+// ── Storefront data ────────────────────────────────────────────────────────
+// The supply chain above makes the ADMIN panel usable. None of it renders on
+// the public site, so a fresh install still looked broken from the front: an
+// empty shop, "no upcoming events", a floor plan with no tables. These cover
+// the public pages.
+
+// Seeded imagery.
+//
+// These are demo CONTENT, not app assets — they land in each document's
+// `image` field exactly where a real tenant's uploaded photo would, which is
+// what makes the demo exercise the same render path as production. App-level
+// fallbacks for a product with NO image live in app/lib/placeholderAssets.ts
+// and are a different thing.
+//
+// Every id below was checked to return 200 before being committed. All are
+// plain `photo-` ids on images.unsplash.com — free content. `premium_photo-`
+// ids are Unsplash+ subscription material and must never be hotlinked here;
+// the prefix is the only way to tell them apart.
+//
+// One distinct image per item, deliberately. Reusing a handful across the
+// catalogue reads as a broken import rather than as a demo.
+const img = (id, w = 800, h = 600) =>
+  `https://images.unsplash.com/${id}?auto=format&q=70&w=${w}&h=${h}&fit=crop`
+
+const PRODUCT_IMAGES = {
+  'house-blend':     'photo-1517701550927-30cf4ba1dba5',
+  'single-origin':   'photo-1442512595331-e89e73853f31',
+  'decaf-blend':     'photo-1559056199-641a0ac8b55e',
+  'loose-leaf-tea':  'photo-1564890369478-c89ca6d9cde9',
+  'cold-brew-kit':   'photo-1544787219-7f47ccb76574',
+  'ceramic-mug':     'photo-1461023058943-07fcbe16d735',
+  'espresso-cups':   'photo-1514432324607-a09d9b4aefdd',
+  'travel-tumbler':  'photo-1523362628745-0c100150b504',
+  'glass-carafe':    'photo-1523362289600-a70b4a0e09aa',
+  'linen-napkins':   'photo-1600166898405-da9535204843',
+  'scented-candle':  'photo-1596040033229-a9821ebd058d',
+  'woven-coasters':  'photo-1578500494198-246f612d3b3d',
+  'serving-board':   'photo-1595535373192-fc8935bacd89',
+  'dotted-notebook': 'photo-1531346878377-a5be20888e57',
+  'pocket-notebook': 'photo-1517842645767-c639042777db',
+  'fineliner-set':   'photo-1583485088034-697b5bc54ccd',
+  'desk-pad':        'photo-1544816155-12df9643f363',
+  'staff-tee':       'photo-1521572163474-6864f9cf17ab',
+  'canvas-apron':    'photo-1581655353564-df123a1eb820',
+  'knit-beanie':     'photo-1576871337622-98d48d1cf531',
+  'gift-card-25':    'photo-1513885535751-8b9238bd345a',
+  'starter-bundle':  'photo-1549465220-1a8b9238cd48',
+  'brew-guide':      'photo-1544716278-ca5e3f4abd8c',
+  'recipe-book':     'photo-1589998059171-988d887df646',
+  'tote-bag':        'photo-1483985988355-763728e1935b',
+  'card-wallet':     'photo-1627123424574-724758594e93',
+}
+
+const EVENT_IMAGES = {
+  'latte-art':    'photo-1509042239860-f550ce710b93',
+  'cupping':      'photo-1447933601403-0c6688de566e',
+  'acoustic':     'photo-1493225457124-a3eb161ffa5f',
+  'quiz-night':   'photo-1543007630-9710e4a00a20',
+  'brew-basics':  'photo-1516450360452-9312f5e86fc7',
+  'supper-club':  'photo-1555396273-367ea4eb4db5',
+  'past-quiz':    'photo-1534790566855-4cb788d389ec',
+  'past-jazz':    'photo-1481833761820-0509d3217039',
+  'past-tasting': 'photo-1415604934674-561df9abf539',
+  'past-pastry':  'photo-1509440159596-0249088772ff',
+}
+
+// Keyed by category name. `categoryImage()` in app/lib/menuCategoryImages.ts
+// only overrides the stored field for names that appear in PLACEHOLDER_MENU —
+// none of these four do, so the seeded value is what actually renders. That
+// override is a known bug (see Phase 02); this seed does not depend on it.
+const MENU_CATEGORY_IMAGES = {
+  'Hot Drinks':  'photo-1511920170033-f8396924c348',
+  'Cold Drinks': 'photo-1437418747212-8d9709afab22',
+  'Food':        'photo-1504674900247-0877df9cc836',
+  'Sweets':      'photo-1486427944299-d1955d23e34d',
+}
+
+const PRODUCT_CATEGORIES = [
+  'Coffee & Tea', 'Drinkware', 'Home', 'Stationery',
+  'Apparel', 'Gifts', 'Books', 'Accessories',
+]
+
+// [slug, name, category, price, description]
+//
+// Descriptions are written to exercise the catalogue search rather than to
+// read as marketing copy: distinct nouns, some words repeated across products
+// so multi-term queries have something to narrow, and a few terms that appear
+// ONLY in a description so description-only matching is visibly working.
+const PRODUCTS = [
+  ['house-blend',     'House Blend Beans',       'Coffee & Tea', 18, 'A medium roast with cocoa and hazelnut notes. Whole bean, roasted weekly, 250g bag.'],
+  ['single-origin',   'Single Origin Beans',     'Coffee & Tea', 24, 'Rotating single origin, light roast. Currently a washed Ethiopian with jasmine and citrus.'],
+  ['decaf-blend',     'Decaf Blend Beans',       'Coffee & Tea', 19, 'Swiss water process decaf. Same medium roast profile as the house blend, no caffeine.'],
+  ['loose-leaf-tea',  'Loose Leaf Tea Tin',      'Coffee & Tea', 14, 'Earl grey with real bergamot, in a resealable tin. Makes roughly forty cups.'],
+  ['cold-brew-kit',   'Cold Brew Kit',           'Coffee & Tea', 32, 'Glass carafe, reusable steel filter and a coarse grind guide. Steeps overnight in the fridge.'],
+
+  ['ceramic-mug',     'Ceramic Mug',             'Drinkware',    12, 'Stoneware mug in a matte glaze. Dishwasher and microwave safe, holds 350ml.'],
+  ['espresso-cups',   'Espresso Cup Pair',       'Drinkware',    20, 'Two 80ml porcelain cups with saucers. Thick walled, so a short shot stays hot.'],
+  ['travel-tumbler',  'Travel Tumbler',          'Drinkware',    26, 'Vacuum sealed steel tumbler, leakproof lid. Keeps a drink hot for six hours.'],
+  ['glass-carafe',    'Glass Carafe',            'Drinkware',    22, 'Borosilicate carafe with a cork stopper. Doubles as a water jug for the table.'],
+
+  ['linen-napkins',   'Linen Napkin Set',        'Home',         28, 'Four stonewashed linen napkins in natural flax. Softens with every wash.'],
+  ['scented-candle',  'Scented Candle',          'Home',         21, 'Soy wax candle with cedar and black pepper. Forty hour burn, reusable glass.'],
+  ['woven-coasters',  'Woven Coaster Set',       'Home',         15, 'Six handwoven cotton coasters. Machine washable, absorbs a cold glass properly.'],
+  ['serving-board',   'Olive Wood Board',        'Home',         38, 'Solid olive wood serving board. Every piece has a different grain pattern.'],
+
+  ['dotted-notebook', 'Dotted Notebook',         'Stationery',   16, 'A5 notebook, dotted pages, hardcover with a lay-flat binding and a ribbon marker.'],
+  ['pocket-notebook', 'Pocket Notebook Pair',    'Stationery',    9, 'Two A6 stapled notebooks with plain pages. Fits a jacket pocket.'],
+  ['fineliner-set',   'Fineliner Set',           'Stationery',   18, 'Six fineliners in greys and one deep red. Waterproof once dry.'],
+  ['desk-pad',        'Leather Desk Pad',        'Stationery',   45, 'Full grain leather desk pad with a felt backing. Ages into a darker patina.'],
+
+  ['staff-tee',       'Cotton T-Shirt',          'Apparel',      25, 'Heavyweight organic cotton tee with a small chest print. Unisex sizing, S to XXL.'],
+  ['canvas-apron',    'Canvas Apron',            'Apparel',      42, 'Waxed canvas apron with crossback straps and two deep front pockets.'],
+  ['knit-beanie',     'Knit Beanie',             'Apparel',      19, 'Ribbed merino beanie with a folded cuff. One size, warm without being bulky.'],
+
+  ['gift-card-25',    'Gift Card',               'Gifts',        25, 'A gift card redeemable in any branch, for anything on the menu or the shelf.'],
+  ['starter-bundle',  'Coffee Starter Bundle',   'Gifts',        49, 'House blend beans, a ceramic mug and a pack of filters, boxed together.'],
+
+  ['brew-guide',      'Home Brewing Guide',      'Books',        29, 'A practical guide to grind size, ratio and water temperature. Illustrated, 180 pages.'],
+  ['recipe-book',     'Café Recipe Book',        'Books',        34, 'Sixty recipes from the kitchen, written for a home oven rather than a service line.'],
+
+  ['tote-bag',        'Canvas Tote',             'Accessories',  16, 'Unbleached heavy canvas tote with a flat base and reinforced webbing handles.'],
+  ['card-wallet',     'Leather Card Wallet',     'Accessories',  30, 'Slim vegetable tanned wallet, four card slots. Sized for a standard card deck too.'],
+]
+
+const EVENT_TYPES = [
+  'ev-live-music', 'ev-workshop', 'ev-tasting', 'ev-quiz', 'ev-private',
+]
+const EVENT_TYPE_NAMES = {
+  'ev-live-music': 'Live Music',
+  'ev-workshop':   'Workshop',
+  'ev-tasting':    'Tasting',
+  'ev-quiz':       'Quiz Night',
+  'ev-private':    'Private Hire',
+}
+
+// Offsets in days from today, so the split between "upcoming" and "completed"
+// on /events stays correct whenever this is run rather than going stale the
+// week after seeding.
+// [slug, title, typeId, dayOffset, start, end, price, min, max, description]
+const EVENTS = [
+  ['latte-art',    'Latte Art Workshop',      'ev-workshop',    3,  '17:00', '19:00', 20, 4,  10, 'A hands-on session on milk texture and pouring. Every seat gets a machine, and you keep the practice jug.'],
+  ['cupping',      'Coffee Cupping',          'ev-tasting',     6,  '11:00', '12:30', 15, 6,  14, 'Taste four origins side by side and learn the vocabulary roasters actually use.'],
+  ['acoustic',     'Acoustic Evening',        'ev-live-music',  9,  '20:00', '22:30',  0, 1,  60, 'A rotating lineup of local acoustic acts. Free entry, kitchen open until close.'],
+  ['quiz-night',   'Quiz Night',              'ev-quiz',        13, '19:30', '22:00', 10, 2,  40, 'Six rounds, teams of up to four. Winning table takes the pot and the bragging rights.'],
+  ['brew-basics',  'Home Brewing Basics',     'ev-workshop',    17, '16:00', '18:00', 25, 4,  12, 'Grind, ratio and water. Leave able to make a consistent pour over at home.'],
+  ['supper-club',  'Supper Club',             'ev-private',     24, '19:00', '23:00', 45, 10, 24, 'A set five course menu, one long table. Booked as a whole, not by the seat.'],
+
+  ['past-quiz',    'Quiz Night',              'ev-quiz',       -7,  '19:30', '22:00', 10, 2,  40, 'Six rounds, teams of up to four.'],
+  ['past-jazz',    'Jazz Trio',               'ev-live-music', -14, '20:00', '22:30',  0, 1,  60, 'A trio playing standards through the evening.'],
+  ['past-tasting', 'Single Origin Tasting',   'ev-tasting',    -21, '11:00', '12:30', 15, 6,  14, 'Three washed origins, tasted blind.'],
+  ['past-pastry',  'Pastry Workshop',         'ev-workshop',   -30, '15:00', '17:30', 30, 4,  10, 'Laminated dough from scratch, with plenty to take home.'],
+]
+
+// Matches DEFAULT_REDEMPTION_ITEMS / DEFAULT_LEVEL_PERKS in app/lib. Both have
+// a client-side seedXIfEmpty() that fires when a staff member opens the admin
+// page — seeding the same content here just means the PUBLIC loyalty page
+// isn't empty before anyone has logged in. Those helpers then no-op.
+const REDEMPTIONS = [
+  ['redeem-coffee',  'Free coffee',                 'Any hot or cold coffee from our menu',                   100],
+  ['redeem-drink',   'Free drink (any menu item)',  'Any drink from our full menu',                           150],
+  ['redeem-burger',  'Free burger',                 'One burger of your choice',                              300],
+  ['redeem-ticket',  'Event ticket (1 person)',     'Entry to any upcoming event',                            200],
+  ['redeem-table',   'Reserved table for four',     'A table held for you and three guests at any branch',    500],
+]
+
+// Keyed by tier, not by a level number — see app/lib/tierPerks.ts.
+const PERKS = [
+  ['Bronze',   'Earn points on every purchase'],
+  ['Bronze',   'A free drink on your birthday'],
+  ['Silver',   '5% off food orders'],
+  ['Silver',   'Reserve a table up to 48h ahead'],
+  ['Gold',     '10% off everything'],
+  ['Gold',     'Early access to event tickets'],
+  ['Gold',     'A free coffee every month'],
+  ['Platinum', '15% off everything'],
+  ['Platinum', 'Priority event registration'],
+  ['Platinum', 'A free item every month'],
+]
+
+// A floor plan needs a background image plus markers positioned in the image's
+// NATURAL pixel space (see app/lib/branchTableLayouts.ts) — the renderer
+// converts those to percentages. 1600×900 is declared here and requested at
+// exactly that size, so the two agree.
+const FLOOR_W = 1600
+const FLOOR_H = 900
+const FLOOR_IMAGE =
+  'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&q=70&w=1600&h=900&fit=crop'
+
+// [number, capMin, capMax, shape, type, x, y, w, h]
+const TABLES = [
+  [1,  2, 2, 'round', 'chairs', 260,  240, 150, 150],
+  [2,  2, 4, 'round', 'chairs', 470,  240, 150, 150],
+  [3,  4, 6, 'rect',  'chairs', 730,  230, 250, 160],
+  [4,  4, 6, 'rect',  'chairs', 1080, 230, 250, 160],
+  [5,  2, 2, 'round', 'chairs', 1370, 250, 140, 140],
+  [6,  6, 8, 'rect',  'couch',  330,  560, 320, 180],
+  [7,  4, 4, 'hex',   'chairs', 720,  580, 180, 180],
+  [8,  4, 6, 'rect',  'chairs', 1010, 570, 250, 160],
+  [9,  2, 4, 'round', 'chairs', 1330, 590, 150, 150],
+]
+
 const plan = []
 const record = (path, note) => plan.push({ path, note })
 
@@ -276,7 +490,8 @@ set(`weeklyOrderReports/demo-order-${week.startStr}-Kitchen`, {
 
 MENU.forEach(([catId, catName, section, items], ci) => {
   set(`menuCategories/cat-${catId}`, {
-    name: catName, section, sortOrder: ci, image: null,
+    name: catName, section, sortOrder: ci,
+    image: MENU_CATEGORY_IMAGES[catName] ? img(MENU_CATEGORY_IMAGES[catName], 600, 450) : null,
     createdAt: FieldValue.serverTimestamp(),
   }, `menu category · ${catName}`)
 
@@ -287,6 +502,130 @@ MENU.forEach(([catId, catName, section, items], ci) => {
       createdAt: FieldValue.serverTimestamp(),
     }, `menu item · ${name}`)
   })
+})
+
+// ── Storefront ─────────────────────────────────────────────────────────────
+
+PRODUCT_CATEGORIES.forEach((name, i) => {
+  set(`gameCategories/pcat-${slugify(name)}`, {
+    name,
+    sortOrder: i,
+    createdAt: FieldValue.serverTimestamp(),
+  }, `product category · ${name}`)
+})
+
+// Stock is deliberately uneven: some products are out at one branch, and
+// `clearance-*` is out everywhere so the "Out of Stock" badge and the greyed
+// card actually appear in the demo instead of only existing in the code.
+PRODUCTS.forEach(([slug, name, category, price, description], i) => {
+  const stock = Object.fromEntries(BRANCHES.map((b, bi) => {
+    if (i % 7 === 0) return [b, 0]                 // out everywhere
+    if (i % 5 === 0 && bi === 0) return [b, 0]     // out at the flagship only
+    return [b, 3 + ((i * 3 + bi * 5) % 12)]
+  }))
+
+  set(`games/product-${slug}`, {
+    name,
+    category,
+    description,
+    price,
+    stock,
+    image: img(PRODUCT_IMAGES[slug]),
+    sku: formatSku(name, i + 1),
+    // The board-game-era fields. Written empty rather than omitted: Manage
+    // Games still renders inputs for them, and an absent field there shows as
+    // `undefined` in a controlled input and warns.
+    players: '',
+    duration: '',
+    age: '',
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  }, `product · ${name}`)
+})
+
+// Advance the global SKU counter past everything seeded, or the next product
+// created in Manage Games is issued a sequence that's already in use.
+set('appSettings/skuCounter', { nextNumber: PRODUCTS.length + 1 },
+  `sku counter → ${PRODUCTS.length + 1}`)
+
+EVENT_TYPES.forEach(id => {
+  set(`eventTypes/${id}`, {
+    name: EVENT_TYPE_NAMES[id],
+    createdAt: FieldValue.serverTimestamp(),
+  }, `event type · ${EVENT_TYPE_NAMES[id]}`)
+})
+
+EVENTS.forEach(([slug, title, typeId, dayOffset, timeStart, timeEnd, price, minPlayers, maxPlayers, description], i) => {
+  const d = new Date()
+  d.setDate(d.getDate() + dayOffset)
+  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+  set(`events/event-${slug}`, {
+    title,
+    type: EVENT_TYPE_NAMES[typeId],
+    branch: BRANCHES[i % BRANCHES.length],
+    date,
+    timeStart,
+    timeEnd,
+    description,
+    price,
+    minPlayers,
+    maxPlayers,
+    registrationLink: '',
+    image: img(EVENT_IMAGES[slug], 1200, 800),
+    contactNumber: process.env.NEXT_PUBLIC_CONTACT_PHONE ?? '',
+    createdAt: FieldValue.serverTimestamp(),
+  }, `event · ${title} · ${date}`)
+})
+
+REDEMPTIONS.forEach(([id, name, description, coinCost]) => {
+  set(`redemptionItems/${id}`, {
+    name, description, coinCost,
+    isActive: true,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+    createdBy: 'seed-script',
+  }, `redemption · ${name}`)
+})
+
+PERKS.forEach(([tier, perk], i) => {
+  set(`tierPerks/perk-${slugify(tier)}-${i}`, {
+    tier, perk,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  }, `perk · ${tier}`)
+})
+
+// One floor plan per branch. Table ids are deterministic rather than
+// crypto.randomUUID() so re-running updates the same tables instead of
+// orphaning every reservation that referenced the previous ones.
+BRANCHES.forEach(branch => {
+  const tables = TABLES.map(([number, capacityMin, capacityMax, shape, tableType, x, y, width, height]) => ({
+    id: `${slugify(branch)}-t${number}`,
+    number, capacityMin, capacityMax, shape, tableType,
+    x, y, width, height,
+    rotation: 0,
+    adjacentTo: [],
+    bookable: true,
+  }))
+
+  // Tables 3 and 4 sit side by side, so mark them joinable — otherwise the
+  // adjacency feature has no data to demonstrate itself with.
+  const t3 = tables.find(t => t.number === 3)
+  const t4 = tables.find(t => t.number === 4)
+  if (t3 && t4) { t3.adjacentTo = [t4.id]; t4.adjacentTo = [t3.id] }
+
+  set(`branchTableLayouts/${branch}`, {
+    branch,
+    imageUrl: FLOOR_IMAGE,
+    imageDeleteUrl: null,
+    imageFileName: null,
+    imageWidth: FLOOR_W,
+    imageHeight: FLOOR_H,
+    tables,
+    updatedAt: FieldValue.serverTimestamp(),
+    updatedBy: 'seed-script',
+  }, `floor plan · ${branch} · ${tables.length} tables`)
 })
 
 // ── Report ─────────────────────────────────────────────────────────────────

@@ -124,7 +124,7 @@ export default function AdminUsersPage() {
   }
 
   async function handleRevoke(account: Account) {
-    if (!confirm(`Revoke admin panel access for ${account.email}? This removes their staff tag — any customer data (XP, coins) stays intact.`)) return
+    if (!confirm(`Revoke admin panel access for ${account.email}? This removes their staff tag — any customer data (points) stays intact.`)) return
     // Goes through the server route, not a client updateDoc. Clearing the
     // document alone would leave this account's custom claims asserting
     // `staff: true` indefinitely — claims only change when something calls

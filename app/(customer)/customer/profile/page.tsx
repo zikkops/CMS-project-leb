@@ -16,8 +16,8 @@ import { useUserEventReservations } from '../../../lib/eventReservations'
 import { useUserTableReservations } from '../../../lib/tableReservations'
 import { usePendingInvites, acceptInvite, declineInvite, type ParticipantInvite } from '../../../lib/participantInvites'
 import Skeleton from '../../../components/Skeleton'
-import { getLevelFromXP, getTierFromLevel, TIER_COLORS } from '../../../lib/levelConfig'
-import { useLevelPerks } from '../../../lib/levelPerks'
+import { getTier, tierColor as colorForTier } from '../../../lib/loyaltyTiers'
+import { useTierPerks, TIER_ORDER } from '../../../lib/tierPerks'
 import { resolveBranchName } from '../../../lib/branches'
 import { PLACEHOLDER_AVATARS } from '../../../lib/placeholderAssets'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -30,12 +30,11 @@ interface CustomerProfile {
   displayName: string
   email: string
   avatarUrl: string
-  avatarBorderId?: string
   themeId: string
-  xp: number
+  pointsEarned: number
   level: number
   levelTitle: string
-  obCoins: number
+  points: number
   badges: string[]
 }
 
@@ -43,8 +42,7 @@ interface Transaction {
   id: string
   type: 'check' | 'event'
   userId: string[]
-  xpAmount: number
-  coinsAmount: number
+  pointsAmount: number
   status: 'pending' | 'approved' | 'rejected' | 'cancelled'
   submittedBy: string
   approvedBy?: string
@@ -121,60 +119,9 @@ const DEFAULT_THEME = THEMES[0]
 
 const PREMADE_AVATARS = PLACEHOLDER_AVATARS
 
-interface AvatarBorder {
-  id: string
-  label: string
-  minLevel: number
-  bg: string                 // CSS background (solid color or gradient)
-  glow?: string              // optional box-shadow glow color
-  animClass?: string         // CSS class name for animated borders
-}
 
-const AVATAR_BORDERS: AvatarBorder[] = [
-  { id: 'none',           label: 'None',          minLevel: 1,  bg: 'transparent' },
-  { id: 'apprentice',     label: 'Apprentice',     minLevel: 5,  bg: '#888780' },
-  { id: 'adventurer',     label: 'Adventurer',     minLevel: 10, bg: '#1D9E75',                                         glow: 'rgba(29,158,117,0.55)' },
-  { id: 'champion',       label: 'Champion',       minLevel: 20, bg: 'linear-gradient(135deg,#378ADD,#60B4FF)',         glow: 'rgba(55,138,221,0.5)' },
-  { id: 'legend',         label: 'Legend',         minLevel: 30, bg: 'linear-gradient(135deg,#7F77DD,#B070FF)',         glow: 'rgba(127,119,221,0.65)', animClass: 'border-legend' },
-  { id: 'mythic',         label: 'Mythic',         minLevel: 40, bg: 'linear-gradient(135deg,#EF9F27,#FFD700,#FF6B00)', glow: 'rgba(239,159,39,0.7)',  animClass: 'border-mythic' },
-  { id: 'onboard-legend', label: 'Onboard Legend', minLevel: 50, bg: 'conic-gradient(#EF9F27,#B070FF,#378ADD,#1D9E75,#EF9F27)', glow: 'rgba(239,159,39,0.9)', animClass: 'border-onboard' },
-]
 
-const BORDER_ANIMATIONS = `
-  @keyframes legendPulse {
-    0%,100% { box-shadow: 0 0 8px 2px rgba(127,119,221,0.5); }
-    50%      { box-shadow: 0 0 22px 6px rgba(127,119,221,0.9); }
-  }
-  @keyframes mythicPulse {
-    0%,100% { box-shadow: 0 0 10px 3px rgba(239,159,39,0.5); }
-    50%      { box-shadow: 0 0 28px 8px rgba(239,159,39,1); }
-  }
-  @keyframes onboardSpin {
-    to { transform: rotate(360deg); }
-  }
-  @keyframes onboardSpinReverse {
-    to { transform: rotate(-360deg); }
-  }
-  .border-legend  { animation: legendPulse 2.5s ease-in-out infinite; }
-  .border-mythic  { animation: mythicPulse 2s ease-in-out infinite; }
-  .border-onboard { animation: onboardSpin 4s linear infinite; }
-  .border-onboard-inner { animation: onboardSpinReverse 4s linear infinite; }
-`
 
-function getBorderWrapperStyle(borderId: string | undefined, size: string, themeAccent: string): React.CSSProperties {
-  if (!borderId || borderId === 'none') {
-    return { width: size, height: size, borderRadius: '50%', flexShrink: 0, padding: '3px', background: themeAccent, display: 'flex' }
-  }
-  const b = AVATAR_BORDERS.find(x => x.id === borderId)
-  if (!b || b.id === 'none') {
-    return { width: size, height: size, borderRadius: '50%', flexShrink: 0, padding: 0, background: 'transparent', display: 'flex' }
-  }
-  return {
-    width: size, height: size, borderRadius: '50%', flexShrink: 0,
-    padding: '3px', display: 'flex', background: b.bg,
-    boxShadow: b.glow && !b.animClass ? `0 0 14px 3px ${b.glow}` : undefined,
-  }
-}
 
 function TransactionCard({
   tx, theme, isMobile, showStatus, showCheckDetails, showSplit, onImageClick, onCancel, cancelling,
@@ -236,8 +183,8 @@ function TransactionCard({
         </p>
 
         <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--teal)' }}>+{tx.xpAmount} XP</span>
-          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: theme.accent }}>+{tx.coinsAmount} OB Coins</span>
+          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--teal)' }}>+{tx.pointsAmount} points</span>
+          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: theme.accent }}>+{tx.pointsAmount} Points</span>
         </div>
 
         {showSplit && tx.userId.length > 1 && (
@@ -429,7 +376,6 @@ export default function CustomerProfilePage() {
   const [signOutHovered, setSignOutHovered] = useState(false)
   const [modalCloseHovered, setModalCloseHovered] = useState(false)
   const [hoveredAvatarOption, setHoveredAvatarOption] = useState<string | null>(null)
-  const [hoveredBorderId,    setHoveredBorderId]    = useState<string | null>(null)
   const [hoveredThemeId, setHoveredThemeId] = useState<string | null>(null)
 
   async function handleAcceptInvite(invite: ParticipantInvite) {
@@ -458,17 +404,21 @@ export default function CustomerProfilePage() {
     if (!user) return
     const ref = doc(db, 'users', user.uid)
     const unsub = onSnapshot(ref, snap => {
-      const data = snap.data() as CustomerProfile
-      setProfile(data)
+      setProfile(snap.data() as CustomerProfile)
 
-      // Keep the stored level/levelTitle in sync with xp, so other parts of
-      // the app can read them directly without recomputing the curve. Only
-      // writes when they actually differ, so this can't loop — the write
-      // that follows makes the next snapshot already match.
-      const computed = getLevelFromXP(data.xp)
-      if (data.level !== computed.level || data.levelTitle !== computed.levelTitle) {
-        updateDoc(ref, { level: computed.level, levelTitle: computed.levelTitle }).catch(() => {})
-      }
+      // This used to write `level`/`levelTitle` back from the browser whenever
+      // they drifted from `xp`, so other screens could read them directly.
+      //
+      // Removed, because it forced those two fields to stay writable by the
+      // account itself — and level gates the perks (10% off, free coffee,
+      // priority event registration) and the avatar borders. `xp` is locked by
+      // firestore.rules and always has been; level is *derived from xp*, so
+      // leaving the derived value writable while pinning its own source meant
+      // the cheaper field was the one worth attacking.
+      //
+      // Nothing needs the self-heal. getLevelFromXP() is pure, and every place
+      // that gates on level now calls it. The stored copy is a denormalised
+      // cache for admin list views, written only by staff paths.
     })
     return unsub
   }, [user])
@@ -531,11 +481,6 @@ export default function CustomerProfilePage() {
     await updateDoc(doc(db, 'users', user.uid), { avatarUrl: url })
   }
 
-  async function handleSelectBorder(avatarBorderId: string) {
-    if (!user) return
-    await updateDoc(doc(db, 'users', user.uid), { avatarBorderId })
-  }
-
   async function handleSelectTheme(themeId: string) {
     if (!user) return
     await updateDoc(doc(db, 'users', user.uid), { themeId })
@@ -544,9 +489,9 @@ export default function CustomerProfilePage() {
   const theme = THEMES.find(t => t.id === profile?.themeId) ?? DEFAULT_THEME
   const avatarSize = isMobile ? '80px' : '120px'
   const initials = (profile?.displayName || '?').trim().charAt(0).toUpperCase()
-  const levelInfo = getLevelFromXP(profile?.xp ?? 0)
-  const tierColor = TIER_COLORS[levelInfo.tier] ?? TIER_COLORS.Apprentice
-  const { perks } = useLevelPerks()
+  const tierInfo = getTier(profile?.pointsEarned ?? 0)
+  const tierColor = tierInfo.color
+  const { perks } = useTierPerks()
 
   const sectionLabelStyle = {
     fontSize: '0.65rem',
@@ -631,17 +576,19 @@ export default function CustomerProfilePage() {
                 transition: 'all 0.2s ease',
               }}>Sign Out</button>
 
-            {/* Avatar — click to open the customize popup */}
-            {/* Outer div provides the unlock border; inner button is the clipped circle */}
-            <div
-              className={AVATAR_BORDERS.find(b => b.id === profile.avatarBorderId)?.animClass}
-              style={getBorderWrapperStyle(profile.avatarBorderId, avatarSize, theme.accent)}
-            >
+            {/* Avatar — click to open the customize popup.
+                The outer div used to carry a level-unlocked decorative border;
+                that went with the rest of the level system. It stays as a plain
+                ring in the profile's theme colour, which is what the inner
+                button's overflow:hidden needs to sit inside anyway. */}
+            <div style={{
+              width: avatarSize, height: avatarSize, borderRadius: '50%',
+              flexShrink: 0, padding: '3px', background: theme.accent, display: 'flex',
+            }}>
             <button
               onClick={() => setModalOpen(true)}
               onMouseEnter={() => setAvatarHovered(true)}
               onMouseLeave={() => setAvatarHovered(false)}
-              className={profile.avatarBorderId === 'onboard-legend' ? 'border-onboard-inner' : undefined}
               style={{
                 position: 'relative',
                 width: '100%',
@@ -734,7 +681,7 @@ export default function CustomerProfilePage() {
                   fontSize: '0.85rem',
                   color: 'rgba(255,255,255,0.75)',
                 }}>
-                  Level {levelInfo.level} — {levelInfo.levelTitle}
+                  {tierInfo.tier} member
                 </p>
                 <span style={{
                   fontSize: '0.62rem',
@@ -758,10 +705,10 @@ export default function CustomerProfilePage() {
                   letterSpacing: '0.08em',
                   textTransform: 'uppercase',
                   whiteSpace: 'nowrap',
-                }}>{levelInfo.tier}</span>
+                }}>{profile.points?.toLocaleString() ?? 0} points</span>
               </div>
 
-              {/* XP Bar */}
+              {/* Progress toward the next tier. */}
               <div style={{ width: '100%', marginTop: '0.2rem', marginBottom: '0.3rem' }}>
                 <div style={{
                   width: '100%',
@@ -772,7 +719,7 @@ export default function CustomerProfilePage() {
                 }}>
                   <div style={{
                     height: '100%',
-                    width: `${levelInfo.progressPercent}%`,
+                    width: `${tierInfo.progressPercent}%`,
                     backgroundColor: theme.accent,
                     borderRadius: '6px',
                     transition: 'width 0.4s ease',
@@ -784,9 +731,9 @@ export default function CustomerProfilePage() {
                   color: 'rgba(255,255,255,0.55)',
                   marginTop: '0.4rem',
                 }}>
-                  {levelInfo.level >= 50
-                    ? 'Max level reached'
-                    : `${(profile.xp ?? 0).toLocaleString()} / ${levelInfo.nextLevelXP.toLocaleString()} XP`}
+                  {tierInfo.nextTier === null
+                    ? `Top tier — ${(profile.pointsEarned ?? 0).toLocaleString()} points earned all time`
+                    : `${tierInfo.pointsToNext.toLocaleString()} more points to ${tierInfo.nextTier}`}
                 </p>
               </div>
 
@@ -795,7 +742,7 @@ export default function CustomerProfilePage() {
                 fontSize: '1.1rem',
                 color: theme.accent,
               }}>
-                {profile.obCoins} OB Coins
+                {profile.points} Points
               </p>
 
               <div style={{
@@ -838,8 +785,8 @@ export default function CustomerProfilePage() {
             <p style={sectionLabelStyle}>Your Perks</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
               {perks.map(p => {
-                const unlocked = levelInfo.level >= p.level
-                const color = TIER_COLORS[getTierFromLevel(p.level)]
+                const unlocked = TIER_ORDER.indexOf(tierInfo.tier) >= TIER_ORDER.indexOf(p.tier)
+                const color = colorForTier(p.tier)
                 return (
                   <div key={p.id} style={{
                     display: 'flex',
@@ -858,7 +805,7 @@ export default function CustomerProfilePage() {
                       color: unlocked ? color : 'rgba(245,242,236,0.4)',
                       minWidth: isMobile ? '45px' : '55px',
                       flexShrink: 0,
-                    }}>Lv {p.level}</span>
+                    }}>{p.tier}</span>
                     <p style={{
                       flex: 1,
                       fontFamily: 'var(--font-inter)',
@@ -876,7 +823,7 @@ export default function CustomerProfilePage() {
                       textTransform: 'uppercase',
                       whiteSpace: 'nowrap',
                       flexShrink: 0,
-                    }}>{unlocked ? 'Unlocked' : `Level ${p.level}`}</span>
+                    }}>{unlocked ? 'Unlocked' : 'Locked'}</span>
                   </div>
                 )
               })}
@@ -907,7 +854,7 @@ export default function CustomerProfilePage() {
               <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.5)', marginTop: '0.2rem' }}>
                 {verificationSent
                   ? `Sent to ${profile.email} — check your inbox, then tap "I've Verified."`
-                  : 'Submitting checks and redeeming OB Coins are locked until you verify your email.'}
+                  : 'Submitting checks and redeeming Points are locked until you verify your email.'}
               </p>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
@@ -931,7 +878,7 @@ export default function CustomerProfilePage() {
 
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.8rem' }}>
           <ActionButton href="/customer/submit-check" label="Submit a Check" color="#6A6AB7" />
-          <ActionButton href="/customer/redeem" label="Redeem OB Coins" color="#00A098" />
+          <ActionButton href="/customer/redeem" label="Redeem Points" color="#00A098" />
           <ActionButton href="/customer/friends" label="Friends" color="#00A098" variant="outline" />
         </div>
 
@@ -1118,7 +1065,7 @@ export default function CustomerProfilePage() {
                           {r.itemDescription}
                         </p>
                         <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: theme.accent }}>-{r.coinCost} OB Coins</span>
+                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: theme.accent }}>-{r.coinCost} Points</span>
                           <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)' }}>
                             {resolveBranchName(r.branchId)} · {formatDate(r.createdAt)}
                           </span>
@@ -1254,7 +1201,6 @@ export default function CustomerProfilePage() {
         )}
       </div>
 
-      <style>{BORDER_ANIMATIONS}</style>
 
       {/* Customize Profile Modal — avatar + border + theme color */}
       {modalOpen && (
@@ -1367,82 +1313,6 @@ export default function CustomerProfilePage() {
                   })}
                 </div>
               </div>
-
-              {/* Border picker */}
-              <div>
-                <p style={{
-                  fontSize: '0.65rem',
-                  letterSpacing: '0.2em',
-                  textTransform: 'uppercase',
-                  color: 'rgba(245,242,236,0.3)',
-                  fontFamily: 'var(--font-inter)',
-                  marginBottom: '1rem',
-                }}>Avatar Border</p>
-
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(4, 1fr)',
-                  gap: '0.8rem',
-                  marginBottom: '1rem',
-                }}>
-                  {AVATAR_BORDERS.map(border => {
-                    const unlocked = (profile.level ?? 1) >= border.minLevel
-                    const selected = (profile.avatarBorderId ?? '') === border.id
-                    const hov      = hoveredBorderId === border.id
-
-                    return (
-                      <button
-                        key={border.id}
-                        onClick={() => unlocked && handleSelectBorder(border.id)}
-                        onMouseEnter={() => setHoveredBorderId(border.id)}
-                        onMouseLeave={() => setHoveredBorderId(null)}
-                        title={unlocked ? border.label : `Unlocks at level ${border.minLevel}`}
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: '0.4rem',
-                          background: 'none',
-                          border: 'none',
-                          cursor: unlocked ? 'pointer' : 'not-allowed',
-                          padding: '0.2rem',
-                          opacity: unlocked ? 1 : 0.35,
-                          transform: hov && unlocked && !selected ? 'scale(1.08)' : 'scale(1)',
-                          transition: 'all 0.2s ease',
-                        }}
-                      >
-                        {/* Mini ring preview */}
-                        <div
-                          className={border.animClass}
-                          style={{
-                            width: '44px', height: '44px', borderRadius: '50%',
-                            padding: border.id === 'none' ? '0' : '3px',
-                            background: border.id === 'none' ? 'transparent' : border.bg,
-                            boxShadow: selected ? `0 0 0 2px #0d0d0d, 0 0 0 4px ${theme.accent}` : 'none',
-                          }}
-                        >
-                          <div
-                            className={border.id === 'onboard-legend' ? 'border-onboard-inner' : undefined}
-                            style={{
-                              width: '100%', height: '100%', borderRadius: '50%',
-                              backgroundColor: '#0d0d0d',
-                              border: border.id === 'none' ? '2px solid rgba(255,255,255,0.15)' : 'none',
-                            }} />
-                        </div>
-                        <span style={{
-                          fontFamily: 'var(--font-inter)', fontSize: '0.58rem',
-                          letterSpacing: '0.05em', textTransform: 'uppercase',
-                          color: selected ? theme.accent : 'rgba(245,242,236,0.4)',
-                          whiteSpace: 'nowrap',
-                        }}>
-                          {unlocked ? border.label : `Lv ${border.minLevel}`}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
               {/* Theme picker */}
               <div>
                 <p style={{

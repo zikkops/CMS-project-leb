@@ -123,8 +123,8 @@ export async function POST(request: Request): Promise<Response> {
         isStaff: true,
         role: input.role,
         branchIds: input.branchIds,
-        xp: 0,
-        obCoins: 0,
+        pointsEarned: 0,
+        points: 0,
         createdAt: FieldValue.serverTimestamp(),
       })
 
@@ -216,7 +216,7 @@ export async function PATCH(request: Request): Promise<Response> {
 
 // ── DELETE /api/admin/accounts?uid=… — revoke staff access ───────────────────
 // Strips the staff fields from the document, keeping the person's customer
-// identity (XP, coins, bookings, history) intact. Their login still works;
+// identity (points, bookings, history) intact. Their login still works;
 // they're just no longer staff.
 //
 // THIS HAD TO MOVE SERVER-SIDE. /admin/users used to do it with a client

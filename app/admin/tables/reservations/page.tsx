@@ -7,6 +7,7 @@ import {
   approveTableReservation, rejectTableReservation, type TableReservation,
 } from '../../../lib/tableReservations'
 import { resolveUserProfiles, awardTableCheckin, type ResolvedProfile } from '../../../lib/loyalty'
+import { TABLE_CHECKIN_POINTS } from '../../../lib/loyaltyTiers'
 import { BRANCHES } from '../../../lib/branches'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faChair, faInbox, faCircleCheck } from '@fortawesome/free-solid-svg-icons'
@@ -67,13 +68,7 @@ export default function TableReservationsPage() {
     if (!user) return
     setBusyId(r.id)
     try {
-      await awardTableCheckin({
-        userId: r.userId,
-        reservationId: r.id,
-        branch: r.branch,
-        tableNumbers: r.tableNumbers,
-        staffUid: user.uid,
-      })
+      await awardTableCheckin(r.id)
       setProcessedIds(prev => new Set(prev).add(r.id))
     } finally {
       setBusyId(null)
@@ -348,7 +343,7 @@ export default function TableReservationsPage() {
                           }}
                         >
                           <FontAwesomeIcon icon={faCircleCheck} style={{ width: '13px' }} />
-                          {isBusy ? 'Checking in…' : `Check In (+150 XP)`}
+                          {isBusy ? 'Checking in…' : `Check In (+${TABLE_CHECKIN_POINTS} points)`}
                         </button>
                       ) : (
                         <>

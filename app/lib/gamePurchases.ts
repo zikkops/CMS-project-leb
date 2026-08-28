@@ -8,6 +8,7 @@ import { db } from './firebase'
 import { nextFormattedInvoiceNumber } from './invoiceNumber'
 import { logActivity } from './activityLog'
 import { uploadImage } from './media'
+import { authedFetch, unwrap } from './apiClient'
 import { BRANCHES, normalizeStock } from './branches'
 
 export interface PurchaseItem {
@@ -234,6 +235,20 @@ async function uploadInvoiceImage(
   return url
 }
 
+// Recording a sale and refunding one both run SERVER-SIDE (Phase 00 standing
+// rule). See app/lib/server/purchases.ts.
+//
+// The old client versions used a real runTransaction and were careful about
+// stock. What they could not be careful about was PRICE: the browser read the
+// game's price from its own copy of the document, multiplied by the quantity,
+// and sent unitPrice/subtotal/total along with the order. Firestore stored
+// what it was given, so a tampered client could record a $200 product as a
+// one-cent sale and the books would agree with it forever.
+//
+// The request now carries only what was bought — gameId, quantity, price list.
+// Every figure is recomputed on the server from the stored product, and the
+// invoice number is issued inside the same transaction as the sale so a
+// failure on stock does not burn a number.
 export async function createPurchaseOrder(input: {
   customerName: string
   branch: string
@@ -241,128 +256,74 @@ export async function createPurchaseOrder(input: {
   processedBy: string
   processedByEmail: string
 }): Promise<{ orderId: string; invoiceUrl: string | null }> {
-  const total = input.items.reduce((s, it) => s + it.subtotal, 0)
-  const invoiceNumber = await nextInvoiceNumber()
-
-  // Aggregate quantities per game so duplicate cart entries don't cause
-  // partial deduction (the second tx.update would overwrite the first).
-  const qtyByGame = new Map<string, number>()
-  for (const it of input.items) {
-    qtyByGame.set(it.gameId, (qtyByGame.get(it.gameId) ?? 0) + it.quantity)
-  }
-  const gameIds = [...qtyByGame.keys()]
-  const gameRefs = gameIds.map(id => doc(db, 'games', id))
-
-  let orderId = ''
-  await runTransaction(db, async (tx) => {
-    const snaps = await Promise.all(gameRefs.map(r => tx.get(r)))
-
-    for (const [gameId, need] of qtyByGame) {
-      const snap = snaps.find(s => s.id === gameId)!
-      const data = snap.data() ?? {}
-      // Legacy flat-number stock → treat as Beirut-only on first purchase
-      const rawStock = data.stock
-      const stock: Record<string, number> =
-        typeof rawStock === 'number'
-          ? Object.fromEntries(BRANCHES.map((b, i) => [b, i === 0 ? rawStock : 0]))
-          : { ...(rawStock ?? {}) }
-      const have = stock[input.branch] ?? 0
-      const gameName = input.items.find(it => it.gameId === gameId)?.gameName ?? gameId
-      if (have < need) throw new Error(`insufficient-stock:${gameName}`)
-      stock[input.branch] = have - need
-      tx.update(snaps.find(s => s.id === gameId)!.ref, { stock, updatedAt: serverTimestamp() })
-    }
-
-    const orderRef = doc(collection(db, 'gamePurchaseOrders'))
-    orderId = orderRef.id
-    tx.set(orderRef, {
-      invoiceNumber,
-      customerName: input.customerName,
-      items: input.items,
-      total,
-      branch: input.branch,
-      status: 'completed',
-      invoiceUrl: null,
-      processedBy: input.processedBy,
-      processedByEmail: input.processedByEmail,
-      createdAt: serverTimestamp(),
-      refundedAt: null,
-      refundedBy: null,
-      refundNote: null,
-    })
+  // Only the identifying fields are sent. `items` still carries prices in the
+  // caller's shape because the cart UI needs them to render a running total,
+  // but they are dropped here rather than transmitted — the server would
+  // ignore them, and sending them would imply otherwise.
+  const res = await authedFetch('/api/admin/purchases', 'POST', {
+    customerName: input.customerName,
+    branch: input.branch,
+    lines: input.items.map(it => ({
+      gameId: it.gameId,
+      quantity: it.quantity,
+      priceType: it.priceType,
+    })),
   })
+  const order = await unwrap(res) as unknown as {
+    orderId: string
+    invoiceNumber: string
+    total: number
+    items: PurchaseItem[]
+  }
 
-  // Invoice image is generated outside the transaction (canvas → upload)
+  // The invoice image is still drawn here: it needs a canvas, which has no
+  // server equivalent short of running a headless browser. It is rendered from
+  // the figures the SERVER returned, not from the cart's own arithmetic —
+  // otherwise the picture could disagree with the record it depicts.
+  //
+  // Non-fatal, exactly as before: the sale is already committed, and
+  // regenerateOrderInvoice() exists for a retry.
   let invoiceUrl: string | null = null
   try {
     invoiceUrl = await uploadInvoiceImage(
-      invoiceNumber, input.customerName, input.branch,
-      input.items, total, input.processedByEmail,
+      order.invoiceNumber, input.customerName, input.branch,
+      order.items, order.total, input.processedByEmail,
     )
-    await updateDoc(doc(db, 'gamePurchaseOrders', orderId), { invoiceUrl })
+    await authedFetch('/api/admin/purchases', 'PATCH', {
+      orderId: order.orderId, action: 'invoice-url', invoiceUrl,
+    })
   } catch {
-    // Non-fatal — the order is already committed; invoice image can be
-    // regenerated later via regenerateOrderInvoice().
+    // Left null; the order stands without its picture.
   }
 
-  await logActivity('create', 'Game Sale', `${invoiceNumber} — ${input.customerName} (${input.branch}) $${total.toFixed(2)}`)
-  return { orderId, invoiceUrl }
+  return { orderId: order.orderId, invoiceUrl }
 }
 
 // Re-renders and re-uploads the invoice image for an existing order — useful
-// if the initial upload failed right after the order transaction committed.
+// if the initial upload failed right after the order was recorded.
 export async function regenerateOrderInvoice(order: GamePurchaseOrder): Promise<string> {
   const url = await uploadInvoiceImage(
     order.invoiceNumber, order.customerName, order.branch,
     order.items, order.total, order.processedByEmail,
     order.status,
   )
-  await updateDoc(doc(db, 'gamePurchaseOrders', order.id), { invoiceUrl: url })
+  await authedFetch('/api/admin/purchases', 'PATCH', {
+    orderId: order.id, action: 'invoice-url', invoiceUrl: url,
+  })
   return url
 }
 
 export async function refundOrder(
   orderId: string,
   refundNote: string,
-  processedByEmail: string,
+  _processedByEmail: string,
 ): Promise<void> {
-  const orderRef = doc(db, 'gamePurchaseOrders', orderId)
-
-  await runTransaction(db, async (tx) => {
-    const orderSnap = await tx.get(orderRef)
-    if (!orderSnap.exists()) throw new Error('order-not-found')
-    const order = orderSnap.data() as Omit<GamePurchaseOrder, 'id'>
-    if (order.status === 'refunded') throw new Error('already-refunded')
-
-    const qtyByGame = new Map<string, number>()
-    for (const it of order.items as PurchaseItem[]) {
-      qtyByGame.set(it.gameId, (qtyByGame.get(it.gameId) ?? 0) + it.quantity)
-    }
-    const gameRefs = [...qtyByGame.keys()].map(id => doc(db, 'games', id))
-    const snaps = await Promise.all(gameRefs.map(r => tx.get(r)))
-
-    for (const [gameId, qty] of qtyByGame) {
-      const snap = snaps.find(s => s.id === gameId)!
-      if (!snap.exists()) continue
-      const data = snap.data() ?? {}
-      const rawStock = data.stock
-      const stock: Record<string, number> =
-        typeof rawStock === 'number'
-          ? Object.fromEntries(BRANCHES.map((b, i) => [b, i === 0 ? rawStock : 0]))
-          : { ...(rawStock ?? {}) }
-      stock[order.branch] = (stock[order.branch] ?? 0) + qty
-      tx.update(snap.ref, { stock, updatedAt: serverTimestamp() })
-    }
-
-    tx.update(orderRef, {
-      status: 'refunded',
-      refundedAt: serverTimestamp(),
-      refundedBy: processedByEmail,
-      refundNote: refundNote.trim() || null,
-    })
+  // _processedByEmail is ignored — the server records the actor from the
+  // verified token. Kept in the signature so the call site is unchanged.
+  const res = await authedFetch('/api/admin/purchases', 'PATCH', {
+    orderId, action: 'refund', refundNote,
   })
-
-  await logActivity('update', 'Game Sale Refund', `Order ${orderId} refunded by ${processedByEmail}`)
+  await unwrap(res)
 }
 
 // Atomically moves copies of one or more games from one branch to another in a

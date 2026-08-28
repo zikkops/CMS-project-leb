@@ -9,7 +9,7 @@ import { useIsMobile } from '../../../lib/useIsMobile'
 import { BRANCHES, resolveBranchName } from '../../../lib/branches'
 import { useFriends, fetchCustomerDirectory, type DirectoryUser } from '../../../lib/friends'
 import { uploadImage } from '../../../lib/media'
-import { checkNumberAlreadyUsed } from '../../../lib/loyalty'
+import { checkNumberAlreadyUsed, POINTS_PER_DOLLAR } from '../../../lib/loyalty'
 
 const MAX_FRIENDS = 9 // + submitter = 10 total
 
@@ -20,8 +20,7 @@ interface SubmissionSummary {
   checkNumber: string
   totalAmount: number
   splitCount: number
-  xpAmount: number
-  coinsAmount: number
+  pointsAmount: number
 }
 
 const inputStyle = {
@@ -82,10 +81,10 @@ export default function SubmitCheckPage() {
 
   const amountNum    = parseFloat(totalAmount) || 0
   const splitCount   = 1 + addedFriends.length
-  const rawXp        = Math.floor(amountNum * 10)
-  const rawCoins     = Math.floor(amountNum * 1)
-  const xpAmount      = splitCount > 0 ? Math.floor(rawXp / splitCount) : rawXp
-  const coinsAmount   = splitCount > 0 ? Math.floor(rawCoins / splitCount) : rawCoins
+  const earned       = Math.floor(amountNum * POINTS_PER_DOLLAR)
+  // Integer division, so a split never awards more in total than the bill
+  // earned — the remainder is dropped rather than rounded up per person.
+  const pointsAmount = splitCount > 0 ? Math.floor(earned / splitCount) : earned
 
   const searchResults = useMemo(() => {
     if (!directory || !friendSearch.trim()) return []
@@ -163,8 +162,7 @@ export default function SubmitCheckPage() {
       await addDoc(collection(db, 'transactions'), {
         type: 'check',
         userId: userIds,
-        xpAmount,
-        coinsAmount,
+        pointsAmount,
         status: 'pending',
         submittedBy: user.uid,
         approvedBy: null,
@@ -180,8 +178,7 @@ export default function SubmitCheckPage() {
         checkNumber: checkNumber.trim(),
         totalAmount: amountNum,
         splitCount: userIds.length,
-        xpAmount,
-        coinsAmount,
+        pointsAmount,
       })
     } finally {
       setSubmitting(false)
@@ -216,7 +213,7 @@ export default function SubmitCheckPage() {
             Verify your email first
           </h1>
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.5)', lineHeight: 1.7, marginBottom: '2rem' }}>
-            Submitting a check earns real XP and OB Coins, so we need to confirm it's really you first.
+            Submitting a check earns real points, so we need to confirm it's really you first.
             Check your inbox for the verification email, then head to your profile to confirm it.
           </p>
           <Link href="/customer/profile" style={{
@@ -238,7 +235,7 @@ export default function SubmitCheckPage() {
             Submission received!
           </h1>
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.5)', marginBottom: '2rem' }}>
-            Your XP and coins will be added once a manager approves your submission.
+            Your points will be added once a manager approves your submission.
           </p>
 
           <div style={{
@@ -257,8 +254,8 @@ export default function SubmitCheckPage() {
               ['Check Number', result.checkNumber],
               ['Amount', `$${result.totalAmount.toFixed(2)}`],
               ['People in Split', String(result.splitCount)],
-              ['XP Pending', `+${result.xpAmount} XP`],
-              ['Coins Pending', `+${result.coinsAmount} OB Coins`],
+              ['Points Pending', `+${result.pointsAmount} points`],
+              ['Coins Pending', `+${result.pointsAmount} Points`],
             ].map(([label, value]) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
                 <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)' }}>{label}</span>
@@ -346,7 +343,7 @@ export default function SubmitCheckPage() {
           Submit a Check
         </h1>
         <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.4)', marginBottom: '2rem' }}>
-          Earn XP and OB Coins for your food or drink purchase — a branch manager will review and approve it.
+          Earn points for your food or drink purchase — a branch manager will review and approve it.
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -389,8 +386,8 @@ export default function SubmitCheckPage() {
             {amountNum > 0 && (
               <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--teal)', marginTop: '0.6rem' }}>
                 {splitCount > 1
-                  ? `Each person will earn ${xpAmount} XP and ${coinsAmount} OB Coins`
-                  : `You will earn ${xpAmount} XP and ${coinsAmount} OB Coins`}
+                  ? `Each person will earn ${pointsAmount} points and ${pointsAmount} Points`
+                  : `You will earn ${pointsAmount} points and ${pointsAmount} Points`}
               </p>
             )}
           </div>

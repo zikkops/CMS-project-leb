@@ -39,8 +39,18 @@ So: merge and deploy the app, confirm `/admin/users` works, then deploy rules.
 
 ### 3. Validate the syntax before it reaches production
 
-The rules file was written but **not run against Firebase's parser** — the
-sandbox it was authored in couldn't download the emulator. Do one of these:
+**Update (28 Aug 2026): it now compiles.** `firebase deploy` runs the rules
+through the parser as a preflight even for an indexes-only deploy, and reported
+`rules file firestore.rules compiled successfully` against `cms-project-f7e15`.
+The rules were **not** deployed by that command — only the indexes were.
+
+So the syntax question is closed. What is still open is **behaviour**: compiling
+means the file parses, not that it allows and denies the right things. The
+checks below are still worth running, and check 9 in particular.
+
+The original note read: *the rules file was written but not run against
+Firebase's parser — the sandbox it was authored in couldn't download the
+emulator.* To exercise real reads and writes rather than just syntax:
 
 ```bash
 # Best: run the emulator locally and exercise real reads/writes

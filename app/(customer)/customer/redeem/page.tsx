@@ -41,7 +41,7 @@ export default function RedeemPage() {
   const { user } = useCustomerUser()
   const { items, loading } = useRedemptionItems(true)
 
-  const [obCoins, setObCoins] = useState<number>(0)
+  const [points, setObCoins] = useState<number>(0)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [branchId, setBranchId] = useState<string>(BRANCHES[0])
   const [submitting, setSubmitting] = useState(false)
@@ -53,7 +53,7 @@ export default function RedeemPage() {
   useEffect(() => {
     if (!user) return
     const unsub = onSnapshot(doc(db, 'users', user.uid), snap => {
-      setObCoins((snap.data()?.obCoins as number) ?? 0)
+      setObCoins((snap.data()?.points as number) ?? 0)
     })
     return unsub
   }, [user])
@@ -87,7 +87,7 @@ export default function RedeemPage() {
             Verify your email first
           </h1>
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.5)', lineHeight: 1.7, marginBottom: '2rem' }}>
-            Redeeming OB Coins spends real value, so we need to confirm it's really you first.
+            Redeeming Points spends real value, so we need to confirm it's really you first.
             Check your inbox for the verification email, then head to your profile to confirm it.
           </p>
           <Link href="/customer/profile" style={{
@@ -180,7 +180,7 @@ export default function RedeemPage() {
           }}>← Back to Profile</Link>
 
         <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.6rem' : '2rem', color: 'var(--offwhite)', marginBottom: '1.25rem' }}>
-          Redeem OB Coins
+          Redeem Points
         </h1>
 
         <div style={{
@@ -197,7 +197,7 @@ export default function RedeemPage() {
             Your Balance
           </span>
           <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.6rem', color: 'var(--teal)' }}>
-            {obCoins.toLocaleString()} coins
+            {points.toLocaleString()} coins
           </span>
         </div>
 
@@ -217,7 +217,7 @@ export default function RedeemPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {items.map(item => {
-              const canAfford = obCoins >= item.coinCost
+              const canAfford = points >= item.coinCost
               const isConfirming = confirmingId === item.id
 
               return (
@@ -242,11 +242,11 @@ export default function RedeemPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.9rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-inter)', fontSize: '0.82rem' }}>
                         <span style={{ color: 'rgba(245,242,236,0.4)' }}>Current Balance</span>
-                        <span style={{ color: 'var(--offwhite)' }}>{obCoins.toLocaleString()} coins</span>
+                        <span style={{ color: 'var(--offwhite)' }}>{points.toLocaleString()} coins</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-inter)', fontSize: '0.82rem' }}>
                         <span style={{ color: 'rgba(245,242,236,0.4)' }}>Remaining After Redemption</span>
-                        <span style={{ color: 'var(--teal)' }}>{(obCoins - item.coinCost).toLocaleString()} coins</span>
+                        <span style={{ color: 'var(--teal)' }}>{(points - item.coinCost).toLocaleString()} coins</span>
                       </div>
 
                       <div>
