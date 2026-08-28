@@ -4,6 +4,20 @@
 // GET   invoked by Vercel Cron on a schedule (see vercel.json)
 // POST  invoked by an admin, to run it now
 //
+// ── Why the schedule is DAILY for an annual job ───────────────────────────
+// vercel.json runs this at 03:00 UTC every day, and on ~364 of those days it
+// reads appSettings/loyaltyReset, sees the date hasn't passed, and returns
+// 'not-due' having written nothing.
+//
+// That looks wasteful and is the point. An annual schedule gets exactly one
+// chance a year; a deploy, an outage or a timeout on that single day would
+// skip the reset for twelve months, silently. Daily means a missed run is
+// simply retried tomorrow.
+//
+// (This rationale lived in vercel.json as a "comment" key. Vercel's schema
+// rejects unknown properties on a cron entry, which failed the build — JSON
+// has nowhere to put prose, so it lives here instead.)
+//
 // ── Two callers, two completely different authentications ─────────────────
 // Cron is not a signed-in user and never will be, so it cannot present an ID
 // token. Vercel sends `Authorization: Bearer $CRON_SECRET` instead, which is
@@ -20,11 +34,19 @@ import { logActivity } from '@/app/lib/server/activityLog'
 
 export const runtime = 'nodejs'
 
-// A completed reset writes to every customer with a balance. On a large
-// tenant that is more than the default 10s. The work is resumable, so a
-// timeout costs a retry rather than a half-finished reset — but there is no
-// reason to make retries the normal case.
-export const maxDuration = 300
+// A completed reset writes to every customer with a balance, which on a large
+// tenant is more than the default.
+//
+// 60 is the Hobby-plan ceiling. It was 300 briefly, which FAILED THE BUILD —
+// Vercel validates maxDuration against the plan's limit at build time, not at
+// request time, so an over-limit value doesn't degrade gracefully, it stops
+// the whole deployment. Raise this only alongside the plan.
+//
+// A timeout is survivable here in a way it wouldn't be for most jobs: the
+// reset is resumable by construction (it queries for accounts that still have
+// a balance), so hitting the ceiling costs a retry on tomorrow's run rather
+// than a half-finished reset.
+export const maxDuration = 60
 
 function summarise(r: Awaited<ReturnType<typeof runAnnualReset>>): string {
   if (r.status === 'seeded') return `Reset schedule seeded — first reset ${r.nextResetDate}`
