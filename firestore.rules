@@ -1,0 +1,719 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // IDENTITY
+    //
+    // These rules used to gate every staff write on one broad isStaff()
+    // helper: "does users/{uid} say isStaff?" — nothing about which role.
+    // Any staff account, a barista or a social hire included, could write to
+    // any staff-gated collection with a direct SDK call. The admin panel just
+    // didn't render the button. That was the platform's largest hole.
+    //
+    // It stayed that way for a reason worth understanding, because it shapes
+    // everything below: every get() inside a rule is a BILLED DOCUMENT READ.
+    // A rule granular enough to check a role meant a read on nearly every
+    // write in the app. Reading a custom claim off the token costs nothing.
+    //
+    // So role, branchIds, superadmin and the DM flag now ride in the ID token
+    // as custom claims (app/lib/server/claims.ts writes them; nothing else
+    // may). This file reads them, and granularity becomes affordable.
+    //
+    // ── The document fallback, and when to delete it ──────────────────────
+    // A token minted before the claims backfill carries no claims. Denying
+    // those would lock out every signed-in staff member the moment this
+    // deploys — and a rules deploy has no gradual rollout. So each helper
+    // reads the claim first and falls back to the document.
+    //
+    // The fallback IS the gradual rollout. It costs one read only for a token
+    // that predates claims, which is zero once tokens have rotated (max one
+    // hour, and useAdminUser() forces it sooner). Once the whole team has
+    // signed in post-backfill, delete every fallback branch — search this
+    // file for FALLBACK.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // True only when this token actually carries claims. Every helper below
+    // branches on it, so the fallback path is never taken for a modern token.
+    // Probe the claim with .get(), NOT `request.auth.token.staff`. No token
+    // carries claims until the backfill has run, and a bare property access
+    // for a claim that isn't on the token FAILS rather than returning false.
+    //
+    // That failure is invisible in isStaff(), because `hasClaims() || (...)`
+    // still reaches the document fallback on the right-hand side. But every
+    // other helper uses hasClaims() as a TERNARY CONDITION, and a ternary
+    // whose condition fails takes neither branch — so staffRole() and isDm()
+    // never returned anything, and every hasRole()/can() gate in the file
+    // denied for every staff account while the isStaff() ones kept working.
+    // That is the exact signature of the outage: /admin pages loaded (reads
+    // are isStaff()) but no save anywhere in the panel succeeded.
+    function hasClaims() {
+      return isSignedIn() && request.auth.token.get('staff', false) == true;
+    }
+
+    // FALLBACK — one billed read, pre-backfill tokens only.
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isStaff() {
+      return hasClaims() || (isSignedIn() && userDoc().get('isStaff', false) == true);
+    }
+
+    // Same .get() rule as hasClaims() above: never touch a claim by bare
+    // property access, or the helper fails outright for a claimless token.
+    function staffRole() {
+      return hasClaims() ? request.auth.token.get('role', '') : userDoc().get('role', '');
+    }
+
+    // NOTE: there is deliberately no isSuperadmin() helper. Nothing enforces
+    // superadmin in rules yet, and a defined-but-uncalled helper in a security
+    // file reads as though something does. The superadmin protection that does
+    // exist is on the users update rule below, and it reads the target
+    // document's own field — free, since that document is already loaded.
+    // Add this helper back when feature flags land (they gate on superadmin).
+
+    // Per-user section grants are deliberately NOT in the token: claims cap at
+    // 1000 bytes and this is an unbounded array, so putting it there is how you
+    // get an account that silently fails to save. It's read from the document
+    // instead — but only AFTER the role check has already failed, so a staff
+    // member whose role covers the section pays nothing for this existing.
+    function sectionGrants() {
+      return isSignedIn() ? userDoc().get('sectionGrants', []) : [];
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // AUTHORIZATION
+    //
+    // can() mirrors hasSectionAccess() in app/lib/roles.ts — same section
+    // keys, same role lists, same DM rule — so a rule and the page that
+    // writes through it can't disagree about who's allowed.
+    //
+    // ONE DELIBERATE DIFFERENCE: sectionRevocations are NOT enforced here.
+    // Honouring them would mean a document read on EVERY staff write, not
+    // just the grant path, because a revocation has to beat the role and you
+    // can't know one isn't present without looking. A revoked user is still a
+    // staff member holding that role, so what's lost is a UI convenience, not
+    // a boundary — but be clear-eyed: a revoked user CAN still write via a
+    // direct SDK call. If a revocation ever needs to be a real boundary,
+    // change that person's role, or put the operation behind a route handler.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    function hasRole(roles) {
+      return isStaff() && staffRole() in roles;
+    }
+
+    // A wholesale account: a shop that buys from us, NOT one of the suppliers
+    // in orderProviders. Read from the token so gating every price read costs
+    // nothing. A deactivated account loses this claim (see claims.ts), so
+    // deactivating is enough — the login doesn't have to be deleted.
+    function isWholesale() {
+      return request.auth != null && request.auth.token.get('wholesale', false) == true;
+    }
+
+    function can(section, roles) {
+      return isStaff() && (
+        staffRole() in roles ||
+        (section in sectionGrants())
+      );
+    }
+
+    // One helper per section, mirroring SECTION_ACCESS in app/lib/roles.ts.
+    // Keep these in the same order as that file so a drift is easy to spot.
+    function canGames()             { return can('games',             ['admin', 'manager', 'gamer']); }
+    function canMenu()              { return can('menu',              ['admin', 'manager']); }
+    function canEvents()            { return can('events',            ['admin', 'manager', 'social']); }
+    function canLoyalty()           { return can('loyalty',           ['admin', 'manager']); }
+    function canBranchTables()      { return can('branchTables',      ['admin', 'manager']); }
+    function canTableReservations() { return can('tableReservations', ['admin', 'manager']); }
+    function canGamePurchases()     { return can('gamePurchases',     ['admin', 'manager', 'gamer']); }
+    function canWeeklyOrders()      { return can('weeklyOrders',      ['admin', 'manager']); }
+    function canEndOfDay()          { return can('endOfDay',          ['admin', 'manager']); }
+    function canSupplies()          { return can('supplies',          ['admin', 'manager', 'kitchen_crew', 'barista']); }
+    function canDailyInventory()    { return can('dailyInventory',    ['admin', 'manager', 'kitchen_crew', 'barista']); }
+    function canDeliveries()        { return can('deliveries',        ['admin', 'manager', 'kitchen_crew', 'barista']); }
+
+    // NOT YET ENFORCED, and left here on purpose so the next person doesn't
+    // have to re-derive it. branchIds is in the claim, so per-branch scoping
+    // is now one condition away — e.g. endOfDayReports could require
+    // inBranch(request.resource.data.branch). It is NOT switched on in this
+    // pass because admins and managers with an empty branchIds array would be
+    // locked out of their own branches, and that needs a data audit first.
+    // One tightening at a time.
+    //   function inBranch(branch) {
+    //     return hasRole(['admin']) ||
+    //       (hasClaims() && branch in request.auth.token.branchIds);
+    //   }
+
+    // ---- Public storefront content, staff-managed ----
+    // Read stays fully public — these are the storefront. Only the write side
+    // narrows, from "any staff" to "the roles that own this section".
+    match /games/{id}          { allow read: if true; allow write: if canGames(); }
+    match /gameCategories/{id} { allow read: if true; allow write: if canGames(); }
+
+    // ---- Wholesale pricing ----
+    // Deliberately NOT a field on games/{id}. That doc is world-readable so
+    // the storefront works signed-out, which means any field on it is public
+    // no matter what the UI shows — wholesale cost and therefore retail margin
+    // included. Splitting it into its own collection is what makes the price
+    // gateable at all. Doc id == the game id.
+    match /gameWholesale/{id} {
+      // isWholesale() first: it is a free token check, while isStaff() falls
+      // back to a billed get() for any token without staff claims — which is
+      // every wholesale account. Reversed, each price read would cost a read.
+      allow read:  if isWholesale() || isStaff();
+      allow write: if canGames();
+    }
+
+    match /menuCategories/{id} { allow read: if true; allow write: if canMenu(); }
+    match /menuItems/{id}      { allow read: if true; allow write: if canMenu(); }
+    match /events/{id}         { allow read: if true; allow write: if canEvents(); }
+    match /eventTypes/{id}     { allow read: if true; allow write: if canEvents(); }
+    match /levelPerks/{id}     { allow read: if true; allow write: if canLoyalty(); }
+
+    // ---- Audit log ----
+    // Every staff mutation writes here, so create must stay open to all staff.
+    // But it is an AUDIT LOG: update and delete are now denied outright, where
+    // the old blanket `write` allowed both. An audit trail anyone audited can
+    // edit isn't one. (Server-side writes via the Admin SDK bypass rules
+    // entirely, so app/lib/server/activityLog.ts is unaffected.)
+    match /activityLog/{id} {
+      allow read:   if isStaff();
+      allow create: if isStaff();
+      allow update, delete: if false;
+    }
+
+    // Per-user status notifications — reservation approvals/rejections written
+    // by staff, read+dismissed by the recipient only.
+    match /notifications/{id} {
+      allow read: if isSignedIn() && request.auth.uid == resource.data.uid;
+      allow create: if isStaff();
+      allow update: if isSignedIn() &&
+        request.auth.uid == resource.data.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.uid;
+    }
+
+    // Shared across every admin section that has an image picker, so it stays
+    // open to all staff. Delete is genuinely used (media cleanup), so this one
+    // keeps a full `write` unlike activityLog above.
+    match /mediaLibrary/{id} { allow read, write: if isStaff(); }
+
+    // ---- Staff account provisioning ----
+    // DEPRECATED. This collection existed only to prop up the old four-step
+    // client-side account creation: the admin wrote an invitation here so the
+    // new user's own token had something to prove admin intent with, since a
+    // rule can't call isStaff() on the same collection it's writing.
+    //
+    // Account creation now runs through POST /api/admin/accounts on the Admin
+    // SDK, which bypasses rules entirely. Once you've confirmed no client
+    // writes here (check /admin/logs for creations going through the route),
+    // delete this block and the collection. Narrowed to admin in the meantime.
+    match /adminInvitations/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if hasRole(['admin']);
+    }
+
+    // ---- Accounts ----
+    // A customer may freely edit their own profile fields (avatar, theme,
+    // username, the level/levelTitle display cache), but xp/obCoins must stay
+    // unchanged in a customer-initiated update — the only legitimate way to
+    // change a balance is a staff-approved transaction or redemption (see
+    // approveTransaction in app/lib/loyalty.ts and confirmRedemption in
+    // app/lib/redemptions.ts). On creation, a customer may only set xp/obCoins
+    // to 0, matching what ensureCustomerDoc always writes.
+    //
+    // This top-level doc is readable by any signed-in customer (friend search
+    // and the leaderboard both read other customers' profiles), so anything
+    // that shouldn't be that widely exposed lives in one of the two private
+    // sub-docs below instead — split into two, not one, because they need
+    // different read access: a customer can read back their own
+    // avatarDeleteUrl (the profile page's own avatar-cleanup flow needs it),
+    // but a phone number is admin-lookup-only.
+    //
+    // isBoundedString caps a free-text field's length on customer-initiated
+    // writes without requiring the field to be present at all, so accounts
+    // predating a field (firstName/lastName) can still update other fields.
+    function isBoundedString(data, field, maxLen) {
+      return !(field in data) || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    // THE FIELDS THAT DECIDE WHO SOMEONE IS.
+    //
+    // These are the source of a staff member's custom claims. If a browser can
+    // write them, then a barista can make themselves an admin by writing one
+    // document — and the old rule's plain `isStaff()` on update allowed exactly
+    // that. It's also now an integrity problem, not only a privilege one:
+    // writing `role` from a client changes the document without minting new
+    // claims, so the token and the document silently disagree.
+    //
+    // Nothing in the browser needs to write these any more. Creation, role
+    // changes and revocation all run through /api/admin/accounts on the Admin
+    // SDK, which bypasses rules. So: denied to every client, always.
+    function touchesPrivilegeFields() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        // isDungeonMaster stays locked even though the role is gone: legacy
+        // documents may still carry it, and a field a client can't write is
+        // never a liability.
+        .hasAny(['isStaff', 'role', 'superadmin', 'branchIds', 'isDungeonMaster', 'claimsUpdatedAt']);
+    }
+
+    // Balance fields. Only loyalty staff may move these, and only through the
+    // approval flows — never the account's own owner.
+    function touchesBalanceFields() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['xp', 'obCoins']);
+    }
+
+    // sectionGrants/sectionRevocations are still written from /admin/users
+    // (the checkbox grid) — they're not in the claims, so there's no
+    // token-drift problem, and admin is the only role that reaches that page.
+    function touchesGrantFields() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['sectionGrants', 'sectionRevocations']);
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn() && (
+        // Regular customer self-signup: no staff tag, balances start at 0.
+        (request.auth.uid == userId &&
+          request.resource.data.xp == 0 &&
+          request.resource.data.obCoins == 0 &&
+          request.resource.data.get('isStaff', false) != true) ||
+        // DEPRECATED, delete alongside adminInvitations above. The old
+        // staff-creation path; the route creates staff documents server-side.
+        (request.auth.uid == userId &&
+          exists(/databases/$(database)/documents/adminInvitations/$(userId)))
+      );
+
+      allow update: if isSignedIn() && !touchesPrivilegeFields() && (
+        // The owner editing their own profile. Cannot move their own balance,
+        // cannot grant themselves anything.
+        (request.auth.uid == userId && !touchesBalanceFields() && !touchesGrantFields()) ||
+        // Loyalty staff adjusting a customer's balance or profile — the
+        // approvals and manual-adjustment flows. Narrowed from any staff.
+        (canLoyalty() && !touchesGrantFields()) ||
+        // Admins editing per-user section grants from /admin/users.
+        //
+        // A superadmin's own document is theirs alone to change. /admin/users
+        // greys the button out (canEdit()); this is the same rule where it's
+        // actually a boundary, so no admin can quietly strip the grants of the
+        // one person who could undo them. Reading resource.data here is free —
+        // the document being written is already loaded.
+        (hasRole(['admin']) && !touchesBalanceFields() &&
+          (resource.data.get('superadmin', false) != true || request.auth.uid == userId))
+      );
+
+      // Deleting a profile is an admin action, not a general staff one. Note
+      // this only removes the Firestore document; the Auth login survives
+      // until true deletion moves to the Admin SDK (see ARCHITECTURE.md).
+      allow delete: if hasRole(['admin']);
+
+      match /private/avatar {
+        allow read, write: if isSignedIn() && (request.auth.uid == userId || isStaff());
+      }
+
+      // contact: phone number + real first/last name, staff-lookup only. Write
+      // access stays with the owner (they provide it at signup), but nobody,
+      // including the customer, can read it back except staff.
+      match /private/contact {
+        allow read: if isStaff();
+        allow write: if isStaff() ||
+          (isSignedIn() && request.auth.uid == userId &&
+            isBoundedString(request.resource.data, 'firstName', 50) &&
+            isBoundedString(request.resource.data, 'lastName', 50));
+      }
+    }
+
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // ---- Loyalty economy ----
+    // xpAmount/coinsAmount are bounds-checked on creation rather than trusted
+    // as-is — a customer submitting their own check is the only transaction
+    // type created directly by a customer (event/D&D attendance is logged by
+    // staff), so the caps are generous-but-bounded upper limits, not exact
+    // expected values. Customer self-submissions also require a verified
+    // email; staff-logged attendance is exempted since it isn't self-reported.
+    match /transactions/{id} {
+      allow read: if isSignedIn() && (
+        resource.data.status == 'approved' ||
+        request.auth.uid in resource.data.userId ||
+        isStaff()
+      );
+      allow create: if isSignedIn() &&
+        request.auth.uid == request.resource.data.submittedBy &&
+        request.resource.data.status == 'pending' &&
+        (isStaff() || request.auth.token.email_verified == true) &&
+        request.resource.data.xpAmount is int &&
+        request.resource.data.xpAmount >= 0 && request.resource.data.xpAmount <= 10000 &&
+        request.resource.data.coinsAmount is int &&
+        request.resource.data.coinsAmount >= 0 && request.resource.data.coinsAmount <= 2000;
+      // Approving/rejecting is a loyalty-staff action, narrowed from any staff
+      // — approving a transaction moves real currency.
+      //
+      // The self-approval guard stays and still matters: the same Firebase
+      // account can be both staff and the beneficiary of a customer check, so
+      // without it a manager could approve their own submission unreviewed.
+      allow update: if (canLoyalty() && !(request.auth.uid in resource.data.userId)) ||
+        (isSignedIn() &&
+          request.auth.uid == resource.data.submittedBy &&
+          resource.data.status == 'pending' &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+          request.resource.data.status == 'cancelled');
+    }
+
+    // Append-only history of transaction status changes — same reasoning as
+    // activityLog: readable by staff, written by the approval flow, never
+    // editable after the fact.
+    match /transactionLog/{id} {
+      allow read:   if isStaff();
+      allow create: if canLoyalty();
+      allow update, delete: if false;
+    }
+
+    match /friendRequests/{id} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.fromUid || request.auth.uid == resource.data.toUid
+      );
+      allow create: if isSignedIn() &&
+        request.auth.uid == request.resource.data.fromUid &&
+        request.resource.data.status == 'pending';
+      allow update: if isSignedIn() &&
+        request.auth.uid == resource.data.toUid &&
+        resource.data.status == 'pending' &&
+        request.resource.data.status == 'accepted';
+      allow delete: if isSignedIn() && (
+        request.auth.uid == resource.data.fromUid || request.auth.uid == resource.data.toUid
+      );
+    }
+
+    // Mobile-app loyalty rewards catalog. NOTE: the app manages `rewards`
+    // while the website and the customer redeem flow both read
+    // `redemptionItems` — editing the catalog in the app has no effect
+    // anywhere. That's a known bug (see the feature audit), not something
+    // these rules can fix; flagged here so nobody "fixes" it by widening a rule.
+    match /rewards/{id} {
+      allow read: if true;
+      allow write: if canLoyalty();
+    }
+
+    // Public, like games/menuItems/events above — the Loyalty page shows
+    // what's redeemable to everyone, signed in or not, as part of the pitch
+    // for joining the program.
+    match /redemptionItems/{itemId} {
+      allow read: if true;
+      allow write: if canLoyalty();
+    }
+
+    // Every redemption request is customer-initiated (staff only approve), so
+    // the verified-email requirement applies unconditionally here, unlike
+    // transactions' isStaff() exemption above. coinCost is pinned to
+    // redemptionItems' own current price rather than trusted from the request
+    // — otherwise a customer could request a pricey item while claiming
+    // whatever low coinCost they like, and confirmRedemption deducts exactly
+    // what's stored on the redemption, not the item's real price.
+    match /redemptions/{redemptionId} {
+      allow read: if isSignedIn() &&
+        (request.auth.uid == resource.data.userId || isStaff());
+      allow create: if isSignedIn() &&
+        request.auth.uid == request.resource.data.requestedBy &&
+        request.auth.token.email_verified == true &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.coinCost ==
+          get(/databases/$(database)/documents/redemptionItems/$(request.resource.data.itemId)).data.coinCost;
+      // Confirming a redemption spends a customer's coins — loyalty staff only.
+      allow update: if canLoyalty() ||
+        (isSignedIn() &&
+          request.auth.uid == resource.data.requestedBy &&
+          resource.data.status == 'pending' &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+          request.resource.data.status == 'cancelled');
+    }
+
+    // ---- Bookings ----
+    // Update is the invitee responding — acceptInvite()/declineInvite() only
+    // ever flip status pending -> accepted or declined, so that's all this
+    // allows; nothing lets the invitee rewrite reservationId, inviterUid, or
+    // any other field on a doc they don't own the content of.
+    //
+    // Event invites only. The 'dnd' and 'lfp' types were removed with the D&D
+    // modules.
+    match /participantInvites/{id} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.inviteeUid ||
+        request.auth.uid == resource.data.inviterUid ||
+        isStaff()
+      );
+      allow create: if isSignedIn() &&
+        request.auth.uid == request.resource.data.inviterUid &&
+        request.resource.data.status == 'pending';
+      allow update: if isSignedIn() &&
+        request.auth.uid == resource.data.inviteeUid &&
+        resource.data.status == 'pending' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+        request.resource.data.status in ['accepted', 'declined'];
+    }
+
+    // Declining drops the invitee from `participants` and decrements the
+    // separate `partySize` counter, which would otherwise go stale.
+    match /eventReservations/{id} {
+      allow read: if isSignedIn() && (request.auth.uid == resource.data.userId || isStaff());
+      allow create: if isSignedIn() &&
+        request.auth.uid == request.resource.data.requestedBy &&
+        request.resource.data.status == 'pending';
+      allow update: if canEvents() ||
+        (isSignedIn() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants', 'partySize']) &&
+          request.resource.data.participants.size() == resource.data.participants.size() - 1 &&
+          request.resource.data.partySize == resource.data.partySize - 1) ||
+        // Customer cancellation: pending or approved → cancelled only.
+        (isSignedIn() &&
+          request.auth.uid == resource.data.userId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt']) &&
+          request.resource.data.status == 'cancelled' &&
+          resource.data.status in ['pending', 'approved']);
+    }
+
+    // ---- Table reservations (per-branch floor-plan booking) ----
+    // One layout doc per branch, doc id == the branch name itself — public
+    // read (customers need to see the map to book, signed in or not),
+    // editor-role write (the admin table map editor).
+    match /branchTableLayouts/{branch} {
+      allow read: if true;
+      allow write: if canBranchTables();
+    }
+
+    // Same shape as eventReservations — instant lock,
+    // 'pending' until staff approve/reject. tableIds/partySize are
+    // bounds-checked on create the same way transactions' amounts are: a
+    // generous sanity backstop, not the real capacity check (that's enforced
+    // client-side against the actual table(s) picked).
+    match /tableReservations/{id} {
+      allow read: if isSignedIn() && (request.auth.uid == resource.data.userId || isStaff());
+      allow create: if isSignedIn() &&
+        request.auth.uid == request.resource.data.requestedBy &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.tableIds is list &&
+        request.resource.data.partySize is int &&
+        request.resource.data.partySize >= 1 && request.resource.data.partySize <= 50;
+      // Approve / reject / check-in. The customer who submitted may cancel
+      // their own reservation (pending or approved → cancelled only), changing
+      // only status and cancelledAt.
+      allow update: if canTableReservations() ||
+        (isSignedIn() &&
+          request.auth.uid == resource.data.userId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt']) &&
+          request.resource.data.status == 'cancelled' &&
+          resource.data.status in ['pending', 'approved']);
+    }
+
+    // A deterministic lock document per table per time bucket, so two joint
+    // bookings can't claim the same table without one of them failing.
+    // (This generalized an earlier per-DM lock from the removed D&D module.) Ownership is
+    // validated from the lock doc's own requestedBy field (denormalized there
+    // at write time), not via a get() back to the sibling tableReservations
+    // doc created in the same transaction — rules-triggered get() calls aren't
+    // guaranteed to see a sibling write from earlier in the same commit
+    // (unlike the client's own tx.get() calls, which are).
+    match /tableLocks/{id} {
+      allow read: if true;
+      allow create: if isSignedIn() &&
+        request.resource.data.tableId is string &&
+        request.resource.data.reservationId is string &&
+        request.resource.data.bucketStart is timestamp &&
+        request.resource.data.requestedBy == request.auth.uid;
+      allow delete: if canTableReservations();
+    }
+
+    // ---- Retail ----
+    // Staff-only purchase orders — customers never touch this collection.
+    // Write covers create (record a sale) and update (attach invoiceUrl after
+    // the upload, or flip status to 'refunded').
+    match /gamePurchaseOrders/{id} {
+      allow read:  if isStaff();
+      allow write: if canGamePurchases();
+    }
+
+    // ---- App settings ----
+    // Global configuration. Narrowed from any-staff-writes to admin, with one
+    // deliberate exception below.
+    match /appSettings/{id} {
+      allow read:  if isStaff();
+      allow write: if hasRole(['admin']);
+    }
+
+    // THE EXCEPTION. checkAndRunLoyaltyReset() (app/lib/customerManagement.ts)
+    // stamps this doc from the browser on dashboard load, whoever happens to
+    // load it first — that's the app's stand-in for a cron job. Restricting it
+    // to admin would mean the annual reset silently never fires unless an
+    // admin happens to open the dashboard on the right day.
+    //
+    // Firestore ORs overlapping match blocks, so this widens just this one
+    // document while everything else in appSettings stays admin-only.
+    //
+    // DELETE THIS BLOCK when the reset moves to Vercel Cron — a cron route
+    // runs on the Admin SDK and bypasses rules entirely, so no client will
+    // need to write here at all.
+    match /appSettings/loyaltyReset {
+      allow read:  if isStaff();
+      allow write: if isStaff();
+    }
+
+    // ---- Weekly order reports ----
+    // Template items are managed by admin/manager via the template editor; all
+    // staff read them (they appear on the submit form every role can use).
+    match /orderTemplateItems/{id} {
+      allow read:  if isStaff();
+      allow write: if canWeeklyOrders();
+    }
+    // Category provider meta — one doc per category (doc id = category name).
+    match /orderCategoryMeta/{id} {
+      allow read:  if isStaff();
+      allow write: if canWeeklyOrders();
+    }
+    // Supplier/provider directory — name + per-branch phone numbers.
+    match /orderProviders/{id} {
+      allow read:  if isStaff();
+      allow write: if canWeeklyOrders();
+    }
+    // Submitting a weekly order is `weeklyOrdersSubmit`, which is ALL_ROLES in
+    // SECTION_ACCESS — every role can submit for their own departments. Only
+    // the managing roles may edit or delete a submitted report afterwards.
+    match /weeklyOrderReports/{id} {
+      allow read: if isStaff();
+      allow create: if isStaff() &&
+        request.auth.uid == request.resource.data.submittedBy &&
+        request.resource.data.branch is string &&
+        request.resource.data.weekStart is string &&
+        request.resource.data.items is list;
+      allow update, delete: if canWeeklyOrders();
+    }
+
+    // ---- Consumable supplies inventory ----
+    // Read stays open to all staff (the count form and the low-stock panel
+    // both read it); writes are the counting roles — kitchen crew and baristas
+    // included, since they're the ones who add a missing item or fix a
+    // threshold while counting.
+    match /supplies/{id} {
+      allow read:  if isStaff();
+      allow write: if canSupplies() || canDailyInventory();
+    }
+
+    // One count per (branch, date, department) — doc id is
+    // "{branch}_{YYYY-MM-DD}_{department}", so Kitchen, Bar and Cleaning are
+    // submitted independently for the same branch and day. Submitting a final
+    // count also writes the counted quantities back onto the matching
+    // supplies/{id} docs in the same batch — covered by the supplies rule
+    // above, which is why canDailyInventory() appears in it.
+    match /dailyInventoryCounts/{id} {
+      allow read: if isStaff();
+      allow create: if canDailyInventory() &&
+        request.auth.uid == request.resource.data.submittedBy &&
+        request.resource.data.branch is string &&
+        request.resource.data.date is string &&
+        request.resource.data.department is string;
+      allow update: if canDailyInventory();
+    }
+
+    // ---- Goods receiving (Phase 01) ----
+    // Reads are for the receiving roles; WRITES ARE DENIED TO EVERY CLIENT.
+    //
+    // That is not an oversight. Posting a delivery moves stock AND sets
+    // purchase cost, which feeds weighted average cost and every costing
+    // decision after it. Both run in one Firestore transaction inside
+    // /api/admin/deliveries on the Admin SDK, which bypasses rules entirely —
+    // so there is no legitimate browser write to permit here.
+    //
+    // Denying rather than omitting the block is deliberate: an omitted
+    // collection is denied by default too, but a future reader would have no
+    // way to tell "nobody thought about this" from "this is on purpose".
+    //
+    // This is the first collection built to the Phase 00 rule — no client SDK
+    // writes — rather than retrofitted to it. New collections should look like
+    // this one, not like the ones above.
+    match /deliveries/{id} {
+      allow read: if canDeliveries() || canWeeklyOrders();
+      allow write: if false;
+    }
+
+    // ---- End-of-day reports ----
+    // Per-branch staff roster — all staff read it (the EOD form needs it to
+    // populate the attendance list), managing roles write it.
+    match /branchStaff/{branch} {
+      allow read:  if isStaff();
+      allow write: if canEndOfDay();
+    }
+
+    // One report per (branch, date) — doc id is "{branch}_{YYYY-MM-DD}".
+    //
+    // BEHAVIOUR CHANGE TO VERIFY: the old rule and its comment said "created
+    // and updated by any staff member (the cashier on shift fills it in)", but
+    // SECTION_ACCESS.endOfDay has always been ['admin', 'manager'] — so the UI
+    // never showed the form to anyone else anyway. This aligns the rule with
+    // the UI. If a barista genuinely fills these in at your branches, grant
+    // them the `endOfDay` section from Manage Users (can() honours grants)
+    // rather than widening this rule.
+    match /endOfDayReports/{id} {
+      allow read: if isStaff();
+      allow create: if canEndOfDay() &&
+        request.auth.uid == request.resource.data.submittedBy &&
+        request.resource.data.branch is string &&
+        request.resource.data.date is string;
+      allow update: if canEndOfDay();
+    }
+
+    // ---- Audit logs (weekly orders & end-of-day) ----
+    // Append-only, same as activityLog and transactionLog.
+    match /weeklyOrderLogs/{id} {
+      allow read:   if isStaff();
+      allow create: if isStaff();
+      allow update, delete: if false;
+    }
+    match /endOfDayLogs/{id} {
+      allow read:   if isStaff();
+      allow create: if canEndOfDay();
+      allow update, delete: if false;
+    }
+
+    // Everything else is denied by default — Firestore rejects any collection
+    // with no matching `match` block above, so this isn't strictly required,
+    // but it's written out explicitly so that's never ambiguous to a future
+    // reader of this file.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ---- Wholesale orders ----
+    // A shop may create an order for itself and read only its own; it may
+    // never change one after submitting, because status/prices on a submitted
+    // order are the record staff act on.
+    match /wholesaleOrders/{id} {
+      // Free token check before the get()-backed isStaff(), as above.
+      allow read: if (isWholesale() && resource.data.accountUid == request.auth.uid)
+        || isStaff();
+
+      allow create: if isWholesale() &&
+        request.resource.data.accountUid == request.auth.uid &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.items is list &&
+        request.resource.data.items.size() > 0 &&
+        request.resource.data.totalUsd is number;
+
+      // Approving, rejecting, marking fulfilled and stamping emailedAt are all
+      // staff actions. canGames() rather than any-staff: whoever manages the
+      // game library is who fills these.
+      allow update: if canGames();
+      allow delete: if hasRole(['admin']);
+    }
+  }
+}

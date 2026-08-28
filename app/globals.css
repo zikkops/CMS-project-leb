@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Brand colour and font variables are NOT defined here — they're injected from
+  app/lib/brand.ts by the root layout, because they're configuration and this
+  file is static. See the note in app/layout.tsx.
+
+  What stays here: structural resets and effects that don't vary per tenant.
+*/
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--brand-background);
+  color: var(--brand-foreground);
+  min-height: 100vh;
+}
+
+html {
+  /* Literal rather than a var: this paints before the layout's injected style
+     is parsed, so a var here would flash the browser default first. Keep it in
+     sync with NEXT_PUBLIC_COLOR_BACKGROUND if you change the default. */
+  background-color: #0F0F11;
+}
+
+@keyframes skeletonShine {
+  0%   { left: -60%; }
+  100% { left: 130%; }
+}
+
+/* Scrollbar picks up the configured accent rather than a hardcoded tint. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--brand-tertiary) 50%, transparent) rgba(255, 255, 255, 0.04);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--brand-tertiary) 50%, transparent);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--brand-tertiary) 80%, transparent);
+  background-clip: content-box;
+}
