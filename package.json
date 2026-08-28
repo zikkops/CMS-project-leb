@@ -44,6 +44,8 @@
     "typescript": "^5"
   },
   "overrides": {
-    "uuid": "^11.1.1"
-  }
+    "uuid": "^11.1.1",
+    "jose": "^5.10.0"
+  },
+  "//overrides": "jose is pinned to 5.x because jwks-rsa@4 (a firebase-admin dependency) does require('jose'), and jose@6 is ESM-only. Node 24 tolerates require(esm) locally, but Vercel loads firebase-admin through its external-module path where it does not, so every admin route returned an opaque 500 at module evaluation. jose@5 ships a CJS entry and exposes the four APIs jwks-rsa uses (decodeJwt, decodeProtectedHeader, exportSPKI, importJWK). Remove this once firebase-admin ships a jwks-rsa that imports jose as ESM."
 }
