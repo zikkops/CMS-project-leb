@@ -22,7 +22,15 @@
 //
 // Delete it once the deployment is healthy, or keep it as an uptime check.
 
-import { toResponse } from '@/app/lib/server/auth'
+// NOTHING is imported at module scope from app/lib/server/**.
+//
+// The first version of this file imported toResponse from server/auth "for
+// tidiness". server/auth imports firebaseAdmin at module scope, so the
+// diagnostic pulled in the exact chain it was built to diagnose and returned
+// the same opaque 500 as everything else. A diagnostic that shares its
+// subject's failure mode reports nothing.
+//
+// Every server import below is dynamic, inside a try/catch.
 
 export const runtime = 'nodejs'
 
@@ -94,10 +102,6 @@ export async function GET(): Promise<Response> {
     }
   }
 
-  try {
-    const healthy = steps.every(s => s.ok)
-    return Response.json({ healthy, steps }, { status: healthy ? 200 : 503 })
-  } catch (err) {
-    return toResponse(err)
-  }
+  const healthy = steps.every(s => s.ok)
+  return Response.json({ healthy, steps }, { status: healthy ? 200 : 503 })
 }
