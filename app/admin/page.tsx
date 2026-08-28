@@ -10,7 +10,6 @@ import { usePendingTransactions } from '../lib/loyalty'
 import { usePendingRedemptions } from '../lib/redemptions'
 import { usePendingEventReservations } from '../lib/eventReservations'
 import { usePendingTableReservations } from '../lib/tableReservations'
-import { migratePrivateFieldsOnce, migrateNameFieldsOnce } from '../lib/customerManagement'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faCashRegister, faReceipt, faDice, faUtensils, faCalendar, faCalendarCheck,
@@ -75,19 +74,16 @@ export default function AdminPage() {
   }, [checking, role, branchIds])
   const { reservations: pendingTableReservations } = usePendingTableReservations(tableReservationFilter)
 
-  // The annual points reset used to be triggered from here — the first admin
-  // to open the dashboard on or after the date ran it, in their browser. It is
-  // a scheduled server job now (Vercel Cron → /api/admin/loyalty/reset), so
-  // opening a dashboard no longer wipes anybody's balance.
+  // Nothing fires on dashboard load any more.
   //
-  // The two migrations below are still client-side one-shots, and are on the
-  // list npm run audit:writes tracks.
-  useEffect(() => {
-    if (!checking && role === 'admin') {
-      migratePrivateFieldsOnce()
-      migrateNameFieldsOnce()
-    }
-  }, [checking, role])
+  // This effect used to run three things in the browser: the annual points
+  // reset, and two one-shot data migrations. All three set a "done" flag or
+  // advanced a date BEFORE doing their work, so a tab closed midway left the
+  // job marked finished and half-applied, with nothing to retry it.
+  //
+  // The reset is a scheduled server job (Vercel Cron → /api/admin/loyalty/
+  // reset). The migrations are scripts/harden-customer-fields.mjs. Opening a
+  // dashboard is a read, and now only a read.
 
   async function handleSignOut() {
     await signOut(auth)

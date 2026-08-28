@@ -32,7 +32,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
-const BASELINE = 80
+const BASELINE = 73
 
 const LIST = process.argv.includes('--list')
 
@@ -111,7 +111,6 @@ const PRIV = new Set([
   'transferGameStock', 'nextInvoiceSequence', 'generateWholesaleInvoice',
   // Staff editing a customer's balances, and the annual reset.
   'saveLoyaltyResetDate',
-  'checkAndRunLoyaltyReset', 'migratePrivateFieldsOnce', 'migrateNameFieldsOnce',
   // Awarding points, publishing rewards, the audit log, media backfill.
   'awardTableCheckin', 'toggleItemActive', 'writeLog', 'backfillMediaLibrary',
   // Loyalty, post-de-gamification: staff moving a customer's balance or

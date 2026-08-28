@@ -236,91 +236,31 @@ export async function runLoyaltyResetNow(force = false): Promise<{ status: strin
   return data as { status: string; customersReset: number; nextResetDate?: string }
 }
 
-const privateFieldsMigrationRef = doc(db, 'appSettings', 'privateFieldsMigration')
-
-// One-time cleanup for accounts created before phoneNumber/avatarDeleteUrl
-// moved off the main users/{uid} doc into private sub-docs (see
-// firestore.rules) — that doc is broadly readable by any signed-in
-// customer, so anything written there before this migration ran would
-// otherwise still be sitting there, unprotected, indefinitely. Same
-// passive trigger as checkAndRunLoyaltyReset (first admin dashboard load),
-// guarded by its own appSettings flag so it only ever runs once; a
-// double-run would just redundantly re-write the same already-migrated
-// values, which is harmless.
-export async function migratePrivateFieldsOnce(): Promise<void> {
-  const snap = await getDoc(privateFieldsMigrationRef)
-  if (snap.exists() && snap.data().done) return
-  await setDoc(privateFieldsMigrationRef, { done: true }, { merge: true })
-
-  const usersSnap = await getDocs(collection(db, 'users'))
-  let migrated = 0
-
-  for (const d of usersSnap.docs) {
-    const data = d.data() as { phoneNumber?: string; avatarDeleteUrl?: string | null }
-    const hasPhone = typeof data.phoneNumber === 'string'
-    const hasAvatarUrl = data.avatarDeleteUrl !== undefined
-    if (!hasPhone && !hasAvatarUrl) continue
-
-    if (hasPhone) {
-      await setDoc(doc(db, 'users', d.id, 'private', 'contact'), { phoneNumber: data.phoneNumber }, { merge: true })
-    }
-    if (hasAvatarUrl) {
-      await setDoc(doc(db, 'users', d.id, 'private', 'avatar'), { avatarDeleteUrl: data.avatarDeleteUrl }, { merge: true })
-    }
-    await updateDoc(d.ref, {
-      ...(hasPhone ? { phoneNumber: deleteField() } : {}),
-      ...(hasAvatarUrl ? { avatarDeleteUrl: deleteField() } : {}),
-    })
-    migrated++
-  }
-
-  if (migrated > 0) {
-    await logActivity(
-      'update', 'Customer Account',
-      `Migrated phone number / avatar delete-hash off the main profile doc for ${migrated} customer${migrated === 1 ? '' : 's'}`
-    )
-  }
-}
-
-const nameFieldsMigrationRef = doc(db, 'appSettings', 'nameFieldsMigration')
-
-// Same one-time passive migration as migratePrivateFieldsOnce above, run
-// under its own flag since that one is already marked done on existing
-// deployments — firstName/lastName are real legal names, so they get the
-// same treatment phoneNumber already got: off the broadly-readable main
-// doc and into the staff-only private/contact doc.
-export async function migrateNameFieldsOnce(): Promise<void> {
-  const snap = await getDoc(nameFieldsMigrationRef)
-  if (snap.exists() && snap.data().done) return
-  await setDoc(nameFieldsMigrationRef, { done: true }, { merge: true })
-
-  const usersSnap = await getDocs(collection(db, 'users'))
-  let migrated = 0
-
-  for (const d of usersSnap.docs) {
-    const data = d.data() as { firstName?: string; lastName?: string }
-    const hasFirst = typeof data.firstName === 'string'
-    const hasLast = typeof data.lastName === 'string'
-    if (!hasFirst && !hasLast) continue
-
-    await setDoc(doc(db, 'users', d.id, 'private', 'contact'), {
-      ...(hasFirst ? { firstName: data.firstName } : {}),
-      ...(hasLast ? { lastName: data.lastName } : {}),
-    }, { merge: true })
-    await updateDoc(d.ref, {
-      ...(hasFirst ? { firstName: deleteField() } : {}),
-      ...(hasLast ? { lastName: deleteField() } : {}),
-    })
-    migrated++
-  }
-
-  if (migrated > 0) {
-    await logActivity(
-      'update', 'Customer Account',
-      `Migrated first/last name off the main profile doc for ${migrated} customer${migrated === 1 ? '' : 's'}`
-    )
-  }
-}
+// migratePrivateFieldsOnce() and migrateNameFieldsOnce() used to live here.
+//
+// Both moved personal fields (phoneNumber, avatarDeleteUrl, firstName,
+// lastName) off users/{uid} — which any signed-in customer can read, because
+// friend search needs it — into the staff-only private sub-docs. Both ran in
+// the browser, triggered by whichever admin loaded the dashboard first.
+//
+// They are gone for two reasons.
+//
+// The trigger was wrong. Each set its `done` flag BEFORE doing the work, so a
+// tab closed midway left the flag saying finished while the remaining accounts
+// kept their phone numbers on the publicly-readable document — permanently,
+// since nothing would ever retry. For a migration whose whole purpose is to
+// stop exposing personal data, failing silently in the exposed direction is
+// the wrong way round. (The annual points reset had the same bug; see
+// app/lib/server/loyalty.ts.)
+//
+// And the timing was wrong. They fixed a data shape that only ever existed in
+// the original café's database, yet ran on every admin dashboard load forever.
+// A fresh tenant has nothing to migrate.
+//
+// The transform survives as scripts/harden-customer-fields.mjs — run
+// deliberately, resumable without a flag (it queries for documents that still
+// carry the fields), and useful after importing customers from another system,
+// which is the case that still produces the old shape.
 
 // `exceljs` is dynamically imported so it never lands in the main admin
 // bundle; this runs once, on demand, when staff click "Export." Real
