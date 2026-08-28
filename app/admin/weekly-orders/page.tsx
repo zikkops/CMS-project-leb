@@ -8,7 +8,7 @@ import {
   listWeeklyReports, listTemplateItems, listProviders,
   generateOrderText, whatsappUrl, groupByProvider, groupByCategory, getProviderPhone,
   UNIT_LABELS, DEPARTMENTS,
-  updateReportItemQty, deleteWeeklyReport, logWeeklyOrderAction, toggleWhatsappSent,
+  updateReportItemQty, deleteWeeklyReport, toggleWhatsappSent,
   type WeeklyOrderReport, type WeeklyOrderReportItem, type OrderProvider, type Department,
 } from '../../lib/weeklyOrders'
 import { BRANCHES } from '../../lib/branches'
@@ -207,20 +207,9 @@ function ReportCard({
     }
     setSaving(true)
     try {
-      const updated = await updateReportItemQty(report.id, items, item.templateId, newQty)
-      setItems(updated)
-      await logWeeklyOrderAction({
-        action:    'edit_quantity',
-        reportId:  report.id,
-        branch:    report.branch,
-        weekLabel: report.weekLabel,
-        staffUid,
-        staffEmail,
-        itemName:  item.name,
-        oldQty:    item.quantity,
-        newQty,
-        unit:      item.unit,
-      })
+      // The route writes the weeklyOrderLogs entry itself, in the same
+      // call, so the edit and its audit record cannot come apart.
+      setItems(await updateReportItemQty(report.id, items, item.templateId, newQty))
     } finally {
       setSaving(false)
       setEditingId(null)
@@ -235,15 +224,6 @@ function ReportCard({
     setDeleting(true)
     try {
       await deleteWeeklyReport(report.id)
-      await logWeeklyOrderAction({
-        action:       'delete_report',
-        reportId:     report.id,
-        branch:       report.branch,
-        weekLabel:    report.weekLabel,
-        staffUid,
-        staffEmail,
-        deletedCount: items.length,
-      })
       onDeleted?.(report.id)
     } catch {
       setDeleting(false)

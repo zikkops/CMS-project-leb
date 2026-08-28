@@ -144,6 +144,37 @@ proves nothing.
 
 Check 9 is the one that matters. Run it.
 
+## ✅ Check 9 PASSED — 29 Aug 2026
+
+Run against production (`cms-project-f7e15`) with a real `barista` account,
+not an admin:
+
+    updateDoc(doc(db, 'games', 'product-brew-guide'), { price: 0 })
+    → permission-denied
+
+Confirmed server-side afterwards rather than taken on trust: the product is
+still $29, no product in the catalogue sits at price 0, and the barista's
+points balance is 0. The account carries `role: barista` in both its document
+and its minted custom claim, so the rule took the free token path rather than
+the fallback document read.
+
+**That closes the P0.** Before this, any staff account could write to any
+staff-gated collection with a direct SDK call; the admin panel only hid the
+button.
+
+Two related writes are also denied now, both of which the old rules allowed:
+
+| Attempt | Why it's denied |
+|---|---|
+| `users/{own-uid}` → `{ points: 999999 }` | balance fields are locked to every client; all point movement runs through a route |
+| `appSettings/invoiceCounter` → `{ nextNumber: 1 }` | the sequence is issued inside the transaction that uses it |
+
+### What is still NOT covered
+
+Rules gate the DATABASE. They say nothing about the mobile app, which has its
+own P0 — no per-screen role gates at all — and which lives in the Onboard App
+repo, not here. Closing this one does not close that one.
+
 ### Behaviour changes that may surprise you
 
 **End-of-day reports are now admin/manager only.** The old rule's comment said

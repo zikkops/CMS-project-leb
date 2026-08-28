@@ -4,6 +4,7 @@ import {
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { logActivity, logUpdate, logDelete } from './activityLog'
+import { authedFetch, unwrap } from './apiClient'
 import { BRANCHES } from './branches'
 
 export type OrderUnit = 'box' | 'kg' | 'liter' | 'gallon' | 'bottle' | 'bag' | 'pcs' | 'jar' | 'block' | 'can'
@@ -157,17 +158,27 @@ export async function deleteTemplateItem(id: string, name: string): Promise<void
 
 // ---- Reports ----
 
+// Submitting runs SERVER-SIDE (Phase 00 standing rule). See
+// app/lib/server/weeklyOrders.ts.
+//
+// The request now names template items and quantities only. Every other field
+// on a line — name, unit, category, provider, pack size — is read from the
+// template document on the server. The browser used to send whole lines, so it
+// could submit an order for an item that never existed, or attribute one to
+// the wrong supplier. submittedBy comes from the verified token.
 export async function submitWeeklyReport(
-  report: Omit<WeeklyOrderReport, 'id' | 'submittedAt'>
+  report: Omit<WeeklyOrderReport, 'id' | 'submittedAt' | 'submittedBy' | 'submittedByEmail'>
 ): Promise<string> {
-  const clean = Object.fromEntries(Object.entries(report).filter(([, v]) => v !== undefined))
-  const ref = await addDoc(collection(db, 'weeklyOrderReports'), {
-    ...clean,
-    submittedAt: serverTimestamp(),
+  const res = await authedFetch('/api/admin/weekly-orders', 'POST', {
+    branch: report.branch,
+    weekStart: report.weekStart,
+    weekLabel: report.weekLabel,
+    department: report.department,
+    items: report.items.map(i => ({ templateId: i.templateId, quantity: i.quantity })),
+    notes: report.notes,
   })
-  const deptLabel = report.department ? ` — ${report.department}` : ''
-  await logActivity('create', 'Weekly Order Report', `${report.branch}${deptLabel} — ${report.weekLabel}`)
-  return ref.id
+  const data = await unwrap(res)
+  return data.id as string
 }
 
 export async function listWeeklyReports(): Promise<WeeklyOrderReport[]> {
@@ -312,33 +323,41 @@ export interface WeeklyOrderLog {
   deletedCount?: number
 }
 
-export async function logWeeklyOrderAction(
-  entry: Omit<WeeklyOrderLog, 'id' | 'createdAt'>
-): Promise<void> {
-  const clean = Object.fromEntries(
-    Object.entries(entry).filter(([, v]) => v !== undefined)
-  )
-  await addDoc(collection(db, 'weeklyOrderLogs'), { ...clean, createdAt: serverTimestamp() })
-}
+// logWeeklyOrderAction() is gone. Each route writes its own weeklyOrderLogs
+// entry in the same call as the change it records, so a submitted or edited
+// order can no longer end up with no log entry because a second client call
+// failed — and the entry records the verified caller rather than whichever
+// uid the browser supplied.
 
+// This used to take the ENTIRE items array from the caller, change one line,
+// and write the whole array back — so the browser held the authoritative copy
+// between read and write. Two people editing the same order, which is the
+// normal case on an order day, silently lost one set of edits: whoever saved
+// second won, with no conflict and no error.
+//
+// The route now updates the named line inside a transaction, reading the items
+// from the stored document. A concurrent edit to a different line survives.
+// The caller still gets the updated array back so the UI can re-render.
 export async function updateReportItemQty(
   reportId: string,
   currentItems: WeeklyOrderReportItem[],
   templateId: string,
   newQty: number,
 ): Promise<WeeklyOrderReportItem[]> {
-  const updated = currentItems.map(i =>
-    i.templateId === templateId ? { ...i, quantity: newQty } : i
-  )
-  const clean = updated.map(i =>
-    Object.fromEntries(Object.entries(i).filter(([, v]) => v !== undefined))
-  ) as WeeklyOrderReportItem[]
-  await updateDoc(doc(db, 'weeklyOrderReports', reportId), { items: clean })
-  return updated
+  const res = await authedFetch('/api/admin/weekly-orders', 'PATCH', {
+    action: 'quantity', reportId, templateId, quantity: newQty,
+  })
+  await unwrap(res)
+  return currentItems.map(i => (i.templateId === templateId ? { ...i, quantity: newQty } : i))
 }
 
+// The route refuses to delete an order a delivery has already been received
+// against — that would orphan the delivery's orderReportId and leave the
+// receiving history unable to explain what was ordered. Nothing checked that
+// before.
 export async function deleteWeeklyReport(reportId: string): Promise<void> {
-  await deleteDoc(doc(db, 'weeklyOrderReports', reportId))
+  const res = await authedFetch('/api/admin/weekly-orders?id=' + encodeURIComponent(reportId), 'DELETE')
+  await unwrap(res)
 }
 
 export async function toggleWhatsappSent(
@@ -346,9 +365,10 @@ export async function toggleWhatsappSent(
   providerKey: string,  // providerId or '__none__'
   sent: boolean,
 ): Promise<void> {
-  await updateDoc(doc(db, 'weeklyOrderReports', reportId), {
-    [`whatsappSent.${providerKey}`]: sent,
+  const res = await authedFetch('/api/admin/weekly-orders', 'PATCH', {
+    action: 'whatsapp', reportId, providerKey, sent,
   })
+  await unwrap(res)
 }
 
 export async function listWeeklyOrderLogs(limitCount = 150): Promise<WeeklyOrderLog[]> {

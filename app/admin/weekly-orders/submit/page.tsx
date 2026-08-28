@@ -156,8 +156,6 @@ export default function SubmitOrderPage() {
         department:       dept,
         items:            reportItems,
         notes:            notes.trim(),
-        submittedBy:      user?.uid ?? '',
-        submittedByEmail: user?.email ?? '',
       })
       setDone(true)
     } catch {
