@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { signOut } from 'firebase/auth'
 import { auth } from '../lib/firebase'
 import { useRequireRole, hasSectionAccess, ALL_ROLES, SECTION_ACCESS, ROLE_LABELS, type Role } from '../lib/adminAuth'
+import { useFeatureFlags } from '../lib/useFeatures'
+import { featureForSection, isFeatureOn } from '../lib/features'
 import { usePendingTransactions } from '../lib/loyalty'
 import { usePendingRedemptions } from '../lib/redemptions'
 import { usePendingEventReservations } from '../lib/eventReservations'
@@ -41,6 +43,7 @@ function useIsMobile(breakpoint = 768) {
 export default function AdminPage() {
   const router  = useRouter()
   const { checking, role, branchIds, sectionGrants, user } = useRequireRole(ALL_ROLES)
+  const { flags, loading: featuresLoading } = useFeatureFlags()
   const isMobile = useIsMobile()
 
   // Memoized — usePendingTransactions/usePendingRedemptions re-subscribe
@@ -219,7 +222,18 @@ export default function AdminPage() {
       ...section,
       cards: section.cards.filter(({ access }) => {
         const key = Object.entries(SECTION_ACCESS).find(([, v]) => v === access)?.[0]
-        return hasSectionAccess(role, access, sectionGrants, key)
+        if (!hasSectionAccess(role, access, sectionGrants, key)) return false
+        // The dashboard is a THIRD surface. adminNav.ts already warns that its
+        // card list is declared independently of the sidebar's — so wiring the
+        // sidebar to the feature flags left the cards behind, and switching a
+        // module off hid its nav entry while leaving a card that bounced you
+        // straight back to this page.
+        //
+        // Fails open while the flags load, matching the sidebar: a card that
+        // briefly appears is better than the whole dashboard flickering empty.
+        if (featuresLoading || !key) return true
+        const feature = featureForSection(key)
+        return feature ? isFeatureOn(feature, flags) : true
       }),
     }))
     .filter(section => section.cards.length > 0)

@@ -470,9 +470,16 @@ export default function SuppliesPage() {
                     background: form.vatable ? '#00A098' : 'transparent',
                     color: '#000', fontSize: '0.65rem', lineHeight: '15px', textAlign: 'center',
                   }}>{form.vatable ? '✓' : ''}</span>
-                  {form.vatable ? 'VAT applies to this item' : 'Zero-rated — no VAT'}
+                  {/* One stable label saying what TICKING it means. It used
+                      to describe the current state instead — an unticked box
+                      reading "Zero-rated — no VAT", which leaves you guessing
+                      whether ticking it makes the item zero-rated or taxable.
+                      The state is the tick; the label is the question. */}
+                  VAT applies to this item
                 </button>
-                <p style={{ fontSize: '0.62rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.25rem' }}>Used as the default when receiving; each delivery can override it</p>
+                <p style={{ fontSize: '0.62rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.25rem' }}>
+                  {form.vatable ? 'Taxed at the configured rate.' : 'Zero-rated.'} Used as the default when receiving; each delivery can override it.
+                </p>
               </div>
 
               <div>

@@ -18,7 +18,7 @@
 // CONTRIBUTING.md): inline style objects, no Tailwind, a local copy of
 // useIsMobile, child components at module scope.
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useRequireRole, SECTION_ACCESS } from '../../../lib/adminAuth'
 import { collection, getDocs, query, orderBy } from 'firebase/firestore'
@@ -286,7 +286,8 @@ function ReceivingInner() {
   // The configured VAT rate, live. The server recomputes totals with the rate
   // it is sent and stores it on the delivery, so this only decides what the
   // form shows while someone is typing.
-  const { settings: { vatRate } } = useBusinessSettings()
+  const { settings: { vatRate, exchangeRate }, loading: settingsLoading } = useBusinessSettings()
+
   const isMobile = useIsMobile()
 
   const branchOptions = useMemo(
@@ -318,7 +319,9 @@ function ReceivingInner() {
   const [providerId,    setProviderId]    = useState('')
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [currency,      setCurrency]      = useState<Currency>('USD')
-  const [rateUsed,      setRateUsed]      = useState('90000')
+  // Seeded from the configured rate rather than a hardcoded 90000, which
+  // ignored /admin/settings entirely and quietly disagreed with it.
+  const [rateUsed,      setRateUsed]      = useState('')
   const [notes,         setNotes]         = useState('')
   const [lines,         setLines]         = useState<DeliveryLine[]>([])
   const [unlinkedCount, setUnlinkedCount] = useState(0)
@@ -367,6 +370,45 @@ function ReceivingInner() {
     })
   }, [])
 
+// avgUnitCost is stored in USD, always. A delivery priced in LBP has to seed
+  // its lines at the LBP equivalent, or every unit cost arrives ~90,000x too
+  // small: the form showed 8.9 LBP for an $8.90 item and totalled the delivery
+  // at nothing. Receiving it would have set that supply's running average to
+  // about $0.0001 and destroyed the food-cost figure for it.
+  const toEntry = useCallback(
+    (usd: number) => (currency === 'LBP' && Number(rateUsed) > 0 ? round2(usd * Number(rateUsed)) : usd),
+    [currency, rateUsed],
+  )
+
+  // Fill the rate box from configuration the first time it is known. Only
+  // when untouched — someone typing the rate off the invoice in front of them
+  // must not have it overwritten when the settings listener fires.
+  useEffect(() => {
+    if (settingsLoading || rateUsed !== '') return
+    setRateUsed(String(exchangeRate))
+  }, [settingsLoading, exchangeRate, rateUsed])
+
+  // Flipping the currency re-prices every open line. Without this the numbers
+  // silently change meaning — 8.90 entered as dollars stays "8.90" and is
+  // suddenly read as 8.90 LBP.
+  function changeCurrency(next: Currency) {
+    if (next === currency) return
+    const rate = Number(rateUsed) || exchangeRate
+
+    // setLines() used to live INSIDE a setCurrency updater. React invokes a
+    // state updater twice in development to surface exactly this, and it did:
+    // every cost converted twice, so 8.90 became 71,291,225,000 rather than
+    // 796,550. An updater has to be pure — the conversion is a separate call.
+    if (rate > 0) {
+      const factor = next === 'LBP' ? rate : 1 / rate
+      setLines(ls => ls.map(l => {
+        const unitCost = round2(l.unitCost * factor)
+        return { ...l, unitCost, lineTotal: round2(l.qtyReceived * unitCost) }
+      }))
+    }
+    setCurrency(next)
+  }
+
   const supplyById = useMemo(() => new Map(supplies.map(s => [s.id, s])), [supplies])
 
   const matchingReports = useMemo(
@@ -399,7 +441,7 @@ function ReceivingInner() {
         nameAr: t?.nameAr ?? null,
         unit: supply?.unit ?? item.unit,
         quantity: item.quantity,
-        currentAvgCost: supply?.avgUnitCost ?? 0,
+        currentAvgCost: toEntry(supply?.avgUnitCost ?? 0),
         vatable: supply?.vatable !== false,
       }
     })
@@ -457,7 +499,10 @@ function ReceivingInner() {
   function addUnplannedLine(supplyId: string) {
     const s = supplyById.get(supplyId)
     if (!s || lines.some(l => l.supplyId === supplyId)) return
-    setLines(prev => [...prev, unplannedLine(s)])
+    // unplannedLine() seeds from the stored USD average; convert it the same
+    // way an ordered line is converted.
+    const line = unplannedLine(s)
+    setLines(prev => [...prev, { ...line, unitCost: toEntry(line.unitCost) }])
   }
 
   // Picking a supplier narrows the sheet to that supplier's lines — and the
@@ -647,7 +692,7 @@ function ReceivingInner() {
                 <label style={labelStyle}>Currency</label>
                 <div style={{ display: 'flex', gap: '0.4rem' }}>
                   {(['USD', 'LBP'] as Currency[]).map(c => (
-                    <button key={c} onClick={() => setCurrency(c)} style={{
+                    <button key={c} onClick={() => changeCurrency(c)} style={{
                       flex: 1,
                       background: currency === c ? 'rgba(0,160,152,0.15)' : 'transparent',
                       border: `1px solid ${currency === c ? 'var(--teal)' : 'rgba(255,255,255,0.09)'}`,
