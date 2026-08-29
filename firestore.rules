@@ -162,8 +162,13 @@ service cloud.firestore {
     // ---- Public storefront content, staff-managed ----
     // Read stays fully public — these are the storefront. Only the write side
     // narrows, from "any staff" to "the roles that own this section".
-    match /products/{id}          { allow read: if true; allow write: if canProducts(); }
-    match /productCategories/{id} { allow read: if true; allow write: if canProducts(); }
+    // /api/admin/products owns writes now. It bounds the price and the sale
+    // price, refuses a "sale" at or above the normal price, and — the reason
+    // this moved — will not write stock on an edit. The form used to hold a
+    // copy of the stock map and spread it back on save, so correcting a
+    // description reverted every sale and transfer made while it sat open.
+    match /products/{id}          { allow read: if true; allow write: if false; }
+    match /productCategories/{id} { allow read: if true; allow write: if false; }
 
     // ---- Wholesale pricing ----
     // Deliberately NOT a field on products/{id}. That doc is world-readable so

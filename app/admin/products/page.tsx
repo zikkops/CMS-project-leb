@@ -1,14 +1,13 @@
 'use client'
 
 import { useEffect, useState, useRef, useMemo } from 'react'
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useRequireRole, SECTION_ACCESS } from '../../lib/adminAuth'
-import { logActivity, logCreate, logUpdate, logDelete } from '../../lib/activityLog'
-import { BRANCHES, emptyStock, normalizeStock, totalStock } from '../../lib/branches'
+import { BRANCHES, emptyStock, totalStock } from '../../lib/branches'
 import { recordMediaUpload, uploadImage } from '../../lib/media'
 import { exportGamesCSV } from '../../lib/productPurchases'
-import { nextSku } from '../../lib/sku'
+import { authedFetch, unwrap } from '../../lib/apiClient'
 import MediaPickerModal from '../../components/admin/MediaPickerModal'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faSearch } from '@fortawesome/free-solid-svg-icons'
@@ -23,6 +22,8 @@ interface Product {
   age: string
   price: number
   wholesalePrice?: number | null
+  salePrice?: number | null
+  saleEndsAt?: string | null
   stock: Record<string, number>
   image: string
   // Issued once on create and never rewritten — see app/lib/skuFormat.ts.
@@ -39,6 +40,8 @@ const EMPTY = {
   age: '',
   price: 0,
   wholesalePrice: null as number | null,
+  salePrice: null as number | null,
+  saleEndsAt: '' as string,
   image: '',
 }
 
@@ -102,21 +105,19 @@ export default function AdminGamesPage() {
   async function addCategory() {
     if (!newCategory.trim()) return
     setAddingCat(true)
-    await addDoc(collection(db, 'productCategories'), {
-      name: newCategory.trim(),
-      createdAt: serverTimestamp(),
-    })
-    await logActivity('create', 'Product Category', newCategory.trim())
+    await unwrap(await authedFetch('/api/admin/products', 'POST', {
+      kind: 'category', name: newCategory.trim(),
+    }))
     setNewCategory('')
     setAddingCat(false)
     loadCategories()
   }
 
   async function deleteCategory(name: string) {
-    const snap = await getDocs(collection(db, 'productCategories'))
-    const docToDelete = snap.docs.find(d => (d.data() as any).name === name)
-    if (docToDelete) await deleteDoc(doc(db, 'productCategories', docToDelete.id))
-    await logActivity('delete', 'Product Category', name)
+    // Refused while products are still filed under it. A product stores its
+    // category as a NAME, so deleting one left products pointing at a label
+    // that no longer exists — they drop out of the filter rather than error.
+    await unwrap(await authedFetch(`/api/admin/products?kind=category&name=${encodeURIComponent(name)}`, 'DELETE'))
     loadCategories()
   }
 
@@ -137,7 +138,13 @@ export default function AdminGamesPage() {
       age:            product.age,
       price:          product.price,
       wholesalePrice: product.wholesalePrice ?? null,
-      stock:          normalizeStock(product.stock),
+      salePrice:      product.salePrice ?? null,
+      saleEndsAt:     product.saleEndsAt ?? '',
+      // Deliberately NOT the product's real stock. It used to be loaded here
+      // and spread back on save, so fixing a typo in a description reverted
+      // every sale and transfer that had happened while the form sat open.
+      // The editor below only renders when creating, and PATCH ignores this.
+      stock:          emptyStock(),
       image:          product.image,
     })
     setOpen(true)
@@ -163,26 +170,17 @@ export default function AdminGamesPage() {
     e.preventDefault()
     setSaving(true)
     try {
+      // Neither branch sends stock or a SKU. The route's input type carries
+      // neither, so a form field added later cannot quietly start writing one:
+      // stock moves through receiving, a sale or a transfer, and a SKU is
+      // printed on labels and past invoices.
       if (editing) {
-        // The SKU is never part of `form`, so an edit cannot rewrite it —
-        // renaming a product keeps the SKU already printed on labels and past
-        // invoices. Existing docs keep whatever they have.
-        await updateDoc(doc(db, 'products', editing.id), {
-          ...form,
-          updatedAt: serverTimestamp(),
-        })
-        await logUpdate('Product', form.name, editing, form)
+        await unwrap(await authedFetch('/api/admin/products', 'PATCH', { id: editing.id, ...form }))
       } else {
-        // Allocated before the write: a product without a SKU is the thing worth
-        // avoiding, and a spent-but-unused number is not (gaps are expected).
-        const sku = await nextSku(form.name)
-        await addDoc(collection(db, 'products'), {
-          ...form,
-          sku,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        })
-        await logCreate('Product', form.name, { ...form, sku })
+        // The SKU is allocated inside the same request that creates the
+        // product. Fetching one first and posting it back left a number in the
+        // browser's hands between two calls.
+        await unwrap(await authedFetch('/api/admin/products', 'POST', { kind: 'product', ...form }))
       }
     } catch (err) {
       setSaving(false)
@@ -197,9 +195,7 @@ export default function AdminGamesPage() {
 
   async function handleDelete(id: string) {
     if (!confirm('Delete this product?')) return
-    const product = products.find(g => g.id === id)
-    await deleteDoc(doc(db, 'products', id))
-    await logDelete('Product', product?.name ?? id, product)
+    await unwrap(await authedFetch(`/api/admin/products?kind=product&id=${encodeURIComponent(id)}`, 'DELETE'))
     loadGames()
   }
 
@@ -780,6 +776,43 @@ export default function AdminGamesPage() {
                 </div>
               </div>
 
+              {/* On offer. A blank sale price means not on offer; the route
+                  refuses one at or above the normal price, so a typo cannot
+                  produce a "SAVE -12%" badge on the storefront. */}
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={labelStyle}>Sale Price ($) — optional</label>
+                  <input
+                    type="number" min={0} step="0.01"
+                    placeholder="Leave blank if not on offer"
+                    value={form.salePrice ?? ''}
+                    onChange={e => setForm(f => ({
+                      ...f, salePrice: e.target.value === '' ? null : +e.target.value,
+                    }))}
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Sale Ends — optional</label>
+                  <input
+                    type="date"
+                    value={form.saleEndsAt}
+                    onChange={e => setForm(f => ({ ...f, saleEndsAt: e.target.value }))}
+                    style={{ ...inputStyle, colorScheme: 'dark' }}
+                  />
+                </div>
+              </div>
+              {form.salePrice != null && form.salePrice < form.price && (
+                <p style={{
+                  fontFamily: 'var(--font-inter)', fontSize: '0.75rem',
+                  color: 'var(--teal)', marginTop: '-0.4rem',
+                }}>
+                  Customers see {form.price.toFixed(2)} struck through and {form.salePrice.toFixed(2)} beside it
+                  {' — '}{Math.round((1 - form.salePrice / form.price) * 100)}% off
+                  {form.saleEndsAt ? ` until ${form.saleEndsAt}` : ', with no end date'}.
+                </p>
+              )}
+
               <div>
                 <label style={labelStyle}>Wholesale Price ($) — optional</label>
                 <input
@@ -802,8 +835,13 @@ export default function AdminGamesPage() {
                 </p>
               </div>
 
+              {/* Starting stock, on create only. An existing product's stock
+                  moves through a sale, a transfer or the CSV import — never
+                  through an edit, which is how it used to be silently
+                  rewound. Same rule as Inventory Management. */}
+              {!editing && (
               <div>
-                <label style={labelStyle}>Stock by Branch</label>
+                <label style={labelStyle}>Starting Stock by Branch</label>
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${BRANCHES.length}, 1fr)`, gap: '1rem' }}>
                   {BRANCHES.map(branch => (
                     <div key={branch}>
@@ -825,9 +863,10 @@ export default function AdminGamesPage() {
                   fontFamily: 'var(--font-inter)',
                   marginTop: '0.6rem',
                 }}>
-                  Total: {Object.values(form.stock).reduce((a, b) => a + (Number(b) || 0), 0)} across all branches
+                  Total: {Object.values(form.stock).reduce((a: number, b) => a + (Number(b) || 0), 0)} across all branches
                 </p>
               </div>
+              )}
             </div>
 
             {/* Right Column */}

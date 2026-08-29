@@ -13,6 +13,7 @@ import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 import { totalStock } from '../lib/branches'
 import { searchItems, highlight, snippet } from '../lib/productSearch'
 import { PLACEHOLDER } from '../lib/placeholderAssets'
+import { effectivePrice, saleIsActive, discountPercent } from '../lib/productPricing'
 
 // The stored documents still carry the board-product-era `players`, `duration`
 // and `age` fields (Manage Products still writes them). This page no longer reads
@@ -766,11 +767,40 @@ export default function ShopPage() {
                         }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                             {product.price > 0 && (
+                              /* On offer: the old price struck through, the new
+                                 one beside it. Both come from effectivePrice()
+                                 and saleIsActive(), the same pair the till
+                                 charges from — a shelf price and a receipt that
+                                 disagree is the one thing a customer always
+                                 notices. */
                               <span style={{
                                 fontFamily: 'var(--font-cinzel)',
                                 fontSize: isMobile ? '1rem' : '1.2rem',
                                 color: 'var(--purple)',
-                              }}>${product.price}</span>
+                                display: 'flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap',
+                              }}>
+                                {saleIsActive(product) && (
+                                  <span style={{
+                                    textDecoration: 'line-through',
+                                    color: 'rgba(245,242,236,0.35)',
+                                    fontSize: isMobile ? '0.78rem' : '0.9rem',
+                                  }}>${product.price.toFixed(2)}</span>
+                                )}
+                                <span>${effectivePrice(product).toFixed(2)}</span>
+                                {saleIsActive(product) && (
+                                  <span style={{
+                                    fontFamily: 'var(--font-inter)',
+                                    fontSize: isMobile ? '0.55rem' : '0.6rem',
+                                    letterSpacing: '0.08em',
+                                    textTransform: 'uppercase',
+                                    fontWeight: 700,
+                                    color: '#000',
+                                    background: 'var(--teal)',
+                                    borderRadius: '3px',
+                                    padding: '0.1rem 0.35rem',
+                                  }}>Save {discountPercent(product)}%</span>
+                                )}
+                              </span>
                             )}
                             <span style={{
                               fontFamily: 'var(--font-inter)',

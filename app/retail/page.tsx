@@ -11,6 +11,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUsers, faClock, faCakeCandles, faSearch, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { totalStock } from '../lib/branches'
 import { BRAND } from '../lib/brand'
+import { effectivePrice, saleIsActive } from '../lib/productPricing'
 
 interface Product {
   id: string
@@ -91,7 +92,12 @@ function ProductCard({ product }: { product: Product }) {
           fontFamily: 'var(--font-inter)',
           letterSpacing: '0.02em',
         }}>
-          ${product.price.toFixed(2)}
+          {saleIsActive(product) && (
+            <span style={{ textDecoration: 'line-through', opacity: 0.55, marginRight: '0.35rem', fontWeight: 500 }}>
+              ${product.price.toFixed(2)}
+            </span>
+          )}
+          ${effectivePrice(product).toFixed(2)}
         </div>
         {/* Stock badge */}
         <div style={{

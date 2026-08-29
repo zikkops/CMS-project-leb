@@ -32,6 +32,7 @@ import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
 import { formatInvoiceNumber } from '../invoiceFormat'
+import { effectivePrice } from '../productPricing'
 
 export type PriceType = 'retail' | 'wholesale'
 
@@ -150,7 +151,14 @@ export async function createPurchaseOrder(
 
       // THE POINT OF THIS WHOLE FILE: the price comes from the stored
       // document, never from the request.
-      const retail = Number(data.price ?? 0)
+      // effectivePrice() applies a running sale, so the till charges what the
+      // shelf and the storefront show. Wholesale is untouched by an offer —
+      // a trade price is negotiated, not discounted alongside retail.
+      const retail = effectivePrice({
+        price: Number(data.price ?? 0),
+        salePrice: data.salePrice == null ? null : Number(data.salePrice),
+        saleEndsAt: typeof data.saleEndsAt === 'string' ? data.saleEndsAt : null,
+      })
       const wholesale = data.wholesalePrice == null ? null : Number(data.wholesalePrice)
       const unitPrice = want.priceType === 'wholesale' && wholesale != null ? wholesale : retail
 
