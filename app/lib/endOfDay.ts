@@ -4,18 +4,19 @@ import {
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { authedFetch, unwrap } from './apiClient'
-import { SETTINGS_DEFAULTS } from './businessSettings'
 
-// The fallback exchange rate, and only a fallback.
+// Where the exchange rate comes from.
 //
-// This was a bare 90000 that did not even read the brand config. The live
-// value is editable at /admin/settings and reaches the form through
-// useBusinessSettings(); this is what applies when that has not loaded yet,
-// or when the settings document is unreadable.
+// EXCHANGE_RATE used to live here, as the fallback for a rate nobody had
+// passed. Nothing falls back to it any more: computeTotals() and
+// emptyReport() both require the rate, so a caller cannot silently get the
+// build-time value instead of the configured one. The real fallback is inside
+// useBusinessSettings(), which returns SETTINGS_DEFAULTS while the settings
+// document is loading or unreadable — one place, where it can be reasoned
+// about.
 //
 // A report stores the rate it was written with, so changing the live value
 // never re-values an old one.
-export const EXCHANGE_RATE = SETTINGS_DEFAULTS.exchangeRate
 
 export const LBP_DENOMS = [100000, 50000, 20000, 10000, 5000, 1000] as const
 export const USD_DENOMS  = [100, 50, 20, 10, 5, 1] as const
@@ -87,7 +88,19 @@ export function computeTotals(
   systemUsd: number,
   expenses:  LineEntry[],
   income:    LineEntry[],
-  rate = EXCHANGE_RATE,
+  // REQUIRED, and deliberately not defaulted.
+  //
+  // It used to fall back to EXCHANGE_RATE — the value compiled into the brand
+  // config. Three of the four callers then omitted it, so every screen that
+  // DISPLAYS a past report recomputed that day's cash difference at the
+  // build-time rate instead of the rate the report was submitted with. The
+  // one caller that got it right was the live entry form, which is the only
+  // place the two values happen to agree.
+  //
+  // Each report stores its own exchangeRate precisely so history cannot move.
+  // A default here quietly undid that, and did it silently — which is why this
+  // is a required parameter now: the compiler names every site that forgets.
+  rate: number,
 ): ComputedTotals {
   const totalCashLbp  = LBP_DENOMS.reduce((s, d) => s + (Number(cashLbp[String(d)] ) || 0) * d, 0)
   const totalCashUsd  = USD_DENOMS.reduce ((s, d) => s + (Number(cashUsd[String(d)] ) || 0) * d, 0)
@@ -124,9 +137,10 @@ export function defaultEodDateStr() {
 
 export function emptyReport(
   branch: string, date: string, uid: string, email: string,
-  // Passed in rather than read from the constant, so a new report starts at
-  // whatever rate is configured today.
-  exchangeRate: number = EXCHANGE_RATE,
+  // Required for the same reason the one on computeTotals is: a default here
+  // reads the rate compiled into the brand config, not the one the business
+  // has configured, so a report could be STARTED at a rate nobody set.
+  exchangeRate: number,
 ): EndOfDayReport {
   return {
     id:               reportDocId(branch, date),

@@ -92,10 +92,13 @@ export default function EndOfDayHistoryPage() {
         {!loading && reports.length > 0 && isMobile && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
             {reports.map(r => {
+              // Each report's OWN rate, not today's. These are historical
+              // figures and must not move when the rate does.
               const t = computeTotals(
                 r.cashLbp, r.cashUsd,
                 r.systemLbp, r.systemUsd,
                 r.expenses, r.income,
+                r.exchangeRate,
               )
               const diffLbpColor = t.differenceLbp === 0 ? 'var(--teal)' : t.differenceLbp > 0 ? 'var(--red)' : '#C9962C'
               const diffUsdColor = t.differenceUsd  === 0 ? 'var(--teal)' : t.differenceUsd  > 0 ? 'var(--red)' : '#C9962C'
@@ -165,10 +168,13 @@ export default function EndOfDayHistoryPage() {
             </div>
 
             {reports.map(r => {
+              // Each report's OWN rate, not today's. These are historical
+              // figures and must not move when the rate does.
               const t = computeTotals(
                 r.cashLbp, r.cashUsd,
                 r.systemLbp, r.systemUsd,
                 r.expenses, r.income,
+                r.exchangeRate,
               )
               const diffLbpColor = t.differenceLbp === 0 ? 'var(--teal)' : t.differenceLbp > 0 ? 'var(--red)' : '#C9962C'
               const diffUsdColor = t.differenceUsd  === 0 ? 'var(--teal)' : t.differenceUsd  > 0 ? 'var(--red)' : '#C9962C'

@@ -104,8 +104,12 @@ function EndOfDaySummaryInner() {
 
   if (checking) return null
 
+  // report.exchangeRate, not the configured one: this is the rate the day was
+  // actually counted at, and it is stored on the report so that changing the
+  // setting later cannot re-value a night's cash.
   const totals = report
-    ? computeTotals(report.cashLbp, report.cashUsd, report.systemLbp, report.systemUsd, report.expenses, report.income)
+    ? computeTotals(report.cashLbp, report.cashUsd, report.systemLbp, report.systemUsd,
+        report.expenses, report.income, report.exchangeRate)
     : null
 
   const diffLbpColor = !totals ? 'var(--offwhite)'
@@ -303,7 +307,7 @@ function EndOfDaySummaryInner() {
                 Submitted by {report.submittedByEmail}
               </span>
               <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', color: 'rgba(245,242,236,0.2)' }}>
-                Rate: 90,000 LBP = $1
+                Rate: {formatLbp(report.exchangeRate)} LBP = $1
               </span>
             </div>
           </div>

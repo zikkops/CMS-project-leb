@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import { BRAND } from '../lib/brand'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
 import { PLACEHOLDER } from '../lib/placeholderAssets'
@@ -613,7 +614,11 @@ export default function EventsPage() {
                   { label: 'Time',    value: `${selected.timeStart} – ${selected.timeEnd}` },
                   { label: 'Players', value: `${selected.minPlayers}–${selected.maxPlayers} players` },
                   { label: 'Price',   value: selected.price === 0 ? 'Free entry' : `$${selected.price} per person` },
-                  { label: 'Contact', value: selected.contactNumber ?? '+96181950042' },
+                  // Was the original café's own phone number, hardcoded, and shown
+                  // to the public on any event that carried none of its own.
+                  // `||` rather than `??` on purpose: an event stored with an empty
+                  // string had been rendering a blank contact row.
+                  { label: 'Contact', value: selected.contactNumber || BRAND.contact.phone },
                 ].map(({ label, value }) => (
                   <div key={label} style={{
                     background: 'rgba(255,255,255,0.03)',
