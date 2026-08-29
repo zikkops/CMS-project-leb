@@ -97,7 +97,18 @@ export function useAllCustomers() {
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'users'), snap => {
-      const list = snap.docs.map(d => toCustomer(d.id, d.data()))
+      // Staff and customers share users/{uid}, so an unfiltered read lists
+      // every staff account as a customer — with a tier, a points balance and
+      // a Delete button. The route already refuses to delete one, but the row
+      // should never have been offered: a staff account is a staff account,
+      // and Manage Users is where it belongs.
+      //
+      // Filtered here rather than with a where() clause because isStaff is
+      // absent on customer documents, and Firestore cannot query for a field
+      // that does not exist.
+      const list = snap.docs
+        .filter(d => d.data().isStaff !== true)
+        .map(d => toCustomer(d.id, d.data()))
       list.sort((a, b) => a.displayName.localeCompare(b.displayName))
       setCustomers(list)
       setLoading(false)

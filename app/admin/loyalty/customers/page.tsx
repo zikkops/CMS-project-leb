@@ -214,9 +214,10 @@ export default function ManageCustomersPage() {
             color: 'var(--navy)', fontFamily: 'var(--font-inter)', marginBottom: '0.6rem',
           }}>Annual Points Reset</p>
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.45)', lineHeight: 1.6, marginBottom: '1.2rem' }}>
-            On this date, every customer&apos;s points reset to 0 (level resets to 1 too). There's no background
-            server job in this app, so the reset fires automatically the next time any admin opens the dashboard on or
-            after this date — then reschedules itself a year out.
+            On this date, every customer&apos;s balance and lifetime earned total both reset to 0,
+            which returns everyone to the first tier. A scheduled job runs nightly and does it on
+            the day — nobody has to be signed in — then moves this date a year forward.
+            The date must be in the future; today or earlier is refused.
             {!loadingSettings && !settings && ' Defaulted to one year from today — save to confirm it.'}
           </p>
           <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.8rem', alignItems: isMobile ? 'stretch' : 'flex-end' }}>
