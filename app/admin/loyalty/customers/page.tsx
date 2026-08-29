@@ -127,7 +127,7 @@ export default function ManageCustomersPage() {
 
   async function handleResendPassword(customer: CustomerAccount) {
     if (!customer.email) return
-    await resendCustomerPasswordReset(customer.email)
+    await resendCustomerPasswordReset(customer)
     setSentEmailId(customer.id)
     setTimeout(() => setSentEmailId(null), 2500)
   }

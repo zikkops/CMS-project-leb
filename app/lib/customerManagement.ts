@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { collection, doc, onSnapshot, getDoc } from 'firebase/firestore'
 import { sendPasswordResetEmail } from 'firebase/auth'
 import { auth, db } from './firebase'
-import { logActivity } from './activityLog'
 import { authedFetch, unwrap } from './apiClient'
 
 export interface CustomerAccount {
@@ -172,9 +171,29 @@ export async function deleteCustomerAccount(customer: CustomerAccount): Promise<
     `/api/admin/loyalty/customers?uid=${encodeURIComponent(customer.id)}`, 'DELETE'))
 }
 
-export async function resendCustomerPasswordReset(email: string): Promise<void> {
-  await sendPasswordResetEmail(auth, email)
-  await logActivity('update', 'Customer Account', `Password reset email sent to ${email}`)
+/**
+ * Sends a customer a password-reset email and records that it happened.
+ *
+ * The send stays here on purpose. sendPasswordResetEmail() is a Firebase Auth
+ * call rather than a Firestore write, and doing it server-side would mean
+ * mailing the link through Resend, which only ever reaches the Resend
+ * account's own address — the customer would never get it.
+ *
+ * The audit entry moved. It takes a uid rather than an email now, and the
+ * route builds the log line from the stored address: a log entry is a claim
+ * about what happened, and the browser should not be the one writing that
+ * claim as free text.
+ *
+ * Logged after the send, never before, so a failed send leaves no entry
+ * saying an email went out.
+ */
+export async function resendCustomerPasswordReset(customer: {
+  id: string
+  email: string
+}): Promise<void> {
+  await sendPasswordResetEmail(auth, customer.email)
+  await unwrap(await authedFetch(
+    '/api/admin/loyalty/customers/password-reset', 'POST', { uid: customer.id }))
 }
 
 // ---------- Annual points reset ----------

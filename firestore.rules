@@ -220,9 +220,21 @@ service cloud.firestore {
     // the old blanket `write` allowed both. An audit trail anyone audited can
     // edit isn't one. (Server-side writes via the Admin SDK bypass rules
     // entirely, so app/lib/server/activityLog.ts is unaffected.)
+    // The audit trail. Reads stay on the client — /admin/logs and the loyalty
+    // activity page both list from here live.
+    //
+    // Creating was `isStaff()` because the browser wrote its own entries, with
+    // userEmail and userId taken from auth.currentUser: the same account that
+    // performed an action also authored the record of it, and could have
+    // authored a record of something that never happened. Every entry now
+    // comes from app/lib/server/activityLog.ts, attributed from a verified
+    // token, written by the route that did the work.
+    //
+    // update/delete were already false and stay false. An audit log nobody can
+    // edit afterwards is most of the point.
     match /activityLog/{id} {
       allow read:   if isStaff();
-      allow create: if isStaff();
+      allow create: if false;
       allow update, delete: if false;
     }
 
