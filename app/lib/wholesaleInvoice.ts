@@ -12,8 +12,7 @@
 // same imgbb path every other image in this app uses. That's what makes the
 // invoice a durable URL the shop can download and the email can link to.
 
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { auth, db } from './firebase'
+import { auth } from './firebase'
 import { drawInvoiceCanvas, type PurchaseItem } from './productPurchases'
 import { nextFormattedInvoiceNumber } from './invoiceNumber'
 import { uploadImage } from './media'
@@ -87,8 +86,19 @@ function toPurchaseItems(order: WholesaleOrder): PurchaseItem[] {
   }))
 }
 
-// Draws, uploads, and stamps the order — so the invoice URL is on the document
-// before anyone is told the invoice exists.
+/**
+ * Draws the invoice and uploads it, returning the number and URL.
+ *
+ * It used to stamp the order document itself with a client updateDoc. That was
+ * a redundant write: setStatus() calls this and then PATCHes
+ * /api/wholesale/orders with the same invoiceNumber and invoiceUrl, so the
+ * order was written twice with identical values moments apart. The route now
+ * sets invoicedAt too, which is the one field the client write was
+ * contributing.
+ *
+ * The drawing and the upload stay here — the invoice is a <canvas>, which only
+ * exists in a browser.
+ */
 export async function generateWholesaleInvoice(
   order: WholesaleOrder,
   issuedByEmail: string,
@@ -113,12 +123,6 @@ export async function generateWholesaleInvoice(
   )
   const file = new File([blob], `invoice-${invoiceNumber}.png`, { type: 'image/png' })
   const { url } = await uploadImage(file)
-
-  await updateDoc(doc(db, 'wholesaleOrders', order.id), {
-    invoiceNumber,
-    invoiceUrl: url,
-    invoicedAt: serverTimestamp(),
-  })
 
   return { invoiceNumber, invoiceUrl: url }
 }

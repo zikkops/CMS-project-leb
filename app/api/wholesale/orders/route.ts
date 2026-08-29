@@ -12,7 +12,7 @@ import { adminAuth, adminDb } from '@/app/lib/server/firebaseAdmin'
 import { toResponse, HttpError, bearerToken, requireSection } from '@/app/lib/server/auth'
 import { sendEmail, emailConfigured } from '@/app/lib/server/email'
 import { FieldValue } from 'firebase-admin/firestore'
-import { INVOICE_NUMBER_PATTERN } from '@/app/lib/invoiceFormat'
+import { INVOICE_NUMBER_PATTERN, INVOICE_IMAGE_URL_PATTERN } from '@/app/lib/invoiceFormat'
 import { issueInvoiceNumber } from '@/app/lib/server/invoiceNumber'
 
 export const runtime = 'nodejs'
@@ -148,7 +148,7 @@ export async function POST(request: Request): Promise<Response> {
     const rawNumber = typeof body.invoiceNumber === 'string' ? body.invoiceNumber.trim() : ''
     const rawUrl = typeof body.invoiceUrl === 'string' ? body.invoiceUrl.trim() : ''
     const invoiceNumber = INVOICE_NUMBER_PATTERN.test(rawNumber) ? rawNumber : ''
-    const invoiceUrl = /^https:\/\/i\.ibb\.co\/[\w./-]+$/.test(rawUrl) ? rawUrl : ''
+    const invoiceUrl = INVOICE_IMAGE_URL_PATTERN.test(rawUrl) ? rawUrl : ''
 
     // Re-price server-side. Whatever the browser claimed the price was is
     // ignored entirely.
@@ -248,10 +248,19 @@ export async function PATCH(request: Request): Promise<Response> {
     }
 
     const orderId = typeof body.orderId === 'string' ? body.orderId : ''
-    const status = typeof body.status === 'string' ? body.status : ''
     if (!orderId) throw new HttpError(400, 'orderId is required.')
-    if (!['approved', 'rejected', 'fulfilled'].includes(status)) {
+
+    // Two things reach this route now, and either one alone is a valid call:
+    // deciding the order, and stamping that the orders inbox was mailed about
+    // it. The email stamp used to be a client updateDoc on the admin page.
+    const status = typeof body.status === 'string' ? body.status : ''
+    const markEmailed = body.markEmailed === true
+
+    if (status && !['approved', 'rejected', 'fulfilled'].includes(status)) {
       throw new HttpError(400, 'Unknown status.')
+    }
+    if (!status && !markEmailed) {
+      throw new HttpError(400, 'Nothing to update.')
     }
 
     const db = adminDb()
@@ -259,20 +268,48 @@ export async function PATCH(request: Request): Promise<Response> {
     const snap = await ref.get()
     if (!snap.exists) throw new HttpError(404, 'Order not found.')
 
-    const patch: Record<string, unknown> = {
-      status,
-      decidedBy: actor.uid,
-      decidedByEmail: actor.email ?? '',
-      decidedAt: FieldValue.serverTimestamp(),
+    const patch: Record<string, unknown> = {}
+
+    if (status) {
+      patch.status = status
+      patch.decidedBy = actor.uid
+      patch.decidedByEmail = actor.email ?? ''
+      patch.decidedAt = FieldValue.serverTimestamp()
     }
-    // The invoice is drawn in the browser (it's a canvas), so the URL arrives
-    // with this request rather than being produced here.
-    if (typeof body.invoiceNumber === 'string' && body.invoiceNumber) patch.invoiceNumber = body.invoiceNumber
-    if (typeof body.invoiceUrl === 'string' && body.invoiceUrl) patch.invoiceUrl = body.invoiceUrl
+
+    // Stamped when the mailto link is opened, not when anything is delivered —
+    // the browser cannot tell us whether the message was actually sent.
+    if (markEmailed) patch.emailedAt = FieldValue.serverTimestamp()
+
+    // The invoice is drawn in the browser (it's a canvas), so the number and
+    // URL arrive with this request rather than being produced here.
+    //
+    // Validated the same way POST validates them, which this did not do: the
+    // number must match the invoice format and the URL must be an imgbb link.
+    // A staff-only route is lower risk than the shop-facing POST, but the
+    // invoice URL is shown to the shop and the number is its accounting
+    // identity, so neither should be free text.
+    const rawNumber = typeof body.invoiceNumber === 'string' ? body.invoiceNumber.trim() : ''
+    const rawUrl = typeof body.invoiceUrl === 'string' ? body.invoiceUrl.trim() : ''
+    if (rawNumber) {
+      if (!INVOICE_NUMBER_PATTERN.test(rawNumber)) throw new HttpError(400, 'That is not a valid invoice number.')
+      patch.invoiceNumber = rawNumber
+    }
+    if (rawUrl) {
+      if (!INVOICE_IMAGE_URL_PATTERN.test(rawUrl)) {
+        throw new HttpError(400, 'That is not a valid invoice image URL.')
+      }
+      patch.invoiceUrl = rawUrl
+      // Was written by a client updateDoc in generateWholesaleInvoice, which
+      // stamped the order itself moments before this route stamped it again
+      // with the same number and URL. Removing that write would have dropped
+      // invoicedAt, because this route never set it.
+      patch.invoicedAt = FieldValue.serverTimestamp()
+    }
 
     await ref.update(patch)
 
-    return Response.json({ orderId, status })
+    return Response.json({ orderId, status: status || undefined, emailed: markEmailed })
 
   } catch (err) {
     return toResponse(err)

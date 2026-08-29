@@ -898,10 +898,14 @@ service cloud.firestore {
         request.resource.data.items.size() > 0 &&
         request.resource.data.totalUsd is number;
 
-      // Approving, rejecting, marking fulfilled and stamping emailedAt are all
-      // staff actions. canProducts() rather than any-staff: whoever manages the
-      // product library is who fills these.
-      allow update: if canProducts();
+      // Approving, rejecting, marking fulfilled and stamping emailedAt all run
+      // through PATCH /api/wholesale/orders, which gates on the same
+      // `products` section this used to name. The route validates the invoice
+      // number and image URL, which matters because both are shown to the shop
+      // and the URL rides along in outgoing mail.
+      //
+      // Creating stays above: that is a shop submitting its own order.
+      allow update: if false;
       allow delete: if hasRole(['admin']);
     }
   }

@@ -27,3 +27,13 @@ export function formatInvoiceNumber(sequence: number, issuedAt: Date = new Date(
 // One regex, used by the route to validate a number that arrived from a
 // browser before it goes anywhere near an outgoing email.
 export const INVOICE_NUMBER_PATTERN = /^OB-Q[1-4]-\d{6}-\d{4,}$/
+
+// The invoice image is drawn on a canvas in the browser and uploaded through
+// /api/upload-image, so its URL arrives with the request rather than being
+// produced by the server. It has to be one of ours: the URL is emailed out
+// and shown to the shop, so an arbitrary link would ride along under our name.
+//
+// Shared rather than written out at each call site — the submission route had
+// this check and the staff decision route did not, which is exactly the kind
+// of gap a copied regex leaves behind.
+export const INVOICE_IMAGE_URL_PATTERN = /^https:\/\/i\.ibb\.co\/[\w./-]+$/

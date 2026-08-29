@@ -15,9 +15,10 @@
 // delivery.
 
 import { useEffect, useMemo, useState } from 'react'
-import { collection, getDocs, orderBy, query, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, getDocs, orderBy, query } from 'firebase/firestore'
 import { db, auth } from '../../../lib/firebase'
 import { useRequireRole, SECTION_ACCESS } from '../../../lib/adminAuth'
+import { authedFetch, unwrap } from '../../../lib/apiClient'
 import { generateWholesaleInvoice } from '../../../lib/wholesaleInvoice'
 import {
   STATUS_COLOR, WHOLESALE_ORDERS_EMAIL, WHOLESALE_ORDER_STATUSES,
@@ -130,9 +131,11 @@ export default function WholesaleOrdersAdminPage() {
       `&body=${encodeURIComponent(orderAsText(o))}`
 
     // Stamped when the link is opened, not when anything is delivered — the
-    // browser can't tell us whether the message was actually sent.
+    // browser can't tell us whether the message was actually sent. The stamp
+    // itself goes through the route; only the mailto is the browser's job.
     try {
-      await updateDoc(doc(db, 'wholesaleOrders', o.id), { emailedAt: serverTimestamp() })
+      await unwrap(await authedFetch('/api/wholesale/orders', 'PATCH',
+        { orderId: o.id, markEmailed: true }))
       setOrders(prev => prev.map(x => x.id === o.id ? { ...x, emailedAt: { seconds: Date.now() / 1000 } as WholesaleOrder['emailedAt'] } : x))
     } catch { /* the mail client still opened; the stamp is a convenience */ }
   }
