@@ -31,6 +31,9 @@
 
 import { initializeApp, cert } from 'firebase-admin/app'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
+import { getAuth } from 'firebase-admin/auth'
+import { randomBytes } from 'node:crypto'
+import { writeFileSync as writeFile } from 'node:fs'
 
 const APPLY = process.argv.includes('--apply')
 const FORCE = process.argv.includes('--force')
@@ -689,13 +692,123 @@ for (const [col, n] of Object.entries(counts)) {
 }
 console.log(`\n  ${plan.length} documents total across ${BRANCHES.length} branch(es): ${BRANCHES.join(', ')}`)
 
+// ── A demo customer ────────────────────────────────────────────────────────
+//
+// The loyalty programme is unusable as a demo without one. There is a
+// catalogue of rewards and a ladder of tier perks, and nobody to award them
+// to — Loyalty Approvals and Redemption Requests both render empty, which
+// reads as broken rather than as new.
+//
+// One customer, but not a blank one. A zero balance demonstrates nothing, so
+// this account carries a lifetime earned total that puts it on a real tier, a
+// spent-down balance so the earned-vs-spendable distinction is visible, a
+// pending check for Approvals and a pending redemption for Requests.
+//
+// Skipped when the account already exists, so re-running stays safe.
+async function seedDemoCustomer() {
+  const auth = getAuth()
+  const email = 'demo.customer@placeholder.test'
+
+  const existing = await auth.getUserByEmail(email).catch(() => null)
+  if (existing) {
+    console.log(`\nDemo customer ${email} already exists — left alone.`)
+    return
+  }
+
+  // Generated here, and written to a gitignored file rather than printed. A
+  // password on a terminal ends up in scrollback, screenshots and shell
+  // history, none of which anyone remembers to clear.
+  const password = randomBytes(12).toString('base64url')
+  const user = await auth.createUser({
+    email, password, emailVerified: true, displayName: 'Demo Customer',
+  })
+
+  const uid = user.uid
+  const now = FieldValue.serverTimestamp()
+
+  // 22,400 earned puts the account in Gold, whose threshold is 20,000. 12,400
+  // spendable shows that redeeming reduces the balance and never the tier —
+  // which is the entire reason those are two separate fields.
+  await db.doc(`users/${uid}`).set({
+    username: 'demo',
+    displayName: 'Demo Customer',
+    email,
+    avatarUrl: '',
+    themeId: 'midnight',
+    points: 12400,
+    pointsEarned: 22400,
+    badges: [],
+    role: 'customer',
+    createdAt: now,
+  })
+  await db.doc(`users/${uid}/private/contact`).set({
+    phoneNumber: '+10000000000', firstName: 'Demo', lastName: 'Customer',
+  })
+  // The public username -> email mapping the login box resolves against.
+  await db.doc('usernames/demo').set({ uid, email, createdAt: now })
+
+  // Waiting in Loyalty Approvals. POINTS_PER_DOLLAR is 10, so $48.60 earns 486
+  // — kept consistent so approving it does not produce a figure that
+  // contradicts the earn rate shown on the public page.
+  await db.collection('transactions').add({
+    type: 'check',
+    userId: [uid],
+    pointsAmount: 486,
+    status: 'pending',
+    submittedBy: uid,
+    approvedBy: null,
+    checkPhotoUrl: '',
+    checkNumber: 'DEMO-4817',
+    branchId: BRANCHES[0],
+    totalAmount: 48.6,
+    splitCount: 1,
+    createdAt: now,
+  })
+
+  // Waiting in Redemption Requests, priced from the seeded catalogue so the
+  // cost shown matches the reward it names.
+  await db.collection('redemptions').add({
+    userId: uid,
+    itemId: 'redeem-free-coffee',
+    itemName: 'Free coffee',
+    itemDescription: 'Any hot or cold coffee from our menu',
+    coinCost: 100,
+    status: 'pending',
+    branchId: BRANCHES[0],
+    requestedBy: uid,
+    confirmedBy: null,
+    createdAt: now,
+    confirmedAt: null,
+    rejectedAt: null,
+    rejectionReason: null,
+  })
+
+  writeFile(
+    'demo-customer.txt',
+    'Demo customer for the loyalty programme.\n\n' +
+    `  email     ${email}\n` +
+    `  password  ${password}\n` +
+    '  username  demo\n\n' +
+    'Gold tier — 22,400 earned, 12,400 spendable.\n' +
+    'One check awaiting approval, one redemption awaiting confirmation.\n\n' +
+    'This file is gitignored. Delete it once the password is somewhere sensible.\n'
+  )
+
+  console.log(`\nDemo customer created: ${email}`)
+  console.log('  Gold tier · one pending check · one pending redemption')
+  console.log('  Password written to demo-customer.txt (gitignored, not printed here).')
+}
+
+
 if (APPLY) {
   await batch.commit()
+  await seedDemoCustomer()
   console.log('\nWritten.')
   console.log(
     '\nNext:\n' +
     '  1. Provision your first admin by hand (FORK.md) — this script deliberately\n' +
-    '     creates no staff accounts.\n' +
+    '     creates no STAFF accounts. The demo CUSTOMER above holds no\n' +
+    '     privileges and exists so the loyalty screens have data.\n' +
     '  2. Open Weekly Orders to see the seeded order.\n' +
     '  3. Open Receive a Delivery, pick that order, and confirm the lines pre-fill\n' +
     '     with quantities and costs. That is the Phase 01 chain working end to end.\n' +
