@@ -1,14 +1,13 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { collection, getDocs } from 'firebase/firestore'
 import { db, auth } from '../../../lib/firebase'
+import { authedFetch, unwrap } from '../../../lib/apiClient'
 import { useRequireRole, SECTION_ACCESS } from '../../../lib/adminAuth'
-import { logCreate, logUpdate } from '../../../lib/activityLog'
-import { BRANCHES, emptyStock } from '../../../lib/branches'
+import { BRANCHES } from '../../../lib/branches'
 import { recordMediaUpload } from '../../../lib/media'
 import { parseCSV } from '../../../lib/csv'
-import { nextSku } from '../../../lib/sku'
 
 type StaticFieldKey =
   | 'sku' | 'name' | 'description' | 'category' | 'price' | 'wholesalePrice'
@@ -115,12 +114,9 @@ interface Results {
   categoriesCreated: string[]
 }
 
-interface ExistingGame {
-  id: string
-  stock: Record<string, number>
-  sku?: string
-  name: string
-}
+// ExistingGame went with the write loop: matching rows against the live
+// catalogue is the route's job now, so the page keeps no index of its own.
+
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false)
@@ -140,8 +136,6 @@ export default function ImportGamesPage() {
 
   // Keyed by lowercased name -> doc id + current stock, so a repeat import can
   // update the existing doc instead of skipping the row.
-  const [existingGames, setExistingGames]     = useState<Map<string, ExistingGame>>(new Map())
-  const [existingCategories, setExistingCategories] = useState<Set<string>>(new Set())
   const [loadingExisting, setLoadingExisting] = useState(true)
 
   const [fileName, setFileName] = useState('')
@@ -154,25 +148,16 @@ export default function ImportGamesPage() {
   const [progress, setProgress]   = useState({ done: 0, total: 0 })
   const [results, setResults]     = useState<Results | null>(null)
 
-  useEffect(() => {
-    async function load() {
-      const [gamesSnap, catSnap] = await Promise.all([
-        getDocs(collection(db, 'products')),
-        getDocs(collection(db, 'productCategories')),
-      ])
-      setExistingGames(new Map(gamesSnap.docs.map(d => {
-        const data = d.data() as { name?: string; stock?: Record<string, number> | number; sku?: string }
-        const stock = typeof data.stock === 'number'
-          ? { ...emptyStock(), [BRANCHES[0]]: data.stock }
-          : { ...emptyStock(), ...(data.stock ?? {}) }
-        const name = String(data.name ?? '')
-        return [name.toLowerCase(), { id: d.id, stock, sku: data.sku, name }] as const
-      })))
-      setExistingCategories(new Set(catSnap.docs.map(d => String((d.data() as any).name ?? ''))))
-      setLoadingExisting(false)
-    }
-    load()
+  // Only to know the catalogue is readable before offering the Import
+  // button. The name and SKU indexes that used to be built here went with the
+  // write loop — the route matches rows against the live collection, which is
+  // one fewer copy of the matching rules to keep in step.
+  const loadExisting = useCallback(async () => {
+    await getDocs(collection(db, 'products'))
+    setLoadingExisting(false)
   }, [])
+
+  useEffect(() => { loadExisting() }, [loadExisting])
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -204,19 +189,8 @@ export default function ImportGamesPage() {
     setProgress({ done: 0, total: rows.length })
 
     const idToken = await auth.currentUser?.getIdToken()
-    const products = new Map(existingGames)
-    const categories = new Set(existingCategories)
-    const categoriesCreated: string[] = []
     const skippedUnknownSku: string[] = []
-    let created = 0, updated = 0, unchanged = 0, skippedNoName = 0, imageFailures = 0
-
-    // Second index over the same products, keyed by SKU. Rebuilt from `products` on
-    // each lookup would be O(n) per row; built once here and kept in step as
-    // rows are created below.
-    const bySku = new Map<string, ExistingGame>()
-    for (const g of products.values()) {
-      if (g.sku) bySku.set(g.sku.toLowerCase(), g)
-    }
+    let imageFailures = 0
 
     // A cell only counts if the column is mapped AND non-empty — that's what
     // makes a blank cell mean "leave this field alone" rather than "clear it".
@@ -226,108 +200,20 @@ export default function ImportGamesPage() {
       return v === '' ? null : v
     }
 
+    // ── Phase one, in the browser: parse, map, and re-host images ──────────
+    // Images are fetched and re-hosted one at a time through the upload proxy,
+    // which is genuinely per-row work and shows progress as it goes. Nothing
+    // is written to the catalogue here.
+    const payload: Record<string, unknown>[] = []
+
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
       const name = (mapping.name ? row[mapping.name] : '').trim()
-
-      if (!name) {
-        skippedNoName++
-        setProgress({ done: i + 1, total: rows.length })
-        continue
-      }
-
-      // SKU wins over name when present. That is the whole point of exporting
-      // it: the spreadsheet can rename a product and the import still knows which
-      // document it means, instead of creating a duplicate under the new name.
       const rowSku = (mapping.sku ? row[mapping.sku] : '').trim()
-      let existing: ExistingGame | undefined
-      if (rowSku) {
-        existing = bySku.get(rowSku.toLowerCase())
-        if (!existing) {
-          skippedUnknownSku.push(`${rowSku} (${name})`)
-          setProgress({ done: i + 1, total: rows.length })
-          continue
-        }
-      } else {
-        existing = products.get(name.toLowerCase())
-      }
 
-      if (existing) {
-        const patch: Record<string, unknown> = {}
-
-        // Only when matched by SKU — a name match cannot have a name change,
-        // and `sku` is never patched, so an import can't reassign one.
-        if (rowSku && name !== existing.name) patch.name = name
-
-        const desc = cell(row, mapping.description)
-        if (desc !== null) patch.description = desc
-        const players = cell(row, mapping.players)
-        if (players !== null) patch.players = players
-        const duration = cell(row, mapping.duration)
-        if (duration !== null) patch.duration = duration
-        const age = cell(row, mapping.age)
-        if (age !== null) patch.age = age
-
-        const priceCell = cell(row, mapping.price)
-        if (priceCell !== null) patch.price = parsePrice(priceCell)
-        const wholesaleCell = cell(row, mapping.wholesalePrice)
-        if (wholesaleCell !== null) patch.wholesalePrice = parseOptionalPrice(wholesaleCell)
-
-        // Merge onto the stock the product already has, so a CSV carrying only
-        // Beirut's column can't zero out Zouk, Broummana and Faten.
-        const stockPatch: Record<string, number> = {}
-        for (const b of BRANCHES) {
-          const v = cell(row, mapping[stockKey(b)])
-          if (v !== null) stockPatch[b] = parseQty(v)
-        }
-        if (Object.keys(stockPatch).length === 0) {
-          const fallbackCell = cell(row, mapping.stock)
-          if (fallbackCell !== null) stockPatch[IMPORT_BRANCH] = parseQty(fallbackCell)
-        }
-        if (Object.keys(stockPatch).length > 0) {
-          patch.stock = { ...existing.stock, ...stockPatch }
-        }
-
-        const newCategory = cell(row, mapping.category)
-        if (newCategory !== null) {
-          const normalized = normalizeCategory(newCategory)
-          patch.category = normalized
-          if (!categories.has(normalized)) {
-            await addDoc(collection(db, 'productCategories'), { name: normalized, createdAt: serverTimestamp() })
-            categories.add(normalized)
-            categoriesCreated.push(normalized)
-          }
-        }
-
-        if (Object.keys(patch).length === 0) {
-          unchanged++
-        } else {
-          await updateDoc(doc(db, 'products', existing.id), { ...patch, updatedAt: serverTimestamp() })
-          await logUpdate('Product', name, {}, patch)
-          if (patch.stock) {
-            products.set(name.toLowerCase(), { ...existing, stock: patch.stock as Record<string, number>, name })
-          }
-          updated++
-        }
+      if (!name && !rowSku) {
         setProgress({ done: i + 1, total: rows.length })
         continue
-      }
-
-      const category = normalizeCategory(mapping.category ? row[mapping.category] : '')
-      if (!categories.has(category)) {
-        await addDoc(collection(db, 'productCategories'), { name: category, createdAt: serverTimestamp() })
-        categories.add(category)
-        categoriesCreated.push(category)
-      }
-
-      // Per-branch columns win; the single fallback column only applies when
-      // none of them are mapped.
-      const stock = emptyStock()
-      const mappedBranches = BRANCHES.filter(b => mapping[stockKey(b)])
-      if (mappedBranches.length > 0) {
-        for (const b of mappedBranches) stock[b] = parseQty(row[mapping[stockKey(b)]])
-      } else if (mapping.stock) {
-        stock[IMPORT_BRANCH] = parseQty(row[mapping.stock])
       }
 
       let image = ''
@@ -351,43 +237,65 @@ export default function ImportGamesPage() {
         }
       }
 
-      const gameData = {
-        name,
-        category,
-        description: mapping.description ? row[mapping.description] : '',
-        players:     mapping.players ? row[mapping.players] : '',
-        duration:    mapping.duration ? row[mapping.duration] : '',
-        age:         mapping.age ? row[mapping.age] : '',
-        price:       parsePrice(mapping.price ? row[mapping.price] : ''),
-        wholesalePrice: mapping.wholesalePrice ? parseOptionalPrice(row[mapping.wholesalePrice]) : null,
-        stock,
-        image,
+      // Per-branch columns win; the single fallback column only applies when
+      // none of them are mapped. Left null entirely when no stock column is
+      // mapped at all — the route treats that as "leave stock alone", which
+      // is different from "set every branch to zero".
+      let stock: Record<string, number> | null = null
+      const mappedBranches = BRANCHES.filter(b => mapping[stockKey(b)])
+      if (mappedBranches.length > 0) {
+        stock = {}
+        for (const b of mappedBranches) stock[b] = parseQty(row[mapping[stockKey(b)]])
+      } else if (mapping.stock) {
+        stock = { [IMPORT_BRANCH]: parseQty(row[mapping.stock]) }
       }
 
-      // One allocation per created row rather than a block up front: the loop
-      // only decides create-vs-update as it goes, so a pre-allocated block
-      // would have to guess how many it needs and burn the remainder.
-      const sku = await nextSku(name)
+      const priceCell = cell(row, mapping.price)
+      const wholesaleCell = cell(row, mapping.wholesalePrice)
 
-      const ref = await addDoc(collection(db, 'products'), {
-        ...gameData,
-        sku,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+      payload.push({
+        ...(rowSku ? { sku: rowSku } : {}),
+        name,
+        category: normalizeCategory(mapping.category ? row[mapping.category] : ''),
+        description: cell(row, mapping.description) ?? '',
+        players: cell(row, mapping.players) ?? '',
+        duration: cell(row, mapping.duration) ?? '',
+        age: cell(row, mapping.age) ?? '',
+        price: priceCell !== null ? parsePrice(priceCell) : 0,
+        wholesalePrice: wholesaleCell !== null ? parseOptionalPrice(wholesaleCell) : null,
+        stock,
+        image,
       })
-      await logCreate('Product', name, { ...gameData, sku })
 
-      const createdGame: ExistingGame = { id: ref.id, stock, sku, name }
-      products.set(name.toLowerCase(), createdGame)
-      bySku.set(sku.toLowerCase(), createdGame)
-      created++
       setProgress({ done: i + 1, total: rows.length })
     }
 
-    setResults({ created, updated, unchanged, skippedNoName, skippedUnknownSku, imageFailures, categoriesCreated })
-    setExistingGames(products)
-    setExistingCategories(categories)
-    setImporting(false)
+    // ── Phase two, on the server: every write, in one call ─────────────────
+    // Row-by-row writes from the browser stopped being possible when the
+    // products collection went server-only, and a request per row would mean
+    // hundreds of round trips and a SKU allocation each. The route matches on
+    // SKU then name, creates what is new, patches what exists, and returns
+    // the counts.
+    try {
+      const r = await unwrap(await authedFetch('/api/admin/products/import', 'POST', { rows: payload }))
+      setResults({
+        created: Number(r.created ?? 0),
+        updated: Number(r.updated ?? 0),
+        unchanged: Number(r.unchanged ?? 0),
+        skippedNoName: Number(r.skippedNoName ?? 0),
+        skippedUnknownSku,
+        imageFailures,
+        categoriesCreated: (r.categoriesCreated ?? []) as string[],
+      })
+      // The in-memory indexes this page keeps are stale after an import, and
+      // rebuilding them by hand from the response would be a second place to
+      // get the matching rules right. Reload instead.
+      await loadExisting()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'The import failed.')
+    } finally {
+      setImporting(false)
+    }
   }
 
   // Drives the preview's fallback hint: with no per-branch column mapped, all
