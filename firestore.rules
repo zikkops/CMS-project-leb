@@ -233,7 +233,15 @@ service cloud.firestore {
     // Shared across every admin section that has an image picker, so it stays
     // open to all staff. Delete is genuinely used (media cleanup), so this one
     // keeps a full `write` unlike activityLog above.
-    match /mediaLibrary/{id} { allow read, write: if isStaff(); }
+    // Reads stay on the client — the picker and the library grid both list
+    // from here live. Writes go through /api/admin/media, which stamps
+    // uploadedBy from the verified token rather than from whatever the page
+    // claimed, and refuses to delete an image still shown on a page unless the
+    // caller has been told what uses it and said yes anyway.
+    match /mediaLibrary/{id} {
+      allow read: if isStaff();
+      allow write: if false;
+    }
 
     // ---- Staff account provisioning ----
     // DEPRECATED. This collection existed only to prop up the old four-step

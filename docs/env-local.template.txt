@@ -61,13 +61,18 @@ CRON_SECRET=
 # Use a SEPARATE imgbb account from production. Sharing the key means demo
 # uploads land in the live café's shared media library.
 #
-# Free key: imgbb.com → Get API key. Both vars take the same value — one is
-# read in the browser, one server-side in /api/upload-image.
+# Free key: imgbb.com → Get API key.
+#
+# ONE variable, and deliberately NOT NEXT_PUBLIC_. Every upload goes through
+# /api/upload-image (or /api/import-image for the bulk wizard), which attaches
+# the key server-side — the browser never sees it. A NEXT_PUBLIC_ copy used to
+# be listed here as taking "the same value"; nothing read it, and anything with
+# that prefix is inlined into the client bundle, so filling it in published the
+# key to every visitor. That is the precise leak the proxy exists to prevent.
 #
 # Leave blank to start. Image upload will fail with a clear error; nothing else
 # is affected.
 
-NEXT_PUBLIC_IMGBB_API_KEY=
 IMGBB_API_KEY=
 
 

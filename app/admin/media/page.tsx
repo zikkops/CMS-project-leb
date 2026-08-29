@@ -137,7 +137,8 @@ export default function MediaLibraryPage() {
               items={items}
               isMobile={isMobile}
               onDelete={async item => {
-                await deleteMediaItem(item)
+                // The grid listed what uses this image and asked first.
+                await deleteMediaItem(item, true)
                 setItems(prev => prev.filter(i => i.id !== item.id))
               }}
             />
