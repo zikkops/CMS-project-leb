@@ -705,9 +705,14 @@ service cloud.firestore {
     // ---- Weekly order reports ----
     // Template items are managed by admin/manager via the template editor; all
     // staff read them (they appear on the submit form every role can use).
+    // /api/admin/ordering owns writes now, and it refuses to delete an item a
+    // submitted order still waits on. That guard is the point: receiving
+    // resolves each ordered line through this collection and DROPS one it
+    // cannot find, so deleting an item mid-order removes a line from the
+    // delivery without saying so.
     match /orderTemplateItems/{id} {
       allow read:  if isStaff();
-      allow write: if canWeeklyOrders();
+      allow write: if false;
     }
     // Category provider meta — one doc per category (doc id = category name).
     match /orderCategoryMeta/{id} {
@@ -715,9 +720,11 @@ service cloud.firestore {
       allow write: if canWeeklyOrders();
     }
     // Supplier/provider directory — name + per-branch phone numbers.
+    // Same route, and it refuses to delete a supplier while template items
+    // still order from them.
     match /orderProviders/{id} {
       allow read:  if isStaff();
-      allow write: if canWeeklyOrders();
+      allow write: if false;
     }
     // Submitting a weekly order is `weeklyOrdersSubmit`, which is ALL_ROLES in
     // SECTION_ACCESS — every role can submit for their own departments. Only

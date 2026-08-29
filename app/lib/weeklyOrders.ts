@@ -1,9 +1,5 @@
-import {
-  collection, addDoc, getDocs, query, orderBy, limit,
-  doc, updateDoc, deleteDoc, serverTimestamp, deleteField,
-} from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore'
 import { db } from './firebase'
-import { logActivity, logUpdate, logDelete } from './activityLog'
 import { authedFetch, unwrap } from './apiClient'
 import { BRANCHES } from './branches'
 
@@ -43,22 +39,33 @@ export async function listProviders(): Promise<OrderProvider[]> {
 }
 
 export async function addProvider(p: Omit<OrderProvider, 'id' | 'createdAt'>): Promise<void> {
-  await addDoc(collection(db, 'orderProviders'), { ...p, createdAt: serverTimestamp() })
-  await logActivity('create', 'Order Provider', p.name)
+  await unwrap(await authedFetch('/api/admin/ordering', 'POST', { kind: 'provider', ...p }))
 }
 
+/**
+ * `before` is accepted and ignored — the route reads the stored document
+ * itself. The browser used to pass both halves of the diff, so the audit log
+ * recorded whatever change it claimed to be making rather than what happened.
+ * Kept in the signature so the call sites are unchanged.
+ */
 export async function updateProvider(
   id: string,
-  before: Partial<OrderProvider>,
+  _before: Partial<OrderProvider>,
   after: Partial<OrderProvider>,
 ): Promise<void> {
-  await updateDoc(doc(db, 'orderProviders', id), { ...after })
-  await logUpdate('Order Provider', after.name ?? id, before, after)
+  await unwrap(await authedFetch('/api/admin/ordering', 'PATCH', { kind: 'provider', id, ...after }))
 }
 
-export async function deleteProvider(id: string, name: string): Promise<void> {
-  await deleteDoc(doc(db, 'orderProviders', id))
-  await logDelete('Order Provider', name)
+/**
+ * Refuses while template items still order from this supplier.
+ *
+ * The template groups by provider, so deleting one out from under its items
+ * left them pointing at an id resolving to nothing — they stop appearing under
+ * a supplier heading rather than erroring, which is the kind of disappearance
+ * nobody notices until an order goes out short.
+ */
+export async function deleteProvider(id: string, _name: string): Promise<void> {
+  await unwrap(await authedFetch(`/api/admin/ordering?kind=provider&id=${encodeURIComponent(id)}`, 'DELETE'))
 }
 
 export function getProviderPhone(provider: OrderProvider | undefined, branch: string): string {
@@ -135,25 +142,29 @@ export async function listTemplateItems(): Promise<OrderTemplateItem[]> {
 export async function addTemplateItem(
   item: Omit<OrderTemplateItem, 'id' | 'createdAt'>
 ): Promise<void> {
-  await addDoc(collection(db, 'orderTemplateItems'), { ...item, createdAt: serverTimestamp() })
-  await logActivity('create', 'Weekly Order Template', `${item.department} — ${item.name}`)
+  await unwrap(await authedFetch('/api/admin/ordering', 'POST', { kind: 'item', ...item }))
 }
 
 export async function updateTemplateItem(
   id: string,
-  before: Partial<OrderTemplateItem>,
+  _before: Partial<OrderTemplateItem>,
   after: Partial<OrderTemplateItem>,
 ): Promise<void> {
-  const update = Object.fromEntries(
-    Object.entries(after).map(([k, v]) => [k, v === undefined ? deleteField() : v])
-  )
-  await updateDoc(doc(db, 'orderTemplateItems', id), update)
-  await logUpdate('Weekly Order Template', after.name ?? id, before, after)
+  await unwrap(await authedFetch('/api/admin/ordering', 'PATCH', { kind: 'item', id, ...after }))
 }
 
-export async function deleteTemplateItem(id: string, name: string): Promise<void> {
-  await deleteDoc(doc(db, 'orderTemplateItems', id))
-  await logDelete('Weekly Order Template', name)
+/**
+ * Refuses while a submitted order still waits on this item.
+ *
+ * Receiving resolves each ordered line by looking its templateId up in the
+ * template, and an item it cannot find is DROPPED rather than flagged — a line
+ * with no supply behind it can move no stock. So deleting one that a pending
+ * order references silently removes that line from the delivery: the goods
+ * arrive, nobody records them, and the shortfall surfaces weeks later at a
+ * count with nothing to explain it.
+ */
+export async function deleteTemplateItem(id: string, _name: string): Promise<void> {
+  await unwrap(await authedFetch(`/api/admin/ordering?kind=item&id=${encodeURIComponent(id)}`, 'DELETE'))
 }
 
 // ---- Reports ----
