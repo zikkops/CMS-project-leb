@@ -194,8 +194,12 @@ service cloud.firestore {
     // QUERYING them rather than trusting the list a stale page was holding.
     match /menuCategories/{id} { allow read: if true; allow write: if false; }
     match /menuItems/{id}      { allow read: if true; allow write: if false; }
-    match /events/{id}         { allow read: if true; allow write: if canEvents(); }
-    match /eventTypes/{id}     { allow read: if true; allow write: if canEvents(); }
+    // /api/admin/events owns writes now. It refuses to delete an event anyone
+    // still holds a spot at, and refuses a maximum party size below the
+    // minimum — which makes an event unbookable while explaining nothing,
+    // because the booking form rejects every size and says only that.
+    match /events/{id}         { allow read: if true; allow write: if false; }
+    match /eventTypes/{id}     { allow read: if true; allow write: if false; }
     // What each tier advertises. Public read — the loyalty page shows the
     // ladder to signed-out visitors. Writes moved to
     // /api/admin/loyalty/catalogue, which validates the tier against the real

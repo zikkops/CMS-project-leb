@@ -1,13 +1,10 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import {
-  collection, getDocs, addDoc, deleteDoc,
-  doc, updateDoc, serverTimestamp
-} from 'firebase/firestore'
+import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
+import { authedFetch, unwrap } from '../../lib/apiClient'
 import { useRequireRole, SECTION_ACCESS } from '../../lib/adminAuth'
-import { logActivity, logCreate, logUpdate, logDelete } from '../../lib/activityLog'
 import { recordMediaUpload, uploadImage } from '../../lib/media'
 import MediaPickerModal from '../../components/admin/MediaPickerModal'
 import { BRANCHES as CONFIGURED_BRANCHES, PRIMARY_BRANCH } from '../../lib/branches'
@@ -129,11 +126,7 @@ export default function AdminEventsPage() {
   async function addEventType() {
     if (!newType.trim()) return
     setAddingType(true)
-    await addDoc(collection(db, 'eventTypes'), {
-      name: newType.trim(),
-      createdAt: serverTimestamp(),
-    })
-    await logActivity('create', 'Event Type', newType.trim())
+    await unwrap(await authedFetch('/api/admin/events', 'POST', { kind: 'type', name: newType.trim() }))
     setNewType('')
     setAddingType(false)
     loadData()
@@ -141,9 +134,10 @@ export default function AdminEventsPage() {
 
   async function deleteEventType(id: string) {
     if (!confirm('Delete this event type?')) return
-    const name = eventTypes.find(t => t.id === id)?.name ?? id
-    await deleteDoc(doc(db, 'eventTypes', id))
-    await logActivity('delete', 'Event Type', name)
+    // Refused while events are still filed under it. An event stores its type
+    // as a NAME, so deleting one left events pointing at a label no longer in
+    // the list — they drop out of the type filter rather than erroring.
+    await unwrap(await authedFetch(`/api/admin/events?kind=type&id=${encodeURIComponent(id)}`, 'DELETE'))
     loadData()
   }
 
@@ -192,19 +186,14 @@ export default function AdminEventsPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
+    // `...form` went straight into Firestore before, so a price could be
+    // negative and a maximum party size could sit below the minimum — which
+    // makes an event unbookable, because the booking form rejects every party
+    // size and explains nothing.
     if (editing) {
-      await updateDoc(doc(db, 'events', editing.id), {
-        ...form,
-        updatedAt: serverTimestamp(),
-      })
-      await logUpdate('Event', form.title, editing, form)
+      await unwrap(await authedFetch('/api/admin/events', 'PATCH', { id: editing.id, ...form }))
     } else {
-      await addDoc(collection(db, 'events'), {
-        ...form,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      })
-      await logCreate('Event', form.title, form)
+      await unwrap(await authedFetch('/api/admin/events', 'POST', { kind: 'event', ...form }))
     }
     setSaving(false)
     setOpen(false)
@@ -213,9 +202,10 @@ export default function AdminEventsPage() {
 
   async function handleDelete(id: string) {
     if (!confirm('Delete this event?')) return
-    const ev = events.find(e => e.id === id)
-    await deleteDoc(doc(db, 'events', id))
-    await logDelete('Event', ev?.title ?? id, ev)
+    // Refused while anyone still holds a spot. Deleting an event with live
+    // bookings leaves people holding a reservation for something that does not
+    // exist, with nothing anywhere telling them.
+    await unwrap(await authedFetch(`/api/admin/events?kind=event&id=${encodeURIComponent(id)}`, 'DELETE'))
     loadData()
   }
 
