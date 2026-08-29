@@ -8,6 +8,7 @@ import { useIsMobile } from '../../lib/useIsMobile'
 import { useRequireRole, SECTION_ACCESS } from '../../lib/adminAuth'
 import { BRANCHES } from '../../lib/branches'
 import { useBusinessSettings } from '../../lib/useBusinessSettings'
+import { BRAND } from '../../lib/brand'
 import {
   LBP_DENOMS, USD_DENOMS, SHIFT_LABELS,
   computeTotals, emptyReport, getEndOfDayReport, saveEndOfDayReport,
@@ -422,14 +423,17 @@ function EndOfDayInner() {
                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: '1rem', color: 'var(--offwhite)', fontWeight: 600 }}>{formatUsd(totals.grandTotalUsd)}</p>
                 </div>
                 <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'rgba(245,242,236,0.2)', fontFamily: 'var(--font-inter)', alignSelf: 'center' }}>
-                  Rate: 90,000 LBP = $1
+                  Rate: {exchangeRate.toLocaleString('en-US')} {BRAND.locale.secondaryCurrency} = 1 {BRAND.locale.currency}
                 </div>
               </div>
             </div>
 
-            {/* ── System (OMEGA) ───────────────────────────────────────────── */}
+            {/* ── The POS system's own figure ──────────────────────────────── */}
+            {/* Was labelled "SYSTEM (OMEGA)" — Omega being the incumbent POS
+                this platform replaces. A product should not name a competitor
+                in a section header of its own admin panel. */}
             <div style={{ marginBottom: '2.5rem' }}>
-              <SectionTitle label="SYSTEM (OMEGA)" color="var(--purple)" />
+              <SectionTitle label="POS SYSTEM" color="var(--purple)" />
               <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                 <div style={{ flex: '0 0 280px' }}>
                   <label style={labelStyle}>System LBP</label>

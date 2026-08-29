@@ -249,9 +249,9 @@ function EndOfDaySummaryInner() {
               </p>
             </div>
 
-            {/* System / Omega */}
+            {/* The POS system's own figure */}
             <Row
-              label="System (Omega)"
+              label="POS System"
               sub={`LBP: ${formatLbp(report.systemLbp)}`}
               value={formatUsd(report.systemUsd)}
               color="var(--purple)"
@@ -278,7 +278,7 @@ function EndOfDaySummaryInner() {
             }}>
               <div style={{ padding: '0.6rem 1.25rem 0.2rem' }}>
                 <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)' }}>
-                  Difference (Omega)
+                  Difference vs POS
                 </span>
               </div>
               <Row
