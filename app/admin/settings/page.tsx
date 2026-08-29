@@ -15,6 +15,7 @@ import { authedFetch, unwrap } from '../../lib/apiClient'
 import { useBusinessSettings } from '../../lib/useBusinessSettings'
 import { SETTINGS_LIMITS } from '../../lib/businessSettings'
 import { BRAND } from '../../lib/brand'
+import { quarterOf } from '../../lib/invoiceFormat'
 import type { Role } from '../../lib/roles'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
@@ -83,6 +84,62 @@ function RateField({
   )
 }
 
+// Module scope, like RateField above and for the same reason: a component
+// declared inside another component's render body remounts on every state
+// change, which here would drop focus on every keystroke.
+function PrefixField({
+  value, locked, example, onChange, isMobile,
+}: {
+  value: string
+  locked: boolean
+  example: string
+  onChange: (v: string) => void
+  isMobile: boolean
+}) {
+  return (
+    <div>
+      <label style={labelStyle}>Invoice prefix</label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+        <input
+          type="text"
+          value={value}
+          disabled={locked}
+          maxLength={6}
+          autoCapitalize="characters"
+          spellCheck={false}
+          // Upper-cased as it is typed rather than corrected on save, so what
+          // the field shows is what an invoice will read.
+          onChange={e => onChange(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+          style={{
+            ...inp,
+            width: isMobile ? '100%' : '140px',
+            fontWeight: 600,
+            letterSpacing: '0.12em',
+            opacity: locked ? 0.45 : 1,
+            cursor: locked ? 'not-allowed' : 'text',
+          }}
+        />
+        <span style={{
+          fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
+          color: 'rgba(245,242,236,0.45)', whiteSpace: 'nowrap',
+        }}>{example}</span>
+      </div>
+      <p style={{
+        fontFamily: 'var(--font-inter)', fontSize: '0.68rem',
+        color: locked ? 'rgba(201,150,44,0.75)' : 'rgba(245,242,236,0.3)',
+        marginTop: '0.35rem', lineHeight: 1.6, maxWidth: '46ch',
+      }}>
+        {locked
+          ? 'Locked — invoice numbers have already been issued with this prefix. ' +
+            'Changing it now would leave one numbered series carrying two different names, ' +
+            'so it can only be set before the first invoice.'
+          : 'Set this once, before you issue your first invoice. 2 to 6 letters or digits — ' +
+            'usually the initials of the business. It cannot be changed afterwards.'}
+      </p>
+    </div>
+  )
+}
+
 export default function BusinessSettingsPage() {
   const { checking, superadmin } = useRequireRole(['admin'] as Role[])
   const isMobile = useIsMobile()
@@ -94,6 +151,13 @@ export default function BusinessSettingsPage() {
   const [vat,  setVat]  = useState('')
   const [rate, setRate] = useState('')
   const [tips, setTips] = useState('')
+  const [prefix, setPrefix] = useState('')
+
+  // Whether the prefix can still be chosen. Not in the settings document —
+  // it's a fact about the invoice counter, which is server-only — so it comes
+  // from GET /api/admin/settings rather than the live listener. Starts true so
+  // the field is never briefly editable before the answer arrives.
+  const [prefixLocked, setPrefixLocked] = useState(true)
 
   const [saving, setSaving] = useState(false)
   const [err,    setErr]    = useState('')
@@ -107,12 +171,26 @@ export default function BusinessSettingsPage() {
     setVat(String(+(settings.vatRate * 100).toFixed(4)))
     setRate(String(settings.exchangeRate))
     setTips(String(+(settings.tipsDeductionRate * 100).toFixed(4)))
+    setPrefix(settings.invoicePrefix)
   }, [loading, settings])
+
+  useEffect(() => {
+    let cancelled = false
+    authedFetch('/api/admin/settings', 'GET')
+      .then(unwrap)
+      .then(d => { if (!cancelled) setPrefixLocked(d.prefixLocked !== false) })
+      // Leave it locked on failure. Showing an editable field that the server
+      // will refuse is worse than showing a locked one that could have been
+      // edited.
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   const dirty =
     Number(vat)  / 100 !== settings.vatRate ||
     Number(rate)        !== settings.exchangeRate ||
-    Number(tips) / 100 !== settings.tipsDeductionRate
+    Number(tips) / 100 !== settings.tipsDeductionRate ||
+    prefix !== settings.invoicePrefix
 
   async function save() {
     setSaving(true); setErr(''); setDone('')
@@ -122,6 +200,7 @@ export default function BusinessSettingsPage() {
           vatRate:           Number(vat) / 100,
           exchangeRate:      Number(rate),
           tipsDeductionRate: Number(tips) / 100,
+          invoicePrefix:     prefix,
         })
       )
       const changed = Number(r.changed ?? 0)
@@ -180,6 +259,13 @@ export default function BusinessSettingsPage() {
           <RateField
             label="Tips deduction" suffix="%" step="0.5" value={tips} onChange={setTips} isMobile={isMobile}
             hint="Taken off the tips pool before it is split between staff."
+          />
+          <PrefixField
+            value={prefix}
+            locked={prefixLocked}
+            onChange={setPrefix}
+            isMobile={isMobile}
+            example={`e.g. ${prefix || 'INV'}-Q${quarterOf(new Date())}-${String(new Date().getMonth() + 1).padStart(2, '0')}${new Date().getFullYear()}-0001`}
           />
         </div>
 

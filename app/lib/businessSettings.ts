@@ -31,6 +31,7 @@
 // silently, and nothing downstream would flag it.
 
 import { BRAND } from './brand'
+import { FALLBACK_INVOICE_PREFIX, INVOICE_PREFIX_PATTERN } from './invoiceFormat'
 
 export const SETTINGS_DOC = 'appSettings/business'
 
@@ -41,24 +42,45 @@ export interface BusinessSettings {
   exchangeRate: number
   /** Fraction deducted from tips before distribution. */
   tipsDeductionRate: number
+  /**
+   * The letters an invoice number starts with, e.g. the AC of
+   * AC-Q3-082026-0001.
+   *
+   * The odd one out here, and worth understanding before touching it. The
+   * three rates above only ever SEED a new record, so changing one cannot
+   * reach backwards. This does not seed anything — it is part of the identity
+   * of a numbered series. Change it in July and invoice 0047 reads
+   * AC-Q3-082026-0047 while 0048 reads XY-Q3-082026-0048: one sequence
+   * wearing two names, which is exactly the thing an invoice number exists to
+   * prevent.
+   *
+   * So it is chosen during setup and locked as soon as a number has been
+   * issued. The lock lives in app/lib/server/settings.ts, where the counter
+   * can actually be read.
+   */
+  invoicePrefix: string
 }
+
+/** The numeric settings, which share bounds checking and a form control. */
+export type RateKey = 'vatRate' | 'exchangeRate' | 'tipsDeductionRate'
 
 /** What the app used before any of this was editable. */
 export const SETTINGS_DEFAULTS: BusinessSettings = {
   vatRate:           BRAND.locale.vatRate,
   exchangeRate:      BRAND.locale.exchangeRate,
   tipsDeductionRate: BRAND.tipsDeductionRate,
+  invoicePrefix:     FALLBACK_INVOICE_PREFIX,
 }
 
 // Bounds, shared with the route so the form and the server agree on what is
 // acceptable. Deliberately generous at the top end — Hungary charges 27% VAT,
 // and a currency in trouble can carry a lot of zeros — and deliberately not
 // zero-excluding, because a zero-rated jurisdiction is a real thing.
-export const SETTINGS_LIMITS = {
+export const SETTINGS_LIMITS: Record<RateKey, { min: number; max: number }> = {
   vatRate:           { min: 0, max: 0.5 },
   exchangeRate:      { min: 1, max: 100_000_000 },
   tipsDeductionRate: { min: 0, max: 0.5 },
-} as const
+}
 
 /**
  * Reads one stored value, falling back to the brand default.
@@ -67,11 +89,25 @@ export const SETTINGS_LIMITS = {
  * absent. A settings document edited by hand into nonsense should degrade to
  * the previous behaviour, not propagate the nonsense into an invoice.
  */
-function readRate(raw: unknown, key: keyof BusinessSettings): number {
+function readRate(raw: unknown, key: RateKey): number {
   const n = Number(raw)
   const { min, max } = SETTINGS_LIMITS[key]
   if (!Number.isFinite(n) || n < min || n > max) return SETTINGS_DEFAULTS[key]
   return n
+}
+
+/**
+ * Reads the stored prefix, falling back rather than trusting.
+ *
+ * Same rule as the rates: a document edited by hand into something unusable
+ * degrades to the default instead of propagating. Lower case is accepted and
+ * upper-cased — that is a typo, not a different prefix, and rejecting it would
+ * mean an invoice number that silently reads INV while the settings page shows
+ * something else.
+ */
+export function readInvoicePrefix(raw: unknown): string {
+  const s = String(raw ?? '').trim().toUpperCase()
+  return INVOICE_PREFIX_PATTERN.test(s) ? s : SETTINGS_DEFAULTS.invoicePrefix
 }
 
 export function parseSettings(data: Record<string, unknown> | undefined): BusinessSettings {
@@ -79,5 +115,6 @@ export function parseSettings(data: Record<string, unknown> | undefined): Busine
     vatRate:           readRate(data?.vatRate, 'vatRate'),
     exchangeRate:      readRate(data?.exchangeRate, 'exchangeRate'),
     tipsDeductionRate: readRate(data?.tipsDeductionRate, 'tipsDeductionRate'),
+    invoicePrefix:     readInvoicePrefix(data?.invoicePrefix),
   }
 }

@@ -32,6 +32,7 @@ import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
 import { formatInvoiceNumber } from '../invoiceFormat'
+import { readInvoicePrefixSetting } from './settings'
 import { effectivePrice } from '../productPricing'
 
 export type PriceType = 'retail' | 'wholesale'
@@ -143,6 +144,12 @@ export async function createPurchaseOrder(
   }
   const counterRef = db.doc('appSettings/invoiceCounter')
 
+  // Fetched up front for the same reason the trade prices above are: a
+  // transaction may not read after its first write, and the prefix is needed
+  // while formatting the number. It is a setting rather than part of the
+  // counter's state, so reading it outside costs the transaction nothing.
+  const prefix = await readInvoicePrefixSetting()
+
   return db.runTransaction(async tx => {
     const productRefs = productIds.map(id => db.doc(`products/${id}`))
     // Every read before every write — a Firestore transaction forbids the
@@ -206,7 +213,7 @@ export async function createPurchaseOrder(
     const counter = counterSnap.data() ?? {}
     const sequence = counter.year === year ? Number(counter.nextNumber ?? 0) + 1 : 1
     tx.set(counterRef, { year, nextNumber: sequence })
-    const invoiceNumber = formatInvoiceNumber(sequence, issuedAt)
+    const invoiceNumber = formatInvoiceNumber(sequence, issuedAt, prefix)
 
     const orderRef = db.collection('productPurchaseOrders').doc()
     tx.set(orderRef, {

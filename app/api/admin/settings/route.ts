@@ -10,7 +10,7 @@
 // while trying to give a barista access to the stock count.
 
 import { requireStaff, requireSuperadmin, toResponse, HttpError, type Caller } from '@/app/lib/server/auth'
-import { parseSettingsInput, readSettings, writeSettings } from '@/app/lib/server/settings'
+import { parseSettingsInput, readSettings, writeSettings, invoicesIssued } from '@/app/lib/server/settings'
 import { logActivity } from '@/app/lib/server/activityLog'
 
 export const runtime = 'nodejs'
@@ -18,7 +18,10 @@ export const runtime = 'nodejs'
 // Rates are fractions everywhere in the codebase; percentages exist only for
 // human display. Formatting here keeps the audit entry readable without the
 // stored shape following it.
-function show(field: string, value: number): string {
+function show(field: string, value: number | string): string {
+  // The prefix is the one setting that is not a rate. Percent-formatting it
+  // would have produced "NaN%" in the audit entry.
+  if (typeof value === 'string') return value
   return field === 'exchangeRate'
     ? value.toLocaleString('en-US')
     : `${(value * 100).toFixed(2).replace(/\.?0+$/, '')}%`
@@ -27,7 +30,10 @@ function show(field: string, value: number): string {
 export async function GET(request: Request): Promise<Response> {
   try {
     await requireStaff(request)
-    return Response.json({ ok: true, settings: await readSettings() })
+    // prefixLocked lets the settings page explain WHY the field is disabled
+    // rather than presenting a greyed-out box with no reason.
+    const [settings, locked] = await Promise.all([readSettings(), invoicesIssued()])
+    return Response.json({ ok: true, settings, prefixLocked: locked })
   } catch (err) {
     return toResponse(err)
   }

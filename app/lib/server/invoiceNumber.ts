@@ -22,6 +22,7 @@
 
 import { adminDb } from './firebaseAdmin'
 import { formatInvoiceNumber } from '../invoiceFormat'
+import { readInvoicePrefixSetting } from './settings'
 
 /**
  * Issues the next invoice number and advances the counter atomically.
@@ -36,6 +37,12 @@ export async function issueInvoiceNumber(): Promise<{ invoiceNumber: string; seq
   const issuedAt = new Date()
   const year = issuedAt.getFullYear()
 
+  // Read before the transaction, not inside it. The prefix is a setting
+  // rather than part of the counter's own state, and a read of an unrelated
+  // document inside the transaction would widen what a concurrent write can
+  // make it retry against for no benefit.
+  const prefix = await readInvoicePrefixSetting()
+
   const sequence = await db.runTransaction(async tx => {
     const snap = await tx.get(ref)
     const data = snap.data() ?? {}
@@ -46,5 +53,5 @@ export async function issueInvoiceNumber(): Promise<{ invoiceNumber: string; seq
     return next
   })
 
-  return { invoiceNumber: formatInvoiceNumber(sequence, issuedAt), sequence, issuedAt }
+  return { invoiceNumber: formatInvoiceNumber(sequence, issuedAt, prefix), sequence, issuedAt }
 }
