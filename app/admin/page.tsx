@@ -20,6 +20,7 @@ import {
   faClipboardCheck,
   type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
+import { BRAND } from '../lib/brand'
 
 // Events can be set to the literal branch "All Branches" in Manage Events —
 // always include it alongside a manager's real branchIds so those events
@@ -240,7 +241,7 @@ export default function AdminPage() {
       {/* Top bar */}
       <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)', padding: isMobile ? '1rem 1.25rem' : '1rem 2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-          <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color: 'var(--offwhite)', letterSpacing: '0.05em' }}>Onboard</span>
+          <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color: 'var(--offwhite)', letterSpacing: '0.05em' }}>{BRAND.shortName}</span>
           <span style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)' }} />
           <span style={{ fontSize: '0.72rem', color: 'rgba(245,242,236,0.35)', letterSpacing: '0.05em' }}>
             {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}

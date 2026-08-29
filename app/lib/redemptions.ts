@@ -46,7 +46,7 @@ export const DEFAULT_REDEMPTION_ITEMS: { name: string; description: string; coin
   { name: 'Free coffee', description: 'Any hot or cold coffee from our menu', coinCost: 100 },
   { name: 'Free drink (any menu item)', description: 'Any drink from our full menu', coinCost: 150 },
   { name: 'Free burger', description: 'One burger of your choice', coinCost: 300 },
-  { name: 'Event ticket (1 person)', description: 'Entry to any upcoming Onboard event', coinCost: 200 },
+  { name: 'Event ticket (1 person)', description: 'Entry to any upcoming event', coinCost: 200 },
   { name: 'Reserved table for four', description: 'A table held for you and three guests at any branch', coinCost: 500 },
 ]
 

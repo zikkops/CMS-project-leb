@@ -9,6 +9,7 @@ import {
   getEndOfDayReport, updateEodTips, computeTotals, formatLbp, formatUsd, defaultEodDateStr,
   type EndOfDayReport,
 } from '../../../lib/endOfDay'
+import { BRAND } from '../../../lib/brand'
 
 const inp: React.CSSProperties = {
   backgroundColor: 'rgba(255,255,255,0.04)',
@@ -241,7 +242,7 @@ function EndOfDaySummaryInner() {
                 color: '#C9962C', letterSpacing: '0.15em', textTransform: 'uppercase',
                 marginBottom: '0.2rem',
               }}>
-                Onboard — Daily Summary
+                {BRAND.name} — Daily Summary
               </p>
               <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.4)' }}>
                 {report.branch} · {report.date}

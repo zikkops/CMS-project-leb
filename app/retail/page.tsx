@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUsers, faClock, faCakeCandles, faSearch, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { totalStock } from '../lib/branches'
+import { BRAND } from '../lib/brand'
 
 interface Game {
   id: string
@@ -203,12 +204,12 @@ export default function RetailPage() {
               textTransform: 'uppercase',
               color: '#C9962C',
               marginBottom: '0.6rem',
-            }}>Onboard — Games &amp; Tales</p>
+            }}>{BRAND.name}</p>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.5rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
               Games For Sale
             </h1>
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(245,242,236,0.4)', lineHeight: 1.7 }}>
-              Take a game home. All titles below are available for retail purchase at any Onboard branch.
+              Take one home. Everything below is available for retail purchase at any {BRAND.name} branch.
             </p>
           </div>
 

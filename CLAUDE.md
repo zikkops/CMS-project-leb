@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# Onboard — working rules
+# Working rules
 
 Read [CONTRIBUTING.md](./CONTRIBUTING.md) before writing code and
 [ARCHITECTURE.md](./ARCHITECTURE.md) before changing how anything is wired.

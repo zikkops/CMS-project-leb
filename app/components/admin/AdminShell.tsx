@@ -9,6 +9,7 @@ import { useAdminUser, hasSectionAccess, ROLE_LABELS } from '../../lib/adminAuth
 import { ADMIN_NAV } from '../../lib/adminNav'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBars, faChevronLeft, faChevronRight, faXmark, faRightFromBracket } from '@fortawesome/free-solid-svg-icons'
+import { BRAND } from '../../lib/brand'
 
 const COLLAPSE_KEY = 'admin_sidebar_collapsed'
 const EXPANDED_W = 252
@@ -104,7 +105,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               color: logoHovered ? 'var(--teal)' : 'var(--offwhite)',
               textDecoration: 'none', letterSpacing: '0.02em',
               transition: 'color 0.18s ease',
-            }}>Onboard CMS</Link>
+            }}>{BRAND.shortName} CMS</Link>
         )}
         {isMobile ? (
           <button onClick={() => setMobileOpen(false)} aria-label="Close menu" style={{
@@ -282,7 +283,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           zIndex: 50,
         }}>
           <Link href="/admin" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.95rem', color: 'var(--offwhite)', textDecoration: 'none' }}>
-            Onboard CMS
+            {BRAND.shortName} CMS
           </Link>
           <button onClick={() => setMobileOpen(true)} aria-label="Open menu" style={{
             background: 'transparent', border: 'none', color: 'var(--offwhite)', cursor: 'pointer', fontSize: '1.1rem', padding: '0.3rem',

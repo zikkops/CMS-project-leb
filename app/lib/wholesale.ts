@@ -1,7 +1,7 @@
 'use client'
 
-// Wholesale accounts — shops that buy from Onboard at wholesale prices,
-// as opposed to `orderProviders`, which are the suppliers Onboard buys FROM.
+// Wholesale accounts — shops that buy from us at wholesale prices, as opposed
+// to `orderProviders`, which are the suppliers we buy FROM.
 // The two are unrelated despite both being called "providers" in conversation.
 //
 // A wholesale account is a users/{uid} doc with `isWholesale: true` — the same

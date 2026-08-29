@@ -22,6 +22,9 @@ const QUIET = process.argv.includes('--quiet')
 
 const SKIP_DIRS = new Set([
   'node_modules', '.next', '.git', 'out', 'build', '.vercel', 'coverage',
+  // Worktrees are separate checkouts of this same repo. Their hits are
+  // duplicates of the working tree's and cannot be fixed from here.
+  '.claude',
 ])
 
 // This script names the very things it's looking for, so it would report
@@ -36,7 +39,7 @@ const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.css', '.json', '.md'
 const PATTERNS = [
   {
     label: 'Original brand name',
-    re: /\bonboard\b/i,
+    re: /\bonboard\b(?!\s+App\b)/i,
     why: 'Move to BRAND.name in app/lib/brand.ts.',
     severity: 'high',
   },

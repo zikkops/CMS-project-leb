@@ -10,6 +10,13 @@ import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUsers, faClock, faCakeCandles, faSearch, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { normalizeStock } from '../lib/branches'
+import { BRAND } from '../lib/brand'
+
+// This page used to be hardcoded to a branch called "Faten" — one of the
+// original café's locations, and not a branch any more. Every read of
+// stock['Faten'] returned 0, so the page rendered permanently empty. It now
+// follows whichever branch is configured first.
+const BRANCH = BRAND.branches[0]
 
 interface Game {
   id: string
@@ -93,7 +100,7 @@ function GameCard({ game }: { game: Game }) {
           )}
         </div>
 
-        {/* Faten stock badge */}
+        {/* Branch stock badge */}
         <div style={{
           position: 'absolute', top: '0.6rem', left: '0.6rem',
           background: inStock ? 'rgba(0,160,152,0.85)' : 'rgba(228,51,41,0.75)',
@@ -152,7 +159,7 @@ function GameCard({ game }: { game: Game }) {
   )
 }
 
-export default function FatenPage() {
+export default function BranchCataloguePage() {
   const [games, setGames]           = useState<Game[]>([])
   const [loading, setLoading]       = useState(true)
   const [search, setSearch]         = useState('')
@@ -180,7 +187,7 @@ export default function FatenPage() {
           retailPrice:    (d.data().price as number) ?? 0,
           stock:          d.data().stock,
           image:          (d.data().image as string) ?? '',
-          fatenStock:     stock['Faten'] ?? 0,
+          fatenStock:     stock[BRANCH] ?? 0,
         } as Game
       })
       const faten = all.filter(g => g.fatenStock > 0)
@@ -212,13 +219,13 @@ export default function FatenPage() {
           {/* Header */}
           <div style={{ marginBottom: '2.5rem' }}>
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#C9962C', marginBottom: '0.6rem' }}>
-              Onboard — Faten Branch
+              {BRAND.name} — {BRANCH}
             </p>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.5rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
-              Faten Catalogue
+              {BRANCH} Catalogue
             </h1>
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(245,242,236,0.4)', lineHeight: 1.7 }}>
-              Games available at the Faten branch.
+              Everything available at the {BRANCH} branch.
             </p>
           </div>
 
@@ -261,7 +268,7 @@ export default function FatenPage() {
           {/* Results count */}
           {!loading && (
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.25)', marginBottom: '1.5rem', letterSpacing: '0.06em' }}>
-              {filtered.length} game{filtered.length !== 1 ? 's' : ''} at Faten
+              {filtered.length} item{filtered.length !== 1 ? 's' : ''} at {BRANCH}
             </p>
           )}
 
@@ -274,7 +281,7 @@ export default function FatenPage() {
             </div>
           ) : filtered.length === 0 ? (
             <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(245,242,236,0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem' }}>
-              {games.length === 0 ? 'No games recorded for the Faten branch yet.' : 'No games match your filters.'}
+              {games.length === 0 ? `Nothing recorded for the ${BRANCH} branch yet.` : 'Nothing matches your filters.'}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '1.25rem' }}>

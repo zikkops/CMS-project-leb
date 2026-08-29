@@ -1,6 +1,6 @@
-// Wholesale account management — the shops that buy from Onboard at wholesale
+// Wholesale account management — the shops that buy from us at wholesale
 // prices. Not to be confused with `orderProviders`, which are the suppliers
-// Onboard buys FROM.
+// we buy FROM.
 //
 // Mirrors app/api/admin/accounts/route.ts: create the Auth user with the Admin
 // SDK, write the users/{uid} doc, mint claims, and roll the Auth user back if

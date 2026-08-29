@@ -1,11 +1,18 @@
-# Onboard — Games & Tales
+# Café CMS
 
-Website for Onboard, a board-game café and restaurant chain with three branches in Lebanon (Beirut/Hamra, Zouk, Broummana). Customer-facing site (shop, menu, events, table bookings, loyalty program) plus a full admin panel for staff to manage content, bookings, and the loyalty economy.
+A café management platform: a customer-facing site (shop, menu, events, table
+bookings, loyalty program) and a full admin panel for staff to manage content,
+bookings, stock and the loyalty program.
+
+Everything brand-shaped — name, palette, fonts, contact details, currency, VAT
+and exchange rates, branches, departments — is configuration in
+`app/lib/brand.ts`, driven by environment variables. `npm run audit:branding`
+fails the moment one of those values gets inlined somewhere instead.
 
 ## Tech Stack
 
 - **Next.js 16** (App Router, Turbopack) + **React 19** + **TypeScript**
-- **Firebase 12** — Auth + Firestore, **client SDK only**. There is no Admin SDK, no service account, and no Cloud Functions anywhere in this project — every read/write, including everything staff do in the admin panel, runs from the browser with the Firebase client SDK. See [ARCHITECTURE.md](./ARCHITECTURE.md#no-admin-sdk) for what this does and doesn't let you do.
+- **Firebase 12** (client SDK) + **firebase-admin 14** (server). Reads run in the browser on live `onSnapshot` listeners; **privileged writes go through route handlers under `app/api/`** using the Admin SDK and a service account. Anything that decides money, stock or someone else's balance belongs on the server — `npm run audit:writes` tracks what is left to move. Setup: [docs/server-setup.md](./docs/server-setup.md).
 - **FontAwesome** for icons, **@dnd-kit** for drag-to-reorder (admin/menu), **imgbb** for image hosting, **DiceBear** for placeholder avatars
 - Styling is hand-written inline `style={{}}` objects throughout — Tailwind is installed but not used (see [CONTRIBUTING.md](./CONTRIBUTING.md))
 
@@ -38,9 +45,9 @@ The Firebase values come from your Firebase project's web app config (Project Se
 
 This app needs, in your Firebase project:
 - **Authentication** — Email/Password and Google sign-in enabled.
-- **Firestore** — in Native mode. Security rules are version-controlled in `firestore.rules` at the project root, but deploying them is still a manual step (paste into Console → Rules → Publish, or `firebase deploy --only firestore:rules` if you have the CLI) — there's no CI/CD wired up to do this automatically (see [ARCHITECTURE.md](./ARCHITECTURE.md#firestore-rules)).
+- **Firestore** — in Native mode. Security rules are version-controlled in `firestore.rules` at the project root and deployed with `firebase deploy --only firestore:rules`. **Never paste them into the Console UI**, and never deploy more than one collection's change at a time: a rules deploy has no gradual rollout, so a wrong rule breaks that collection for every user at once. Composite indexes live in `firestore.indexes.json`.
 
-There's no seed script for the first admin — sign in once through `/admin/login` with the account you want to be admin (this just creates a normal, unprovisioned Firebase Auth user), then in the Firebase Console create one `adminUsers/{uid}` document by hand using that user's uid, with a `role: "admin"` field. See [docs/admin-panel.md](./docs/admin-panel.md#auth) for why this is manual now.
+There is **no `adminUsers` collection** — staff and customers share `users/{uid}`, and a staff account is one with `isStaff: true` plus `role`, `branchIds` and its grants. For the first admin, sign in once through `/admin/login` to create the Auth user, then set those fields on that uid. Roles are also mirrored into custom claims, which is what `firestore.rules` actually checks — see [docs/server-setup.md](./docs/server-setup.md).
 
 ## Scripts
 
@@ -50,6 +57,10 @@ There's no seed script for the first admin — sign in once through `/admin/logi
 | `npm run build` | Production build — also runs the full TypeScript check |
 | `npm run start` | Run the production build |
 | `npm run lint` | ESLint |
+| `npm run audit:branding` | Fails while any brand value is inlined outside `brand.ts` |
+| `npm run audit:writes` | Tracks privileged writes still running in the browser |
+| `npm run verify:delivery-math` | Checks the receiving/costing arithmetic |
+| `npm run seed:demo` | Writes demo supplies, providers, an order template and a weekly order |
 
 ## Project Structure
 
@@ -60,7 +71,8 @@ app/
   (customer)/customer/     Customer account pages (login, profile, friends, redeem, submit-check)
   customer/leaderboard/    (outside the (customer) group — public, no login wall)
   admin/                   Staff-only admin panel (see docs/admin-panel.md)
-  api/                     Two server route handlers (image upload proxy, image delete)
+  api/                     Route handlers — every privileged write, plus the image proxy
+  lib/server/              Admin SDK layer. Import from app/api/** and scripts/** only.
   lib/                     Data layer — one file per feature, mostly hooks + Firestore calls
   components/
     home/                  Home-page sections
@@ -71,7 +83,8 @@ app/
 
 ## Further reading
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) — system design, Firestore schema, the no-Admin-SDK constraint and what it means
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — system design and Firestore schema
 - [CONTRIBUTING.md](./CONTRIBUTING.md) — code conventions and patterns used throughout
-- [docs/loyalty-system.md](./docs/loyalty-system.md) — the XP/OB Coins program in detail
+- [docs/loyalty-system.md](./docs/loyalty-system.md) — points, tiers and the annual reset
+- [docs/server-setup.md](./docs/server-setup.md) — service account, custom claims, rules deploys
 - [docs/admin-panel.md](./docs/admin-panel.md) — admin auth, roles, and route map

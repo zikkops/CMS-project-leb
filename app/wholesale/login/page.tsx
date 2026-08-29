@@ -122,7 +122,7 @@ export default function WholesaleLoginPage() {
           fontFamily: 'var(--font-inter)', fontSize: '0.75rem',
           color: 'rgba(245,242,236,0.25)', textAlign: 'center', marginTop: '2rem', lineHeight: 1.7,
         }}>
-          Wholesale accounts are set up by Onboard.<br />
+          Wholesale accounts are set up by {BRAND.name}.<br />
           Contact us if you need access.
         </p>
       </div>

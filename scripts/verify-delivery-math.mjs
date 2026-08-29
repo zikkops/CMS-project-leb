@@ -23,7 +23,7 @@ import { join } from 'node:path'
 // deliveryMath.ts imports nothing from Firebase, so it transpiles and runs
 // standalone — no stripping, no stubs. That property is the whole reason the
 // pure calculations live in their own module.
-const out = mkdtempSync(join(tmpdir(), 'onboard-verify-'))
+const out = mkdtempSync(join(tmpdir(), 'delivery-verify-'))
 execSync(
   `npx tsc app/lib/deliveryMath.ts --outDir ${out} --module esnext --target es2022 ` +
   `--skipLibCheck --moduleResolution bundler`,

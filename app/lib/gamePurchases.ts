@@ -10,6 +10,7 @@ import { logActivity } from './activityLog'
 import { uploadImage } from './media'
 import { authedFetch, unwrap } from './apiClient'
 import { BRANCHES, normalizeStock } from './branches'
+import { BRAND } from './brand'
 
 export interface PurchaseItem {
   gameId: string
@@ -93,10 +94,10 @@ export function drawInvoiceCanvas(
   ctx.fillStyle = '#ffffff'
   ctx.font = 'bold 20px Georgia, serif'
   ctx.textAlign = 'left'
-  ctx.fillText('ONBOARD — GAMES & TALES', PAD, 44)
+  ctx.fillText(BRAND.name.toUpperCase(), PAD, 44)
   ctx.font = '11px Arial, sans-serif'
   ctx.fillStyle = 'rgba(255,255,255,0.55)'
-  ctx.fillText('Board Game Café', PAD, 64)
+  ctx.fillText(BRAND.tagline, PAD, 64)
   ctx.fillStyle = '#ffffff'
   ctx.font = 'bold 30px Arial, sans-serif'
   ctx.textAlign = 'right'
@@ -207,7 +208,7 @@ export function drawInvoiceCanvas(
   ctx.fillStyle = '#888888'
   ctx.font = '11px Arial, sans-serif'
   ctx.textAlign = 'center'
-  ctx.fillText('Thank you for your business — Onboard Games & Tales', W / 2, FOOTER_Y + 24)
+  ctx.fillText(`Thank you for your business — ${BRAND.name}`, W / 2, FOOTER_Y + 24)
   ctx.fillText('This invoice was generated automatically. Please retain for your records.', W / 2, FOOTER_Y + 44)
   ctx.textAlign = 'left'
 

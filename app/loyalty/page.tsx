@@ -19,6 +19,7 @@ import {
   faChartLine, faCoins, faReceipt, faCalendarDay,
   faArrowRight, faMugHot, faMugSaucer, faBurger, faTicket, faGift,
 } from '@fortawesome/free-solid-svg-icons'
+import { BRAND } from '../lib/brand'
 
 const EARN_CARDS = [
   {
@@ -33,13 +34,13 @@ const EARN_CARDS = [
     icon: faCalendarDay,
     color: 'var(--red)',
     title: 'Attend an event',
-    desc: 'Come to any Onboard event — board game nights, tournaments, themed evenings — and earn a big point bonus just for showing up.',
+    desc: `Come to any ${BRAND.name} event — tastings, launches, themed evenings — and earn a big point bonus just for showing up.`,
     pointsEarned: 250, coins: 50, unit: 'per event',
   },
 ]
 
 const SUBMIT_STEPS = [
-  'Order food or drinks at any Onboard branch',
+  `Order food or drinks at any ${BRAND.name} branch`,
   'Ask for your check and note the check number',
   'Go to your profile and tap "Submit a check"',
   'Enter the check number, branch, total amount, and upload a photo of your check',
@@ -119,7 +120,7 @@ export default function LoyaltyPage() {
         }}>
           <Image
             src={PLACEHOLDER.heroBackground}
-            alt="Onboard interior"
+            alt={`${BRAND.name} interior`}
             fill
             priority
             sizes="100vw"
@@ -159,7 +160,7 @@ export default function LoyaltyPage() {
               lineHeight: 1.2,
               marginBottom: '1rem',
             }}>
-              The Onboard<br />Loyalty Program
+              The {BRAND.name}<br />Loyalty Program
             </h1>
 
             <p style={{
@@ -179,9 +180,9 @@ export default function LoyaltyPage() {
               maxWidth: '520px',
               margin: '0 auto 2.5rem',
             }}>
-              Loyal customers earn points to level up and unlock permanent perks, and Points
-              to redeem for free food and drinks. The more you play and visit, the more
-              Onboard gives back.
+              Every purchase earns points. Points move you up the tiers, which unlock
+              standing perks, and they spend on free food and drinks. The more often you
+              visit, the more {BRAND.name} gives back.
             </p>
 
             <div style={{

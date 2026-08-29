@@ -84,7 +84,7 @@ function readServiceAccount(): Required<ServiceAccountJson> {
 // Serverless functions are re-used across invocations, so initializeApp() must
 // not run twice in the same process — hence the getApps() check, mirroring the
 // same pattern app/lib/firebase.ts already uses for the client SDK.
-const ADMIN_APP_NAME = 'onboard-admin'
+const ADMIN_APP_NAME = 'cms-admin'
 
 function adminApp(): App {
   const existing = getApps().find(a => a.name === ADMIN_APP_NAME)

@@ -16,6 +16,7 @@ import {
   orderTotal, orderItemCount, type WholesaleOrderItem,
 } from '../lib/wholesale'
 import { generateInvoiceForCart } from '../lib/wholesaleInvoice'
+import { BRAND } from '../lib/brand'
 
 interface Game {
   id: string
@@ -322,7 +323,7 @@ export default function WholesalePage() {
         }}>
           <div style={{ textAlign: 'center', maxWidth: '420px' }}>
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#6A6AB7', marginBottom: '0.8rem' }}>
-              Onboard — Wholesale
+              {BRAND.name} — Wholesale
             </p>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', color: 'var(--offwhite)', marginBottom: '0.8rem' }}>
               Trade access only
@@ -434,7 +435,7 @@ export default function WholesalePage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap', marginBottom: '2.5rem' }}>
             <div>
               <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#6A6AB7', marginBottom: '0.6rem' }}>
-                Onboard — Wholesale
+                {BRAND.name} — Wholesale
               </p>
               <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.5rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
                 Wholesale Catalogue

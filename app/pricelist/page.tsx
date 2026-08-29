@@ -10,10 +10,11 @@ import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUsers, faClock, faCakeCandles, faSearch, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { normalizeStock } from '../lib/branches'
+import { BRAND } from '../lib/brand'
 
 // This list is the Faten branch shelf, so stock comes from that one branch
 // rather than the summed total the shop and wholesale pages show.
-const BRANCH = 'Faten'
+const BRANCH = BRAND.branches[0]
 
 interface Game {
   id: string
@@ -216,7 +217,7 @@ export default function PriceListPage() {
 
           <div style={{ marginBottom: '2.5rem' }}>
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: '0.6rem' }}>
-              Onboard — {BRANCH}
+              {BRAND.name} — {BRANCH}
             </p>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.5rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
               Price List

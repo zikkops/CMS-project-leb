@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { PLACEHOLDER } from '../lib/placeholderAssets'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faDice, faMugHot, faCalendarCheck, faTrophy, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
+import { BRAND } from '../lib/brand'
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false)
@@ -61,7 +62,7 @@ export default function AboutPage() {
               fontSize: isMobile ? '2.2rem' : '3.5rem',
               color: 'var(--offwhite)',
               lineHeight: 1.2,
-            }}>About Onboard</h1>
+            }}>About {BRAND.name}</h1>
           </div>
         </section>
 
@@ -101,10 +102,9 @@ export default function AboutPage() {
                 marginBottom: '1.2rem',
                 fontFamily: 'var(--font-inter)',
               }}>
-                Onboard — Games & Tales was born from a simple belief: the best moments
-                happen around a table. Whether you're plotting world domination in a
-                strategy game, laughing through a party classic, or discovering a hidden
-                gem for the first time — we're here to make it happen.
+                {BRAND.name} was born from a simple belief: the best moments happen
+                around a table. Good coffee, food worth staying for, and a room that
+                makes people want to sit a while longer — that is the whole idea.
               </p>
               <p style={{
                 color: 'rgba(245,242,236,0.55)',
@@ -112,18 +112,18 @@ export default function AboutPage() {
                 marginBottom: '1.2rem',
                 fontFamily: 'var(--font-inter)',
               }}>
-                We started as a small gathering of board game enthusiasts in Beirut and
-                grew into Lebanon's biggest board game café and restaurant. Today we have
-                three branches — Beirut, Zouk, and Broummana — each with its own character
-                but all sharing the same spirit of play, community, and great food.
+                We started with one room and a short menu, and grew from there. Today
+                we run {BRAND.branches.length} branch{BRAND.branches.length === 1 ? '' : 'es'} —{' '}
+                {BRAND.branches.join(', ')} — each with its own character but all sharing
+                the same kitchen standards and the same welcome.
               </p>
               <p style={{
                 color: 'rgba(245,242,236,0.55)',
                 lineHeight: 1.9,
                 fontFamily: 'var(--font-inter)',
               }}>
-                From casual family afternoons to competitive tournaments, from a quiet
-                coffee to a full table booking — Onboard is where Lebanon comes to play.
+                From a quiet morning coffee to a full table booking for the evening,
+                {' '}{BRAND.name} is built around the people who keep coming back.
               </p>
             </div>
 
@@ -136,7 +136,7 @@ export default function AboutPage() {
             }}>
               <Image
                 src={PLACEHOLDER.heroBackground}
-                alt="Onboard interior"
+                alt={`${BRAND.name} interior`}
                 fill
                 sizes="(max-width: 768px) 100vw, 50vw"
                 style={{ objectFit: 'cover' }}

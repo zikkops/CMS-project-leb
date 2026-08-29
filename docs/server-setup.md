@@ -30,13 +30,13 @@ at runtime. Base64 sidesteps it entirely.
 **Windows PowerShell:**
 
 ```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("$HOME\Downloads\onboard-firebase-adminsdk.json")) | Set-Clipboard
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("$HOME\Downloads\firebase-adminsdk.json")) | Set-Clipboard
 ```
 
 **macOS / Linux:**
 
 ```bash
-base64 -w0 ~/Downloads/onboard-firebase-adminsdk.json | pbcopy   # or | xclip -sel clip
+base64 -w0 ~/Downloads/firebase-adminsdk.json | pbcopy   # or | xclip -sel clip
 ```
 
 Then:

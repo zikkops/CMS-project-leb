@@ -6,7 +6,7 @@
 //
 // CONFIGURATION
 //   RESEND_API_KEY   required for anything to actually send
-//   RESEND_FROM      e.g. "Onboard <orders@onboard.lb>" — the domain must be
+//   RESEND_FROM      e.g. "Café <orders@example.com>" — the domain must be
 //                    verified in Resend, or delivery fails for every recipient
 //                    except the Resend account's own address.
 //
@@ -14,6 +14,8 @@
 // failed send as non-fatal — an order that saved but didn't email is a
 // notification problem, not a lost order, and throwing here would tell the
 // shop their order failed when it didn't.
+
+import { BRAND } from '../brand'
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails'
 
@@ -46,7 +48,7 @@ export async function sendEmail(input: EmailInput): Promise<EmailResult> {
   const key = process.env.RESEND_API_KEY
   if (!key) return { sent: false, reason: 'RESEND_API_KEY is not set' }
 
-  const from = process.env.RESEND_FROM || 'Onboard <onboarding@resend.dev>'
+  const from = process.env.RESEND_FROM || `${BRAND.name} <onboarding@resend.dev>`
 
   try {
     // Resend has no published hard timeout; bound it ourselves so a hanging

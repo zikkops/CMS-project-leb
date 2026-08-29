@@ -6,6 +6,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../../lib/firebase'
 import { setAdminSessionCookie } from '../../lib/adminAuth'
+import { BRAND } from '../../lib/brand'
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -66,7 +67,7 @@ export default function AdminLoginPage() {
           marginBottom: '3rem',
           fontFamily: 'var(--font-inter)',
         }}>
-          Onboard — Games & Tales
+          {BRAND.name}
         </p>
 
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
