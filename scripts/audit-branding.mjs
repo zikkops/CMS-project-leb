@@ -44,6 +44,14 @@ const PATTERNS = [
     severity: 'high',
   },
   {
+    label: 'Original brand phrase',
+    // Separate from the name above: the full phrase appeared in headings where
+    // "onboard" alone did not, and it is the form a visitor actually read.
+    re: /\bGames\s*&\s*Tales\b/i,
+    why: 'Move to BRAND.name in app/lib/brand.ts.',
+    severity: 'high',
+  },
+  {
     label: 'Original branch names',
     // The negative lookbehind spares Asia/Beirut, which is an IANA timezone
     // identifier and the only correct value to write there.
@@ -102,6 +110,30 @@ const PATTERNS = [
   },
 ]
 
+// A branded string written as `Games &amp; Tales` is invisible to a regex for
+// `Games & Tales`, and that is exactly how headings survived a de-branding
+// pass while this script reported clean. Every pattern is therefore tested
+// against the raw line AND against a decoded copy, so an HTML entity can never
+// be a hiding place.
+const NAMED_ENTITIES = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
+  mdash: '—', ndash: '–', hellip: '…',
+  lsquo: '‘', rsquo: '’', ldquo: '“', rdquo: '”',
+}
+
+function decodeEntities(text) {
+  if (!text.includes('&')) return text
+  return text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, body) => {
+    if (body[0] === '#') {
+      const code = body[1] === 'x' || body[1] === 'X'
+        ? parseInt(body.slice(2), 16)
+        : parseInt(body.slice(1), 10)
+      return Number.isFinite(code) ? String.fromCodePoint(code) : whole
+    }
+    return NAMED_ENTITIES[body.toLowerCase()] ?? whole
+  })
+}
+
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry)
@@ -126,7 +158,7 @@ for (const file of files) {
 
   for (const { label, re } of PATTERNS) {
     lines.forEach((text, i) => {
-      if (!re.test(text)) return
+      if (!re.test(text) && !re.test(decodeEntities(text))) return
       if (!hits.has(label)) hits.set(label, [])
       hits.get(label).push({ file: rel, line: i + 1, text: text.trim().slice(0, 110) })
     })
