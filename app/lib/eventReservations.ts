@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import {
-  collection, query, where, orderBy, onSnapshot, doc, addDoc, updateDoc,
+  collection, query, where, orderBy, onSnapshot, doc, addDoc,
   serverTimestamp, type Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import { logUpdate } from './activityLog'
 import { createParticipantInvites } from './participantInvites'
 import { createStatusNotification } from './notifications'
+import { authedFetch, unwrap } from './apiClient'
 
 // Unlike D&D reservations, there's no single-person resource to avoid
 // double-booking here — multiple people can attend the same event together.
@@ -139,12 +139,29 @@ export function usePendingEventReservations(branchFilter: string[] | 'all' | nul
   return { reservations, loading }
 }
 
-export async function approveEventReservation(reservation: EventReservation, staffUid: string): Promise<void> {
-  await updateDoc(doc(db, 'eventReservations', reservation.id), {
-    status: 'approved',
-    approvedBy: staffUid,
-    approvedAt: serverTimestamp(),
-  })
+/**
+ * Approve or reject an event spot request.
+ *
+ * `staffUid` is accepted and ignored. It used to be the value written to
+ * approvedBy / rejectedBy, so the audit trail recorded whoever the browser
+ * named — a barista could file an approval under the manager. The route reads
+ * the actor from the verified token now. The parameter stays so the call
+ * sites are unchanged.
+ *
+ * The route also refuses anything that is no longer pending: two managers
+ * racing on the same request used to both succeed, and approving something
+ * already rejected silently un-rejected it while the customer's rejection
+ * notification stood.
+ *
+ * The customer notification stays here on purpose. It is a write the customer
+ * ownership rules already permit, and it is deliberately non-fatal — a
+ * notification that fails to send must not roll back a decision a manager has
+ * already made and seen confirmed.
+ */
+export async function approveEventReservation(reservation: EventReservation, _staffUid: string): Promise<void> {
+  await unwrap(await authedFetch('/api/admin/reservations', 'PATCH', {
+    kind: 'event', id: reservation.id, action: 'approve',
+  }))
   createStatusNotification({
     uid: reservation.userId,
     type: 'reservation_approved',
@@ -153,22 +170,12 @@ export async function approveEventReservation(reservation: EventReservation, sta
     label: reservation.eventTitle,
     dateLabel: `${reservation.eventDate} · ${reservation.eventTimeStart}`,
   }).catch(err => console.error('[approveEventReservation] notification write failed:', err))
-
-  await logUpdate(
-    'Event Reservation',
-    `${reservation.eventTitle} — ${reservation.branch}`,
-    { status: 'pending' },
-    { status: 'approved' }
-  )
 }
 
-export async function rejectEventReservation(reservation: EventReservation, staffUid: string, reason: string): Promise<void> {
-  await updateDoc(doc(db, 'eventReservations', reservation.id), {
-    status: 'rejected',
-    rejectedBy: staffUid,
-    rejectedAt: serverTimestamp(),
-    rejectionReason: reason || null,
-  })
+export async function rejectEventReservation(reservation: EventReservation, _staffUid: string, reason: string): Promise<void> {
+  await unwrap(await authedFetch('/api/admin/reservations', 'PATCH', {
+    kind: 'event', id: reservation.id, action: 'reject', reason,
+  }))
   createStatusNotification({
     uid: reservation.userId,
     type: 'reservation_rejected',
@@ -178,11 +185,4 @@ export async function rejectEventReservation(reservation: EventReservation, staf
     dateLabel: `${reservation.eventDate} · ${reservation.eventTimeStart}`,
     rejectionReason: reason || null,
   }).catch(err => console.error('[rejectEventReservation] notification write failed:', err))
-
-  await logUpdate(
-    'Event Reservation',
-    `${reservation.eventTitle} — ${reservation.branch}`,
-    { status: 'pending' },
-    { status: 'rejected', rejectionReason: reason }
-  )
 }

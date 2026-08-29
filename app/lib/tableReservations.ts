@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import {
-  collection, query, where, orderBy, onSnapshot, doc, getDocs, updateDoc,
-  writeBatch, runTransaction, serverTimestamp, Timestamp,
+  collection, query, where, orderBy, onSnapshot, doc, getDocs,
+  runTransaction, serverTimestamp, Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import { logUpdate } from './activityLog'
 import { createStatusNotification } from './notifications'
+import { authedFetch, unwrap } from './apiClient'
 
 // Mirrors app/lib/dndReservations.ts's conflict-locking pattern exactly,
 // generalized from one locked resource (a DM) to N (every table in a
@@ -24,7 +24,7 @@ import { createStatusNotification } from './notifications'
 
 export const RESERVATION_DURATION_MINUTES = 90   // placeholder — tune to the café's real seating policy
 export const TABLE_RESET_BUFFER_MINUTES = 15     // table turnover/bussing time; set to 0 to disable
-const BUCKET_MINUTES = 30
+import { BUCKET_MINUTES, dateKey, lockDocId, bucketStartTimesInRange } from './tableLocks'
 export const DEFAULT_OPENING_START = '16:30'
 export const DEFAULT_OPENING_END = '01:30'
 
@@ -68,24 +68,10 @@ export interface TableReservation {
   rejectionReason?: string | null
 }
 
-function dateKey(d: Date): string {
-  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
-}
-function bucketIndex(d: Date): number {
-  return Math.floor((d.getHours() * 60 + d.getMinutes()) / BUCKET_MINUTES)
-}
-function lockDocId(tableId: string, d: Date): string {
-  return `${tableId}__${dateKey(d)}_${bucketIndex(d)}`
-}
-function bucketStartTimesInRange(start: Date, end: Date): Date[] {
-  const starts: Date[] = []
-  let cur = new Date(start)
-  while (cur < end) {
-    starts.push(new Date(cur))
-    cur = new Date(cur.getTime() + BUCKET_MINUTES * 60000)
-  }
-  return starts
-}
+// dateKey, bucketIndex, lockDocId and bucketStartTimesInRange moved to
+// app/lib/tableLocks.ts. Releasing a lock happens server-side now, and both
+// sides have to compute byte-identical ids or a rejection orphans the locks
+// it meant to free.
 function allStartTimesForDate(dateStr: string, openingStart: string, openingEnd: string): Date[] {
   const [y, m, d] = dateStr.split('-').map(Number)
   const [startH, startM] = openingStart.split(':').map(Number)
@@ -294,12 +280,22 @@ export function usePendingTableReservations(branchFilter: 'all' | string[] | nul
   return { reservations, loading }
 }
 
-export async function approveTableReservation(reservation: TableReservation, staffUid: string): Promise<void> {
-  await updateDoc(doc(db, 'tableReservations', reservation.id), {
-    status: 'approved',
-    approvedBy: staffUid,
-    approvedAt: serverTimestamp(),
-  })
+/**
+ * Approve or reject a table booking.
+ *
+ * `staffUid` is accepted and ignored — see the note on the event twin. The
+ * route reads the approver from the verified token and refuses anything no
+ * longer pending.
+ *
+ * Rejecting releases the table's half-hour locks, and the route recomputes
+ * which ones from the STORED start and end rather than trusting the request.
+ * A browser able to name the lock documents to delete could free somebody
+ * else's table.
+ */
+export async function approveTableReservation(reservation: TableReservation, _staffUid: string): Promise<void> {
+  await unwrap(await authedFetch('/api/admin/reservations', 'PATCH', {
+    kind: 'table', id: reservation.id, action: 'approve',
+  }))
   createStatusNotification({
     uid: reservation.userId,
     type: 'reservation_approved',
@@ -308,34 +304,12 @@ export async function approveTableReservation(reservation: TableReservation, sta
     label: `Table${reservation.tableNumbers.length > 1 ? 's' : ''} ${reservation.tableNumbers.join(', ')} · ${reservation.branch}`,
     dateLabel: reservation.startAt.toDate().toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }),
   }).catch(err => console.error('[approveTableReservation] notification write failed:', err))
-
-  await logUpdate(
-    'Table Reservation',
-    `${reservation.branch} — Table${reservation.tableNumbers.length > 1 ? 's' : ''} ${reservation.tableNumbers.join(', ')}`,
-    { status: 'pending' }, { status: 'approved' }
-  )
 }
 
-// Rejecting frees the slot back up — the lock buckets are recomputed
-// deterministically from tableIds/startAt (same formula used to create
-// them) and deleted in the same batch as the status update.
-export async function rejectTableReservation(reservation: TableReservation, staffUid: string, reason: string): Promise<void> {
-  const startAt = reservation.startAt.toDate()
-  const blockedUntil = reservation.blockedUntil.toDate()
-  const lockBuckets = bucketStartTimesInRange(startAt, blockedUntil)
-
-  const batch = writeBatch(db)
-  batch.update(doc(db, 'tableReservations', reservation.id), {
-    status: 'rejected',
-    rejectedBy: staffUid,
-    rejectedAt: serverTimestamp(),
-    rejectionReason: reason || null,
-  })
-  reservation.tableIds.forEach(tableId => {
-    lockBuckets.forEach(b => batch.delete(doc(db, 'tableLocks', lockDocId(tableId, b))))
-  })
-  await batch.commit()
-
+export async function rejectTableReservation(reservation: TableReservation, _staffUid: string, reason: string): Promise<void> {
+  await unwrap(await authedFetch('/api/admin/reservations', 'PATCH', {
+    kind: 'table', id: reservation.id, action: 'reject', reason,
+  }))
   createStatusNotification({
     uid: reservation.userId,
     type: 'reservation_rejected',
@@ -345,10 +319,4 @@ export async function rejectTableReservation(reservation: TableReservation, staf
     dateLabel: reservation.startAt.toDate().toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }),
     rejectionReason: reason || null,
   }).catch(err => console.error('[rejectTableReservation] notification write failed:', err))
-
-  await logUpdate(
-    'Table Reservation',
-    `${reservation.branch} — Table${reservation.tableNumbers.length > 1 ? 's' : ''} ${reservation.tableNumbers.join(', ')}`,
-    { status: 'pending' }, { status: 'rejected', rejectionReason: reason }
-  )
 }

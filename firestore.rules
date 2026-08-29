@@ -547,7 +547,12 @@ service cloud.firestore {
       allow create: if isSignedIn() &&
         request.auth.uid == request.resource.data.requestedBy &&
         request.resource.data.status == 'pending';
-      allow update: if canEvents() ||
+      // Approving and rejecting moved to /api/admin/reservations, which takes
+      // the approver from the verified token and refuses anything that is no
+      // longer pending. The blanket canEvents() write is gone with it: what
+      // remains is a customer dropping out of someone's booking, and a
+      // customer cancelling their own.
+      allow update: if
         (isSignedIn() &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants', 'partySize']) &&
           request.resource.data.participants.size() == resource.data.participants.size() - 1 &&
@@ -585,12 +590,15 @@ service cloud.firestore {
       // Approve / reject / check-in. The customer who submitted may cancel
       // their own reservation (pending or approved → cancelled only), changing
       // only status and cancelledAt.
-      allow update: if canTableReservations() ||
-        (isSignedIn() &&
-          request.auth.uid == resource.data.userId &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt']) &&
-          request.resource.data.status == 'cancelled' &&
-          resource.data.status in ['pending', 'approved']);
+      // Approve, reject and check-in are all server-side now
+      // (/api/admin/reservations and /api/admin/tables/checkin), so the staff
+      // branch is gone. Only the customer cancelling their own booking is
+      // left.
+      allow update: if isSignedIn() &&
+        request.auth.uid == resource.data.userId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt']) &&
+        request.resource.data.status == 'cancelled' &&
+        resource.data.status in ['pending', 'approved'];
     }
 
     // A deterministic lock document per table per time bucket, so two joint
@@ -608,7 +616,10 @@ service cloud.firestore {
         request.resource.data.reservationId is string &&
         request.resource.data.bucketStart is timestamp &&
         request.resource.data.requestedBy == request.auth.uid;
-      allow delete: if canTableReservations();
+      // Only a rejection releases a lock, and that happens inside the
+      // transaction in /api/admin/reservations — which recomputes the ids
+      // from the STORED booking rather than trusting a caller to name them.
+      allow delete: if false;
     }
 
     // ---- Retail ----
