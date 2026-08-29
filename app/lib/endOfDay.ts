@@ -245,9 +245,30 @@ export interface EndOfDayLog {
 // calls, so a saved report could end up with no log entry if the second
 // failed, and the log recorded whichever uid the browser supplied.
 
-export async function listEndOfDayLogs(limitCount = 150): Promise<EndOfDayLog[]> {
+/**
+ * The end-of-day audit trail, scoped to the branches the reader is assigned.
+ *
+ * Pass `null` for an unrestricted read — that is the admin case, and it is
+ * spelled explicitly so an accidentally-empty branch list can never be
+ * mistaken for "show everything". A manager with no branches assigned sees
+ * nothing, which is the honest answer.
+ *
+ * Every other manager-facing end-of-day view already filters by branch; this
+ * one did not, so a manager for one branch could read the submission history
+ * of all of them. Cash figures live one click away from these entries.
+ *
+ * Filtered client-side rather than with a `where` clause: the collection is
+ * small and append-only, and an `in` query caps at 30 values, which would
+ * quietly drop branches from the results of any larger deployment.
+ */
+export async function listEndOfDayLogs(
+  branchIds: string[] | null,
+  limitCount = 150,
+): Promise<EndOfDayLog[]> {
   const snap = await getDocs(
     query(collection(db, 'endOfDayLogs'), orderBy('createdAt', 'desc'), limit(limitCount))
   )
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as EndOfDayLog))
+  const rows = snap.docs.map(d => ({ id: d.id, ...d.data() } as EndOfDayLog))
+  if (branchIds === null) return rows
+  return rows.filter(r => branchIds.includes(r.branch))
 }

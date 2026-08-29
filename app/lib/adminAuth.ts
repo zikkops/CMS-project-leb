@@ -38,7 +38,13 @@ export const ROLE_COLORS: Record<Role, string> = {
 
 // Human-readable labels for every section key — used in Manage Users to let
 // admins grant per-user access beyond what the user's role normally covers.
-export const SECTION_LABELS: Record<string, string> = {
+// Typed as Record<SectionKey, string> rather than Record<string, string> on
+// purpose: it makes a missing label a compile error. Two keys had already gone
+// missing — weeklyOrdersSubmit and endOfDayHistory — and /admin/users renders
+// `SECTION_LABELS[key] ?? key`, so they appeared in the grant list as raw
+// camelCase identifiers rather than failing loudly. Adding a section to
+// SECTION_ACCESS now forces a decision about what to call it.
+export const SECTION_LABELS: Record<SectionKey, string> = {
   games:             'Manage Games',
   menu:              'Manage Menu',
   events:            'Manage Events',
@@ -48,8 +54,10 @@ export const SECTION_LABELS: Record<string, string> = {
   tableReservations: 'Table Reservations',
   gamePurchases:     'Record Game Sales',
   gameTransfers:     'Transfer Stock',
-  weeklyOrders:      'Weekly Order Reports',
-  endOfDay:          'End of Day Reports',
+  weeklyOrders:       'Weekly Order Reports',
+  weeklyOrdersSubmit: 'Submit a Weekly Order',
+  endOfDay:           'End of Day Reports',
+  endOfDayHistory:    'End of Day History',
   supplies:              'Inventory Management',
   dailyInventory:        'Daily Inventory Count',
   dailyInventoryHistory: 'Daily Inventory History',

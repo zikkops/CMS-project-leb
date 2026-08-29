@@ -13,14 +13,17 @@ function fmtTs(ts: { seconds: number } | null): string {
 }
 
 export default function EndOfDayLogPage() {
-  const { checking } = useRequireRole(SECTION_ACCESS.endOfDay)
+  const { checking, role, branchIds } = useRequireRole(SECTION_ACCESS.endOfDay)
   const [logs,    setLogs]    = useState<EndOfDayLog[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (checking) return
-    listEndOfDayLogs().then(data => { setLogs(data); setLoading(false) })
-  }, [checking])
+    // Admins read everything; everyone else sees only their own branches,
+    // matching every other end-of-day view.
+    listEndOfDayLogs(role === 'admin' ? null : branchIds)
+      .then(data => { setLogs(data); setLoading(false) })
+  }, [checking, role, branchIds])
 
   if (checking) return null
 
