@@ -21,9 +21,13 @@ import {
   type OrderTemplateItem, type OrderProvider,
   DEPARTMENTS, type Department,
 } from '../../../lib/weeklyOrders'
-import { BRANCHES } from '../../../lib/branches'
+import { BRANCHES, isStockedBranch, emptyStock, PRIMARY_BRANCH } from '../../../lib/branches'
 
-type SupplyBranch = 'Beirut' | 'Zouk' | 'Broummana'
+// Was a literal union of the original café's three branches, which meant
+// every guard below rejected every branch in any other deployment — the
+// supplies panel simply never rendered. Branch names are configuration now,
+// so the type is string and the check is against the configured list.
+type SupplyBranch = string
 interface Supply { id: string; name: string; quantity: Record<SupplyBranch, number>; unit: string; threshold: number; category: string }
 
 function supplyStatus(qty: number, threshold: number): 'ok' | 'low' | 'out' {
@@ -93,8 +97,8 @@ export default function SubmitOrderPage() {
       setSupplies(snap.docs.map(d => {
         const s = d.data() as Omit<Supply, 'id'>
         const qty = typeof s.quantity === 'number'
-          ? { Beirut: s.quantity, Zouk: 0, Broummana: 0 }
-          : (s.quantity ?? { Beirut: 0, Zouk: 0, Broummana: 0 })
+          ? { ...emptyStock(), [PRIMARY_BRANCH]: s.quantity }
+          : (s.quantity ?? emptyStock())
         return { ...s, id: d.id, quantity: qty }
       }).sort((a, b) => a.name.localeCompare(b.name)))
     }).catch(() => { /* rules not yet deployed — quantities stay hidden */ })
@@ -108,7 +112,7 @@ export default function SubmitOrderPage() {
   const supplyMap = useMemo(() => {
     const m = new Map<string, { qty: number; threshold: number; unit: string }>()
     const b = branch as SupplyBranch
-    if (b !== 'Beirut' && b !== 'Zouk' && b !== 'Broummana') return m
+    if (!isStockedBranch(b)) return m
     for (const s of supplies) {
       m.set(s.name.toLowerCase().trim(), { qty: s.quantity[b] ?? 0, threshold: s.threshold, unit: s.unit })
     }
@@ -260,8 +264,7 @@ export default function SubmitOrderPage() {
             {/* Supplies panel — shown when branch is selected */}
             {branch && supplies.length > 0 && (() => {
               const branchKey = branch as SupplyBranch
-              const validBranch = branchKey === 'Beirut' || branchKey === 'Zouk' || branchKey === 'Broummana'
-              if (!validBranch) return null
+              if (!isStockedBranch(branchKey)) return null
               const alerts = supplies.filter(s => supplyStatus(s.quantity[branchKey] ?? 0, s.threshold) !== 'ok')
               const ok     = supplies.filter(s => supplyStatus(s.quantity[branchKey] ?? 0, s.threshold) === 'ok')
               return (

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRequireRole, SECTION_ACCESS } from '../../../../lib/adminAuth'
 import { useIsMobile } from '../../../../lib/useIsMobile'
+import { branchAbbrev } from '../../../../lib/branches'
 import {
   INVENTORY_BRANCHES, DEPARTMENTS, listDailyInventories,
   type DailyInventoryReport,
@@ -15,11 +16,8 @@ const DEPT_COLOR: Record<string, string> = {
   Other:    'rgba(245,242,236,0.45)',
 }
 
-const BRANCH_INITIAL: Record<string, string> = {
-  Beirut:    'BE',
-  Zouk:      'ZK',
-  Broummana: 'BR',
-}
+// branchAbbrev() derives these from the configured names and de-duplicates
+// collisions, rather than a fixed table that only knew the original three.
 
 const sel: React.CSSProperties = {
   background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.12)',
@@ -207,7 +205,7 @@ export default function DailyInventoryHistoryPage() {
                             background: r.status === 'submitted' ? DEPT_COLOR[r.department] : 'transparent',
                             border: r.status === 'submitted' ? 'none' : `1px solid ${DEPT_COLOR[r.department]}`,
                           }}
-                        >{BRANCH_INITIAL[r.branch] ?? r.branch.slice(0, 2).toUpperCase()}</span>
+                        >{branchAbbrev(r.branch)}</span>
                       ))}
                     </div>
 

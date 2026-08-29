@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useRequireRole, SECTION_ACCESS } from '../../../lib/adminAuth'
 import { useIsMobile } from '../../../lib/useIsMobile'
+import { branchColor } from '../../../lib/branches'
 import {
   INVENTORY_BRANCHES, DEPARTMENTS, todayDateStr, listSuppliesForCount, emptyInventoryReport,
   getDailyInventory, saveDailyInventoryDraft, submitDailyInventory, listDailyInventories,
@@ -17,11 +18,8 @@ const DEPT_COLOR: Record<string, string> = {
   Other:    'rgba(245,242,236,0.45)',
 }
 
-const BRANCH_COLOR: Record<string, string> = {
-  Beirut:    '#00A098',
-  Zouk:      '#C9962C',
-  Broummana: '#8B7CF6',
-}
+// Colours come from lib/branches so every screen agrees, and so a branch
+// outside the original three gets one at all.
 
 const inp: React.CSSProperties = {
   background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
@@ -215,7 +213,7 @@ function DailyInventoryInner() {
           <div>
             <label style={{ display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)', marginBottom: '0.4rem', fontFamily: 'var(--font-inter)' }}>Branch</label>
             {branchOptions.length === 1 ? (
-              <div style={{ ...inp, display: 'inline-block', color: BRANCH_COLOR[branch] ?? '#F5F2EC', fontWeight: 600 }}>{branch}</div>
+              <div style={{ ...inp, display: 'inline-block', color: branchColor(branch), fontWeight: 600 }}>{branch}</div>
             ) : (
               <select value={branch} onChange={e => setBranch(e.target.value)} style={{ ...inp, width: '100%', background: '#1a1a1a', cursor: 'pointer' }}>
                 <option value="">— Select Branch —</option>

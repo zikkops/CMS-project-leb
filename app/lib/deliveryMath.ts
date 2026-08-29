@@ -16,7 +16,7 @@
 // pulls no Firebase code into a serverless bundle. Do not turn either of these
 // into a value import.
 import type { Timestamp } from 'firebase/firestore'
-import { BRANCHES } from './branches'
+import { STOCKED_BRANCHES } from './branches'
 import type { OrderUnit } from './weeklyOrders'
 
 
@@ -29,10 +29,11 @@ import type { OrderUnit } from './weeklyOrders'
 export const DELIVERY_DEPARTMENTS = ['Kitchen', 'Bar', 'Cleaning', 'Other'] as const
 export type DeliveryDepartment = typeof DELIVERY_DEPARTMENTS[number]
 
-// Faten isn't a stocked branch for consumables — mirrors INVENTORY_BRANCHES in
-// dailyInventory.ts. Receiving and counting have to agree on this or a
-// delivery could post stock to a branch no count will ever reconcile.
-export const DELIVERY_BRANCHES = BRANCHES.filter(b => b !== 'Faten')
+// Receiving and counting have to agree on which branches hold stock, or a
+// delivery could post to a branch no count will ever reconcile. They agree by
+// reading the same configured list rather than by two files each remembering
+// to exclude the same name.
+export const DELIVERY_BRANCHES = STOCKED_BRANCHES
 
 // ── Currency ───────────────────────────────────────────────────────────────
 // Lebanon is a two-currency country and suppliers invoice in both. Every

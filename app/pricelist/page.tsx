@@ -12,7 +12,7 @@ import { faUsers, faClock, faCakeCandles, faSearch, faXmark } from '@fortawesome
 import { normalizeStock } from '../lib/branches'
 import { BRAND } from '../lib/brand'
 
-// This list is the Faten branch shelf, so stock comes from that one branch
+// This list is one branch's shelf, so stock comes from that branch alone
 // rather than the summed total the shop and wholesale pages show.
 const BRANCH = BRAND.branches[0]
 

@@ -4,11 +4,13 @@ import {
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { authedFetch, unwrap } from './apiClient'
-import { BRANCHES } from './branches'
+import { STOCKED_BRANCHES } from './branches'
 
-// Faten isn't a stocked branch for consumable supplies — see app/admin/supplies/page.tsx's
-// own SUPPLY_BRANCHES, which this mirrors.
-export const INVENTORY_BRANCHES = BRANCHES.filter(b => b !== 'Faten')
+// Which branches hold consumable stock is configuration, and STOCKED_BRANCHES
+// is the one place that answers it. This used to be BRANCHES.filter(b => b !==
+// 'Faten') — one of the three independent copies of that filter the header of
+// branches.ts opens by warning about.
+export const INVENTORY_BRANCHES = STOCKED_BRANCHES
 export type InventoryBranch = typeof INVENTORY_BRANCHES[number]
 
 // A count is scoped to one department at a time — Kitchen, Bar, and Cleaning

@@ -45,7 +45,9 @@ const PATTERNS = [
   },
   {
     label: 'Original branch names',
-    re: /\b(Beirut|Zouk|Broummana|Faten|Hamra)\b/,
+    // The negative lookbehind spares Asia/Beirut, which is an IANA timezone
+    // identifier and the only correct value to write there.
+    re: /(?<!Asia\/)\b(Beirut|Zouk|Broummana|Faten|Hamra)\b/,
     why: 'Move to BRAND.branches / BRAND.stockedBranches.',
     severity: 'high',
   },

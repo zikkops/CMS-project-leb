@@ -10,6 +10,12 @@ import { useRequireRole, SECTION_ACCESS } from '../../lib/adminAuth'
 import { logActivity, logCreate, logUpdate, logDelete } from '../../lib/activityLog'
 import { recordMediaUpload, uploadImage } from '../../lib/media'
 import MediaPickerModal from '../../components/admin/MediaPickerModal'
+import { BRANCHES as CONFIGURED_BRANCHES, PRIMARY_BRANCH } from '../../lib/branches'
+import { BRAND } from '../../lib/brand'
+
+// Not a branch — the "runs at every branch" option the picker offers alongside
+// the real ones. Named rather than inlined so the string appears once.
+const ALL_BRANCHES = 'All Branches'
 
 interface GameEvent {
   id: string
@@ -36,7 +42,7 @@ interface EventType {
 const EMPTY = {
   title: '',
   type: '',
-  branch: 'Beirut',
+  branch: PRIMARY_BRANCH,
   date: '',
   timeStart: '',
   timeEnd: '',
@@ -46,16 +52,24 @@ const EMPTY = {
   maxPlayers: 6,
   registrationLink: '',
   image: '',
-  contactNumber: '+96181950042',
+  contactNumber: BRAND.contact.phone,
 }
 
-const BRANCHES = ['Beirut', 'Zouk', 'Broummana', 'All Branches']
+// An event can be branch-specific or run everywhere, so the picker is the
+// configured branches plus that one extra option.
+const BRANCH_OPTIONS = [...CONFIGURED_BRANCHES, ALL_BRANCHES]
 
-const BRANCH_NUMBERS = [
-  { label: 'Hamra',     number: '+96181950042' },
-  { label: 'Zouk',      number: '+96170973242' },
-  { label: 'Broummana', number: '+96176648054' },
-]
+// Quick-pick contact numbers for the event's enquiry line.
+//
+// This was a fixed table of the original café's three real phone numbers,
+// which is business contact data with no place in a de-branded fork. There is
+// nowhere to configure a number PER BRANCH yet — brand.ts holds one for the
+// whole business — so every branch offers that one until the settings page
+// this phase is really about gives them somewhere to live.
+const BRANCH_NUMBERS = CONFIGURED_BRANCHES.map(label => ({
+  label,
+  number: BRAND.contact.phone,
+}))
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false)
@@ -170,7 +184,7 @@ export default function AdminEventsPage() {
       maxPlayers:       ev.maxPlayers,
       registrationLink: ev.registrationLink ?? '',
       image:            ev.image ?? '',
-      contactNumber:    ev.contactNumber ?? '+96181950042',
+      contactNumber:    ev.contactNumber ?? BRAND.contact.phone,
     })
     setOpen(true)
   }
@@ -376,7 +390,7 @@ export default function AdminEventsPage() {
 
           {/* Branch pills */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-            {[['all', 'All'], ['Beirut', 'Beirut'], ['Zouk', 'Zouk'], ['Broummana', 'Broummana'], ['All Branches', 'All Branches']].map(([val, label]) => (
+            {[['all', 'All'], ...BRANCH_OPTIONS.map(b => [b, b])].map(([val, label]) => (
               <button
                 key={val}
                 onClick={() => setFilterBranch(val)}
@@ -642,7 +656,7 @@ export default function AdminEventsPage() {
                   <select value={form.branch}
                     onChange={e => setForm(f => ({ ...f, branch: e.target.value }))}
                     style={{ ...inputStyle, color: '#F5F2EC', backgroundColor: '#1a1a1a' }}>
-                    {BRANCHES.map(b => (
+                    {BRANCH_OPTIONS.map(b => (
                       <option key={b} value={b}
                         style={{ backgroundColor: '#1a1a1a', color: '#F5F2EC' }}>
                         {b}

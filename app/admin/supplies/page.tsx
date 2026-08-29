@@ -6,11 +6,18 @@ import { db } from '../../lib/firebase'
 import { authedFetch, unwrap } from '../../lib/apiClient'
 import { useRequireRole, SECTION_ACCESS } from '../../lib/adminAuth'
 import { listTemplateItems, listProviders, UNIT_LABELS, translateToArabic } from '../../lib/weeklyOrders'
+import { STOCKED_BRANCHES, PRIMARY_BRANCH, branchColor, emptyStock } from '../../lib/branches'
 
 type Category = 'Kitchen' | 'Bar' | 'Cleaning' | 'Other'
 
-const SUPPLY_BRANCHES = ['Beirut', 'Zouk', 'Broummana'] as const
-type SupplyBranch = typeof SUPPLY_BRANCHES[number]
+// The branches that hold consumable stock, from configuration. This was a
+// hardcoded ['Beirut', 'Zouk', 'Broummana'] — the original café's branches —
+// which meant the tabs below listed three branches that do not exist here and
+// read quantity['Beirut'] for every item. Every count came back undefined, so
+// the whole inventory showed as out of stock while the real quantities sat
+// under keys nothing rendered.
+const SUPPLY_BRANCHES = STOCKED_BRANCHES
+type SupplyBranch = string
 
 type BranchQtys = Record<SupplyBranch, number>
 
@@ -39,13 +46,11 @@ const CAT_COLOR: Record<Category, string> = {
   Other:    'rgba(245,242,236,0.45)',
 }
 
-const BRANCH_COLOR: Record<SupplyBranch, string> = {
-  Beirut:    '#00A098',
-  Zouk:      '#C9962C',
-  Broummana: '#8B7CF6',
-}
+// branchColor() lives in lib/branches so all five screens that colour a branch
+// agree, and so a fourth configured branch gets a colour instead of undefined.
+const BRANCH_COLOR = branchColor
 
-const EMPTY_QTY: BranchQtys = { Beirut: 0, Zouk: 0, Broummana: 0 }
+const EMPTY_QTY: BranchQtys = emptyStock()
 
 function branchStatus(qty: number, threshold: number): 'ok' | 'low' | 'out' {
   if (qty <= 0) return 'out'
@@ -86,7 +91,7 @@ export default function SuppliesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [seeding, setSeeding]       = useState(false)
 
-  const [branch, setBranch]   = useState<SupplyBranch>('Beirut')
+  const [branch, setBranch]   = useState<SupplyBranch>(PRIMARY_BRANCH)
   const [search, setSearch]   = useState('')
   const [groupBy, setGroupBy] = useState<'category' | 'provider'>('category')
 
@@ -99,9 +104,10 @@ export default function SuppliesPage() {
     setSupplies(
       snap.docs.map(d => {
         const data = d.data() as Omit<Supply, 'id'>
-        // Handle legacy single-number quantity
+        // Legacy single-number quantity: fold it into the flagship branch
+        // rather than naming three branches that may not exist.
         const qty = typeof data.quantity === 'number'
-          ? { Beirut: data.quantity, Zouk: 0, Broummana: 0 }
+          ? { ...EMPTY_QTY, [PRIMARY_BRANCH]: data.quantity }
           : (data.quantity ?? EMPTY_QTY)
         return { ...data, id: d.id, quantity: qty }
       }).sort((a, b) => a.name.localeCompare(b.name))
@@ -259,9 +265,9 @@ export default function SuppliesPage() {
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
           {SUPPLY_BRANCHES.map(b => (
             <button key={b} onClick={() => setBranch(b)} style={{
-              background: branch === b ? `${BRANCH_COLOR[b]}18` : 'transparent',
-              border: `1px solid ${branch === b ? BRANCH_COLOR[b] : 'rgba(255,255,255,0.09)'}`,
-              color: branch === b ? BRANCH_COLOR[b] : 'rgba(245,242,236,0.35)',
+              background: branch === b ? `${BRANCH_COLOR(b)}18` : 'transparent',
+              border: `1px solid ${branch === b ? BRANCH_COLOR(b) : 'rgba(255,255,255,0.09)'}`,
+              color: branch === b ? BRANCH_COLOR(b) : 'rgba(245,242,236,0.35)',
               borderRadius: '6px', padding: '0.5rem 1.25rem',
               fontSize: '0.78rem', fontWeight: branch === b ? 600 : 400,
               letterSpacing: '0.06em', cursor: 'pointer',
@@ -431,7 +437,7 @@ export default function SuppliesPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                     {SUPPLY_BRANCHES.map(branch => (
                       <div key={branch} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <span style={{ width: '80px', fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: BRANCH_COLOR[branch] }}>{branch}</span>
+                        <span style={{ width: '80px', fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: BRANCH_COLOR(branch) }}>{branch}</span>
                         <input type="number" min={0} value={formQty[branch]} onChange={e => setFormQty(q => ({ ...q, [branch]: Number(e.target.value) }))}
                           style={{ ...inp, width: '90px' }} />
                       </div>

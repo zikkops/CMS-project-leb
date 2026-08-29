@@ -28,17 +28,21 @@ const BUCKET_MINUTES = 30
 export const DEFAULT_OPENING_START = '16:30'
 export const DEFAULT_OPENING_END = '01:30'
 
-// Per-branch opening hours — Broummana and Zouk currently both run 4:30pm
-// to 1:30am (past midnight); Beirut defaults to the same until told
-// otherwise. Plain app config, not Firestore data, so changing a branch's
-// hours is a one-line edit here, no migration.
-const BRANCH_HOURS: Record<string, { start: string; end: string }> = {
-  Beirut: { start: '16:30', end: '01:30' },
-  Zouk: { start: '16:30', end: '01:30' },
-  Broummana: { start: '16:30', end: '01:30' },
-}
-export function branchOpeningHours(branch: string): { start: string; end: string } {
-  return BRANCH_HOURS[branch] ?? { start: DEFAULT_OPENING_START, end: DEFAULT_OPENING_END }
+/**
+ * Opening hours for a branch.
+ *
+ * There was a BRANCH_HOURS table here keyed on the original café's three
+ * branch names — and all three entries held exactly the values the fallback
+ * already returned, so it never once changed an answer. What it did do is
+ * make every branch outside those three look like a special case.
+ *
+ * Hours are the same everywhere until there is somewhere to configure them
+ * per branch, which is the /admin/settings gap this phase exists to close.
+ * When that lands, this reads from it. Until then it is honest about being
+ * one pair of times for the whole business.
+ */
+export function branchOpeningHours(_branch: string): { start: string; end: string } {
+  return { start: DEFAULT_OPENING_START, end: DEFAULT_OPENING_END }
 }
 
 export interface TableReservation {

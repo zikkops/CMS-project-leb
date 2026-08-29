@@ -11,10 +11,12 @@ import {
   updateReportItemQty, deleteWeeklyReport, toggleWhatsappSent,
   type WeeklyOrderReport, type WeeklyOrderReportItem, type OrderProvider, type Department,
 } from '../../lib/weeklyOrders'
-import { BRANCHES } from '../../lib/branches'
+import { BRANCHES, STOCKED_BRANCHES, emptyStock, PRIMARY_BRANCH } from '../../lib/branches'
 
-const SUPPLY_BRANCHES = ['Beirut', 'Zouk', 'Broummana'] as const
-type SupplyBranch = typeof SUPPLY_BRANCHES[number]
+// Configuration, not a constant — see app/admin/supplies/page.tsx for what
+// the hardcoded version did to the stock figures.
+const SUPPLY_BRANCHES = STOCKED_BRANCHES
+type SupplyBranch = string
 
 interface Supply {
   id: string
@@ -38,8 +40,8 @@ function SuppliesStatus() {
       setSupplies(snap.docs.map(d => {
         const data = d.data() as Omit<Supply, 'id'>
         const qty = typeof data.quantity === 'number'
-          ? { Beirut: data.quantity, Zouk: 0, Broummana: 0 }
-          : (data.quantity ?? { Beirut: 0, Zouk: 0, Broummana: 0 })
+          ? { ...emptyStock(), [PRIMARY_BRANCH]: data.quantity }
+          : (data.quantity ?? emptyStock())
         return { ...data, id: d.id, quantity: qty }
       }).sort((a, b) => a.name.localeCompare(b.name)))
     })
