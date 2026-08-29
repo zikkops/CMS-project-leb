@@ -176,8 +176,12 @@ service cloud.firestore {
       allow write: if canGames();
     }
 
-    match /menuCategories/{id} { allow read: if true; allow write: if canMenu(); }
-    match /menuItems/{id}      { allow read: if true; allow write: if canMenu(); }
+    // /api/admin/menu owns writes now. It bounds the price — the number a
+    // customer reads, and one the browser could previously set to anything,
+    // including a negative or a string — and it deletes a category's items by
+    // QUERYING them rather than trusting the list a stale page was holding.
+    match /menuCategories/{id} { allow read: if true; allow write: if false; }
+    match /menuItems/{id}      { allow read: if true; allow write: if false; }
     match /events/{id}         { allow read: if true; allow write: if canEvents(); }
     match /eventTypes/{id}     { allow read: if true; allow write: if canEvents(); }
     // What each tier advertises. Public read — the loyalty page shows the

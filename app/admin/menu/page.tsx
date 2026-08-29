@@ -1,14 +1,11 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import {
-  collection, getDocs, addDoc, deleteDoc,
-  doc, updateDoc, serverTimestamp, writeBatch
-} from 'firebase/firestore'
+import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useRequireRole, SECTION_ACCESS } from '../../lib/adminAuth'
-import { logActivity, logCreate, logUpdate, logDelete } from '../../lib/activityLog'
 import { recordMediaUpload, uploadImage } from '../../lib/media'
+import { authedFetch, unwrap } from '../../lib/apiClient'
 import MediaPickerModal from '../../components/admin/MediaPickerModal'
 import {
   DndContext, closestCenter, KeyboardSensor,
@@ -262,16 +259,12 @@ export default function AdminMenuPage() {
   async function addCategory() {
     if (!newCatName.trim()) return
     setAddingCat(true)
-    await addDoc(collection(db, 'menuCategories'), {
-      name:      newCatName.trim(),
-      section:   newCatSection,
-      image:     newCatImage,
-      order:     categories.filter(c => c.section === newCatSection).length,
-      createdAt: serverTimestamp(),
-    })
-    await logCreate('Menu Category', newCatName.trim(), {
-      name: newCatName.trim(), section: newCatSection, image: newCatImage,
-    })
+    // The route counts the position itself. The browser used to send the
+    // length of the list it happened to be holding, so two people adding a
+    // category at the same moment both landed on the same order value.
+    await unwrap(await authedFetch('/api/admin/menu', 'POST', {
+      kind: 'category', name: newCatName.trim(), section: newCatSection, image: newCatImage,
+    }))
     setNewCatName('')
     setNewCatImage('')
     setNewCatSection('Food')
@@ -284,15 +277,10 @@ export default function AdminMenuPage() {
     e.preventDefault()
     if (!editingCat) return
     setSavingCat(true)
-    await updateDoc(doc(db, 'menuCategories', editingCat.id), {
-      name:      editCatName,
-      section:   editCatSection,
-      image:     editCatImage,
-      updatedAt: serverTimestamp(),
-    })
-    await logUpdate('Menu Category', editCatName, editingCat, {
+    await unwrap(await authedFetch('/api/admin/menu', 'PATCH', {
+      kind: 'category', id: editingCat.id,
       name: editCatName, section: editCatSection, image: editCatImage,
-    })
+    }))
     setSavingCat(false)
     setEditingCat(null)
     if (editCatFileRef.current) editCatFileRef.current.value = ''
@@ -301,15 +289,11 @@ export default function AdminMenuPage() {
 
   async function deleteCategory(id: string) {
     if (!confirm('Delete this category and all its items?')) return
-    const cat = categories.find(c => c.id === id)
-    const itemCount = items.filter(i => i.categoryId === id).length
-    const batch = writeBatch(db)
-    batch.delete(doc(db, 'menuCategories', id))
-    items.filter(i => i.categoryId === id).forEach(i => {
-      batch.delete(doc(db, 'menuItems', i.id))
-    })
-    await batch.commit()
-    await logDelete('Menu Category', `${cat?.name ?? id}${itemCount > 0 ? ` (+${itemCount} items)` : ''}`, cat)
+    // The route queries the items rather than trusting this page's copy.
+    // Deleting from the loaded array left anything added since the page
+    // opened behind — a menu item in a category that no longer exists, which
+    // nothing lists and nothing cleans up.
+    await unwrap(await authedFetch(`/api/admin/menu?kind=category&id=${encodeURIComponent(id)}`, 'DELETE'))
     if (activeCategory === id) setActiveCategory(categories[0]?.id ?? '')
     loadData()
   }
@@ -337,19 +321,16 @@ export default function AdminMenuPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
+    // `...form` used to be spread straight into Firestore, so a price could
+    // be negative, text, or absent. This is the number a customer reads.
     if (editing) {
-      await updateDoc(doc(db, 'menuItems', editing.id), { ...form, updatedAt: serverTimestamp() })
-      await logUpdate('Menu Item', form.name, editing, form)
+      await unwrap(await authedFetch('/api/admin/menu', 'PATCH', {
+        kind: 'item', id: editing.id, ...form, categoryId: editing.categoryId,
+      }))
     } else {
-      const catItems = items.filter(i => i.categoryId === activeCategory)
-      await addDoc(collection(db, 'menuItems'), {
-        ...form,
-        categoryId: activeCategory,
-        order:      catItems.length,
-        createdAt:  serverTimestamp(),
-        updatedAt:  serverTimestamp(),
-      })
-      await logCreate('Menu Item', form.name, form)
+      await unwrap(await authedFetch('/api/admin/menu', 'POST', {
+        kind: 'item', ...form, categoryId: activeCategory,
+      }))
     }
     setSaving(false)
     setOpen(false)
@@ -358,9 +339,7 @@ export default function AdminMenuPage() {
 
   async function handleDelete(id: string) {
     if (!confirm('Delete this item?')) return
-    const item = items.find(i => i.id === id)
-    await deleteDoc(doc(db, 'menuItems', id))
-    await logDelete('Menu Item', item?.name ?? id, item)
+    await unwrap(await authedFetch(`/api/admin/menu?kind=item&id=${encodeURIComponent(id)}`, 'DELETE'))
     loadData()
   }
 
@@ -371,11 +350,13 @@ export default function AdminMenuPage() {
     const oldIndex  = catItems.findIndex(i => i.id === active.id)
     const newIndex  = catItems.findIndex(i => i.id === over.id)
     const reordered = arrayMove(catItems, oldIndex, newIndex)
-    const batch     = writeBatch(db)
-    reordered.forEach((item, index) => {
-      batch.update(doc(db, 'menuItems', item.id), { order: index })
-    })
-    await batch.commit()
+    // Send the arrangement, not the items. The route writes positions from
+    // the index and checks every id belongs to this category, so a drag
+    // cannot renumber a category nobody is looking at — and cannot carry a
+    // stale price along with it.
+    await unwrap(await authedFetch('/api/admin/menu', 'PATCH', {
+      action: 'reorder', categoryId: activeCategory, orderedIds: reordered.map(i => i.id),
+    }))
     loadData()
   }
 
