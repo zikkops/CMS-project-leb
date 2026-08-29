@@ -612,27 +612,35 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // VAT, exchange rate and tips deduction. Read by any staff — the receiving
+    // form seeds its rate from here — and written only by
+    // /api/admin/settings, which requires superadmin. Three numbers that
+    // decide what customers are charged and what staff are paid do not belong
+    // behind a browser write, however privileged the browser.
+    match /appSettings/business {
+      allow read:  if isStaff();
+      allow write: if false;
+    }
+
     match /appSettings/{id} {
       allow read:  if isStaff();
       allow write: if hasRole(['admin']);
     }
 
-    // THE EXCEPTION. checkAndRunLoyaltyReset() (app/lib/customerManagement.ts)
-    // stamps this doc from the browser on dashboard load, whoever happens to
-    // load it first — that's the app's stand-in for a cron job. Restricting it
-    // to admin would mean the annual reset silently never fires unless an
-    // admin happens to open the dashboard on the right day.
+    // The exception that used to live here is gone. It widened this one
+    // document to ANY staff account, because checkAndRunLoyaltyReset() stamped
+    // it from whichever browser opened the dashboard first — the app's
+    // stand-in for a cron job — and its own comment said to delete the block
+    // once a real cron existed.
     //
-    // Firestore ORs overlapping match blocks, so this widens just this one
-    // document while everything else in appSettings stays admin-only.
+    // It does: vercel.json runs GET /api/admin/loyalty/reset daily on the
+    // Admin SDK, which bypasses rules entirely, and the browser function is
+    // deleted. What the exception left behind was a barista being able to set
+    // nextResetDate to today and have the next cron run zero every customer's
+    // balance — or push it a decade out and quietly switch the reset off.
     //
-    // DELETE THIS BLOCK when the reset moves to Vercel Cron — a cron route
-    // runs on the Admin SDK and bypasses rules entirely, so no client will
-    // need to write here at all.
-    match /appSettings/loyaltyReset {
-      allow read:  if isStaff();
-      allow write: if isStaff();
-    }
+    // appSettings/{id} above now covers this document: staff read, admin
+    // write, server does the actual resetting.
 
     // ---- Weekly order reports ----
     // Template items are managed by admin/manager via the template editor; all

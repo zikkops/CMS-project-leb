@@ -24,6 +24,7 @@ import { useRequireRole, SECTION_ACCESS } from '../../../lib/adminAuth'
 import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '../../../lib/firebase'
 import { branchColor } from '../../../lib/branches'
+import { useBusinessSettings } from '../../../lib/useBusinessSettings'
 import {
   DELIVERY_BRANCHES, DELIVERY_DEPARTMENTS, DEFAULT_VAT_RATE,
   REJECT_REASON_LABELS, computeTotals, isShort, priceChange, round2,
@@ -282,6 +283,10 @@ function LineRow({
 function ReceivingInner() {
   const params = useSearchParams()
   const { checking, role, branchIds, orderDepts, user } = useRequireRole(SECTION_ACCESS.deliveries)
+  // The configured VAT rate, live. The server recomputes totals with the rate
+  // it is sent and stores it on the delivery, so this only decides what the
+  // form shows while someone is typing.
+  const { settings: { vatRate } } = useBusinessSettings()
   const isMobile = useIsMobile()
 
   const branchOptions = useMemo(
@@ -483,8 +488,8 @@ function ReceivingInner() {
   }, [lines, providerByTemplate])
 
   const totals = useMemo(
-    () => computeTotals(visible.map(v => v.line), DEFAULT_VAT_RATE),
-    [visible],
+    () => computeTotals(visible.map(v => v.line), vatRate),
+    [visible, vatRate],
   )
 
   const exceptions = visible.filter(v => isShort(v.line) || v.line.qtyRejected > 0).length
@@ -503,6 +508,10 @@ function ReceivingInner() {
         invoiceNumber,
         currency,
         rateUsed: currency === 'LBP' ? Number(rateUsed) : 0,
+        // The rate the totals on screen were computed with. The server stores
+        // it on the delivery, so the invoice reprints at the rate the person
+        // receiving actually agreed to, whatever the setting says later.
+        vatRate,
         status,
         notes,
         // What is on screen, not what is in state. With a supplier selected
@@ -751,7 +760,7 @@ function ReceivingInner() {
                     ...(totals.taxableSubtotal === totals.subtotal
                       ? []
                       : [['Of which taxable', totals.taxableSubtotal] as [string, number]]),
-                    [`VAT (${(DEFAULT_VAT_RATE * 100).toFixed(0)}%)`, totals.vat],
+                    [`VAT (${(vatRate * 100).toFixed(2).replace(/.?0+$/, '')}%)`, totals.vat],
                   ].map(([label, value]) => (
                     <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', color: 'rgba(245,242,236,0.45)' }}>
                       <span>{label}</span><span>{fmt(value as number, currency)}</span>

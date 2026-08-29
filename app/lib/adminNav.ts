@@ -108,6 +108,10 @@ export const ADMIN_NAV: AdminNavSection[] = [
       { label: 'Media Library', href: '/admin/media', access: ALL_ROLES },
       { label: 'Manage Users',  href: '/admin/users',  access: ['admin'] as Role[] },
       { label: 'Activity Log',  href: '/admin/logs',   access: ['admin'] as Role[] },
+      // Admin-gated here and superadmin-gated on the page, because the nav has
+      // no notion of superadmin. An admin who is not one sees the link and is
+      // told why rather than hitting a blank screen.
+      { label: 'Business Settings', href: '/admin/settings', access: ['admin'] as Role[] },
     ],
   },
 ]

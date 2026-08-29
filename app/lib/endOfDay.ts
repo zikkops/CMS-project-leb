@@ -4,8 +4,18 @@ import {
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { authedFetch, unwrap } from './apiClient'
+import { SETTINGS_DEFAULTS } from './businessSettings'
 
-export const EXCHANGE_RATE = 90000
+// The fallback exchange rate, and only a fallback.
+//
+// This was a bare 90000 that did not even read the brand config. The live
+// value is editable at /admin/settings and reaches the form through
+// useBusinessSettings(); this is what applies when that has not loaded yet,
+// or when the settings document is unreadable.
+//
+// A report stores the rate it was written with, so changing the live value
+// never re-values an old one.
+export const EXCHANGE_RATE = SETTINGS_DEFAULTS.exchangeRate
 
 export const LBP_DENOMS = [100000, 50000, 20000, 10000, 5000, 1000] as const
 export const USD_DENOMS  = [100, 50, 20, 10, 5, 1] as const
@@ -112,12 +122,17 @@ export function defaultEodDateStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export function emptyReport(branch: string, date: string, uid: string, email: string): EndOfDayReport {
+export function emptyReport(
+  branch: string, date: string, uid: string, email: string,
+  // Passed in rather than read from the constant, so a new report starts at
+  // whatever rate is configured today.
+  exchangeRate: number = EXCHANGE_RATE,
+): EndOfDayReport {
   return {
     id:               reportDocId(branch, date),
     branch,
     date,
-    exchangeRate:     EXCHANGE_RATE,
+    exchangeRate,
     cashLbp:          Object.fromEntries(LBP_DENOMS.map(d => [String(d), 0])),
     cashUsd:          Object.fromEntries(USD_DENOMS.map(d => [String(d), 0])),
     systemLbp:        0,

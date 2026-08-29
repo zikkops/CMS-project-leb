@@ -7,8 +7,9 @@ import { useSearchParams } from 'next/navigation'
 import { useIsMobile } from '../../lib/useIsMobile'
 import { useRequireRole, SECTION_ACCESS } from '../../lib/adminAuth'
 import { BRANCHES } from '../../lib/branches'
+import { useBusinessSettings } from '../../lib/useBusinessSettings'
 import {
-  LBP_DENOMS, USD_DENOMS, SHIFT_LABELS, EXCHANGE_RATE,
+  LBP_DENOMS, USD_DENOMS, SHIFT_LABELS,
   computeTotals, emptyReport, getEndOfDayReport, saveEndOfDayReport,
   getBranchStaff, listAllStaff, defaultEodDateStr, formatLbp, formatUsd,
   type AttendanceEntry, type EndOfDayReport, type StaffUser,
@@ -75,6 +76,9 @@ function EndOfDayInner() {
   const params = useSearchParams()
   const isMobile = useIsMobile()
   const { checking, role, branchIds, user } = useRequireRole(SECTION_ACCESS.endOfDay)
+  // Live, so changing the rate at /admin/settings reaches a form already open
+  // at a till. A report stores the rate it was submitted with regardless.
+  const { settings: { exchangeRate } } = useBusinessSettings()
 
   const branchOptions = role === 'admin' ? [...BRANCHES] : branchIds
 
@@ -165,9 +169,10 @@ function EndOfDayInner() {
     return () => { cancelled = true }
   }, [branch, date, resetForm])
 
-  // System USD is always derived from LBP at the fixed exchange rate
+  // System USD is derived from LBP at the configured rate — editable at
+  // /admin/settings, and live, so a rate change reaches an open form.
   const systemLbpNum = Number(systemLbp) || 0
-  const systemUsdDerived = systemLbpNum / EXCHANGE_RATE
+  const systemUsdDerived = systemLbpNum / exchangeRate
 
   // ── computed totals (live) ───────────────────────────────────────────────
   const totals = useMemo(() => computeTotals(
@@ -177,8 +182,8 @@ function EndOfDayInner() {
     systemUsdDerived,
     expenses.map(e => ({ name: e.name, amountUsd: Number(e.amountUsd) || 0 })),
     income.map(e => ({ name: e.name, amountUsd: Number(e.amountUsd) || 0 })),
-    EXCHANGE_RATE,
-  ), [cashLbp, cashUsd, systemLbpNum, systemUsdDerived, expenses, income])
+    exchangeRate,
+  ), [cashLbp, cashUsd, systemLbpNum, systemUsdDerived, expenses, income, exchangeRate])
 
   // ── expense / income helpers ─────────────────────────────────────────────
   function addLine(setter: typeof setExpenses) {
@@ -208,7 +213,7 @@ function EndOfDayInner() {
 
     setSaving(true); setErr('')
     try {
-      const report = emptyReport(branch, date, user.uid, user.email ?? '')
+      const report = emptyReport(branch, date, user.uid, user.email ?? '', exchangeRate)
       report.cashLbp    = parseCash(cashLbp)
       report.cashUsd    = parseCash(cashUsd)
       report.systemLbp  = systemLbpNum
