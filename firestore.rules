@@ -622,6 +622,20 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Which modules are switched on. Written only by /api/admin/features,
+    // which requires superadmin.
+    //
+    // Read is open to ANYONE, signed in or not, unlike everything else in
+    // appSettings. Public pages have to know whether their module is switched
+    // on, and a visitor is not signed in — gating this read would mean the
+    // storefront could never hide a disabled section. Nothing sensitive lives
+    // here: it is a list of module names and booleans, and a flag is a
+    // business switch, never an access control.
+    match /appSettings/features {
+      allow read:  if true;
+      allow write: if false;
+    }
+
     match /appSettings/{id} {
       allow read:  if isStaff();
       allow write: if hasRole(['admin']);

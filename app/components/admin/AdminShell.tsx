@@ -5,8 +5,10 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'firebase/auth'
 import { auth } from '../../lib/firebase'
-import { useAdminUser, hasSectionAccess, ROLE_LABELS } from '../../lib/adminAuth'
+import { useAdminUser, hasSectionAccess, ROLE_LABELS, SECTION_ACCESS, type Role } from '../../lib/adminAuth'
 import { ADMIN_NAV } from '../../lib/adminNav'
+import { useFeatureFlags } from '../../lib/useFeatures'
+import { featureForSection, isFeatureOn } from '../../lib/features'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBars, faChevronLeft, faChevronRight, faXmark, faRightFromBracket } from '@fortawesome/free-solid-svg-icons'
 import { BRAND } from '../../lib/brand'
@@ -78,10 +80,32 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     return !hasExactMatch && pathname.startsWith(href + '/')
   }
 
+  const { flags, loading: featuresLoading } = useFeatureFlags()
+
+  // Enforcement layer 1 — cosmetic, and the registry's first actual reader.
+  // A link to a switched-off module is a dead end; hiding it is politeness,
+  // not security. useRequireFeature() catches direct URL entry, and the rules
+  // are what actually stop anything.
+  //
+  // Which feature owns a nav item is resolved through SECTION_ACCESS by
+  // reference equality — every item passes SECTION_ACCESS.xxx directly, so the
+  // array object is the same one. Same trick useRequireRole() uses to find its
+  // section key.
+  function itemEnabled(access: Role[]): boolean {
+    if (featuresLoading) return true          // fail open while unknown
+    const sectionKey = Object.entries(SECTION_ACCESS).find(([, v]) => v === access)?.[0]
+    if (!sectionKey) return true              // not a section — nothing to gate
+    const feature = featureForSection(sectionKey)
+    return feature ? isFeatureOn(feature, flags) : true
+  }
+
   // Resolve once role/loading is known — before then, render no nav items
   // rather than briefly flashing the full unfiltered list.
   const visibleSections = (loading || !user) ? [] : ADMIN_NAV
-    .map(section => ({ ...section, items: section.items.filter(it => hasSectionAccess(role, it.access)) }))
+    .map(section => ({
+      ...section,
+      items: section.items.filter(it => hasSectionAccess(role, it.access) && itemEnabled(it.access)),
+    }))
     .filter(section => section.items.length > 0)
 
   const sidebarWidth = collapsed ? COLLAPSED_W : EXPANDED_W

@@ -176,6 +176,22 @@ export function isFeatureOn(
   return def.requires.every(r => isFeatureOn(r as FeatureKey, flags, seen))
 }
 
+/**
+ * Which feature governs a given SECTION_ACCESS key, or undefined for a section
+ * no feature claims.
+ *
+ * Derived from the registry's own `sections` lists rather than annotating
+ * every navigation entry with a feature key. A second mapping would be a
+ * second thing to keep in step, and this one cannot drift from the registry
+ * because it IS the registry.
+ */
+export function featureForSection(sectionKey: string): FeatureKey | undefined {
+  return (Object.keys(FEATURES) as FeatureKey[]).find(k => {
+    const def = FEATURES[k] as FeatureDefinition
+    return (def.sections as readonly string[] | undefined)?.includes(sectionKey)
+  })
+}
+
 /** Every feature that would break if `key` were switched off. */
 export function dependentsOf(key: FeatureKey): FeatureKey[] {
   return (Object.keys(FEATURES) as FeatureKey[]).filter(k => {

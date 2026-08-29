@@ -111,7 +111,8 @@ export const ADMIN_NAV: AdminNavSection[] = [
       // Admin-gated here and superadmin-gated on the page, because the nav has
       // no notion of superadmin. An admin who is not one sees the link and is
       // told why rather than hitting a blank screen.
-      { label: 'Business Settings', href: '/admin/settings', access: ['admin'] as Role[] },
+      { label: 'Business Settings', href: '/admin/settings',          access: ['admin'] as Role[] },
+      { label: 'Modules',           href: '/admin/settings/features', access: ['admin'] as Role[] },
     ],
   },
 ]

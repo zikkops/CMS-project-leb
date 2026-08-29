@@ -9,6 +9,7 @@
 // management — see the note in app/lib/roles.ts.
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRequireRole } from '../../lib/adminAuth'
 import { authedFetch, unwrap } from '../../lib/apiClient'
 import { useBusinessSettings } from '../../lib/useBusinessSettings'
@@ -209,6 +210,12 @@ export default function BusinessSettingsPage() {
           Every change is recorded in the activity log with the old and new
           value and who made it.
         </p>
+
+        <Link href="/admin/settings/features" style={{
+          display: 'inline-block', marginTop: '1rem',
+          fontFamily: 'var(--font-inter)', fontSize: '0.78rem',
+          color: 'var(--teal)', textDecoration: 'none',
+        }}>Modules — switch features on and off →</Link>
 
       </div>
     </div>
