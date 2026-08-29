@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRequireRole, SECTION_ACCESS } from '../../../lib/adminAuth'
 import {
-  useTierPerks, seedTierPerksIfEmpty, createTierPerk, updateTierPerk, deleteTierPerk,
+  useTierPerks, createTierPerk, updateTierPerk, deleteTierPerk,
   type TierPerk,
 } from '../../../lib/tierPerks'
 import { TIER_LABELS, tierColor } from '../../../lib/loyaltyTiers'
@@ -52,10 +52,6 @@ export default function TierPerksPage() {
   const [editing, setEditing] = useState<TierPerk | null>(null)
   const [form, setForm]       = useState({ ...EMPTY_FORM })
   const [saving, setSaving]   = useState(false)
-
-  useEffect(() => {
-    seedTierPerksIfEmpty()
-  }, [])
 
   if (checking) return null
 

@@ -180,7 +180,12 @@ service cloud.firestore {
     match /menuItems/{id}      { allow read: if true; allow write: if canMenu(); }
     match /events/{id}         { allow read: if true; allow write: if canEvents(); }
     match /eventTypes/{id}     { allow read: if true; allow write: if canEvents(); }
-    match /tierPerks/{id}      { allow read: if true; allow write: if canLoyalty(); }
+    // What each tier advertises. Public read — the loyalty page shows the
+    // ladder to signed-out visitors. Writes moved to
+    // /api/admin/loyalty/catalogue, which validates the tier against the real
+    // ladder; a perk filed under a tier that does not exist renders nowhere
+    // and nothing reports it.
+    match /tierPerks/{id}      { allow read: if true; allow write: if false; }
 
     // ---- Audit log ----
     // Every staff mutation writes here, so create must stay open to all staff.
@@ -469,9 +474,15 @@ service cloud.firestore {
     // Public, like games/menuItems/events above — the Loyalty page shows
     // what's redeemable to everyone, signed in or not, as part of the pitch
     // for joining the program.
+    // The reward catalogue. coinCost decides what a free burger costs in
+    // points, so it is the same class of decision as approving a transaction —
+    // and that moved server-side in Phase 00 while this stayed behind.
+    // /api/admin/loyalty/catalogue owns it now, and it also enforces the
+    // "someone is mid-claim" check that used to run in the browser, where
+    // anyone calling delete directly skipped it.
     match /redemptionItems/{itemId} {
       allow read: if true;
-      allow write: if canLoyalty();
+      allow write: if false;
     }
 
     // Every redemption request is customer-initiated (staff only approve), so

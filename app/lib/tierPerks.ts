@@ -1,13 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import {
-  collection, query, onSnapshot, doc, getDoc, getDocs, addDoc,
-  updateDoc, deleteDoc, limit, serverTimestamp, type Timestamp,
-} from 'firebase/firestore'
+import { collection, onSnapshot, type Timestamp } from 'firebase/firestore'
 import { db } from './firebase'
-import { logCreate, logUpdate, logDelete } from './activityLog'
 import { TIERS, TIER_LABELS } from './loyaltyTiers'
+import { authedFetch, unwrap } from './apiClient'
 
 // Staff-managed marketing content: what each status tier is worth. Shown on
 // the public loyalty page and on a customer's own profile.
@@ -34,32 +31,11 @@ export interface TierPerk {
  */
 export const TIER_ORDER: string[] = TIER_LABELS
 
-const DEFAULT_TIER_PERKS: { tier: string; perk: string }[] = [
-  { tier: 'Bronze',   perk: 'Earn points on every purchase' },
-  { tier: 'Bronze',   perk: 'A free drink on your birthday' },
-  { tier: 'Silver',   perk: '5% off food orders' },
-  { tier: 'Silver',   perk: 'Reserve a table up to 48h ahead' },
-  { tier: 'Gold',     perk: '10% off everything' },
-  { tier: 'Gold',     perk: 'Early access to event tickets' },
-  { tier: 'Gold',     perk: 'A free coffee every month' },
-  { tier: 'Platinum', perk: '15% off everything' },
-  { tier: 'Platinum', perk: 'Priority event registration' },
-  { tier: 'Platinum', perk: 'A free item every month' },
-]
 
-export async function seedTierPerksIfEmpty(): Promise<void> {
-  const snap = await getDocs(query(collection(db, 'tierPerks'), limit(1)))
-  if (!snap.empty) return
-
-  await Promise.all(DEFAULT_TIER_PERKS.map(p =>
-    addDoc(collection(db, 'tierPerks'), {
-      tier: p.tier,
-      perk: p.perk,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    })
-  ))
-}
+// seedTierPerksIfEmpty() is gone, for the same reasons as its twin in
+// redemptions.ts: a query on every page mount that could only fire on a new
+// project, and a second copy of a starter list npm run seed:demo already
+// writes.
 
 /**
  * Live perks, ordered by tier.
@@ -97,47 +73,29 @@ export function perksByTier(perks: TierPerk[]): { tier: string; color: string; p
   }))
 }
 
-function assertTier(tier: string): void {
-  if (!TIER_ORDER.includes(tier)) {
-    throw new Error(`Unknown tier "${tier}". Expected one of: ${TIER_ORDER.join(', ')}`)
-  }
-}
-
+/**
+ * The staff-managed perk catalogue.
+ *
+ * Routed through /api/admin/loyalty/catalogue rather than written directly.
+ * A perk is what the programme advertises a tier is worth, which is a claim
+ * the business makes to customers — the same class of decision as what a
+ * reward costs, and it sat in the browser for the same reason: the approvals
+ * moved in Phase 00 and the catalogue they operate on did not.
+ *
+ * assertTier() is gone from here. The route validates the tier against
+ * TIER_LABELS and refuses an unknown one with a 400, so the check cannot be
+ * skipped by calling the function differently. A perk filed under a tier that
+ * does not exist would never render — perksByTier() groups strictly by TIERS —
+ * and nothing would report it.
+ */
 export async function createTierPerk(input: { tier: string; perk: string }): Promise<void> {
-  assertTier(input.tier)
-  await addDoc(collection(db, 'tierPerks'), {
-    tier: input.tier,
-    perk: input.perk.trim(),
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  })
-  await logCreate('Loyalty Management', `${input.tier} perk`, {
-    tier: input.tier,
-    perk: input.perk.trim(),
-  })
+  await unwrap(await authedFetch('/api/admin/loyalty/catalogue', 'POST', { kind: 'perk', ...input }))
 }
 
 export async function updateTierPerk(id: string, input: { tier: string; perk: string }): Promise<void> {
-  assertTier(input.tier)
-  const ref = doc(db, 'tierPerks', id)
-  const before = (await getDoc(ref)).data() as { tier?: string; perk?: string } | undefined
-
-  await updateDoc(ref, {
-    tier: input.tier,
-    perk: input.perk.trim(),
-    updatedAt: serverTimestamp(),
-  })
-
-  await logUpdate('Loyalty Management', `${input.tier} perk`, before ?? {}, {
-    tier: input.tier,
-    perk: input.perk.trim(),
-  })
+  await unwrap(await authedFetch('/api/admin/loyalty/catalogue', 'PATCH', { kind: 'perk', id, ...input }))
 }
 
 export async function deleteTierPerk(id: string): Promise<void> {
-  const ref = doc(db, 'tierPerks', id)
-  const before = (await getDoc(ref)).data() as { tier?: string; perk?: string } | undefined
-
-  await deleteDoc(ref)
-  await logDelete('Loyalty Management', `${before?.tier ?? 'Tier'} perk`, before ?? {})
+  await unwrap(await authedFetch(`/api/admin/loyalty/catalogue?kind=perk&id=${encodeURIComponent(id)}`, 'DELETE'))
 }

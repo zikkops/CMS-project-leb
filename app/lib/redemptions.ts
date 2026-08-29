@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import {
-  collection, query, where, orderBy, limit, onSnapshot, doc, getDoc, getDocs,
-  addDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, type Timestamp,
+  collection, query, where, orderBy, limit, onSnapshot, doc, getDocs,
+  addDoc, updateDoc, serverTimestamp, type Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import { logCreate, logUpdate, logDelete } from './activityLog'
 import { authedFetch, unwrap } from './apiClient'
 
 // Kept in its own file, separate from app/lib/loyalty.ts — redemptions are a
@@ -42,33 +41,17 @@ export interface Redemption {
   rejectionReason?: string | null
 }
 
-export const DEFAULT_REDEMPTION_ITEMS: { name: string; description: string; coinCost: number }[] = [
-  { name: 'Free coffee', description: 'Any hot or cold coffee from our menu', coinCost: 100 },
-  { name: 'Free drink (any menu item)', description: 'Any drink from our full menu', coinCost: 150 },
-  { name: 'Free burger', description: 'One burger of your choice', coinCost: 300 },
-  { name: 'Event ticket (1 person)', description: 'Entry to any upcoming event', coinCost: 200 },
-  { name: 'Reserved table for four', description: 'A table held for you and three guests at any branch', coinCost: 500 },
-]
-
-// Idempotent — only seeds if the collection is genuinely empty. Same
-// check-then-create pattern as the adminUsers bootstrap in adminAuth.ts;
-// same small accepted race window (two clients seeding at the exact same
-// instant the collection is first ever empty), which is a one-time,
-// low-stakes edge case there too.
-export async function seedRedemptionItemsIfEmpty(createdBy: string): Promise<void> {
-  const snap = await getDocs(query(collection(db, 'redemptionItems'), limit(1)))
-  if (!snap.empty) return
-
-  await Promise.all(DEFAULT_REDEMPTION_ITEMS.map(item =>
-    addDoc(collection(db, 'redemptionItems'), {
-      ...item,
-      isActive: true,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      createdBy,
-    })
-  ))
-}
+// The default reward list and seedRedemptionItemsIfEmpty() are gone.
+//
+// It ran on every mount of /admin/loyalty/redemption-items, read the
+// collection to find it non-empty, and did nothing — a wasted query on every
+// page load for a branch that could only ever fire on a brand-new project.
+//
+// It was also a second copy of the starter catalogue: npm run seed:demo
+// already writes these five rewards. Worse, on a REAL installation it would
+// quietly insert "Free burger" into a café's loyalty programme the first time
+// a manager opened the page. An empty catalogue that staff fill in is the
+// honest starting state.
 
 // activeOnly=true for the customer redeem page, false for manager item
 // management (which needs to see inactive items too).
@@ -92,27 +75,27 @@ export function useRedemptionItems(activeOnly: boolean) {
   return { items, loading }
 }
 
+/**
+ * The staff-managed reward catalogue.
+ *
+ * These all POST/PATCH/DELETE /api/admin/loyalty/catalogue rather than writing
+ * Firestore directly. coinCost decides what a free burger costs in points, and
+ * a browser that can write it can write 1 — the same reason approvals and
+ * confirmations moved server-side in Phase 00. The catalogue those operate on
+ * had stayed behind.
+ *
+ * hasPendingRedemptions() below is kept for the confirmation prompt, so the
+ * manager is told BEFORE they press delete rather than after. It is no longer
+ * the thing that prevents the delete: the route re-checks and refuses with a
+ * 409, so the answer is the same however the delete is reached.
+ */
 export async function createRedemptionItem(input: {
   name: string
   description: string
   coinCost: number
   isActive: boolean
-  createdBy: string
 }): Promise<void> {
-  await addDoc(collection(db, 'redemptionItems'), {
-    name: input.name.trim(),
-    description: input.description.trim(),
-    coinCost: input.coinCost,
-    isActive: input.isActive,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    createdBy: input.createdBy,
-  })
-  await logCreate('Loyalty Management', `Redemption item — ${input.name.trim()}`, {
-    description: input.description.trim(),
-    coinCost: input.coinCost,
-    isActive: input.isActive,
-  })
+  await unwrap(await authedFetch('/api/admin/loyalty/catalogue', 'POST', { kind: 'reward', ...input }))
 }
 
 export async function updateRedemptionItem(id: string, input: {
@@ -121,43 +104,19 @@ export async function updateRedemptionItem(id: string, input: {
   coinCost: number
   isActive: boolean
 }): Promise<void> {
-  const ref = doc(db, 'redemptionItems', id)
-  const before = (await getDoc(ref)).data() as { name?: string; description?: string; coinCost?: number; isActive?: boolean } | undefined
-
-  await updateDoc(ref, {
-    name: input.name.trim(),
-    description: input.description.trim(),
-    coinCost: input.coinCost,
-    isActive: input.isActive,
-    updatedAt: serverTimestamp(),
-  })
-
-  await logUpdate(
-    'Loyalty Management',
-    `Redemption item — ${input.name.trim()}`,
-    before ?? {},
-    { name: input.name.trim(), description: input.description.trim(), coinCost: input.coinCost, isActive: input.isActive }
-  )
+  await unwrap(await authedFetch('/api/admin/loyalty/catalogue', 'PATCH', { kind: 'reward', id, ...input }))
 }
 
 export async function toggleItemActive(id: string, isActive: boolean): Promise<void> {
-  const ref = doc(db, 'redemptionItems', id)
-  const before = (await getDoc(ref)).data() as { name?: string; isActive?: boolean } | undefined
-
-  await updateDoc(ref, { isActive, updatedAt: serverTimestamp() })
-
-  await logUpdate(
-    'Loyalty Management',
-    `Redemption item — ${before?.name ?? id}`,
-    { isActive: before?.isActive ?? null },
-    { isActive }
-  )
+  await unwrap(await authedFetch('/api/admin/loyalty/catalogue', 'PATCH', {
+    kind: 'reward', action: 'toggle', id, isActive,
+  }))
 }
 
 // Existing redemption requests keep their own snapshot of name/description/
 // coinCost, so deleting the source item never affects them — this check is
-// purely to stop a manager from deleting an item that a customer is mid-way
-// through claiming in person.
+// purely to stop a manager deleting an item a customer is mid-way through
+// claiming in person. The route enforces it; this is for the warning.
 export async function hasPendingRedemptions(itemId: string): Promise<boolean> {
   const snap = await getDocs(
     query(collection(db, 'redemptions'), where('itemId', '==', itemId), where('status', '==', 'pending'), limit(1))
@@ -166,12 +125,7 @@ export async function hasPendingRedemptions(itemId: string): Promise<boolean> {
 }
 
 export async function deleteRedemptionItem(id: string): Promise<void> {
-  const ref = doc(db, 'redemptionItems', id)
-  const before = (await getDoc(ref)).data() as { name?: string; description?: string; coinCost?: number } | undefined
-
-  await deleteDoc(ref)
-
-  await logDelete('Loyalty Management', `Redemption item — ${before?.name ?? id}`, before)
+  await unwrap(await authedFetch(`/api/admin/loyalty/catalogue?kind=reward&id=${encodeURIComponent(id)}`, 'DELETE'))
 }
 
 export async function createRedemptionRequest(input: {

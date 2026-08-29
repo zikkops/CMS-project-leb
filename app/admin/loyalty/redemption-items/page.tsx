@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRequireRole, SECTION_ACCESS } from '../../../lib/adminAuth'
 import {
-  useRedemptionItems, seedRedemptionItemsIfEmpty, createRedemptionItem, updateRedemptionItem,
+  useRedemptionItems, createRedemptionItem, updateRedemptionItem,
   toggleItemActive, deleteRedemptionItem, hasPendingRedemptions, type RedemptionItem,
 } from '../../../lib/redemptions'
 
@@ -53,10 +53,6 @@ export default function RedemptionItemsPage() {
   const [saving, setSaving]     = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (user) seedRedemptionItemsIfEmpty(user.uid)
-  }, [user])
-
   if (checking) return null
 
   function openNew() {
@@ -77,8 +73,8 @@ export default function RedemptionItemsPage() {
     try {
       if (editing) {
         await updateRedemptionItem(editing.id, form)
-      } else if (user) {
-        await createRedemptionItem({ ...form, createdBy: user.uid })
+      } else {
+        await createRedemptionItem(form)
       }
       setOpen(false)
     } finally {
