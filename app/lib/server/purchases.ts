@@ -132,6 +132,15 @@ export async function createPurchaseOrder(
   }
 
   const productIds = [...wanted.keys()]
+  // Trade prices live in productWholesale, not on the public product doc.
+  // Fetched up front: a transaction may not read after its first write, and
+  // these are needed while pricing each line.
+  const wholesaleById = new Map<string, number>()
+  for (const id of productIds) {
+    const w = await db.doc(`productWholesale/${id}`).get()
+    const n = Number(w.data()?.wholesalePrice)
+    if (Number.isFinite(n)) wholesaleById.set(id, n)
+  }
   const counterRef = db.doc('appSettings/invoiceCounter')
 
   return db.runTransaction(async tx => {
@@ -159,7 +168,7 @@ export async function createPurchaseOrder(
         salePrice: data.salePrice == null ? null : Number(data.salePrice),
         saleEndsAt: typeof data.saleEndsAt === 'string' ? data.saleEndsAt : null,
       })
-      const wholesale = data.wholesalePrice == null ? null : Number(data.wholesalePrice)
+      const wholesale = wholesaleById.get(productId) ?? null
       const unitPrice = want.priceType === 'wholesale' && wholesale != null ? wholesale : retail
 
       if (!Number.isFinite(unitPrice) || unitPrice < 0) {

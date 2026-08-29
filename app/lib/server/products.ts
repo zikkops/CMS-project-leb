@@ -40,7 +40,6 @@ export interface ProductInput {
   price: number
   salePrice: number | null
   saleEndsAt: string | null
-  wholesalePrice: number | null
   image: string
 }
 
@@ -73,11 +72,6 @@ export function parseProductInput(body: Record<string, unknown>): ProductInput {
     throw new HttpError(400, 'Set a sale price, or clear the end date.')
   }
 
-  const rawWholesale = body.wholesalePrice
-  const wholesalePrice = rawWholesale === '' || rawWholesale === null || rawWholesale === undefined
-    ? null
-    : money(rawWholesale, 'Wholesale price')
-
   return {
     name: text(body.name, 'Product name', { required: true }),
     category: text(body.category, 'Category', { maxLen: 100 }),
@@ -88,9 +82,44 @@ export function parseProductInput(body: Record<string, unknown>): ProductInput {
     price,
     salePrice,
     saleEndsAt,
-    wholesalePrice,
     image: text(body.image, 'Image', { maxLen: 2000 }),
   }
+}
+
+/**
+ * The trade price, parsed separately because it is stored separately.
+ *
+ * It used to be a field on the product document. That document is
+ * world-readable so the storefront works signed out, which means every field
+ * on it is public no matter what the UI chooses to show — wholesale cost, and
+ * therefore retail margin, included. firestore.rules had already worked this
+ * out and described a productWholesale collection for exactly this reason;
+ * the collection existed, was empty, and nothing wrote to it.
+ *
+ * Returns null to mean "no trade price", which is also how the document is
+ * deleted rather than left holding a stale figure.
+ */
+export function parseWholesalePrice(raw: unknown): number | null {
+  if (raw === '' || raw === null || raw === undefined) return null
+  return money(raw, 'Wholesale price')
+}
+
+/** Writes or clears the gated trade price for a product. */
+export async function setWholesalePrice(productId: string, price: number | null): Promise<void> {
+  const ref = adminDb().doc(`productWholesale/${productId}`)
+  if (price == null) { await ref.delete().catch(() => {}); return }
+  await ref.set({ productId, wholesalePrice: price, updatedAt: FieldValue.serverTimestamp() })
+}
+
+/** Trade prices by product id, for the screens allowed to see them. */
+export async function readWholesalePrices(): Promise<Record<string, number>> {
+  const snap = await adminDb().collection('productWholesale').get()
+  const out: Record<string, number> = {}
+  snap.docs.forEach(d => {
+    const n = Number(d.data().wholesalePrice)
+    if (Number.isFinite(n)) out[d.id] = n
+  })
+  return out
 }
 
 /**
@@ -160,6 +189,8 @@ export async function deleteProduct(id: string): Promise<{ name: string; before:
   if (!snap.exists) throw new HttpError(404, 'That product no longer exists.')
   const before = snap.data() ?? {}
   await ref.delete()
+  // Otherwise the trade price outlives the product it belonged to.
+  await adminDb().doc(`productWholesale/${id}`).delete().catch(() => {})
   return { name: String(before.name ?? id), before }
 }
 

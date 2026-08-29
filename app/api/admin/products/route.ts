@@ -10,6 +10,7 @@ import { requireSection, toResponse, HttpError, type Caller } from '@/app/lib/se
 import {
   parseProductInput, parseStartingStock, createProduct, updateProduct, deleteProduct,
   createProductCategory, deleteProductCategory,
+  parseWholesalePrice, setWholesalePrice, readWholesalePrices,
 } from '@/app/lib/server/products'
 import { allocateSkus } from '@/app/lib/server/sku'
 import { logCreate, logUpdate, logDelete, logActivity } from '@/app/lib/server/activityLog'
@@ -31,6 +32,22 @@ function kindOf(raw: unknown): 'product' | 'category' {
   throw new HttpError(400, 'Missing or unknown kind — expected "product" or "category".')
 }
 
+/**
+ * Trade prices, keyed by product id.
+ *
+ * Gated on the products section rather than being readable with the
+ * catalogue: a trade price is what the business pays, and putting it back on
+ * the public document is the bug this endpoint exists to avoid repeating.
+ */
+export async function GET(request: Request): Promise<Response> {
+  try {
+    await requireSection(request, 'products')
+    return Response.json({ ok: true, wholesale: await readWholesalePrices() })
+  } catch (err) {
+    return toResponse(err)
+  }
+}
+
 export async function POST(request: Request): Promise<Response> {
   try {
     const caller: Caller = await requireSection(request, 'products')
@@ -46,8 +63,11 @@ export async function POST(request: Request): Promise<Response> {
     const input = parseProductInput(body)
     // Allocated here rather than fetched by the browser and posted back. A
     // number held between two calls is one that can be dropped or reused.
+    const wholesalePrice = parseWholesalePrice(body.wholesalePrice)
     const [sku] = await allocateSkus([input.name])
     const { id } = await createProduct(input, sku, parseStartingStock(body.stock))
+    // Written to its own gated document, never onto the public product.
+    await setWholesalePrice(id, wholesalePrice)
 
     await logCreate(caller, 'Product', input.name, {
       sku, price: input.price, category: input.category,
@@ -70,8 +90,10 @@ export async function PATCH(request: Request): Promise<Response> {
     // an edit cannot move stock backwards or rewrite a code already printed
     // on a label.
     const input = parseProductInput(body)
+    const wholesalePrice = parseWholesalePrice(body.wholesalePrice)
     const { before } = await updateProduct(id, input)
-    await logUpdate(caller, 'Product', input.name, before, { ...input })
+    await setWholesalePrice(id, wholesalePrice)
+    await logUpdate(caller, 'Product', input.name, before, { ...input, wholesalePrice })
     return Response.json({ ok: true })
   } catch (err) {
     return toResponse(err)

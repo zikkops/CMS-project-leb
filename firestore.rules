@@ -181,7 +181,11 @@ service cloud.firestore {
       // back to a billed get() for any token without staff claims — which is
       // every wholesale account. Reversed, each price read would cost a read.
       allow read:  if isWholesale() || isStaff();
-      allow write: if canProducts();
+      // Written only by /api/admin/products, in the same request that writes
+      // the product itself. The collection existed and was empty for a long
+      // time while wholesalePrice sat on the public product document instead
+      // — the exact leak this block was written to prevent.
+      allow write: if false;
     }
 
     // /api/admin/menu owns writes now. It bounds the price — the number a

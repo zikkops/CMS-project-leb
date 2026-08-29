@@ -218,11 +218,22 @@ export default function WholesalePage() {
     if (!account) return
     let cancelled = false
     async function load() {
-      const [gamesSnap, catSnap] = await Promise.all([
+      // Trade prices moved off the product document, which is world-readable
+      // — every field on it is public whatever the UI shows. They live in
+      // productWholesale, which the rules open to wholesale accounts and
+      // staff, and to nobody else.
+      const [gamesSnap, catSnap, wholesaleSnap] = await Promise.all([
         getDocs(collection(db, 'products')),
         getDocs(collection(db, 'productCategories')),
+        getDocs(collection(db, 'productWholesale')),
       ])
       if (cancelled) return
+      const wholesaleById: Record<string, number> = {}
+      wholesaleSnap.docs.forEach(d => {
+        const n = Number(d.data().wholesalePrice)
+        if (Number.isFinite(n)) wholesaleById[d.id] = n
+      })
+
       const all = gamesSnap.docs.map(d => {
         const data = d.data()
         return {
@@ -232,7 +243,7 @@ export default function WholesalePage() {
           players:     (data.players as string) ?? '',
           duration:    (data.duration as string) ?? '',
           age:         (data.age as string) ?? '',
-          wholesalePrice: (data.wholesalePrice as number) ?? 0,
+          wholesalePrice: wholesaleById[d.id] ?? 0,
           retailPrice: (data.price as number) ?? 0,
           stock:       data.stock,
           image:       (data.image as string) ?? '',

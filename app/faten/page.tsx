@@ -25,7 +25,6 @@ interface Product {
   players: string
   duration: string
   age: string
-  wholesalePrice: number
   retailPrice: number
   stock: unknown
   image: string
@@ -88,11 +87,10 @@ function ProductCard({ product }: { product: Product }) {
 
         {/* Price badges — stacked top-right */}
         <div style={{ position: 'absolute', top: '0.6rem', right: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-end' }}>
-          {product.wholesalePrice > 0 && (
-            <div style={{ background: '#6A6AB7', color: '#fff', padding: '0.22rem 0.55rem', borderRadius: '3px', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-inter)', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
-              WS ${product.wholesalePrice.toFixed(2)}
-            </div>
-          )}
+          {/* The wholesale badge that used to sit here showed the trade price
+              on a page with no auth guard at all. Trade prices live in
+              productWholesale now, which the rules gate to wholesale accounts
+              and staff — so this page could not render one even if it tried. */}
           {product.retailPrice > 0 && (
             <div style={{ background: '#C9962C', color: '#000', padding: '0.22rem 0.55rem', borderRadius: '3px', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-inter)', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
               RP ${product.retailPrice.toFixed(2)}
@@ -128,11 +126,9 @@ function ProductCard({ product }: { product: Product }) {
           </span>
         )}
 
-        {product.wholesalePrice > 0 && product.retailPrice > 0 && (
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.28)', marginTop: '0.1rem' }}>
-            Margin ${(product.retailPrice - product.wholesalePrice).toFixed(2)}
-          </p>
-        )}
+        {/* A margin line lived here — retail minus trade cost — on the same
+            unguarded page. Anyone with the URL could read what the business
+            makes on every product. */}
 
         <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '0.4rem' }}>
           {product.players && (
@@ -183,7 +179,6 @@ export default function BranchCataloguePage() {
           players:        (d.data().players as string) ?? '',
           duration:       (d.data().duration as string) ?? '',
           age:            (d.data().age as string) ?? '',
-          wholesalePrice: (d.data().wholesalePrice as number) ?? 0,
           retailPrice:    (d.data().price as number) ?? 0,
           stock:          d.data().stock,
           image:          (d.data().image as string) ?? '',

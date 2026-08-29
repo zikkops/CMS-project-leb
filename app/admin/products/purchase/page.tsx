@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../../../lib/firebase'
+import { authedFetch, unwrap } from '../../../lib/apiClient'
 import { useRequireRole, SECTION_ACCESS } from '../../../lib/adminAuth'
 import { BRANCHES, normalizeStock } from '../../../lib/branches'
 import { type PurchaseItem, createPurchaseOrder } from '../../../lib/productPurchases'
@@ -58,12 +59,23 @@ export default function RecordSalePage() {
   const [result, setResult] = useState<{ orderId: string; invoiceUrl: string | null; invoiceNumber: string } | null>(null)
 
   useEffect(() => {
-    getDocs(collection(db, 'products')).then(snap => {
+    // The trade price is needed to ring up a wholesale sale, and it is not on
+    // the product document any more — see app/lib/server/products.ts.
+    ;(async () => {
+      const snap = await getDocs(collection(db, 'products'))
+      let wholesale: Record<string, number> = {}
+      try {
+        const r = await unwrap(await authedFetch('/api/admin/products', 'GET'))
+        wholesale = (r.wholesale ?? {}) as Record<string, number>
+      } catch {
+        // A missing trade price is not a reason to break the till — the
+        // retail sale still works, and a wholesale line simply falls back.
+      }
       setGames(snap.docs.map(d => {
         const data = d.data() as Omit<Product, 'id'>
-        return { id: d.id, ...data, stock: normalizeStock(data.stock) }
+        return { id: d.id, ...data, stock: normalizeStock(data.stock), wholesalePrice: wholesale[d.id] ?? null }
       }))
-    })
+    })()
   }, [])
 
   const filteredGames = useMemo(() => {

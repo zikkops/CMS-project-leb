@@ -87,8 +87,18 @@ export default function AdminGamesPage() {
   }, [products, search, categoryFilter])
 
   async function loadGames() {
-    const snap = await getDocs(collection(db, 'products'))
-    setGames(snap.docs.map(d => ({ id: d.id, ...d.data() } as Product)))
+    // Trade prices come from /api/admin/products, not the product document —
+    // that one is world-readable, so anything on it is public whatever the
+    // UI shows. Merged in here so the rest of the page is unchanged.
+    const [snap, wholesale] = await Promise.all([
+      getDocs(collection(db, 'products')),
+      unwrap(await authedFetch('/api/admin/products', 'GET'))
+        .then(r => (r.wholesale ?? {}) as Record<string, number>)
+        .catch(() => ({} as Record<string, number>)),
+    ])
+    setGames(snap.docs.map(d => ({
+      id: d.id, ...d.data(), wholesalePrice: wholesale[d.id] ?? null,
+    } as Product)))
     setLoading(false)
   }
 
