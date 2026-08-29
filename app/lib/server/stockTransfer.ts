@@ -22,8 +22,8 @@ import { BRANCHES, normalizeStock } from '../branches'
 const MAX_QTY = 100_000
 
 export interface TransferLine {
-  gameId: string
-  gameName: string
+  productId: string
+  productName: string
   quantity: number
 }
 
@@ -55,20 +55,20 @@ export function parseTransferInput(body: Record<string, unknown>): TransferInput
   const seen = new Set<string>()
   const items = raw.map((row, i) => {
     const r = (row ?? {}) as Record<string, unknown>
-    const gameId = String(r.gameId ?? '').trim()
-    if (!gameId) throw new HttpError(400, `Line ${i + 1} is missing its product.`)
+    const productId = String(r.productId ?? '').trim()
+    if (!productId) throw new HttpError(400, `Line ${i + 1} is missing its product.`)
 
     // The same product twice would be read once and written twice inside the
     // transaction, so only the last line's quantity would take effect while
     // the stock check passed on each individually.
-    if (seen.has(gameId)) throw new HttpError(400, `Line ${i + 1} repeats a product. Combine the lines.`)
-    seen.add(gameId)
+    if (seen.has(productId)) throw new HttpError(400, `Line ${i + 1} repeats a product. Combine the lines.`)
+    seen.add(productId)
 
     const quantity = Number(r.quantity)
     if (!Number.isInteger(quantity) || quantity <= 0 || quantity > MAX_QTY) {
       throw new HttpError(400, `Line ${i + 1}: quantity must be a whole number between 1 and ${MAX_QTY.toLocaleString()}.`)
     }
-    return { gameId, gameName: String(r.gameName ?? '').trim().slice(0, 200), quantity }
+    return { productId, productName: String(r.productName ?? '').trim().slice(0, 200), quantity }
   })
 
   return { fromBranch, toBranch, items }
@@ -86,7 +86,7 @@ export async function transferStock(
   input: TransferInput,
 ): Promise<{ moved: number; names: string[] }> {
   const db = adminDb()
-  const refs = input.items.map(i => db.doc(`games/${i.gameId}`))
+  const refs = input.items.map(i => db.doc(`products/${i.productId}`))
 
   const names = await db.runTransaction(async tx => {
     const snaps = await tx.getAll(...refs)
@@ -96,14 +96,14 @@ export async function transferStock(
     // forbids the reverse, and a partial transfer is worse than none.
     snaps.forEach((snap, i) => {
       const line = input.items[i]
-      if (!snap.exists) throw new HttpError(404, `${line.gameName || line.gameId} no longer exists.`)
+      if (!snap.exists) throw new HttpError(404, `${line.productName || line.productId} no longer exists.`)
       const stock = normalizeStock(snap.data()?.stock)
       const available = stock[input.fromBranch] ?? 0
       if (available < line.quantity) {
         throw new HttpError(409,
-          `${line.gameName || line.gameId}: only ${available} at ${input.fromBranch}, tried to move ${line.quantity}.`)
+          `${line.productName || line.productId}: only ${available} at ${input.fromBranch}, tried to move ${line.quantity}.`)
       }
-      resolved.push(String(snap.data()?.name ?? line.gameName ?? line.gameId))
+      resolved.push(String(snap.data()?.name ?? line.productName ?? line.productId))
     })
 
     snaps.forEach((snap, i) => {

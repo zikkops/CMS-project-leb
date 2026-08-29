@@ -22,7 +22,7 @@ export type Role =
   | 'admin'
   | 'manager'
   | 'social'
-  | 'gamer'
+  | 'retail'
   | 'kitchen_crew'
   | 'barista'
 
@@ -30,7 +30,7 @@ export const ALL_ROLES: Role[] = [
   'admin',
   'manager',
   'social',
-  'gamer',
+  'retail',
   'kitchen_crew',
   'barista',
 ]
@@ -40,7 +40,7 @@ export function isRole(value: unknown): value is Role {
 }
 
 export const SECTION_ACCESS = {
-  games:         ['admin', 'manager', 'gamer'] as Role[],
+  products:         ['admin', 'manager', 'retail'] as Role[],
   menu:          ['admin', 'manager'] as Role[],
   events:        ['admin', 'manager', 'social'] as Role[],
   loyalty:       ['admin', 'manager'] as Role[],
@@ -49,20 +49,20 @@ export const SECTION_ACCESS = {
   loyaltyEvents: ['admin', 'manager', 'social'] as Role[],
   branchTables:      ['admin', 'manager'] as Role[],
   tableReservations: ['admin', 'manager'] as Role[],
-  gamePurchases:     ['admin', 'manager', 'gamer'] as Role[],
-  gameTransfers:     ['admin', 'manager', 'gamer'] as Role[],
+  productPurchases:     ['admin', 'manager', 'retail'] as Role[],
+  productTransfers:     ['admin', 'manager', 'retail'] as Role[],
   weeklyOrders:       ['admin', 'manager'] as Role[],
   weeklyOrdersSubmit: ALL_ROLES,
   endOfDay:           ['admin', 'manager'] as Role[],
-  endOfDayHistory:    ['admin', 'manager', 'social', 'gamer', 'barista'] as Role[],
+  endOfDayHistory:    ['admin', 'manager', 'social', 'retail', 'barista'] as Role[],
   // Consumable inventory — the item list behind the Daily Inventory Count.
   // Deliberately the same roles as dailyInventory below: the people doing the
   // counting are the ones who need to add a missing item or fix a threshold.
-  // (Was gated on `games` until Aug 2026, which let a gamer edit kitchen
+  // (Was gated on `products` until Aug 2026, which let a retail edit kitchen
   // supplies while locking out the kitchen crew who actually count them.)
   supplies:           ['admin', 'manager', 'kitchen_crew', 'barista'] as Role[],
   // Floor staff who'd actually be doing a physical stock count day-to-day.
-  // Anyone else (e.g. a gamer or social hire helping out) can be granted
+  // Anyone else (e.g. a retail or social hire helping out) can be granted
   // this section individually from Manage Users → sectionGrants.
   dailyInventory:     ['admin', 'manager', 'kitchen_crew', 'barista'] as Role[],
   // Deliberately narrower than endOfDayHistory above — reviewing inventory

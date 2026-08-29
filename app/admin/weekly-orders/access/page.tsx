@@ -39,7 +39,7 @@ export default function WeeklyOrdersAccessPage() {
     })
     // Sort: admin first, then manager, then others alphabetically by email
     list.sort((a, b) => {
-      const order = ['admin', 'manager', 'social', 'gamer']
+      const order = ['admin', 'manager', 'social', 'retail']
       const diff = order.indexOf(a.role) - order.indexOf(b.role)
       if (diff !== 0) return diff
       return a.email.localeCompare(b.email)

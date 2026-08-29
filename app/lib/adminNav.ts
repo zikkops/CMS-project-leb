@@ -21,16 +21,16 @@ export const ADMIN_NAV: AdminNavSection[] = [
     title: 'Product Sales',
     color: 'var(--teal)',
     items: [
-      { label: 'Record a Sale',    href: '/admin/games/purchase',  access: SECTION_ACCESS.gamePurchases },
-      { label: 'Sales & Invoices', href: '/admin/games/invoices',  access: SECTION_ACCESS.gamePurchases },
-      { label: 'Transfer Stock',   href: '/admin/games/transfer',  access: SECTION_ACCESS.gameTransfers },
+      { label: 'Record a Sale',    href: '/admin/products/purchase',  access: SECTION_ACCESS.productPurchases },
+      { label: 'Sales & Invoices', href: '/admin/products/invoices',  access: SECTION_ACCESS.productPurchases },
+      { label: 'Transfer Stock',   href: '/admin/products/transfer',  access: SECTION_ACCESS.productTransfers },
     ],
   },
   {
     title: 'Content Management',
     color: 'var(--teal)',
     items: [
-      { label: 'Manage Products',       href: '/admin/games',             access: SECTION_ACCESS.games },
+      { label: 'Manage Products',       href: '/admin/products',             access: SECTION_ACCESS.products },
       { label: 'Manage Menu',        href: '/admin/menu',              access: SECTION_ACCESS.menu },
       { label: 'Manage Events',      href: '/admin/events',            access: SECTION_ACCESS.events },
       { label: 'Event Reservations', href: '/admin/events/reservations', access: SECTION_ACCESS.events },
@@ -82,7 +82,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
     items: [
       { label: 'Order Reports',      href: '/admin/weekly-orders',           access: SECTION_ACCESS.weeklyOrders },
       { label: 'End of Week Order',  href: '/admin/weekly-orders/submit',    access: SECTION_ACCESS.weeklyOrdersSubmit },
-      { label: 'Inventory Management', href: '/admin/supplies',              access: SECTION_ACCESS.games },
+      { label: 'Inventory Management', href: '/admin/supplies',              access: SECTION_ACCESS.products },
       { label: 'Receive a Delivery', href: '/admin/supplies/receiving',      access: SECTION_ACCESS.deliveries },
       { label: 'Daily Inventory Count', href: '/admin/supplies/daily',       access: SECTION_ACCESS.dailyInventory },
       { label: 'Daily Inventory History', href: '/admin/supplies/daily/history', access: SECTION_ACCESS.dailyInventoryHistory },

@@ -5,12 +5,12 @@ import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../../../lib/firebase'
 import { useRequireRole, SECTION_ACCESS } from '../../../lib/adminAuth'
 import { BRANCHES, normalizeStock } from '../../../lib/branches'
-import { transferGameStock } from '../../../lib/gamePurchases'
+import { transferGameStock } from '../../../lib/productPurchases'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faSearch, faArrowRight, faXmark, faPlus } from '@fortawesome/free-solid-svg-icons'
 import { useIsMobile } from '../../../lib/useIsMobile'
 
-interface Game {
+interface Product {
   id: string
   name: string
   category: string
@@ -18,7 +18,7 @@ interface Game {
 }
 
 interface TransferItem {
-  game: Game
+  product: Product
   qty: number
 }
 
@@ -46,14 +46,14 @@ const selectStyle: React.CSSProperties = {
 
 export default function TransferStockPage() {
   const isMobile = useIsMobile()
-  const { checking, role, branchIds } = useRequireRole(SECTION_ACCESS.gameTransfers)
+  const { checking, role, branchIds } = useRequireRole(SECTION_ACCESS.productTransfers)
 
   // Gamers are locked to their own branch as the source — they can only send
   // stock out of the branch they're assigned to, not pull from others'.
-  const isGamer     = role === 'gamer'
+  const isGamer     = role === 'retail'
   const lockedFrom  = isGamer ? (branchIds[0] ?? null) : null
 
-  const [games, setGames]         = useState<Game[]>([])
+  const [products, setGames]         = useState<Product[]>([])
   const [loadingGames, setLoadingGames] = useState(true)
   const [search, setSearch]       = useState('')
   const [showResults, setShowResults] = useState(false)
@@ -65,7 +65,7 @@ export default function TransferStockPage() {
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult]         = useState<{ ok: boolean; msg: string } | null>(null)
 
-  // Keep fromBranch in sync if the gamer's branchIds load after mount
+  // Keep fromBranch in sync if the retail's branchIds load after mount
   useEffect(() => {
     if (lockedFrom) setFromBranch(lockedFrom)
   }, [lockedFrom])
@@ -79,7 +79,7 @@ export default function TransferStockPage() {
   }, [fromBranch, toBranch])
 
   useEffect(() => {
-    getDocs(collection(db, 'games')).then(snap => {
+    getDocs(collection(db, 'products')).then(snap => {
       setGames(snap.docs.map(d => {
         const data = d.data()
         return { id: d.id, name: data.name, category: data.category, stock: normalizeStock(data.stock) }
@@ -88,33 +88,33 @@ export default function TransferStockPage() {
     })
   }, [])
 
-  const alreadyAdded = useMemo(() => new Set(items.map(i => i.game.id)), [items])
+  const alreadyAdded = useMemo(() => new Set(items.map(i => i.product.id)), [items])
 
   const filteredGames = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return games.filter(g =>
+    return products.filter(g =>
       !alreadyAdded.has(g.id) &&
       (g.name.toLowerCase().includes(q) || g.category?.toLowerCase().includes(q))
     )
-  }, [games, search, alreadyAdded])
+  }, [products, search, alreadyAdded])
 
-  function addGame(game: Game) {
-    setItems(prev => [...prev, { game, qty: 1 }])
+  function addGame(product: Product) {
+    setItems(prev => [...prev, { product, qty: 1 }])
     setSearch('')
     setShowResults(false)
   }
 
-  function removeItem(gameId: string) {
-    setItems(prev => prev.filter(i => i.game.id !== gameId))
+  function removeItem(productId: string) {
+    setItems(prev => prev.filter(i => i.product.id !== productId))
   }
 
-  function setQty(gameId: string, qty: number) {
-    setItems(prev => prev.map(i => i.game.id === gameId ? { ...i, qty } : i))
+  function setQty(productId: string, qty: number) {
+    setItems(prev => prev.map(i => i.product.id === productId ? { ...i, qty } : i))
   }
 
   const canSubmit = items.length > 0 &&
     fromBranch !== toBranch &&
-    items.every(i => i.qty >= 1 && i.qty <= (i.game.stock[fromBranch] ?? 0))
+    items.every(i => i.qty >= 1 && i.qty <= (i.product.stock[fromBranch] ?? 0))
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -123,13 +123,13 @@ export default function TransferStockPage() {
     setResult(null)
     try {
       await transferGameStock(
-        items.map(i => ({ gameId: i.game.id, gameName: i.game.name, quantity: i.qty })),
+        items.map(i => ({ productId: i.product.id, productName: i.product.name, quantity: i.qty })),
         fromBranch,
         toBranch,
       )
       // Update local stock so available counts refresh immediately
       const delta: Record<string, number> = {}
-      items.forEach(i => { delta[i.game.id] = i.qty })
+      items.forEach(i => { delta[i.product.id] = i.qty })
       setGames(prev => prev.map(g => {
         if (!delta[g.id]) return g
         const s = { ...g.stock }
@@ -137,7 +137,7 @@ export default function TransferStockPage() {
         s[toBranch]   = (s[toBranch]   ?? 0) + delta[g.id]
         return { ...g, stock: s }
       }))
-      const summary = items.map(i => `${i.game.name} ×${i.qty}`).join(', ')
+      const summary = items.map(i => `${i.product.name} ×${i.qty}`).join(', ')
       setItems([])
       setResult({ ok: true, msg: `Transferred ${fromBranch} → ${toBranch}: ${summary}` })
     } catch (err) {
@@ -164,7 +164,7 @@ export default function TransferStockPage() {
         Transfer Stock
       </h1>
       <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.4)', marginBottom: '2.5rem' }}>
-        Move copies of one or more games between branches in a single transfer.
+        Move copies of one or more products between branches in a single transfer.
       </p>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -209,9 +209,9 @@ export default function TransferStockPage() {
           </div>
         </div>
 
-        {/* ── Game search ── */}
+        {/* ── Product search ── */}
         <div>
-          <label style={labelStyle}>Add Games</label>
+          <label style={labelStyle}>Add Products</label>
           <div style={{ position: 'relative' }}>
             <FontAwesomeIcon
               icon={faSearch}
@@ -284,12 +284,12 @@ export default function TransferStockPage() {
         {/* ── Transfer list ── */}
         {items.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label style={labelStyle}>Games to Transfer</label>
+            <label style={labelStyle}>Products to Transfer</label>
             {items.map(item => {
-              const available = item.game.stock[fromBranch] ?? 0
+              const available = item.product.stock[fromBranch] ?? 0
               const invalid   = item.qty < 1 || item.qty > available
               return (
-                <div key={item.game.id} style={{
+                <div key={item.product.id} style={{
                   display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.8rem',
                   alignItems: 'center',
                   padding: '0.8rem 1rem',
@@ -299,7 +299,7 @@ export default function TransferStockPage() {
                 }}>
                   <div>
                     <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem', color: 'var(--offwhite)', marginBottom: '0.15rem' }}>
-                      {item.game.name}
+                      {item.product.name}
                     </p>
                     <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.3)' }}>
                       {available} available at {fromBranch}
@@ -311,7 +311,7 @@ export default function TransferStockPage() {
                     min={1}
                     max={available}
                     value={item.qty}
-                    onChange={e => setQty(item.game.id, parseInt(e.target.value) || 0)}
+                    onChange={e => setQty(item.product.id, parseInt(e.target.value) || 0)}
                     style={{
                       width: '72px',
                       backgroundColor: '#1a1a1a',
@@ -327,7 +327,7 @@ export default function TransferStockPage() {
                   />
                   <button
                     type="button"
-                    onClick={() => removeItem(item.game.id)}
+                    onClick={() => removeItem(item.product.id)}
                     style={{
                       background: 'transparent', border: 'none',
                       color: 'rgba(245,242,236,0.3)', cursor: 'pointer',
@@ -371,7 +371,7 @@ export default function TransferStockPage() {
           {submitting
             ? 'Transferring…'
             : items.length > 0
-              ? `Transfer ${items.length} Game${items.length > 1 ? 's' : ''}`
+              ? `Transfer ${items.length} Product${items.length > 1 ? 's' : ''}`
               : 'Transfer'}
         </button>
       </form>

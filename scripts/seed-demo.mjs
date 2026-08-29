@@ -558,7 +558,7 @@ MENU.forEach(([catId, catName, section, items], ci) => {
 // ── Storefront ─────────────────────────────────────────────────────────────
 
 PRODUCT_CATEGORIES.forEach((name, i) => {
-  set(`gameCategories/pcat-${slugify(name)}`, {
+  set(`productCategories/pcat-${slugify(name)}`, {
     name,
     sortOrder: i,
     createdAt: FieldValue.serverTimestamp(),
@@ -575,7 +575,7 @@ PRODUCTS.forEach(([slug, name, category, price, description], i) => {
     return [b, 3 + ((i * 3 + bi * 5) % 12)]
   }))
 
-  set(`games/product-${slug}`, {
+  set(`products/product-${slug}`, {
     name,
     category,
     description,
@@ -583,8 +583,8 @@ PRODUCTS.forEach(([slug, name, category, price, description], i) => {
     stock,
     image: img(PRODUCT_IMAGES[slug]),
     sku: formatSku(name, i + 1),
-    // The board-game-era fields. Written empty rather than omitted: Manage
-    // Games still renders inputs for them, and an absent field there shows as
+    // The board-product-era fields. Written empty rather than omitted: Manage
+    // Products still renders inputs for them, and an absent field there shows as
     // `undefined` in a controlled input and warns.
     players: '',
     duration: '',
@@ -595,7 +595,7 @@ PRODUCTS.forEach(([slug, name, category, price, description], i) => {
 })
 
 // Advance the global SKU counter past everything seeded, or the next product
-// created in Manage Games is issued a sequence that's already in use.
+// created in Manage Products is issued a sequence that's already in use.
 set('appSettings/skuCounter', { nextNumber: PRODUCTS.length + 1 },
   `sku counter → ${PRODUCTS.length + 1}`)
 

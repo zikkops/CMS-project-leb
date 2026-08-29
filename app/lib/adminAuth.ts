@@ -24,7 +24,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   admin:         'Admin',
   manager:       'Manager',
   social:        'Social Media',
-  gamer:         'Gamer',
+  retail:        'Retail',
   kitchen_crew:  'Kitchen Crew',
   barista:       'Barista / Bartender',
 }
@@ -33,7 +33,7 @@ export const ROLE_COLORS: Record<Role, string> = {
   admin:         'var(--purple)',
   manager:       'var(--navy)',
   social:        'var(--red)',
-  gamer:         'var(--teal)',
+  retail:         'var(--teal)',
   kitchen_crew:  '#E8965A',
   barista:       '#8B6914',
 }
@@ -47,15 +47,15 @@ export const ROLE_COLORS: Record<Role, string> = {
 // camelCase identifiers rather than failing loudly. Adding a section to
 // SECTION_ACCESS now forces a decision about what to call it.
 export const SECTION_LABELS: Record<SectionKey, string> = {
-  games:             'Manage Products',
+  products:             'Manage Products',
   menu:              'Manage Menu',
   events:            'Manage Events',
   loyalty:           'Loyalty Approvals & Catalog',
   loyaltyEvents:     'Event Attendance',
   branchTables:      'Table Map Editor',
   tableReservations: 'Table Reservations',
-  gamePurchases:     'Record Game Sales',
-  gameTransfers:     'Transfer Stock',
+  productPurchases:     'Record Product Sales',
+  productTransfers:     'Transfer Stock',
   weeklyOrders:       'Weekly Order Reports',
   weeklyOrdersSubmit: 'Submit a Weekly Order',
   endOfDay:           'End of Day Reports',

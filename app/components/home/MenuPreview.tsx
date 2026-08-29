@@ -77,7 +77,7 @@ export default function MenuPreview() {
           lineHeight: 1.2,
           marginBottom: '1.5rem',
         }}>
-          Fuel for<br />the Game
+          Fuel for<br />the Product
         </h2>
 
         <div style={{

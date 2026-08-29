@@ -7,13 +7,13 @@ import { useRequireRole, SECTION_ACCESS } from '../../lib/adminAuth'
 import { logActivity, logCreate, logUpdate, logDelete } from '../../lib/activityLog'
 import { BRANCHES, emptyStock, normalizeStock, totalStock } from '../../lib/branches'
 import { recordMediaUpload, uploadImage } from '../../lib/media'
-import { exportGamesCSV } from '../../lib/gamePurchases'
+import { exportGamesCSV } from '../../lib/productPurchases'
 import { nextSku } from '../../lib/sku'
 import MediaPickerModal from '../../components/admin/MediaPickerModal'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faSearch } from '@fortawesome/free-solid-svg-icons'
 
-interface Game {
+interface Product {
   id: string
   name: string
   category: string
@@ -26,7 +26,7 @@ interface Game {
   stock: Record<string, number>
   image: string
   // Issued once on create and never rewritten — see app/lib/skuFormat.ts.
-  // Optional because games that predate the backfill may not carry one.
+  // Optional because products that predate the backfill may not carry one.
   sku?: string
 }
 
@@ -56,12 +56,12 @@ function useIsMobile(breakpoint = 768) {
 }
 
 export default function AdminGamesPage() {
-  const { checking } = useRequireRole(SECTION_ACCESS.games)
+  const { checking } = useRequireRole(SECTION_ACCESS.products)
   const isMobile = useIsMobile()
-  const [games, setGames]                   = useState<Game[]>([])
+  const [products, setGames]                   = useState<Product[]>([])
   const [loading, setLoading]               = useState(true)
   const [open, setOpen]                     = useState(false)
-  const [editing, setEditing]               = useState<Game | null>(null)
+  const [editing, setEditing]               = useState<Product | null>(null)
   const [form, setForm]                     = useState({ ...EMPTY, stock: emptyStock() })
   const [saving, setSaving]                 = useState(false)
   const [uploading, setUploading]           = useState(false)
@@ -76,21 +76,21 @@ export default function AdminGamesPage() {
 
   const filteredGames = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return games.filter(g => {
+    return products.filter(g => {
       const matchesCategory = categoryFilter === 'All' || g.category === categoryFilter
       const matchesSearch   = !q || g.name.toLowerCase().includes(q) || g.category.toLowerCase().includes(q)
       return matchesCategory && matchesSearch
     })
-  }, [games, search, categoryFilter])
+  }, [products, search, categoryFilter])
 
   async function loadGames() {
-    const snap = await getDocs(collection(db, 'games'))
-    setGames(snap.docs.map(d => ({ id: d.id, ...d.data() } as Game)))
+    const snap = await getDocs(collection(db, 'products'))
+    setGames(snap.docs.map(d => ({ id: d.id, ...d.data() } as Product)))
     setLoading(false)
   }
 
   async function loadCategories() {
-    const snap = await getDocs(collection(db, 'gameCategories'))
+    const snap = await getDocs(collection(db, 'productCategories'))
     setCategories(snap.docs.map(d => (d.data() as any).name))
   }
 
@@ -102,21 +102,21 @@ export default function AdminGamesPage() {
   async function addCategory() {
     if (!newCategory.trim()) return
     setAddingCat(true)
-    await addDoc(collection(db, 'gameCategories'), {
+    await addDoc(collection(db, 'productCategories'), {
       name: newCategory.trim(),
       createdAt: serverTimestamp(),
     })
-    await logActivity('create', 'Game Category', newCategory.trim())
+    await logActivity('create', 'Product Category', newCategory.trim())
     setNewCategory('')
     setAddingCat(false)
     loadCategories()
   }
 
   async function deleteCategory(name: string) {
-    const snap = await getDocs(collection(db, 'gameCategories'))
+    const snap = await getDocs(collection(db, 'productCategories'))
     const docToDelete = snap.docs.find(d => (d.data() as any).name === name)
-    if (docToDelete) await deleteDoc(doc(db, 'gameCategories', docToDelete.id))
-    await logActivity('delete', 'Game Category', name)
+    if (docToDelete) await deleteDoc(doc(db, 'productCategories', docToDelete.id))
+    await logActivity('delete', 'Product Category', name)
     loadCategories()
   }
 
@@ -126,19 +126,19 @@ export default function AdminGamesPage() {
     setOpen(true)
   }
 
-  function openEdit(game: Game) {
-    setEditing(game)
+  function openEdit(product: Product) {
+    setEditing(product)
     setForm({
-      name:           game.name,
-      category:       game.category,
-      description:    game.description,
-      players:        game.players,
-      duration:       game.duration,
-      age:            game.age,
-      price:          game.price,
-      wholesalePrice: game.wholesalePrice ?? null,
-      stock:          normalizeStock(game.stock),
-      image:          game.image,
+      name:           product.name,
+      category:       product.category,
+      description:    product.description,
+      players:        product.players,
+      duration:       product.duration,
+      age:            product.age,
+      price:          product.price,
+      wholesalePrice: product.wholesalePrice ?? null,
+      stock:          normalizeStock(product.stock),
+      image:          product.image,
     })
     setOpen(true)
   }
@@ -165,28 +165,28 @@ export default function AdminGamesPage() {
     try {
       if (editing) {
         // The SKU is never part of `form`, so an edit cannot rewrite it —
-        // renaming a game keeps the SKU already printed on labels and past
+        // renaming a product keeps the SKU already printed on labels and past
         // invoices. Existing docs keep whatever they have.
-        await updateDoc(doc(db, 'games', editing.id), {
+        await updateDoc(doc(db, 'products', editing.id), {
           ...form,
           updatedAt: serverTimestamp(),
         })
-        await logUpdate('Game', form.name, editing, form)
+        await logUpdate('Product', form.name, editing, form)
       } else {
-        // Allocated before the write: a game without a SKU is the thing worth
+        // Allocated before the write: a product without a SKU is the thing worth
         // avoiding, and a spent-but-unused number is not (gaps are expected).
         const sku = await nextSku(form.name)
-        await addDoc(collection(db, 'games'), {
+        await addDoc(collection(db, 'products'), {
           ...form,
           sku,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         })
-        await logCreate('Game', form.name, { ...form, sku })
+        await logCreate('Product', form.name, { ...form, sku })
       }
     } catch (err) {
       setSaving(false)
-      alert(err instanceof Error ? err.message : 'Could not save the game.')
+      alert(err instanceof Error ? err.message : 'Could not save the product.')
       return
     }
     setSaving(false)
@@ -196,10 +196,10 @@ export default function AdminGamesPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Delete this game?')) return
-    const game = games.find(g => g.id === id)
-    await deleteDoc(doc(db, 'games', id))
-    await logDelete('Game', game?.name ?? id, game)
+    if (!confirm('Delete this product?')) return
+    const product = products.find(g => g.id === id)
+    await deleteDoc(doc(db, 'products', id))
+    await logDelete('Product', product?.name ?? id, product)
     loadGames()
   }
 
@@ -258,7 +258,7 @@ export default function AdminGamesPage() {
             </h1>
           </div>
           <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.8rem', width: isMobile ? '100%' : 'auto', flexWrap: 'wrap' }}>
-            <button onClick={() => exportGamesCSV(games, false)} style={{
+            <button onClick={() => exportGamesCSV(products, false)} style={{
               backgroundColor: 'transparent',
               border: '1px solid rgba(255,255,255,0.1)',
               color: 'rgba(245,242,236,0.6)',
@@ -270,7 +270,7 @@ export default function AdminGamesPage() {
               cursor: 'pointer',
               fontFamily: 'var(--font-inter)',
             }}>Export Retail CSV</button>
-            <button onClick={() => exportGamesCSV(games, true)} style={{
+            <button onClick={() => exportGamesCSV(products, true)} style={{
               backgroundColor: 'transparent',
               border: '1px solid rgba(255,255,255,0.1)',
               color: 'rgba(245,242,236,0.6)',
@@ -282,7 +282,7 @@ export default function AdminGamesPage() {
               cursor: 'pointer',
               fontFamily: 'var(--font-inter)',
             }}>Export Full CSV</button>
-            <a href="/admin/games/import" style={{
+            <a href="/admin/products/import" style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -309,7 +309,7 @@ export default function AdminGamesPage() {
               textTransform: 'uppercase',
               cursor: 'pointer',
               fontFamily: 'var(--font-inter)',
-            }}>+ Add Game</button>
+            }}>+ Add Product</button>
           </div>
         </div>
 
@@ -345,7 +345,7 @@ export default function AdminGamesPage() {
                 color: 'rgba(245,242,236,0.3)',
                 fontFamily: 'var(--font-inter)',
                 marginBottom: '1rem',
-              }}>Game Categories</p>
+              }}>Product Categories</p>
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
                 {displayCategories.map(cat => (
@@ -470,7 +470,7 @@ export default function AdminGamesPage() {
               alignItems: 'center',
               flex: '0 0 auto',
             }}>
-              <span style={{ color: 'var(--offwhite)', fontFamily: 'var(--font-cinzel)', marginRight: '0.3rem' }}>{filteredGames.length}</span> of {games.length}
+              <span style={{ color: 'var(--offwhite)', fontFamily: 'var(--font-cinzel)', marginRight: '0.3rem' }}>{filteredGames.length}</span> of {products.length}
             </p>
           </div>
         )}
@@ -490,10 +490,10 @@ export default function AdminGamesPage() {
           }}>No products match these filters.</div>
         ) : isMobile ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-            {filteredGames.map(game => {
-              const stock = totalStock(game.stock)
+            {filteredGames.map(product => {
+              const stock = totalStock(product.stock)
               return (
-                <div key={game.id} style={{
+                <div key={product.id} style={{
                   background: 'rgba(255,255,255,0.02)',
                   border: '1px solid rgba(255,255,255,0.06)',
                   borderRadius: '4px',
@@ -501,26 +501,26 @@ export default function AdminGamesPage() {
                   display: 'flex',
                   gap: '1rem',
                 }}>
-                  {game.image && (
-                    <img src={game.image} alt={game.name} style={{
+                  {product.image && (
+                    <img src={product.image} alt={product.name} style={{
                       width: '60px', height: '60px',
                       objectFit: 'cover', borderRadius: '2px',
                       flexShrink: 0,
                     }} />
                   )}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.95rem', color: 'var(--offwhite)' }}>{game.name}</p>
-                    {game.sku && (
+                    <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.95rem', color: 'var(--offwhite)' }}>{product.name}</p>
+                    {product.sku && (
                       <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', letterSpacing: '0.08em', color: 'rgba(201,150,44,0.85)' }}>
-                        {game.sku}
+                        {product.sku}
                       </p>
                     )}
                     <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.5)' }}>
-                      {game.category} · {game.players}
+                      {product.category} · {product.players}
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                       <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'var(--teal)' }}>
-                        {game.price > 0 ? `$${game.price}` : '—'}
+                        {product.price > 0 ? `$${product.price}` : '—'}
                       </span>
                       <span style={{
                         fontSize: '0.68rem',
@@ -534,7 +534,7 @@ export default function AdminGamesPage() {
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.3rem' }}>
-                      <button onClick={() => openEdit(game)} style={{
+                      <button onClick={() => openEdit(product)} style={{
                         flex: 1,
                         background: 'transparent',
                         border: '1px solid rgba(255,255,255,0.1)',
@@ -545,7 +545,7 @@ export default function AdminGamesPage() {
                         cursor: 'pointer',
                         fontFamily: 'var(--font-inter)',
                       }}>Edit</button>
-                      <button onClick={() => handleDelete(game.id)} style={{
+                      <button onClick={() => handleDelete(product.id)} style={{
                         flex: 1,
                         background: 'transparent',
                         border: '1px solid rgba(228,51,41,0.3)',
@@ -587,35 +587,35 @@ export default function AdminGamesPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredGames.map(game => (
-                  <tr key={game.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                {filteredGames.map(product => (
+                  <tr key={product.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                     <td style={{ padding: '0.8rem 1.2rem' }}>
-                      {game.image && (
-                        <img src={game.image} alt={game.name} style={{
+                      {product.image && (
+                        <img src={product.image} alt={product.name} style={{
                           width: '50px', height: '50px',
                           objectFit: 'cover', borderRadius: '2px',
                         }} />
                       )}
                     </td>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--offwhite)' }}>
-                      {game.name}
-                      {game.sku && (
+                      {product.name}
+                      {product.sku && (
                         <span style={{ display: 'block', fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.08em', color: 'rgba(201,150,44,0.8)', marginTop: '0.15rem' }}>
-                          {game.sku}
+                          {product.sku}
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.5)' }}>{game.category}</td>
-                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.5)' }}>{game.players}</td>
+                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.5)' }}>{product.category}</td>
+                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.5)' }}>{product.players}</td>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'var(--teal)' }}>
-                      {game.price > 0 ? `$${game.price}` : '—'}
+                      {product.price > 0 ? `$${product.price}` : '—'}
                     </td>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.45)' }}>
-                      {game.wholesalePrice != null ? `$${game.wholesalePrice}` : '—'}
+                      {product.wholesalePrice != null ? `$${product.wholesalePrice}` : '—'}
                     </td>
                     <td style={{ padding: '1rem 1.2rem' }}>
                       {(() => {
-                        const stock = totalStock(game.stock)
+                        const stock = totalStock(product.stock)
                         return (
                           <span style={{
                             fontSize: '0.72rem',
@@ -632,7 +632,7 @@ export default function AdminGamesPage() {
                     </td>
                     <td style={{ padding: '1rem 1.2rem' }}>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button onClick={() => openEdit(game)} style={{
+                        <button onClick={() => openEdit(product)} style={{
                           background: 'transparent',
                           border: '1px solid rgba(255,255,255,0.1)',
                           color: 'rgba(245,242,236,0.5)',
@@ -642,7 +642,7 @@ export default function AdminGamesPage() {
                           cursor: 'pointer',
                           fontFamily: 'var(--font-inter)',
                         }}>Edit</button>
-                        <button onClick={() => handleDelete(game.id)} style={{
+                        <button onClick={() => handleDelete(product.id)} style={{
                           background: 'transparent',
                           border: '1px solid rgba(228,51,41,0.3)',
                           color: 'var(--red)',
@@ -682,7 +682,7 @@ export default function AdminGamesPage() {
             flexShrink: 0,
           }}>
             <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.1rem' : '1.5rem', color: 'var(--offwhite)' }}>
-              {editing ? 'Edit Game' : 'Add New Game'}
+              {editing ? 'Edit Product' : 'Add New Product'}
             </h2>
             <button onClick={() => setOpen(false)} style={{
               background: 'transparent',
@@ -723,7 +723,7 @@ export default function AdminGamesPage() {
                 textTransform: 'uppercase',
                 color: 'var(--teal)',
                 fontFamily: 'var(--font-inter)',
-              }}>Game Details</p>
+              }}>Product Details</p>
 
               <div>
                 <label style={labelStyle}>Name</label>
@@ -843,7 +843,7 @@ export default function AdminGamesPage() {
                 textTransform: 'uppercase',
                 color: 'var(--teal)',
                 fontFamily: 'var(--font-inter)',
-              }}>Game Image</p>
+              }}>Product Image</p>
 
               <div>
                 <label style={labelStyle}>Upload Image</label>
@@ -943,7 +943,7 @@ export default function AdminGamesPage() {
                   opacity: saving || uploading ? 0.6 : 1,
                   fontFamily: 'var(--font-inter)',
                 }}>
-                  {saving ? 'Saving…' : 'Save Game'}
+                  {saving ? 'Saving…' : 'Save Product'}
                 </button>
               </div>
             </div>

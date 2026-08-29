@@ -42,12 +42,12 @@ export interface WholesaleAccount {
 }
 
 export interface WholesaleOrderItem {
-  gameId:    string
+  productId:    string
   name:      string
   unitPrice: number
   quantity:  number
   // Stamped on the order line at checkout so the invoice can print it without
-  // re-reading the game. Optional: orders placed before SKUs existed have none.
+  // re-reading the product. Optional: orders placed before SKUs existed have none.
   sku?:      string
 }
 
@@ -127,9 +127,9 @@ export function useWholesaleAccount() {
 }
 
 // NOTE ON WHERE PRICES LIVE
-// wholesalePrice stays on the games/{id} doc, which is `allow read: if true`.
+// wholesalePrice stays on the products/{id} doc, which is `allow read: if true`.
 // So the gating below is a UI boundary, not a data boundary: only wholesale
-// accounts are SHOWN prices, but anyone who reads the games collection
+// accounts are SHOWN prices, but anyone who reads the products collection
 // directly through the SDK can still see them. Closing that would mean moving
 // the field into its own collection — a deliberate decision not to, taken
 // 27 Aug 2026. See [[Wholesale]] in the vault.
@@ -163,7 +163,7 @@ export async function submitWholesaleOrder(
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
     body: JSON.stringify({
       // Only ids and quantities are sent — prices come from the server.
-      items: clean.map(i => ({ gameId: i.gameId, quantity: i.quantity })),
+      items: clean.map(i => ({ productId: i.productId, quantity: i.quantity })),
       notes,
       ...(invoice ?? {}),
     }),

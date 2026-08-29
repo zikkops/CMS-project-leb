@@ -2,7 +2,7 @@
 
 // Invoices for wholesale orders.
 //
-// Deliberately reuses drawInvoiceCanvas() from gamePurchases rather than
+// Deliberately reuses drawInvoiceCanvas() from productPurchases rather than
 // drawing a second invoice layout: one invoice design across the business,
 // and `PurchaseItem` already carries a `priceType: 'wholesale'` variant. The
 // numbers come from the same nextInvoiceNumber() sequence, so wholesale and
@@ -14,7 +14,7 @@
 
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from './firebase'
-import { drawInvoiceCanvas, type PurchaseItem } from './gamePurchases'
+import { drawInvoiceCanvas, type PurchaseItem } from './productPurchases'
 import { nextFormattedInvoiceNumber } from './invoiceNumber'
 import { uploadImage } from './media'
 import type { WholesaleOrder, WholesaleOrderItem } from './wholesale'
@@ -52,8 +52,8 @@ export async function generateInvoiceForCart(input: {
     input.shopName,
     'Wholesale',
     input.items.map(i => ({
-      gameId:    i.gameId,
-      gameName:  i.name,
+      productId:    i.productId,
+      productName:  i.name,
       quantity:  i.quantity,
       unitPrice: i.unitPrice,
       priceType: 'wholesale' as const,
@@ -77,8 +77,8 @@ export async function generateInvoiceForCart(input: {
 
 function toPurchaseItems(order: WholesaleOrder): PurchaseItem[] {
   return order.items.map(i => ({
-    gameId:    i.gameId,
-    gameName:  i.name,
+    productId:    i.productId,
+    productName:  i.name,
     quantity:  i.quantity,
     unitPrice: i.unitPrice,
     priceType: 'wholesale' as const,

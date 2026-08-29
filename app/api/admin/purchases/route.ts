@@ -28,14 +28,14 @@ async function readBody(request: Request): Promise<Record<string, unknown>> {
 
 export async function POST(request: Request): Promise<Response> {
   try {
-    const caller: Caller = await requireSection(request, 'gamePurchases')
+    const caller: Caller = await requireSection(request, 'productPurchases')
     const input = parsePurchaseInput(await readBody(request))
 
     const result = await createPurchaseOrder(caller, input)
 
     await logCreate(
       caller,
-      'Game Sale',
+      'Product Sale',
       `${result.invoiceNumber} — ${input.customerName} (${input.branch}) $${result.total.toFixed(2)}`,
       { branch: input.branch, total: result.total, lines: result.items.length },
     )
@@ -51,7 +51,7 @@ export async function POST(request: Request): Promise<Response> {
 
 export async function PATCH(request: Request): Promise<Response> {
   try {
-    const caller: Caller = await requireSection(request, 'gamePurchases')
+    const caller: Caller = await requireSection(request, 'productPurchases')
     const body = await readBody(request)
 
     const orderId = typeof body.orderId === 'string' ? body.orderId.trim() : ''
@@ -62,7 +62,7 @@ export async function PATCH(request: Request): Promise<Response> {
       const result = await refundPurchaseOrder(caller, orderId, note)
 
       await logUpdate(
-        caller, 'Game Sale', result.invoiceNumber,
+        caller, 'Product Sale', result.invoiceNumber,
         { status: 'completed' },
         { status: 'refunded', refundNote: note, total: result.total },
       )
@@ -76,7 +76,7 @@ export async function PATCH(request: Request): Promise<Response> {
       // Deliberately not logged. This is the second half of an action already
       // in the log — an "invoice image attached" entry after every sale would
       // double the volume of that log and say nothing new.
-      await adminDb().doc(`gamePurchaseOrders/${orderId}`).update({ invoiceUrl })
+      await adminDb().doc(`productPurchaseOrders/${orderId}`).update({ invoiceUrl })
       return Response.json({ ok: true })
     }
 

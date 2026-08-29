@@ -14,8 +14,8 @@ import { totalStock } from '../lib/branches'
 import { searchItems, highlight, snippet } from '../lib/productSearch'
 import { PLACEHOLDER } from '../lib/placeholderAssets'
 
-// The stored documents still carry the board-game-era `players`, `duration`
-// and `age` fields (Manage Games still writes them). This page no longer reads
+// The stored documents still carry the board-product-era `players`, `duration`
+// and `age` fields (Manage Products still writes them). This page no longer reads
 // them, so they're left off the interface rather than declared and ignored —
 // anything that isn't rendered here shouldn't look like it might be.
 interface Product {
@@ -158,14 +158,14 @@ export default function ShopPage() {
 
   useEffect(() => {
     async function load() {
-      // The COLLECTION names are still `games`/`gameCategories`. This page's
+      // The COLLECTION names are still `products`/`productCategories`. This page's
       // language is generic now, but renaming a Firestore collection is a data
       // migration plus a rules change, not a find-and-replace — so the storage
-      // names stay until that's done deliberately. Admin still says "Games"
+      // names stay until that's done deliberately. Admin still says "Products"
       // for the same reason.
       const [productsSnap, catSnap] = await Promise.all([
-        getDocs(collection(db, 'games')),
-        getDocs(collection(db, 'gameCategories')),
+        getDocs(collection(db, 'products')),
+        getDocs(collection(db, 'productCategories')),
       ])
 
       const loadedProducts = productsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Product))

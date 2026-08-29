@@ -14,8 +14,8 @@ import { totalStock } from '../../lib/branches'
 import { BRAND } from '../../lib/brand'
 import { PLACEHOLDER } from '../../lib/placeholderAssets'
 
-// The board-game-era players/duration/age fields are still written by Manage
-// Games but are no longer surfaced here, so they're left off the interface.
+// The board-product-era players/duration/age fields are still written by Manage
+// Products but are no longer surfaced here, so they're left off the interface.
 interface Product {
   id: string
   name: string
@@ -125,7 +125,7 @@ export default function ProductPage() {
 
   useEffect(() => {
     async function load() {
-      const snap = await getDoc(doc(db, 'games', id as string))
+      const snap = await getDoc(doc(db, 'products', id as string))
       if (!snap.exists()) {
         setNotFound(true)
       } else {
@@ -323,7 +323,7 @@ export default function ProductPage() {
               )}
 
               {/* This was a 3-up spec grid for Players / Duration / Min Age.
-                  Those are board-game attributes, and a generic catalogue has
+                  Those are board-product attributes, and a generic catalogue has
                   no equivalent trio — the honest generic facts are the SKU
                   (rendered under the name) and the category (the eyebrow above
                   it), both of which already have a home. Rather than invent

@@ -12,7 +12,7 @@ import { faUsers, faClock, faCakeCandles, faSearch, faXmark } from '@fortawesome
 import { totalStock } from '../lib/branches'
 import { BRAND } from '../lib/brand'
 
-interface Game {
+interface Product {
   id: string
   name: string
   category: string
@@ -36,14 +36,14 @@ function useIsMobile(breakpoint = 768) {
   return isMobile
 }
 
-function GameCard({ game }: { game: Game }) {
+function ProductCard({ product }: { product: Product }) {
   const [hovered, setHovered] = useState(false)
-  const stock = totalStock(game.stock)
+  const stock = totalStock(product.stock)
   const inStock = stock > 0
 
   return (
     <Link
-      href={`/shop/${game.id}`}
+      href={`/shop/${product.id}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -61,11 +61,11 @@ function GameCard({ game }: { game: Game }) {
     >
       {/* Image */}
       <div style={{ position: 'relative', width: '100%', paddingTop: '66%', overflow: 'hidden', background: 'rgba(255,255,255,0.03)' }}>
-        {game.image ? (
+        {product.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={game.image}
-            alt={game.name}
+            src={product.image}
+            alt={product.name}
             style={{
               position: 'absolute', inset: 0,
               width: '100%', height: '100%',
@@ -91,7 +91,7 @@ function GameCard({ game }: { game: Game }) {
           fontFamily: 'var(--font-inter)',
           letterSpacing: '0.02em',
         }}>
-          ${game.price.toFixed(2)}
+          ${product.price.toFixed(2)}
         </div>
         {/* Stock badge */}
         <div style={{
@@ -116,35 +116,35 @@ function GameCard({ game }: { game: Game }) {
           fontSize: '0.95rem',
           color: 'var(--offwhite)',
           lineHeight: 1.3,
-        }}>{game.name}</p>
+        }}>{product.name}</p>
 
-        {game.category && (
+        {product.category && (
           <span style={{
             fontFamily: 'var(--font-inter)',
             fontSize: '0.65rem',
             letterSpacing: '0.12em',
             textTransform: 'uppercase',
             color: 'var(--purple)',
-          }}>{game.category}</span>
+          }}>{product.category}</span>
         )}
 
         <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '0.5rem' }}>
-          {game.players && (
+          {product.players && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)' }}>
               <FontAwesomeIcon icon={faUsers} style={{ width: '11px' }} />
-              {game.players}
+              {product.players}
             </span>
           )}
-          {game.duration && (
+          {product.duration && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)' }}>
               <FontAwesomeIcon icon={faClock} style={{ width: '11px' }} />
-              {game.duration}
+              {product.duration}
             </span>
           )}
-          {game.age && (
+          {product.age && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)' }}>
               <FontAwesomeIcon icon={faCakeCandles} style={{ width: '11px' }} />
-              {game.age}+
+              {product.age}+
             </span>
           )}
         </div>
@@ -154,7 +154,7 @@ function GameCard({ game }: { game: Game }) {
 }
 
 export default function RetailPage() {
-  const [games, setGames]           = useState<Game[]>([])
+  const [products, setGames]           = useState<Product[]>([])
   const [loading, setLoading]       = useState(true)
   const [search, setSearch]         = useState('')
   const [category, setCategory]     = useState('All')
@@ -165,10 +165,10 @@ export default function RetailPage() {
   useEffect(() => {
     async function load() {
       const [gamesSnap, catSnap] = await Promise.all([
-        getDocs(collection(db, 'games')),
-        getDocs(collection(db, 'gameCategories')),
+        getDocs(collection(db, 'products')),
+        getDocs(collection(db, 'productCategories')),
       ])
-      const all = gamesSnap.docs.map(d => ({ id: d.id, ...d.data() } as Game))
+      const all = gamesSnap.docs.map(d => ({ id: d.id, ...d.data() } as Product))
       const retail = all.filter(g => (g.price ?? 0) > 0)
       const cats = catSnap.docs.map(d => (d.data() as { name: string }).name)
       setGames(retail)
@@ -179,13 +179,13 @@ export default function RetailPage() {
   }, [])
 
   const filtered = useMemo(() => {
-    return games.filter(g => {
+    return products.filter(g => {
       const matchCat    = category === 'All' || g.category === category
       const matchSearch = !search || g.name.toLowerCase().includes(search.toLowerCase())
       const matchStock  = !stockOnly || totalStock(g.stock) > 0
       return matchCat && matchSearch && matchStock
     })
-  }, [games, search, category, stockOnly])
+  }, [products, search, category, stockOnly])
 
   const allCats = useMemo(() => ['All', ...categories], [categories])
 
@@ -206,7 +206,7 @@ export default function RetailPage() {
               marginBottom: '0.6rem',
             }}>{BRAND.name}</p>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.5rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
-              Games For Sale
+              Products For Sale
             </h1>
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(245,242,236,0.4)', lineHeight: 1.7 }}>
               Take one home. Everything below is available for retail purchase at any {BRAND.name} branch.
@@ -275,7 +275,7 @@ export default function RetailPage() {
           {/* Results count */}
           {!loading && (
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.25)', marginBottom: '1.5rem', letterSpacing: '0.06em' }}>
-              {filtered.length} game{filtered.length !== 1 ? 's' : ''} available for purchase
+              {filtered.length} product{filtered.length !== 1 ? 's' : ''} available for purchase
             </p>
           )}
 
@@ -292,12 +292,12 @@ export default function RetailPage() {
               padding: '4rem', textAlign: 'center',
               color: 'rgba(245,242,236,0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem',
             }}>
-              {games.length === 0 ? 'No games are currently listed for retail sale.' : 'No games match your filters.'}
+              {products.length === 0 ? 'No products are currently listed for retail sale.' : 'No products match your filters.'}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '1.25rem' }}>
-              {filtered.map(game => (
-                <GameCard key={game.id} game={game} />
+              {filtered.map(product => (
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           )}

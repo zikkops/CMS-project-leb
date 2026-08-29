@@ -197,7 +197,7 @@ export default function Hero() {
         lineHeight: 1.9,
         marginBottom: '2.5rem',
       }}>
-        Where every meal comes with a story and every story begins with a game.
+        Where every meal comes with a story and every story begins with a product.
         {`${BRAND.branches.length} branches.`}
       </p>
 

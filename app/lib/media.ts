@@ -62,7 +62,7 @@ export interface MediaItem {
 // used both to backfill the library from images uploaded before it existed,
 // and to warn before deleting an image that's still in use.
 const IMAGE_SOURCES: { collection: string; label: string }[] = [
-  { collection: 'games',          label: 'Game' },
+  { collection: 'products',          label: 'Product' },
   { collection: 'menuCategories', label: 'Menu Category' },
   { collection: 'events',         label: 'Event' },
 ]

@@ -4,7 +4,7 @@
 // a phone number in a WhatsApp link, a hex code in one component that never got
 // migrated to a CSS variable. This scans for the specific values the fork was
 // supposed to leave behind and prints every remaining hit with its file and
-// line, so the work is a checklist rather than a memory game.
+// line, so the work is a checklist rather than a memory product.
 //
 //   node scripts/audit-branding.mjs
 //   node scripts/audit-branding.mjs --quiet   # counts only

@@ -1,8 +1,8 @@
 // Loyalty status tiers.
 //
 // Replaces app/lib/levelConfig.ts, which modelled a 50-level RPG curve with
-// titles running from 'Newcomer' through 'Dungeon Delver' to 'Game God'. That
-// suited a board game café. It does not suit a coffee shop, and it is not
+// titles running from 'Newcomer' through 'Dungeon Delver' to 'Product God'. That
+// suited a board product café. It does not suit a coffee shop, and it is not
 // something a generic tenant would ever configure their way out of.
 //
 // ── One currency ──────────────────────────────────────────────────────────

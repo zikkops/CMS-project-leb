@@ -26,9 +26,9 @@ interface FieldDef { key: FieldKey; label: string; required?: boolean; guesses: 
 // file can be edited in a spreadsheet and imported straight back.
 const FIELD_DEFS: FieldDef[] = [
   // Mapped first because it is the identity column: a row carrying a known SKU
-  // updates that game even if its name changed in the spreadsheet.
+  // updates that product even if its name changed in the spreadsheet.
   { key: 'sku',            label: 'SKU',                       guesses: ['sku', 'item sku', 'product sku', 'code'] },
-  { key: 'name',           label: 'Game Name', required: true, guesses: ['name', 'product name', 'title'] },
+  { key: 'name',           label: 'Product Name', required: true, guesses: ['name', 'product name', 'title'] },
   { key: 'description',    label: 'Description',               guesses: ['description', 'short description'] },
   { key: 'category',       label: 'Category',                  guesses: ['categories', 'category'] },
   { key: 'price',          label: 'Retail Price',              guesses: ['retail price ($)', 'retail price', 'regular price', 'price', 'sale price'] },
@@ -81,7 +81,7 @@ function parsePrice(raw: string): number {
   return Number.isFinite(n) ? n : 0
 }
 
-// Blank wholesale cell means "no wholesale price", which is null on the game
+// Blank wholesale cell means "no wholesale price", which is null on the product
 // doc — distinct from 0, which would read as free. Matches how Manage Products
 // stores it.
 function parseOptionalPrice(raw: string): number | null {
@@ -108,8 +108,8 @@ interface Results {
   updated: number
   unchanged: number
   skippedNoName: number
-  // Rows naming a SKU no game owns. Not created and not silently renumbered:
-  // a typo'd SKU that quietly became a new game would be worse than a skip.
+  // Rows naming a SKU no product owns. Not created and not silently renumbered:
+  // a typo'd SKU that quietly became a new product would be worse than a skip.
   skippedUnknownSku: string[]
   imageFailures: number
   categoriesCreated: string[]
@@ -134,7 +134,7 @@ function useIsMobile(breakpoint = 768) {
 }
 
 export default function ImportGamesPage() {
-  const { checking } = useRequireRole(SECTION_ACCESS.games)
+  const { checking } = useRequireRole(SECTION_ACCESS.products)
   const isMobile = useIsMobile()
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -157,8 +157,8 @@ export default function ImportGamesPage() {
   useEffect(() => {
     async function load() {
       const [gamesSnap, catSnap] = await Promise.all([
-        getDocs(collection(db, 'games')),
-        getDocs(collection(db, 'gameCategories')),
+        getDocs(collection(db, 'products')),
+        getDocs(collection(db, 'productCategories')),
       ])
       setExistingGames(new Map(gamesSnap.docs.map(d => {
         const data = d.data() as { name?: string; stock?: Record<string, number> | number; sku?: string }
@@ -204,17 +204,17 @@ export default function ImportGamesPage() {
     setProgress({ done: 0, total: rows.length })
 
     const idToken = await auth.currentUser?.getIdToken()
-    const games = new Map(existingGames)
+    const products = new Map(existingGames)
     const categories = new Set(existingCategories)
     const categoriesCreated: string[] = []
     const skippedUnknownSku: string[] = []
     let created = 0, updated = 0, unchanged = 0, skippedNoName = 0, imageFailures = 0
 
-    // Second index over the same games, keyed by SKU. Rebuilt from `games` on
+    // Second index over the same products, keyed by SKU. Rebuilt from `products` on
     // each lookup would be O(n) per row; built once here and kept in step as
     // rows are created below.
     const bySku = new Map<string, ExistingGame>()
-    for (const g of games.values()) {
+    for (const g of products.values()) {
       if (g.sku) bySku.set(g.sku.toLowerCase(), g)
     }
 
@@ -237,7 +237,7 @@ export default function ImportGamesPage() {
       }
 
       // SKU wins over name when present. That is the whole point of exporting
-      // it: the spreadsheet can rename a game and the import still knows which
+      // it: the spreadsheet can rename a product and the import still knows which
       // document it means, instead of creating a duplicate under the new name.
       const rowSku = (mapping.sku ? row[mapping.sku] : '').trim()
       let existing: ExistingGame | undefined
@@ -249,7 +249,7 @@ export default function ImportGamesPage() {
           continue
         }
       } else {
-        existing = games.get(name.toLowerCase())
+        existing = products.get(name.toLowerCase())
       }
 
       if (existing) {
@@ -273,7 +273,7 @@ export default function ImportGamesPage() {
         const wholesaleCell = cell(row, mapping.wholesalePrice)
         if (wholesaleCell !== null) patch.wholesalePrice = parseOptionalPrice(wholesaleCell)
 
-        // Merge onto the stock the game already has, so a CSV carrying only
+        // Merge onto the stock the product already has, so a CSV carrying only
         // Beirut's column can't zero out Zouk, Broummana and Faten.
         const stockPatch: Record<string, number> = {}
         for (const b of BRANCHES) {
@@ -293,7 +293,7 @@ export default function ImportGamesPage() {
           const normalized = normalizeCategory(newCategory)
           patch.category = normalized
           if (!categories.has(normalized)) {
-            await addDoc(collection(db, 'gameCategories'), { name: normalized, createdAt: serverTimestamp() })
+            await addDoc(collection(db, 'productCategories'), { name: normalized, createdAt: serverTimestamp() })
             categories.add(normalized)
             categoriesCreated.push(normalized)
           }
@@ -302,10 +302,10 @@ export default function ImportGamesPage() {
         if (Object.keys(patch).length === 0) {
           unchanged++
         } else {
-          await updateDoc(doc(db, 'games', existing.id), { ...patch, updatedAt: serverTimestamp() })
-          await logUpdate('Game', name, {}, patch)
+          await updateDoc(doc(db, 'products', existing.id), { ...patch, updatedAt: serverTimestamp() })
+          await logUpdate('Product', name, {}, patch)
           if (patch.stock) {
-            games.set(name.toLowerCase(), { ...existing, stock: patch.stock as Record<string, number>, name })
+            products.set(name.toLowerCase(), { ...existing, stock: patch.stock as Record<string, number>, name })
           }
           updated++
         }
@@ -315,7 +315,7 @@ export default function ImportGamesPage() {
 
       const category = normalizeCategory(mapping.category ? row[mapping.category] : '')
       if (!categories.has(category)) {
-        await addDoc(collection(db, 'gameCategories'), { name: category, createdAt: serverTimestamp() })
+        await addDoc(collection(db, 'productCategories'), { name: category, createdAt: serverTimestamp() })
         categories.add(category)
         categoriesCreated.push(category)
       }
@@ -369,23 +369,23 @@ export default function ImportGamesPage() {
       // would have to guess how many it needs and burn the remainder.
       const sku = await nextSku(name)
 
-      const ref = await addDoc(collection(db, 'games'), {
+      const ref = await addDoc(collection(db, 'products'), {
         ...gameData,
         sku,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       })
-      await logCreate('Game', name, { ...gameData, sku })
+      await logCreate('Product', name, { ...gameData, sku })
 
       const createdGame: ExistingGame = { id: ref.id, stock, sku, name }
-      games.set(name.toLowerCase(), createdGame)
+      products.set(name.toLowerCase(), createdGame)
       bySku.set(sku.toLowerCase(), createdGame)
       created++
       setProgress({ done: i + 1, total: rows.length })
     }
 
     setResults({ created, updated, unchanged, skippedNoName, skippedUnknownSku, imageFailures, categoriesCreated })
-    setExistingGames(games)
+    setExistingGames(products)
     setExistingCategories(categories)
     setImporting(false)
   }
@@ -424,7 +424,7 @@ export default function ImportGamesPage() {
 
         {/* Header */}
         <div style={{ marginBottom: '2rem' }}>
-          <a href="/admin/games" style={{
+          <a href="/admin/products" style={{
             fontSize: '0.7rem',
             letterSpacing: '0.2em',
             textTransform: 'uppercase',
@@ -444,7 +444,7 @@ export default function ImportGamesPage() {
             marginTop: '0.5rem',
             lineHeight: 1.6,
           }}>
-            Upload a CSV — a WooCommerce export, or an Export Full CSV from this panel edited in a spreadsheet. Games that already exist (matched by name) are updated; blank cells are left as they are.
+            Upload a CSV — a WooCommerce export, or an Export Full CSV from this panel edited in a spreadsheet. Products that already exist (matched by name) are updated; blank cells are left as they are.
             Imported stock is assigned to the <strong style={{ color: 'var(--teal)' }}>{IMPORT_BRANCH}</strong> branch —
             redistribute across branches afterward in the Product Catalogue. Images are downloaded and re-hosted automatically.
           </p>
@@ -526,7 +526,7 @@ export default function ImportGamesPage() {
 
             {!mapping.name && (
               <p style={{ marginTop: '1rem', fontSize: '0.78rem', color: 'var(--red)', fontFamily: 'var(--font-inter)' }}>
-                Map a column for Game Name to continue.
+                Map a column for Product Name to continue.
               </p>
             )}
           </div>
@@ -626,11 +626,11 @@ export default function ImportGamesPage() {
             {results && (
               <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                 <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--teal)' }}>
-                  ✓ {results.created} game{results.created === 1 ? '' : 's'} imported
+                  ✓ {results.created} product{results.created === 1 ? '' : 's'} imported
                 </p>
                 {results.updated > 0 && (
                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: '#C9962C' }}>
-                    ✎ {results.updated} existing game{results.updated === 1 ? '' : 's'} updated
+                    ✎ {results.updated} existing product{results.updated === 1 ? '' : 's'} updated
                   </p>
                 )}
                 {results.unchanged > 0 && (
@@ -645,15 +645,15 @@ export default function ImportGamesPage() {
                 )}
                 {results.skippedUnknownSku.length > 0 && (
                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--red)' }}>
-                    {results.skippedUnknownSku.length} row{results.skippedUnknownSku.length === 1 ? '' : 's'} skipped — the SKU matches no existing game, so nothing was created or renamed:{' '}
+                    {results.skippedUnknownSku.length} row{results.skippedUnknownSku.length === 1 ? '' : 's'} skipped — the SKU matches no existing product, so nothing was created or renamed:{' '}
                     {results.skippedUnknownSku.slice(0, 8).join(', ')}
                     {results.skippedUnknownSku.length > 8 ? `, and ${results.skippedUnknownSku.length - 8} more` : ''}.
-                    {' '}Clear the SKU cell to import these as new games.
+                    {' '}Clear the SKU cell to import these as new products.
                   </p>
                 )}
                 {results.imageFailures > 0 && (
                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--red)' }}>
-                    {results.imageFailures} image{results.imageFailures === 1 ? '' : 's'} failed to download — left blank, edit those games to add one manually
+                    {results.imageFailures} image{results.imageFailures === 1 ? '' : 's'} failed to download — left blank, edit those products to add one manually
                   </p>
                 )}
                 {results.categoriesCreated.length > 0 && (
@@ -661,7 +661,7 @@ export default function ImportGamesPage() {
                     New categories created: {results.categoriesCreated.join(', ')}
                   </p>
                 )}
-                <a href="/admin/games" style={{
+                <a href="/admin/products" style={{
                   marginTop: '0.6rem',
                   fontSize: '0.78rem',
                   color: 'var(--purple)',

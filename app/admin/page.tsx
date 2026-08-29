@@ -117,8 +117,8 @@ export default function AdminPage() {
       title: 'Product Sales',
       color: 'var(--teal)',
       cards: [
-        { label: 'Record a Sale',    icon: faCashRegister, daily: true,  desc: 'Process a game purchase, deduct stock, and generate an invoice', href: '/admin/games/purchase', access: SECTION_ACCESS.gamePurchases },
-        { label: 'Sales & Invoices', icon: faReceipt,      daily: false, desc: 'View past sales, download invoices, and process refunds',       href: '/admin/games/invoices', access: SECTION_ACCESS.gamePurchases },
+        { label: 'Record a Sale',    icon: faCashRegister, daily: true,  desc: 'Process a product purchase, deduct stock, and generate an invoice', href: '/admin/products/purchase', access: SECTION_ACCESS.productPurchases },
+        { label: 'Sales & Invoices', icon: faReceipt,      daily: false, desc: 'View past sales, download invoices, and process refunds',       href: '/admin/products/invoices', access: SECTION_ACCESS.productPurchases },
       ],
     },
     {
@@ -126,7 +126,7 @@ export default function AdminPage() {
       color: 'var(--teal)',
       cards: [
         { label: 'Event Reservations', icon: faCalendarCheck, daily: true,  desc: 'Approve or reject pending event spot requests',        href: '/admin/events/reservations', access: SECTION_ACCESS.events, badge: pendingEventReservations.length },
-        { label: 'Manage Products',    icon: faBagShopping,          daily: false, desc: 'Add, edit or remove products from the shop',              href: '/admin/games',               access: SECTION_ACCESS.games },
+        { label: 'Manage Products',    icon: faBagShopping,          daily: false, desc: 'Add, edit or remove products from the shop',              href: '/admin/products',               access: SECTION_ACCESS.products },
         { label: 'Manage Menu',        icon: faUtensils,      daily: false, desc: 'Update food and drink items',                           href: '/admin/menu',                access: SECTION_ACCESS.menu },
         { label: 'Manage Events',      icon: faCalendar,      daily: false, desc: 'Create and manage events',                             href: '/admin/events',              access: SECTION_ACCESS.events },
       ],
@@ -185,7 +185,7 @@ export default function AdminPage() {
       title: 'Wholesale',
       color: '#6A6AB7',
       cards: [
-        { label: 'Wholesale Orders',   icon: faHandshake, daily: true,  desc: 'Approve or reject trade orders from shops, then email them on', href: '/admin/wholesale/orders',   access: SECTION_ACCESS.games },
+        { label: 'Wholesale Orders',   icon: faHandshake, daily: true,  desc: 'Approve or reject trade orders from shops, then email them on', href: '/admin/wholesale/orders',   access: SECTION_ACCESS.products },
         { label: 'Wholesale Accounts', icon: faStore,     daily: false, desc: 'Create and deactivate the shop logins that can see trade pricing', href: '/admin/wholesale/accounts', access: ['admin'] as Role[] },
       ],
     },

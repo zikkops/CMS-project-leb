@@ -5,9 +5,9 @@ import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../../../lib/firebase'
 import { useRequireRole, SECTION_ACCESS } from '../../../lib/adminAuth'
 import { BRANCHES, normalizeStock } from '../../../lib/branches'
-import { type PurchaseItem, createPurchaseOrder } from '../../../lib/gamePurchases'
+import { type PurchaseItem, createPurchaseOrder } from '../../../lib/productPurchases'
 
-interface Game {
+interface Product {
   id: string
   name: string
   category: string
@@ -19,7 +19,7 @@ interface Game {
 }
 
 interface CartLine {
-  game: Game
+  product: Product
   quantity: number
   priceType: 'retail' | 'wholesale'
 }
@@ -45,10 +45,10 @@ const lbl: React.CSSProperties = {
 }
 
 export default function RecordSalePage() {
-  const { checking, user } = useRequireRole(SECTION_ACCESS.gamePurchases)
+  const { checking, user } = useRequireRole(SECTION_ACCESS.productPurchases)
   const isMobile = useIsMobile()
 
-  const [games, setGames] = useState<Game[]>([])
+  const [products, setGames] = useState<Product[]>([])
   const [branch, setBranch] = useState<string>(BRANCHES[0])
   const [customerName, setCustomerName] = useState('')
   const [search, setSearch] = useState('')
@@ -58,9 +58,9 @@ export default function RecordSalePage() {
   const [result, setResult] = useState<{ orderId: string; invoiceUrl: string | null; invoiceNumber: string } | null>(null)
 
   useEffect(() => {
-    getDocs(collection(db, 'games')).then(snap => {
+    getDocs(collection(db, 'products')).then(snap => {
       setGames(snap.docs.map(d => {
-        const data = d.data() as Omit<Game, 'id'>
+        const data = d.data() as Omit<Product, 'id'>
         return { id: d.id, ...data, stock: normalizeStock(data.stock) }
       }))
     })
@@ -68,56 +68,56 @@ export default function RecordSalePage() {
 
   const filteredGames = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return games.filter(g =>
+    return products.filter(g =>
       !q || g.name.toLowerCase().includes(q) || (g.category ?? '').toLowerCase().includes(q)
     )
-  }, [games, search])
+  }, [products, search])
 
-  function branchStock(g: Game): number {
+  function branchStock(g: Product): number {
     return (g.stock?.[branch] ?? 0)
   }
 
-  function addToCart(game: Game) {
+  function addToCart(product: Product) {
     setCart(prev => {
-      const existing = prev.find(l => l.game.id === game.id)
+      const existing = prev.find(l => l.product.id === product.id)
       if (existing) {
         return prev.map(l =>
-          l.game.id === game.id
-            ? { ...l, quantity: Math.min(l.quantity + 1, branchStock(game)) }
+          l.product.id === product.id
+            ? { ...l, quantity: Math.min(l.quantity + 1, branchStock(product)) }
             : l,
         )
       }
-      return [...prev, { game, quantity: 1, priceType: 'retail' }]
+      return [...prev, { product, quantity: 1, priceType: 'retail' }]
     })
   }
 
-  function removeFromCart(gameId: string) {
-    setCart(prev => prev.filter(l => l.game.id !== gameId))
+  function removeFromCart(productId: string) {
+    setCart(prev => prev.filter(l => l.product.id !== productId))
   }
 
-  function setQty(gameId: string, qty: number) {
-    const game = games.find(g => g.id === gameId)
-    if (!game) return
-    const maxQty = branchStock(game)
+  function setQty(productId: string, qty: number) {
+    const product = products.find(g => g.id === productId)
+    if (!product) return
+    const maxQty = branchStock(product)
     const clamped = Math.max(1, Math.min(qty, maxQty))
-    setCart(prev => prev.map(l => l.game.id === gameId ? { ...l, quantity: clamped } : l))
+    setCart(prev => prev.map(l => l.product.id === productId ? { ...l, quantity: clamped } : l))
   }
 
-  function setPriceType(gameId: string, pt: 'retail' | 'wholesale') {
-    setCart(prev => prev.map(l => l.game.id === gameId ? { ...l, priceType: pt } : l))
+  function setPriceType(productId: string, pt: 'retail' | 'wholesale') {
+    setCart(prev => prev.map(l => l.product.id === productId ? { ...l, priceType: pt } : l))
   }
 
   function lineTotal(line: CartLine): number {
-    const price = line.priceType === 'wholesale' && line.game.wholesalePrice != null
-      ? line.game.wholesalePrice
-      : line.game.price
+    const price = line.priceType === 'wholesale' && line.product.wholesalePrice != null
+      ? line.product.wholesalePrice
+      : line.product.price
     return price * line.quantity
   }
 
   function lineUnitPrice(line: CartLine): number {
-    return line.priceType === 'wholesale' && line.game.wholesalePrice != null
-      ? line.game.wholesalePrice
-      : line.game.price
+    return line.priceType === 'wholesale' && line.product.wholesalePrice != null
+      ? line.product.wholesalePrice
+      : line.product.price
   }
 
   const orderTotal = cart.reduce((s, l) => s + lineTotal(l), 0)
@@ -129,13 +129,13 @@ export default function RecordSalePage() {
     setError('')
     try {
       const items: PurchaseItem[] = cart.map(l => ({
-        gameId: l.game.id,
-        gameName: l.game.name,
+        productId: l.product.id,
+        productName: l.product.name,
         quantity: l.quantity,
         unitPrice: lineUnitPrice(l),
         priceType: l.priceType,
         subtotal: lineTotal(l),
-        sku: l.game.sku,
+        sku: l.product.sku,
       }))
       const { orderId, invoiceUrl } = await createPurchaseOrder({
         customerName: customerName.trim(),
@@ -193,7 +193,7 @@ export default function RecordSalePage() {
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)' }}>
               Record a Sale
             </h1>
-            <a href="/admin/games/invoices" style={{
+            <a href="/admin/products/invoices" style={{
               fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase',
               color: 'rgba(245,242,236,0.4)', textDecoration: 'none', fontFamily: 'var(--font-inter)',
               border: '1px solid rgba(255,255,255,0.08)', padding: '0.5rem 1rem', borderRadius: '2px',
@@ -227,7 +227,7 @@ export default function RecordSalePage() {
                 >View Invoice</a>
               )}
               <a
-                href="/admin/games/invoices"
+                href="/admin/products/invoices"
                 style={{
                   backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
                   color: 'rgba(245,242,236,0.6)', textDecoration: 'none',
@@ -256,7 +256,7 @@ export default function RecordSalePage() {
             alignItems: 'start',
           }}>
 
-            {/* Left: game picker */}
+            {/* Left: product picker */}
             <div>
               {/* Order info */}
               <div style={{
@@ -288,12 +288,12 @@ export default function RecordSalePage() {
                 </div>
               </div>
 
-              {/* Game picker */}
+              {/* Product picker */}
               <div style={{
                 background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
                 borderRadius: '4px', padding: '1.5rem',
               }}>
-                <p style={sectionLabel}>Add Games</p>
+                <p style={sectionLabel}>Add Products</p>
                 <input
                   type="text"
                   placeholder="Search by name or category…"
@@ -303,27 +303,27 @@ export default function RecordSalePage() {
                 />
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '420px', overflowY: 'auto' }}>
-                  {filteredGames.map(game => {
-                    const stock = branchStock(game)
-                    const inCart = cart.find(l => l.game.id === game.id)
+                  {filteredGames.map(product => {
+                    const stock = branchStock(product)
+                    const inCart = cart.find(l => l.product.id === product.id)
                     return (
-                      <div key={game.id} style={{
+                      <div key={product.id} style={{
                         display: 'flex', alignItems: 'center', gap: '0.8rem',
                         padding: '0.7rem 0.8rem', borderRadius: '3px',
                         backgroundColor: inCart ? 'rgba(106,106,183,0.1)' : 'rgba(255,255,255,0.02)',
                         border: `1px solid ${inCart ? 'rgba(106,106,183,0.3)' : 'rgba(255,255,255,0.05)'}`,
                         opacity: stock === 0 && !inCart ? 0.4 : 1,
                       }}>
-                        {game.image && (
-                          <img src={game.image} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: '2px', flexShrink: 0 }} />
+                        {product.image && (
+                          <img src={product.image} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: '2px', flexShrink: 0 }} />
                         )}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem', color: 'var(--offwhite)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {game.name}
+                            {product.name}
                           </p>
                           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)' }}>
-                            {game.category} · ${game.price}
-                            {game.wholesalePrice != null && ` · WS: $${game.wholesalePrice}`}
+                            {product.category} · ${product.price}
+                            {product.wholesalePrice != null && ` · WS: $${product.wholesalePrice}`}
                             {' · '}
                             <span style={{ color: stock > 0 ? 'var(--teal)' : 'var(--red)' }}>
                               {stock} at {branch}
@@ -331,7 +331,7 @@ export default function RecordSalePage() {
                           </p>
                         </div>
                         <button
-                          onClick={() => addToCart(game)}
+                          onClick={() => addToCart(product)}
                           disabled={stock === 0}
                           style={{
                             flexShrink: 0,
@@ -372,18 +372,18 @@ export default function RecordSalePage() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom: '1.2rem' }}>
                     {cart.map(line => {
-                      const hasWholesale = line.game.wholesalePrice != null
-                      const maxQty = branchStock(line.game)
+                      const hasWholesale = line.product.wholesalePrice != null
+                      const maxQty = branchStock(line.product)
                       return (
-                        <div key={line.game.id} style={{
+                        <div key={line.product.id} style={{
                           padding: '0.8rem', borderRadius: '3px',
                           background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                             <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.82rem', color: 'var(--offwhite)', flex: 1, marginRight: '0.5rem' }}>
-                              {line.game.name}
+                              {line.product.name}
                             </p>
-                            <button onClick={() => removeFromCart(line.game.id)} style={{
+                            <button onClick={() => removeFromCart(line.product.id)} style={{
                               background: 'transparent', border: 'none', color: 'rgba(228,51,41,0.5)',
                               cursor: 'pointer', fontSize: '0.9rem', padding: 0, flexShrink: 0,
                             }}>✕</button>
@@ -395,7 +395,7 @@ export default function RecordSalePage() {
                               <input
                                 type="number" min={1} max={maxQty}
                                 value={line.quantity}
-                                onChange={e => setQty(line.game.id, Number(e.target.value))}
+                                onChange={e => setQty(line.product.id, Number(e.target.value))}
                                 style={{ ...inp, padding: '0.5rem 0.6rem', fontSize: '0.82rem' }}
                               />
                             </div>
@@ -404,15 +404,15 @@ export default function RecordSalePage() {
                               {hasWholesale ? (
                                 <select
                                   value={line.priceType}
-                                  onChange={e => setPriceType(line.game.id, e.target.value as 'retail' | 'wholesale')}
+                                  onChange={e => setPriceType(line.product.id, e.target.value as 'retail' | 'wholesale')}
                                   style={{ ...inp, padding: '0.5rem 0.6rem', fontSize: '0.82rem', backgroundColor: '#1a1a1a', color: '#F5F2EC' }}
                                 >
-                                  <option value="retail">Retail ${line.game.price}</option>
-                                  <option value="wholesale">Wholesale ${line.game.wholesalePrice}</option>
+                                  <option value="retail">Retail ${line.product.price}</option>
+                                  <option value="wholesale">Wholesale ${line.product.wholesalePrice}</option>
                                 </select>
                               ) : (
                                 <div style={{ ...inp, padding: '0.5rem 0.6rem', fontSize: '0.82rem' }}>
-                                  ${line.game.price}
+                                  ${line.product.price}
                                 </div>
                               )}
                             </div>

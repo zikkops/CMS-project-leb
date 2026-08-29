@@ -7,10 +7,10 @@
 // aggregated so a duplicated cart line couldn't half-deduct, legacy stock
 // shapes handled. Its weakness was not the transaction. It was the prices.
 //
-// The browser read the game's price out of its own copy of the document,
+// The browser read the product's price out of its own copy of the document,
 // multiplied by the quantity, and sent `unitPrice`, `subtotal` and `total`
 // along with the order. Firestore stored what it was given. A tampered client
-// could record a $200 board game as a $0.01 sale, and the books would agree
+// could record a $200 board product as a $0.01 sale, and the books would agree
 // with it forever.
 //
 // This is the exact case Phase 00 was created for: "server-computed totals — a
@@ -18,8 +18,8 @@
 // you loyalty XP; with a POS it costs cash."
 //
 // So the request now carries only WHAT was bought, never what it was worth:
-// gameId, quantity, and which price list to use. Every figure is recomputed
-// here from the stored game document.
+// productId, quantity, and which price list to use. Every figure is recomputed
+// here from the stored product document.
 //
 // ── What deliberately stays in the browser ────────────────────────────────
 // The invoice IMAGE. It is rendered with a canvas, which has no server
@@ -37,7 +37,7 @@ export type PriceType = 'retail' | 'wholesale'
 
 /** What the browser is allowed to say. Note the absence of any money. */
 export interface RequestedLine {
-  gameId: string
+  productId: string
   quantity: number
   priceType: PriceType
 }
@@ -62,8 +62,8 @@ export function parsePurchaseInput(body: Record<string, unknown>): PurchaseInput
 
   const lines: RequestedLine[] = raw.map((l, i) => {
     const line = (l ?? {}) as Record<string, unknown>
-    const gameId = typeof line.gameId === 'string' ? line.gameId.trim() : ''
-    if (!gameId) throw new HttpError(400, `Line ${i + 1} is missing a product.`)
+    const productId = typeof line.productId === 'string' ? line.productId.trim() : ''
+    if (!productId) throw new HttpError(400, `Line ${i + 1} is missing a product.`)
 
     const quantity = Number(line.quantity)
     if (!Number.isInteger(quantity) || quantity < 1) {
@@ -71,7 +71,7 @@ export function parsePurchaseInput(body: Record<string, unknown>): PurchaseInput
     }
 
     const priceType = line.priceType === 'wholesale' ? 'wholesale' : 'retail'
-    return { gameId, quantity, priceType }
+    return { productId, quantity, priceType }
   })
 
   return { customerName, branch, lines }
@@ -79,8 +79,8 @@ export function parsePurchaseInput(body: Record<string, unknown>): PurchaseInput
 
 /** The priced line as it is stored — every figure computed here. */
 export interface PricedLine {
-  gameId: string
-  gameName: string
+  productId: string
+  productName: string
   quantity: number
   unitPrice: number
   priceType: PriceType
@@ -96,7 +96,7 @@ export interface PurchaseResult {
 }
 
 /**
- * Read a game's stock as a per-branch map.
+ * Read a product's stock as a per-branch map.
  *
  * Documents created before multi-branch support hold a flat number. Ported
  * verbatim from the client version rather than re-derived: a subtly different
@@ -120,8 +120,8 @@ export async function createPurchaseOrder(
   // have the second overwrite the first, deducting only part of the quantity.
   const wanted = new Map<string, { quantity: number; priceType: PriceType }>()
   for (const line of input.lines) {
-    const prev = wanted.get(line.gameId)
-    wanted.set(line.gameId, {
+    const prev = wanted.get(line.productId)
+    wanted.set(line.productId, {
       quantity: (prev?.quantity ?? 0) + line.quantity,
       // A cart holding the same product at two price types is ambiguous;
       // wholesale wins, because charging the lower of the two is the failure
@@ -130,23 +130,23 @@ export async function createPurchaseOrder(
     })
   }
 
-  const gameIds = [...wanted.keys()]
+  const productIds = [...wanted.keys()]
   const counterRef = db.doc('appSettings/invoiceCounter')
 
   return db.runTransaction(async tx => {
-    const gameRefs = gameIds.map(id => db.doc(`games/${id}`))
+    const productRefs = productIds.map(id => db.doc(`products/${id}`))
     // Every read before every write — a Firestore transaction forbids the
     // reverse, and the counter has to be read here too.
-    const [counterSnap, ...gameSnaps] = await tx.getAll(counterRef, ...gameRefs)
+    const [counterSnap, ...productSnaps] = await tx.getAll(counterRef, ...productRefs)
 
     const items: PricedLine[] = []
 
-    gameSnaps.forEach((snap, i) => {
-      const gameId = gameIds[i]
+    productSnaps.forEach((snap, i) => {
+      const productId = productIds[i]
       if (!snap.exists) throw new HttpError(404, 'A product in this sale no longer exists.')
 
       const data = snap.data() ?? {}
-      const want = wanted.get(gameId)!
+      const want = wanted.get(productId)!
 
       // THE POINT OF THIS WHOLE FILE: the price comes from the stored
       // document, never from the request.
@@ -155,21 +155,21 @@ export async function createPurchaseOrder(
       const unitPrice = want.priceType === 'wholesale' && wholesale != null ? wholesale : retail
 
       if (!Number.isFinite(unitPrice) || unitPrice < 0) {
-        throw new HttpError(422, `"${data.name ?? gameId}" has no valid price and cannot be sold.`)
+        throw new HttpError(422, `"${data.name ?? productId}" has no valid price and cannot be sold.`)
       }
 
       const stock = normaliseStock(data.stock)
       const have = stock[input.branch] ?? 0
       if (have < want.quantity) {
-        throw new HttpError(409, `Not enough stock of "${data.name ?? gameId}" at ${input.branch}.`)
+        throw new HttpError(409, `Not enough stock of "${data.name ?? productId}" at ${input.branch}.`)
       }
       stock[input.branch] = have - want.quantity
 
-      tx.update(gameRefs[i], { stock, updatedAt: FieldValue.serverTimestamp() })
+      tx.update(productRefs[i], { stock, updatedAt: FieldValue.serverTimestamp() })
 
       items.push({
-        gameId,
-        gameName: String(data.name ?? gameId),
+        productId,
+        productName: String(data.name ?? productId),
         quantity: want.quantity,
         unitPrice,
         priceType: want.priceType,
@@ -191,7 +191,7 @@ export async function createPurchaseOrder(
     tx.set(counterRef, { year, nextNumber: sequence })
     const invoiceNumber = formatInvoiceNumber(sequence, issuedAt)
 
-    const orderRef = db.collection('gamePurchaseOrders').doc()
+    const orderRef = db.collection('productPurchaseOrders').doc()
     tx.set(orderRef, {
       invoiceNumber,
       customerName: input.customerName,
@@ -223,7 +223,7 @@ export async function refundPurchaseOrder(
   refundNote: string,
 ): Promise<RefundResult> {
   const db = adminDb()
-  const orderRef = db.doc(`gamePurchaseOrders/${orderId}`)
+  const orderRef = db.doc(`productPurchaseOrders/${orderId}`)
 
   return db.runTransaction(async tx => {
     const orderSnap = await tx.get(orderRef)
@@ -236,10 +236,10 @@ export async function refundPurchaseOrder(
 
     const items = Array.isArray(order.items) ? (order.items as PricedLine[]) : []
     const back = new Map<string, number>()
-    for (const it of items) back.set(it.gameId, (back.get(it.gameId) ?? 0) + Number(it.quantity ?? 0))
+    for (const it of items) back.set(it.productId, (back.get(it.productId) ?? 0) + Number(it.quantity ?? 0))
 
     const ids = [...back.keys()]
-    const refs = ids.map(id => db.doc(`games/${id}`))
+    const refs = ids.map(id => db.doc(`products/${id}`))
     const snaps = refs.length > 0 ? await tx.getAll(...refs) : []
 
     snaps.forEach((snap, i) => {

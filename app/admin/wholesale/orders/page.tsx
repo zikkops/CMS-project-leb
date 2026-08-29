@@ -59,7 +59,7 @@ function orderAsText(o: WholesaleOrder): string {
 }
 
 export default function WholesaleOrdersAdminPage() {
-  const { checking, user } = useRequireRole(SECTION_ACCESS.games)
+  const { checking, user } = useRequireRole(SECTION_ACCESS.products)
   const isMobile = useIsMobile()
 
   const [orders, setOrders]   = useState<WholesaleOrder[]>([])
@@ -243,7 +243,7 @@ export default function WholesaleOrdersAdminPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '380px' }}>
                           <tbody>
                             {o.items.map(i => (
-                              <tr key={i.gameId} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                              <tr key={i.productId} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                                 <td style={{ padding: '0.45rem 0', fontSize: '0.82rem' }}>{i.name}</td>
                                 <td style={{ padding: '0.45rem 0', textAlign: 'right', fontSize: '0.78rem', color: 'rgba(245,242,236,0.45)' }}>
                                   {i.quantity} × ${i.unitPrice.toFixed(2)}

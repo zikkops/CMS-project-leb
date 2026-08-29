@@ -130,7 +130,7 @@ export default function WholesaleOrdersPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '0.75rem' }}>
                           <tbody>
                             {o.items.map(i => (
-                              <tr key={i.gameId} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                              <tr key={i.productId} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                                 <td style={{ padding: '0.45rem 0', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'var(--offwhite)' }}>{i.name}</td>
                                 <td style={{ padding: '0.45rem 0', textAlign: 'right', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.45)' }}>
                                   {i.quantity} × ${i.unitPrice.toFixed(2)}

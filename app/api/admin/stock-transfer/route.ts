@@ -2,7 +2,7 @@
 //
 // Its own route rather than an action on /api/admin/purchases: that one
 // requires an order id before it looks at anything else, and a transfer has no
-// order. It is also a different section — gameTransfers, not gamePurchases —
+// order. It is also a different section — productTransfers, not productPurchases —
 // so a role can be trusted to move stock without being trusted to sell it, or
 // the other way round.
 
@@ -14,7 +14,7 @@ export const runtime = 'nodejs'
 
 export async function POST(request: Request): Promise<Response> {
   try {
-    const caller: Caller = await requireSection(request, 'gameTransfers')
+    const caller: Caller = await requireSection(request, 'productTransfers')
 
     let body: Record<string, unknown>
     try {

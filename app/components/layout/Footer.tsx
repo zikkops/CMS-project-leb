@@ -72,7 +72,7 @@ export default function Footer() {
               maxWidth: isMobile ? '100%' : '240px',
               fontFamily: 'var(--font-inter)',
             }}>
-              Lebanon's favourite board game café and restaurant. Where every table tells a story.
+              Lebanon's favourite board product café and restaurant. Where every table tells a story.
             </p>
           </div>
 

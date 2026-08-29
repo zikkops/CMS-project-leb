@@ -4,15 +4,15 @@
 //
 // Format: ob-SKU0001
 //   ob-     fixed prefix
-//   SKU     first three letters of the game name, uppercased
-//   0001    sequence, four digits, ONE global series across every game
+//   SKU     first three letters of the product name, uppercased
+//   0001    sequence, four digits, ONE global series across every product
 //
 // The sequence is global rather than per-prefix: a single counter can be
-// incremented atomically, so two games added at the same moment cannot collide.
+// incremented atomically, so two products added at the same moment cannot collide.
 // Per-prefix counters would need one counter document per prefix and a
 // collision window on each.
 //
-// A SKU is issued once and then never recomputed. Renaming a game does NOT
+// A SKU is issued once and then never recomputed. Renaming a product does NOT
 // change its SKU — the letters are a mnemonic, not a key, and a printed label
 // or a past invoice has to keep meaning the same thing.
 
@@ -30,7 +30,7 @@ export function formatSku(name: string, sequence: number): string {
 }
 
 // Used by the route to validate anything that arrives from a browser, and by
-// the backfill to recognise a game that already has one.
+// the backfill to recognise a product that already has one.
 export const SKU_PATTERN = /^ob-[A-Z]{3}\d{4,}$/
 
 export function isValidSku(value: unknown): value is string {

@@ -169,7 +169,7 @@ export default function LoyaltyPage() {
               color: 'var(--teal)',
               marginBottom: '1.5rem',
             }}>
-              Every visit, every game, every adventure — rewarded.
+              Every visit, every product, every adventure — rewarded.
             </p>
 
             <p style={{

@@ -124,7 +124,7 @@ export default function MediaLibraryPage() {
           marginBottom: '2rem',
           lineHeight: 1.6,
         }}>
-          Every image uploaded through Games, Menu, or Events shows up here automatically.
+          Every image uploaded through Products, Menu, or Events shows up here automatically.
           Images marked <strong style={{ color: 'rgba(245,242,236,0.6)' }}>Legacy</strong> were uploaded before this library existed
           (or backfilled by Sync) — deleting them only removes the entry from this list, since the original delete link wasn&apos;t kept.
         </p>

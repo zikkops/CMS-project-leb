@@ -25,14 +25,14 @@ async function allocate(names: string[]): Promise<string[]> {
   return data.skus as string[]
 }
 
-// One SKU for one new game.
+// One SKU for one new product.
 export async function nextSku(name: string): Promise<string> {
   const [sku] = await allocate([name])
   return sku
 }
 
 // A consecutive block, for the CSV import. One round trip and one transaction,
-// so an import does not interleave its numbers with a game being added by hand.
+// so an import does not interleave its numbers with a product being added by hand.
 export async function nextSkuBatch(names: string[]): Promise<string[]> {
   if (names.length === 0) return []
   return allocate(names)

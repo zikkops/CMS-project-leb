@@ -18,7 +18,7 @@ import { BRAND } from '../lib/brand'
 // follows whichever branch is configured first.
 const BRANCH = BRAND.branches[0]
 
-interface Game {
+interface Product {
   id: string
   name: string
   category: string
@@ -29,7 +29,7 @@ interface Game {
   retailPrice: number
   stock: unknown
   image: string
-  fatenStock: number
+  branchStock: number
 }
 
 function useIsMobile(breakpoint = 768) {
@@ -43,13 +43,13 @@ function useIsMobile(breakpoint = 768) {
   return isMobile
 }
 
-function GameCard({ game }: { game: Game }) {
+function ProductCard({ product }: { product: Product }) {
   const [hovered, setHovered] = useState(false)
-  const inStock = game.fatenStock > 0
+  const inStock = product.branchStock > 0
 
   return (
     <Link
-      href={`/shop/${game.id}`}
+      href={`/shop/${product.id}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -67,11 +67,11 @@ function GameCard({ game }: { game: Game }) {
     >
       {/* Image */}
       <div style={{ position: 'relative', width: '100%', paddingTop: '66%', overflow: 'hidden', background: '#ffffff' }}>
-        {game.image ? (
+        {product.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={game.image}
-            alt={game.name}
+            src={product.image}
+            alt={product.name}
             style={{
               position: 'absolute', inset: 0,
               width: '100%', height: '100%',
@@ -88,14 +88,14 @@ function GameCard({ game }: { game: Game }) {
 
         {/* Price badges — stacked top-right */}
         <div style={{ position: 'absolute', top: '0.6rem', right: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-end' }}>
-          {game.wholesalePrice > 0 && (
+          {product.wholesalePrice > 0 && (
             <div style={{ background: '#6A6AB7', color: '#fff', padding: '0.22rem 0.55rem', borderRadius: '3px', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-inter)', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
-              WS ${game.wholesalePrice.toFixed(2)}
+              WS ${product.wholesalePrice.toFixed(2)}
             </div>
           )}
-          {game.retailPrice > 0 && (
+          {product.retailPrice > 0 && (
             <div style={{ background: '#C9962C', color: '#000', padding: '0.22rem 0.55rem', borderRadius: '3px', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-inter)', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
-              RP ${game.retailPrice.toFixed(2)}
+              RP ${product.retailPrice.toFixed(2)}
             </div>
           )}
         </div>
@@ -112,45 +112,45 @@ function GameCard({ game }: { game: Game }) {
           letterSpacing: '0.08em',
           textTransform: 'uppercase',
         }}>
-          {inStock ? `${game.fatenStock} in stock` : 'Out of stock'}
+          {inStock ? `${product.branchStock} in stock` : 'Out of stock'}
         </div>
       </div>
 
       {/* Info */}
       <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1 }}>
         <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.92rem', color: 'var(--offwhite)', lineHeight: 1.3 }}>
-          {game.name}
+          {product.name}
         </p>
 
-        {game.category && (
+        {product.category && (
           <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--purple)' }}>
-            {game.category}
+            {product.category}
           </span>
         )}
 
-        {game.wholesalePrice > 0 && game.retailPrice > 0 && (
+        {product.wholesalePrice > 0 && product.retailPrice > 0 && (
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.28)', marginTop: '0.1rem' }}>
-            Margin ${(game.retailPrice - game.wholesalePrice).toFixed(2)}
+            Margin ${(product.retailPrice - product.wholesalePrice).toFixed(2)}
           </p>
         )}
 
         <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '0.4rem' }}>
-          {game.players && (
+          {product.players && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)' }}>
               <FontAwesomeIcon icon={faUsers} style={{ width: '11px' }} />
-              {game.players}
+              {product.players}
             </span>
           )}
-          {game.duration && (
+          {product.duration && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)' }}>
               <FontAwesomeIcon icon={faClock} style={{ width: '11px' }} />
-              {game.duration}
+              {product.duration}
             </span>
           )}
-          {game.age && (
+          {product.age && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)' }}>
               <FontAwesomeIcon icon={faCakeCandles} style={{ width: '11px' }} />
-              {game.age}+
+              {product.age}+
             </span>
           )}
         </div>
@@ -160,7 +160,7 @@ function GameCard({ game }: { game: Game }) {
 }
 
 export default function BranchCataloguePage() {
-  const [games, setGames]           = useState<Game[]>([])
+  const [products, setGames]           = useState<Product[]>([])
   const [loading, setLoading]       = useState(true)
   const [search, setSearch]         = useState('')
   const [category, setCategory]     = useState('All')
@@ -171,8 +171,8 @@ export default function BranchCataloguePage() {
   useEffect(() => {
     async function load() {
       const [gamesSnap, catSnap] = await Promise.all([
-        getDocs(collection(db, 'games')),
-        getDocs(collection(db, 'gameCategories')),
+        getDocs(collection(db, 'products')),
+        getDocs(collection(db, 'productCategories')),
       ])
       const all = gamesSnap.docs.map(d => {
         const stock = normalizeStock(d.data().stock)
@@ -187,10 +187,10 @@ export default function BranchCataloguePage() {
           retailPrice:    (d.data().price as number) ?? 0,
           stock:          d.data().stock,
           image:          (d.data().image as string) ?? '',
-          fatenStock:     stock[BRANCH] ?? 0,
-        } as Game
+          branchStock:     stock[BRANCH] ?? 0,
+        } as Product
       })
-      const faten = all.filter(g => g.fatenStock > 0)
+      const faten = all.filter(g => g.branchStock > 0)
       const cats = catSnap.docs.map(d => (d.data() as { name: string }).name)
       setGames(faten)
       setCategories(cats.length > 0 ? cats : ['Strategy', 'Party', 'Family', 'Cooperative', 'Card', 'Trivia', 'RPG', 'Puzzle'])
@@ -200,13 +200,13 @@ export default function BranchCataloguePage() {
   }, [])
 
   const filtered = useMemo(() => {
-    return games.filter(g => {
+    return products.filter(g => {
       const matchCat    = category === 'All' || g.category === category
       const matchSearch = !search || g.name.toLowerCase().includes(search.toLowerCase())
-      const matchStock  = !stockOnly || g.fatenStock > 0
+      const matchStock  = !stockOnly || g.branchStock > 0
       return matchCat && matchSearch && matchStock
     })
-  }, [games, search, category, stockOnly])
+  }, [products, search, category, stockOnly])
 
   const allCats = useMemo(() => ['All', ...categories], [categories])
 
@@ -281,12 +281,12 @@ export default function BranchCataloguePage() {
             </div>
           ) : filtered.length === 0 ? (
             <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(245,242,236,0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem' }}>
-              {games.length === 0 ? `Nothing recorded for the ${BRANCH} branch yet.` : 'Nothing matches your filters.'}
+              {products.length === 0 ? `Nothing recorded for the ${BRANCH} branch yet.` : 'Nothing matches your filters.'}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '1.25rem' }}>
-              {filtered.map(game => (
-                <GameCard key={game.id} game={game} />
+              {filtered.map(product => (
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           )}

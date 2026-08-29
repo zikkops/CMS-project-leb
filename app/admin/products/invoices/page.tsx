@@ -7,7 +7,7 @@ import {
   listPurchaseOrders,
   refundOrder,
   regenerateOrderInvoice,
-} from '../../../lib/gamePurchases'
+} from '../../../lib/productPurchases'
 
 function useIsMobile(bp = 768) {
   const [v, setV] = useState(false)
@@ -33,7 +33,7 @@ function fmtDateTime(ts: { seconds: number } | null): string {
 }
 
 export default function InvoicesPage() {
-  const { checking, user } = useRequireRole(SECTION_ACCESS.gamePurchases)
+  const { checking, user } = useRequireRole(SECTION_ACCESS.productPurchases)
   const isMobile = useIsMobile()
 
   const [orders, setOrders] = useState<GamePurchaseOrder[]>([])
@@ -117,7 +117,7 @@ export default function InvoicesPage() {
               Product Sales &amp; Invoices
             </h1>
             <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
-              <a href="/admin/games/purchase" style={{
+              <a href="/admin/products/purchase" style={{
                 backgroundColor: 'var(--teal)', color: '#fff', textDecoration: 'none',
                 padding: '0.65rem 1.4rem', borderRadius: '2px', fontSize: '0.75rem',
                 letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
@@ -217,7 +217,7 @@ export default function InvoicesPage() {
                           fontFamily: 'var(--font-inter)', fontSize: '0.75rem',
                           color: 'rgba(245,242,236,0.45)',
                         }}>
-                          {item.gameName} × {item.quantity} @ ${item.unitPrice.toFixed(2)}
+                          {item.productName} × {item.quantity} @ ${item.unitPrice.toFixed(2)}
                           {item.priceType === 'wholesale' && (
                             <span style={{ color: 'rgba(245,242,236,0.3)', marginLeft: '0.3rem' }}>(wholesale)</span>
                           )}

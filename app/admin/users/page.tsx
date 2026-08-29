@@ -23,7 +23,7 @@ interface Account {
 
 // Duplicated from ALL_ROLES rather than imported — the existing pattern here.
 // The list no longer contains 'dungeonmaster' — that role went with the D&D modules.
-const ROLES: Role[] = ['admin', 'manager', 'social', 'gamer', 'kitchen_crew', 'barista']
+const ROLES: Role[] = ['admin', 'manager', 'social', 'retail', 'kitchen_crew', 'barista']
 
 const EMPTY = { email: '', password: '', role: 'manager' as Role, branchIds: [] as string[], sectionGrants: [] as string[], sectionRevocations: [] as string[] }
 

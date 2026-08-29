@@ -124,14 +124,17 @@ service cloud.firestore {
 
     // One helper per section, mirroring SECTION_ACCESS in app/lib/roles.ts.
     // Keep these in the same order as that file so a drift is easy to spot.
-    function canGames()             { return can('games',             ['admin', 'manager', 'gamer']); }
+    function canProducts()             { return can('products',             ['admin', 'manager', 'retail']); }
     function canMenu()              { return can('menu',              ['admin', 'manager']); }
     function canEvents()            { return can('events',            ['admin', 'manager', 'social']); }
     function canLoyalty()           { return can('loyalty',           ['admin', 'manager']); }
     function canBranchTables()      { return can('branchTables',      ['admin', 'manager']); }
-    function canTableReservations() { return can('tableReservations', ['admin', 'manager']); }
-    // canGamePurchases() was here and nothing called it — the compiler said so
-    // on every deploy. gamePurchaseOrders moved to `write: if false` when
+    // canTableReservations() was here and is gone for the same reason
+    // canGamePurchases() was: approve, reject and check-in all moved to route
+    // handlers, so nothing calls it. A defined-but-uncalled helper in a
+    // security file reads as though something enforces it.
+    // canProductPurchases() was here and nothing called it — the compiler said so
+    // on every deploy. productPurchaseOrders moved to `write: if false` when
     // purchases went behind /api/admin/purchases, which left the helper
     // governing nothing.
     //
@@ -159,21 +162,21 @@ service cloud.firestore {
     // ---- Public storefront content, staff-managed ----
     // Read stays fully public — these are the storefront. Only the write side
     // narrows, from "any staff" to "the roles that own this section".
-    match /games/{id}          { allow read: if true; allow write: if canGames(); }
-    match /gameCategories/{id} { allow read: if true; allow write: if canGames(); }
+    match /products/{id}          { allow read: if true; allow write: if canProducts(); }
+    match /productCategories/{id} { allow read: if true; allow write: if canProducts(); }
 
     // ---- Wholesale pricing ----
-    // Deliberately NOT a field on games/{id}. That doc is world-readable so
+    // Deliberately NOT a field on products/{id}. That doc is world-readable so
     // the storefront works signed-out, which means any field on it is public
     // no matter what the UI shows — wholesale cost and therefore retail margin
     // included. Splitting it into its own collection is what makes the price
-    // gateable at all. Doc id == the game id.
-    match /gameWholesale/{id} {
+    // gateable at all. Doc id == the product id.
+    match /productWholesale/{id} {
       // isWholesale() first: it is a free token check, while isStaff() falls
       // back to a billed get() for any token without staff claims — which is
       // every wholesale account. Reversed, each price read would cost a read.
       allow read:  if isWholesale() || isStaff();
-      allow write: if canGames();
+      allow write: if canProducts();
     }
 
     // /api/admin/menu owns writes now. It bounds the price — the number a
@@ -475,7 +478,7 @@ service cloud.firestore {
       allow write: if canLoyalty();
     }
 
-    // Public, like games/menuItems/events above — the Loyalty page shows
+    // Public, like products/menuItems/events above — the Loyalty page shows
     // what's redeemable to everyone, signed in or not, as part of the pitch
     // for joining the program.
     // The reward catalogue. coinCost decides what a free burger costs in
@@ -638,7 +641,7 @@ service cloud.firestore {
     // product's price from its own copy of the document, multiplied by the
     // quantity, and sent the totals along with the order. A tampered client
     // could record a $200 product as a one-cent sale.
-    match /gamePurchaseOrders/{id} {
+    match /productPurchaseOrders/{id} {
       allow read:  if isStaff();
       allow write: if false;
     }
@@ -854,9 +857,9 @@ service cloud.firestore {
         request.resource.data.totalUsd is number;
 
       // Approving, rejecting, marking fulfilled and stamping emailedAt are all
-      // staff actions. canGames() rather than any-staff: whoever manages the
-      // game library is who fills these.
-      allow update: if canGames();
+      // staff actions. canProducts() rather than any-staff: whoever manages the
+      // product library is who fills these.
+      allow update: if canProducts();
       allow delete: if hasRole(['admin']);
     }
   }

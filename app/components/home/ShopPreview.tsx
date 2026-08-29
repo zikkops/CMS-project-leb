@@ -42,7 +42,7 @@ export default function ShopPreview() {
 
   useEffect(() => {
     async function load() {
-      const q    = query(collection(db, 'games'), limit(3))
+      const q    = query(collection(db, 'products'), limit(3))
       const snap = await getDocs(q)
       setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Product)))
       setLoading(false)

@@ -1,16 +1,16 @@
 // SKU allocation. One global sequence, issued server-side.
 //
 // Server-side for the same reason invoice numbers are: the counter lives in
-// appSettings, which the rules gate to admins only, but a `gamer` may create
-// games. A client-side transaction would therefore work for an admin and 403
+// appSettings, which the rules gate to admins only, but a `retail` may create
+// products. A client-side transaction would therefore work for an admin and 403
 // for exactly the people who add most of the catalogue. It also honours the
 // Phase 00 standing rule — new privileged mutations go behind a route handler.
 //
 // POST { name, count? } -> { skus: string[] }
 //
 // The sequence is allocated in one transaction even when several are asked
-// for, so a CSV import of 200 games takes 200 consecutive numbers rather than
-// interleaving with whoever is adding a game by hand at the same moment.
+// for, so a CSV import of 200 products takes 200 consecutive numbers rather than
+// interleaving with whoever is adding a product by hand at the same moment.
 //
 // Gaps are possible and accepted: a number is spent when it is issued, and the
 // create that follows may still fail. Same contract as invoice numbering.
@@ -25,7 +25,7 @@ const MAX_BATCH = 500
 
 export async function POST(request: Request) {
   try {
-    await requireSection(request, 'games')
+    await requireSection(request, 'products')
 
     let body: Record<string, unknown>
     try {

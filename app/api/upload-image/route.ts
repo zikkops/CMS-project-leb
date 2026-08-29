@@ -1,6 +1,6 @@
 // Generic image-upload proxy — keeps the imgbb API key entirely server-side.
 // Every upload point in the app (customer avatar, check photo, admin
-// game/menu/event/D&D images) goes through this instead of calling
+// product/menu/event/D&D images) goes through this instead of calling
 // api.imgbb.com directly from the browser with a key embedded in the JS
 // bundle. Any signed-in user (customer or staff) may use this — both
 // legitimately upload images — so it checks for a valid token, not staff.

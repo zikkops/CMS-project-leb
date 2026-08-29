@@ -5,7 +5,7 @@
 // Mirrors app/api/admin/accounts/route.ts: create the Auth user with the Admin
 // SDK, write the users/{uid} doc, mint claims, and roll the Auth user back if
 // any of that fails. The claim (`wholesale: true`) is what makes the Firestore
-// rules on gameWholesale and wholesaleOrders free to evaluate.
+// rules on productWholesale and wholesaleOrders free to evaluate.
 
 import { adminAuth, adminDb } from '@/app/lib/server/firebaseAdmin'
 import { requireRole, toResponse, HttpError, type Caller } from '@/app/lib/server/auth'

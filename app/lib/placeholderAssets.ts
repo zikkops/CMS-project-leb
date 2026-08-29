@@ -72,9 +72,9 @@ export const PLACEHOLDER = {
   /** Full-bleed hero. Replaces the original BG-img1.webp. */
   heroBackground: unsplash(PHOTO.cafeInterior, 1920, 1080),
 
-  // `sectionBackground` stood in for bg-dnd.webp and used a board-game photo.
+  // `sectionBackground` stood in for bg-dnd.webp and used a board-product photo.
   // Both the D&D section it backed and the file it replaced are gone, and
-  // nothing imported it — removed rather than left as a board-game image in a
+  // nothing imported it — removed rather than left as a board-product image in a
   // generic catalogue's asset manifest.
 
   /** Branch/location card. Replaces "location image/Frame 1.jpg". */

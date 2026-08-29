@@ -42,7 +42,7 @@ initializeApp({
 const auth = getAuth()
 const db = getFirestore()
 
-const ALL_ROLES = ['admin', 'manager', 'social', 'gamer', 'kitchen_crew', 'barista']
+const ALL_ROLES = ['admin', 'manager', 'social', 'retail', 'kitchen_crew', 'barista']
 
 // Kept in sync by hand with claimsFromUserDoc() in app/lib/server/claims.ts.
 // Duplicated rather than imported because this is a plain .mjs script run by

@@ -20,7 +20,7 @@ export const runtime = 'nodejs'
 const ORDERS_EMAIL =
   process.env.NEXT_PUBLIC_WHOLESALE_ORDERS_EMAIL || 'markzakkak@gmail.com'
 
-interface LineInput { gameId: string; quantity: number }
+interface LineInput { productId: string; quantity: number }
 
 interface Account {
   uid: string
@@ -69,11 +69,11 @@ function parseLines(body: Record<string, unknown>): LineInput[] {
   const lines: LineInput[] = []
   for (const r of raw) {
     if (!r || typeof r !== 'object') continue
-    const gameId = (r as { gameId?: unknown }).gameId
+    const productId = (r as { productId?: unknown }).productId
     const quantity = Number((r as { quantity?: unknown }).quantity)
-    if (typeof gameId !== 'string' || !gameId) continue
+    if (typeof productId !== 'string' || !productId) continue
     if (!Number.isFinite(quantity) || quantity <= 0) continue
-    lines.push({ gameId, quantity: Math.floor(quantity) })
+    lines.push({ productId, quantity: Math.floor(quantity) })
   }
   if (lines.length === 0) throw new HttpError(400, 'The order is empty.')
   return lines
@@ -153,7 +153,7 @@ export async function POST(request: Request): Promise<Response> {
     // Re-price server-side. Whatever the browser claimed the price was is
     // ignored entirely.
     const db = adminDb()
-    const refs = lines.map(l => db.doc(`games/${l.gameId}`))
+    const refs = lines.map(l => db.doc(`products/${l.productId}`))
     const snaps = await db.getAll(...refs)
 
     const items = []
@@ -163,10 +163,10 @@ export async function POST(request: Request): Promise<Response> {
       const data = snap.data() ?? {}
       const unitPrice = Number(data.wholesalePrice)
       if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
-        throw new HttpError(400, `"${data.name ?? 'A game'}" is not available at wholesale.`)
+        throw new HttpError(400, `"${data.name ?? 'A product'}" is not available at wholesale.`)
       }
       items.push({
-        gameId: lines[i].gameId,
+        productId: lines[i].productId,
         name: (data.name as string) ?? '',
         unitPrice,
         quantity: lines[i].quantity,
@@ -238,7 +238,7 @@ export async function POST(request: Request): Promise<Response> {
 // it only ever sends to the Resend account's own address.
 export async function PATCH(request: Request): Promise<Response> {
   try {
-    const actor = await requireSection(request, 'games')
+    const actor = await requireSection(request, 'products')
 
     let body: Record<string, unknown>
     try {

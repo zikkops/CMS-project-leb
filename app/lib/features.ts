@@ -2,7 +2,7 @@
 //
 // Design taken from the feature audit's superadmin switchboard section, with
 // one change made necessary by this fork: the gaming modules now default OFF.
-// A generic café installation should never see D&D campaigns; a board game café
+// A generic café installation should never see D&D campaigns; a board product café
 // switches the pack on. That's the "Gaming pack" tier in the product plan, and
 // it's the thing no competitor sells.
 //
@@ -101,13 +101,13 @@ export const FEATURES = {
   },
 
   // ── Retail ───────────────────────────────────────────────────────────────
-  games: {
+  products: {
     label: 'Product Catalogue', group: 'Retail', requires: [], defaultEnabled: true,
-    sections: ['games'], collections: ['games', 'gameCategories'],
+    sections: ['products'], collections: ['products', 'productCategories'],
   },
-  gamePurchases: {
-    label: 'Sales & Invoices', group: 'Retail', requires: ['games'], defaultEnabled: true,
-    sections: ['gamePurchases', 'gameTransfers'], collections: ['gamePurchaseOrders'],
+  productPurchases: {
+    label: 'Sales & Invoices', group: 'Retail', requires: ['products'], defaultEnabled: true,
+    sections: ['productPurchases', 'productTransfers'], collections: ['productPurchaseOrders'],
   },
 
   // ── Loyalty ──────────────────────────────────────────────────────────────
@@ -125,7 +125,7 @@ export const FEATURES = {
   // The D&D modules (campaign bookings, reservations, looking-for-players,
   // campaign attendance points, leaderboard) were deleted from this codebase.
   //
-  // They were genuinely differentiating for a board game café and are the
+  // They were genuinely differentiating for a board product café and are the
   // "Gaming pack" tier in the product plan — but carrying five modules of dead
   // code through every refactor to keep an option open is the wrong trade. The
   // original implementation lives in the onboardlb repo if it's ever wanted

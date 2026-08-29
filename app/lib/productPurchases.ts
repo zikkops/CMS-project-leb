@@ -8,15 +8,15 @@ import { BRANCHES } from './branches'
 import { BRAND } from './brand'
 
 export interface PurchaseItem {
-  gameId: string
-  gameName: string
+  productId: string
+  productName: string
   quantity: number
   unitPrice: number
   priceType: 'retail' | 'wholesale'
   subtotal: number
   // Copied onto the order at checkout, not looked up when the invoice is
   // drawn: an issued invoice is a record and must keep rendering the same way
-  // even if the game is later renamed or removed. Optional — orders placed
+  // even if the product is later renamed or removed. Optional — orders placed
   // before SKUs existed have none, and simply show no SKU line.
   sku?: string
 }
@@ -165,7 +165,7 @@ export function drawInvoiceCanvas(
     }
     ctx.textAlign = 'left'
     ctx.fillStyle = '#222222'
-    ctx.fillText(truncate(ctx, item.gameName, C_QTY - PAD - 30), PAD + 10, y + 18)
+    ctx.fillText(truncate(ctx, item.productName, C_QTY - PAD - 30), PAD + 10, y + 18)
     if (item.sku) {
       ctx.font = '10px Arial, sans-serif'
       ctx.fillStyle = '#777777'
@@ -236,12 +236,12 @@ async function uploadInvoiceImage(
 //
 // The old client versions used a real runTransaction and were careful about
 // stock. What they could not be careful about was PRICE: the browser read the
-// game's price from its own copy of the document, multiplied by the quantity,
+// product's price from its own copy of the document, multiplied by the quantity,
 // and sent unitPrice/subtotal/total along with the order. Firestore stored
 // what it was given, so a tampered client could record a $200 product as a
 // one-cent sale and the books would agree with it forever.
 //
-// The request now carries only what was bought — gameId, quantity, price list.
+// The request now carries only what was bought — productId, quantity, price list.
 // Every figure is recomputed on the server from the stored product, and the
 // invoice number is issued inside the same transaction as the sale so a
 // failure on stock does not burn a number.
@@ -260,7 +260,7 @@ export async function createPurchaseOrder(input: {
     customerName: input.customerName,
     branch: input.branch,
     lines: input.items.map(it => ({
-      gameId: it.gameId,
+      productId: it.productId,
       quantity: it.quantity,
       priceType: it.priceType,
     })),
@@ -341,7 +341,7 @@ export async function refundOrder(
  * — the old 'insufficient-stock:<name>' sentinel is gone.
  */
 export async function transferGameStock(
-  items: { gameId: string; gameName: string; quantity: number }[],
+  items: { productId: string; productName: string; quantity: number }[],
   fromBranch: string,
   toBranch: string,
 ): Promise<void> {
@@ -350,15 +350,15 @@ export async function transferGameStock(
 
 export async function listPurchaseOrders(max = 200): Promise<GamePurchaseOrder[]> {
   const snap = await getDocs(
-    query(collection(db, 'gamePurchaseOrders'), orderBy('createdAt', 'desc'), limit(max)),
+    query(collection(db, 'productPurchaseOrders'), orderBy('createdAt', 'desc'), limit(max)),
   )
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as GamePurchaseOrder))
 }
 
-// Exports the game library as a CSV file directly from the browser.
+// Exports the product library as a CSV file directly from the browser.
 // includeWholesale controls whether the wholesalePrice column appears.
 export function exportGamesCSV(
-  games: Array<{
+  products: Array<{
     name: string
     category: string
     price: number
@@ -369,7 +369,7 @@ export function exportGamesCSV(
   includeWholesale: boolean,
 ): void {
   // SKU leads because it is the identity column on the way back in: the
-  // importer matches on it, so a round-trip can rename a game without the
+  // importer matches on it, so a round-trip can rename a product without the
   // import mistaking it for a new one.
   const headers = [
     'SKU', 'Name', 'Category', 'Retail Price ($)',
@@ -377,7 +377,7 @@ export function exportGamesCSV(
     ...BRANCHES.map(b => `Stock — ${b}`),
     'Total Stock',
   ]
-  const rows = games.map(g => {
+  const rows = products.map(g => {
     const stockMap: Record<string, number> =
       typeof g.stock === 'number'
         ? Object.fromEntries(BRANCHES.map((b, i) => [b, i === 0 ? (g.stock as number) : 0]))
@@ -398,7 +398,7 @@ export function exportGamesCSV(
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = includeWholesale ? 'game-library-full.csv' : 'game-library-retail.csv'
+  a.download = includeWholesale ? 'product-library-full.csv' : 'product-library-retail.csv'
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)

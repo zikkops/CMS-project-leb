@@ -18,7 +18,7 @@ import {
 import { generateInvoiceForCart } from '../lib/wholesaleInvoice'
 import { BRAND } from '../lib/brand'
 
-interface Game {
+interface Product {
   id: string
   name: string
   category: string
@@ -44,16 +44,16 @@ function useIsMobile(breakpoint = 768) {
 }
 
 // Quantity stepper lives OUTSIDE the <Link> that used to wrap the whole card —
-// nested inside it, every +/- click would navigate to the game page instead.
-function GameCard({
-  game, qty, onQty,
+// nested inside it, every +/- click would navigate to the product page instead.
+function ProductCard({
+  product, qty, onQty,
 }: {
-  game: Game
+  product: Product
   qty: number
   onQty: (next: number) => void
 }) {
   const [hovered, setHovered] = useState(false)
-  const stock = totalStock(game.stock)
+  const stock = totalStock(product.stock)
   const inStock = stock > 0
 
   return (
@@ -71,13 +71,13 @@ function GameCard({
         boxShadow: hovered ? '0 8px 32px rgba(0,0,0,0.35)' : 'none',
       }}
     >
-      <Link href={`/shop/${game.id}`} style={{ textDecoration: 'none' }}>
+      <Link href={`/shop/${product.id}`} style={{ textDecoration: 'none' }}>
         <div style={{ position: 'relative', width: '100%', paddingTop: '66%', overflow: 'hidden', background: '#ffffff' }}>
-          {game.image ? (
+          {product.image ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={game.image}
-              alt={game.name}
+              src={product.image}
+              alt={product.name}
               style={{
                 position: 'absolute', inset: 0,
                 width: '100%', height: '100%',
@@ -94,11 +94,11 @@ function GameCard({
 
           <div style={{ position: 'absolute', top: '0.6rem', right: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-end' }}>
             <div style={{ background: '#6A6AB7', color: '#fff', padding: '0.22rem 0.55rem', borderRadius: '3px', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-inter)', whiteSpace: 'nowrap' }}>
-              WS ${game.wholesalePrice.toFixed(2)}
+              WS ${product.wholesalePrice.toFixed(2)}
             </div>
-            {game.retailPrice > 0 && (
+            {product.retailPrice > 0 && (
               <div style={{ background: '#C9962C', color: '#000', padding: '0.22rem 0.55rem', borderRadius: '3px', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-inter)', whiteSpace: 'nowrap' }}>
-                RP ${game.retailPrice.toFixed(2)}
+                RP ${product.retailPrice.toFixed(2)}
               </div>
             )}
           </div>
@@ -116,38 +116,38 @@ function GameCard({
       </Link>
 
       <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1 }}>
-        <Link href={`/shop/${game.id}`} style={{ textDecoration: 'none' }}>
+        <Link href={`/shop/${product.id}`} style={{ textDecoration: 'none' }}>
           <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.92rem', color: 'var(--offwhite)', lineHeight: 1.3 }}>
-            {game.name}
+            {product.name}
           </p>
         </Link>
 
-        {game.category && (
+        {product.category && (
           <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--purple)' }}>
-            {game.category}
+            {product.category}
           </span>
         )}
 
-        {game.retailPrice > 0 && (
+        {product.retailPrice > 0 && (
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.28)' }}>
-            Margin ${(game.retailPrice - game.wholesalePrice).toFixed(2)}
+            Margin ${(product.retailPrice - product.wholesalePrice).toFixed(2)}
           </p>
         )}
 
         <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '0.4rem' }}>
-          {game.players && (
+          {product.players && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)' }}>
-              <FontAwesomeIcon icon={faUsers} style={{ width: '11px' }} />{game.players}
+              <FontAwesomeIcon icon={faUsers} style={{ width: '11px' }} />{product.players}
             </span>
           )}
-          {game.duration && (
+          {product.duration && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)' }}>
-              <FontAwesomeIcon icon={faClock} style={{ width: '11px' }} />{game.duration}
+              <FontAwesomeIcon icon={faClock} style={{ width: '11px' }} />{product.duration}
             </span>
           )}
-          {game.age && (
+          {product.age && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)' }}>
-              <FontAwesomeIcon icon={faCakeCandles} style={{ width: '11px' }} />{game.age}+
+              <FontAwesomeIcon icon={faCakeCandles} style={{ width: '11px' }} />{product.age}+
             </span>
           )}
         </div>
@@ -159,7 +159,7 @@ function GameCard({
           <button
             onClick={() => onQty(Math.max(0, qty - 1))}
             disabled={qty === 0}
-            aria-label={`Remove one ${game.name}`}
+            aria-label={`Remove one ${product.name}`}
             style={{
               width: '30px', height: '30px', borderRadius: '4px', cursor: qty === 0 ? 'not-allowed' : 'pointer',
               background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
@@ -169,7 +169,7 @@ function GameCard({
           <input
             type="number" min={0} value={qty}
             onChange={e => onQty(Math.max(0, parseInt(e.target.value || '0', 10) || 0))}
-            aria-label={`Quantity of ${game.name}`}
+            aria-label={`Quantity of ${product.name}`}
             style={{
               width: '56px', textAlign: 'center', padding: '0.35rem',
               background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
@@ -179,7 +179,7 @@ function GameCard({
           />
           <button
             onClick={() => onQty(qty + 1)}
-            aria-label={`Add one ${game.name}`}
+            aria-label={`Add one ${product.name}`}
             style={{
               width: '30px', height: '30px', borderRadius: '4px', cursor: 'pointer',
               background: 'rgba(106,106,183,0.18)', border: '1px solid rgba(106,106,183,0.5)',
@@ -188,7 +188,7 @@ function GameCard({
           >+</button>
           {qty > 0 && (
             <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', fontWeight: 700, color: '#6A6AB7' }}>
-              ${(game.wholesalePrice * qty).toFixed(2)}
+              ${(product.wholesalePrice * qty).toFixed(2)}
             </span>
           )}
         </div>
@@ -200,7 +200,7 @@ function GameCard({
 export default function WholesalePage() {
   const { account, loading: authLoading } = useWholesaleAccount()
 
-  const [games, setGames]           = useState<Game[]>([])
+  const [products, setGames]           = useState<Product[]>([])
   const [loading, setLoading]       = useState(true)
   const [search, setSearch]         = useState('')
   const [category, setCategory]     = useState('All')
@@ -219,8 +219,8 @@ export default function WholesalePage() {
     let cancelled = false
     async function load() {
       const [gamesSnap, catSnap] = await Promise.all([
-        getDocs(collection(db, 'games')),
-        getDocs(collection(db, 'gameCategories')),
+        getDocs(collection(db, 'products')),
+        getDocs(collection(db, 'productCategories')),
       ])
       if (cancelled) return
       const all = gamesSnap.docs.map(d => {
@@ -237,7 +237,7 @@ export default function WholesalePage() {
           stock:       data.stock,
           image:       (data.image as string) ?? '',
           sku:         (data.sku as string) ?? undefined,
-        } as Game
+        } as Product
       })
       setGames(all.filter(g => g.wholesalePrice > 0))
       const cats = catSnap.docs.map(d => (d.data() as { name: string }).name)
@@ -248,20 +248,20 @@ export default function WholesalePage() {
     return () => { cancelled = true }
   }, [account])
 
-  const filtered = useMemo(() => games.filter(g => {
+  const filtered = useMemo(() => products.filter(g => {
     const matchCat    = category === 'All' || g.category === category
     const matchSearch = !search || g.name.toLowerCase().includes(search.toLowerCase())
     const matchStock  = !stockOnly || totalStock(g.stock) > 0
     return matchCat && matchSearch && matchStock
-  }), [games, search, category, stockOnly])
+  }), [products, search, category, stockOnly])
 
   const allCats = useMemo(() => ['All', ...categories], [categories])
 
   const cartItems: WholesaleOrderItem[] = useMemo(
-    () => games
+    () => products
       .filter(g => (cart[g.id] ?? 0) > 0)
-      .map(g => ({ gameId: g.id, name: g.name, unitPrice: g.wholesalePrice, quantity: cart[g.id], sku: g.sku })),
-    [games, cart],
+      .map(g => ({ productId: g.id, name: g.name, unitPrice: g.wholesalePrice, quantity: cart[g.id], sku: g.sku })),
+    [products, cart],
   )
 
   async function handleSubmit() {
@@ -490,7 +490,7 @@ export default function WholesalePage() {
 
           {!loading && (
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.25)', marginBottom: '1.5rem', letterSpacing: '0.06em' }}>
-              {filtered.length} game{filtered.length !== 1 ? 's' : ''} available at wholesale
+              {filtered.length} product{filtered.length !== 1 ? 's' : ''} available at wholesale
             </p>
           )}
 
@@ -500,19 +500,19 @@ export default function WholesalePage() {
             </div>
           ) : filtered.length === 0 ? (
             <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(245,242,236,0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem' }}>
-              {games.length === 0 ? 'No games are currently listed for wholesale.' : 'No games match your filters.'}
+              {products.length === 0 ? 'No products are currently listed for wholesale.' : 'No products match your filters.'}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '1.25rem' }}>
-              {filtered.map(game => (
-                <GameCard
-                  key={game.id}
-                  game={game}
-                  qty={cart[game.id] ?? 0}
+              {filtered.map(product => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  qty={cart[product.id] ?? 0}
                   onQty={next => setCart(c => {
                     const copy = { ...c }
-                    if (next <= 0) delete copy[game.id]
-                    else copy[game.id] = next
+                    if (next <= 0) delete copy[product.id]
+                    else copy[product.id] = next
                     return copy
                   })}
                 />
