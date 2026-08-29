@@ -130,8 +130,8 @@ const formatSku = (name, sequence) =>
 
 const PROVIDERS = [
   { id: 'prov-dairy',    name: 'Demo Dairy Co.',      categories: ['Milk', 'Cheese'] },
-  { id: 'prov-dry',      name: 'Demo Dry Goods',      categories: ['Flour', 'Sugar', 'Coffee'] },
-  { id: 'prov-produce',  name: 'Demo Fresh Produce',  categories: ['Vegetables', 'Fruit'] },
+  { id: 'prov-dry',      name: 'Demo Dry Goods',      categories: ['Flour', 'Sugar', 'Coffee', 'Oils', 'Seasoning'] },
+  { id: 'prov-produce',  name: 'Demo Fresh Produce',  categories: ['Vegetables', 'Fruit', 'Meat'] },
   { id: 'prov-beverage', name: 'Demo Beverages',      categories: ['Syrups', 'Soft Drinks'] },
   { id: 'prov-clean',    name: 'Demo Cleaning Supply', categories: ['Chemicals', 'Paper'] },
 ]
@@ -144,6 +144,8 @@ const PROVIDERS = [
 // invoices — and the reason VAT is a per-item flag rather than one rate on the
 // whole bill. Derived from the category so the item table stays readable
 // instead of growing an eighth column repeated forty times.
+// Anything not listed here is zero-rated, so a new food category — Oils,
+// Seasoning, Meat — is exempt without needing an entry.
 const VATABLE_CATEGORIES = new Set(['Chemicals', 'Paper', 'Soft Drinks', 'Syrups'])
 
 const ITEMS = [
@@ -157,14 +159,14 @@ const ITEMS = [
   ['flour-whole',     'Wholemeal Flour',     'Kitchen', 'bag',    'prov-dry',      'Flour',       14.00],
   ['sugar-white',     'White Sugar',         'Kitchen', 'bag',    'prov-dry',      'Sugar',       10.50],
   ['sugar-brown',     'Brown Sugar',         'Kitchen', 'bag',    'prov-dry',      'Sugar',       11.75],
-  ['olive-oil',       'Olive Oil',           'Kitchen', 'liter',  'prov-dry',      'Flour',       4.20],
-  ['salt',            'Salt',                'Kitchen', 'kg',     'prov-dry',      'Sugar',       0.90],
+  ['olive-oil',       'Olive Oil',           'Kitchen', 'liter',  'prov-dry',      'Oils',        4.20],
+  ['salt',            'Salt',                'Kitchen', 'kg',     'prov-dry',      'Seasoning',   0.90],
   ['tomatoes',        'Tomatoes',            'Kitchen', 'kg',     'prov-produce',  'Vegetables',  1.80],
   ['lettuce',         'Lettuce',             'Kitchen', 'pcs',    'prov-produce',  'Vegetables',  0.95],
   ['onions',          'Onions',              'Kitchen', 'kg',     'prov-produce',  'Vegetables',  1.10],
   ['potatoes',        'Potatoes',            'Kitchen', 'kg',     'prov-produce',  'Vegetables',  1.05],
   ['lemons',          'Lemons',              'Kitchen', 'kg',     'prov-produce',  'Fruit',       2.20],
-  ['chicken-breast',  'Chicken Breast',      'Kitchen', 'kg',     'prov-produce',  'Vegetables',  8.40],
+  ['chicken-breast',  'Chicken Breast',      'Kitchen', 'kg',     'prov-produce',  'Meat',        8.40],
 
   ['coffee-beans',    'Coffee Beans',        'Bar',     'kg',     'prov-dry',      'Coffee',      18.00],
   ['decaf-beans',     'Decaf Beans',         'Bar',     'kg',     'prov-dry',      'Coffee',      20.50],
@@ -435,6 +437,44 @@ const set = (path, data, note) => {
   if (batch) batch.set(db.doc(path), data, { merge: true })
 }
 
+// Documents that already exist and hold LIVE figures. Re-running the seed on
+// an existing project must not reset them.
+//
+// merge: true merges TOP-LEVEL fields but replaces a map wholesale, so
+// `quantity: zeroStock()` overwrote { Main: 6, ... } with { Main: 0, ... }.
+// Re-running this script to relabel three categories zeroed an entire
+// received delivery and the count that followed it — silently, because a
+// merge write reports no conflict.
+//
+// The same applies to avgUnitCost and lastUnitCost: receiving maintains those
+// as stock arrives, and a re-seed reset them to the starter prices, throwing
+// away the real cost of every delivery.
+// A dry run has no db handle — it prints the plan and writes nothing, so
+// there is nothing to protect.
+const existingSupplies = new Set(
+  db ? (await db.collection('supplies').select().get()).docs.map(d => d.id) : []
+)
+if (existingSupplies.size > 0) {
+  console.log(`
+${existingSupplies.size} supplies already exist — their stock and running costs will be left alone.
+`)
+}
+
+/**
+ * Seeds a supply, protecting the fields that only receiving and counting may
+ * write once the document exists.
+ */
+const setSupply = (path, data, note) => {
+  const id = path.split('/').pop()
+  if (existingSupplies.has(id)) {
+    const { quantity, avgUnitCost, lastUnitCost, ...safe } = data
+    void quantity; void avgUnitCost; void lastUnitCost
+    set(path, safe, note)
+    return
+  }
+  set(path, data, note)
+}
+
 for (const p of PROVIDERS) {
   set(`orderProviders/${p.id}`, {
     name: p.name,
@@ -449,7 +489,7 @@ for (const p of PROVIDERS) {
 // already set — the whole point of the Phase 01 migration. Seeding them
 // unlinked would recreate the exact problem that migration exists to fix.
 ITEMS.forEach(([slug, name, dept, unit, providerId, category, cost], i) => {
-  set(`supplies/supply-${slug}`, {
+  setSupply(`supplies/supply-${slug}`, {
     name,
     nameAr: null,
     category: dept,
