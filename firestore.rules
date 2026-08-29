@@ -377,9 +377,22 @@ service cloud.firestore {
         request.auth.uid in resource.data.userId ||
         isStaff()
       );
+      // A staff account is a staff account, not a customer one. Staff still
+      // CREATE transactions — that is how event attendance and table check-ins
+      // award customers — but they must never appear in userId, the list of
+      // people the points land on. Without this, a barista could submit a check
+      // naming themselves and have a colleague approve it.
+      //
+      // This stops self-dealing, which is the reachable hole. It cannot stop
+      // one staff member naming ANOTHER staff member: that needs a get() per
+      // uid in an unbounded array, which is billed per read and would make
+      // every submission cost more the more friends it is split with. The
+      // server route enforces the wider rule; this closes the door a single
+      // signed-in account can walk through alone.
       allow create: if isSignedIn() &&
         request.auth.uid == request.resource.data.submittedBy &&
         request.resource.data.status == 'pending' &&
+        !(isStaff() && (request.auth.uid in request.resource.data.userId)) &&
         (isStaff() || request.auth.token.email_verified == true) &&
         request.resource.data.pointsAmount is int &&
         request.resource.data.pointsAmount >= 0 &&
@@ -464,7 +477,11 @@ service cloud.firestore {
     match /redemptions/{redemptionId} {
       allow read: if isSignedIn() &&
         (request.auth.uid == resource.data.userId || isStaff());
+      // Staff hold no customer balance, so there is nothing for them to
+      // redeem. Unlike transactions there is no legitimate staff create here
+      // at all — staff CONFIRM redemptions, through the route handler.
       allow create: if isSignedIn() &&
+        !isStaff() &&
         request.auth.uid == request.resource.data.requestedBy &&
         request.auth.token.email_verified == true &&
         request.resource.data.status == 'pending' &&

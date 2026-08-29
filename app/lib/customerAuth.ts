@@ -10,23 +10,80 @@ import {
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, runTransaction } from 'firebase/firestore'
 import { auth, db } from './firebase'
 
-// Independent from app/lib/adminAuth.ts on purpose — customers and CMS staff
-// are different audiences with different Firestore collections (`users` vs
-// `adminUsers`) and no shared role/permission model.
+// Independent from app/lib/adminAuth.ts on purpose — customers and staff are
+// different audiences with different permission models.
+//
+// They are NOT different collections. Both live in `users/{uid}`, and a staff
+// account is one carrying `isStaff: true`. (An older comment here claimed an
+// `adminUsers` collection; there has never been one.) Because it is one
+// collection and one Firebase Auth user, nothing stopped a staff account from
+// also signing in on the customer side and accruing a balance — which is what
+// isStaffAccount() below now prevents at every entry point.
 
+// A staff account must not be usable as a customer account.
+//
+// Reads the `staff` custom claim rather than the user document: it is the same
+// source firestore.rules checks, it costs no billed read, and it cannot
+// disagree with the rules the way a separately-read document can. Claims are
+// minted on every account create, edit and delete (app/lib/server/claims.ts).
+//
+// The document fallback mirrors isStaff() in firestore.rules and exists for
+// the same reason: a token issued before the claims backfill carries none.
+async function isStaffAccount(user: User): Promise<boolean> {
+  try {
+    const token = await user.getIdTokenResult()
+    if (token.claims.staff === true) return true
+    // A token that carries ANY claim set has been minted since the backfill,
+    // so the absence of `staff` on it is a real answer, not a gap.
+    if (token.claims.staff !== undefined || token.claims.wholesale !== undefined) return false
+  } catch {
+    // Fall through to the document — a token that won't resolve must not
+    // silently grant customer access.
+  }
+  const snap = await getDoc(doc(db, 'users', user.uid))
+  return snap.exists() && snap.data().isStaff === true
+}
+
+// Signs the user straight back out and reports it. Throwing without signing
+// out would leave a staff session live on the customer side with only the UI
+// pretending otherwise.
+async function rejectIfStaff(user: User): Promise<void> {
+  if (!(await isStaffAccount(user))) return
+  await signOut(auth)
+  throw new Error('staff-account')
+}
+
+/**
+ * The signed-in customer, plus whether this account is actually staff.
+ *
+ * `isStaff` matters because a session can already exist — someone signed into
+ * the admin panel in this browser is signed in, full stop, and would otherwise
+ * walk straight into the customer area. The sign-in guards only cover accounts
+ * signing in through the customer forms.
+ *
+ * It stays `loading` until the claim has been read, so a guard never gets a
+ * momentary `false` and lets the page render before bouncing.
+ */
 export function useCustomerUser() {
   const [user, setUser]       = useState<User | null>(null)
+  const [isStaff, setIsStaff] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, u => {
+    let cancelled = false
+    const unsub = onAuthStateChanged(auth, async u => {
+      if (cancelled) return
+      if (!u) { setUser(null); setIsStaff(false); setLoading(false); return }
+      const staff = await isStaffAccount(u)
+      if (cancelled) return
       setUser(u)
+      setIsStaff(staff)
       setLoading(false)
     })
-    return unsub
+    return () => { cancelled = true; unsub() }
   }, [])
 
-  return { user, loading }
+  return { user, loading, isStaff }
 }
 
 // First-time sign-in only — if the doc already exists this is a no-op, so a
@@ -104,6 +161,7 @@ export async function resolveCustomerEmail(identifier: string): Promise<string> 
 export async function signInWithGoogle(): Promise<{ user: User; needsUsername: boolean }> {
   const provider = new GoogleAuthProvider()
   const cred = await signInWithPopup(auth, provider)
+  await rejectIfStaff(cred.user)
   await ensureCustomerDoc(cred.user)
   return { user: cred.user, needsUsername: await needsUsername(cred.user.uid) }
 }
@@ -182,6 +240,7 @@ export async function refreshEmailVerified(): Promise<boolean> {
 export async function signInCustomer(identifier: string, password: string): Promise<User> {
   const email = await resolveCustomerEmail(identifier)
   const cred = await signInWithEmailAndPassword(auth, email, password)
+  await rejectIfStaff(cred.user)
   await ensureCustomerDoc(cred.user)
   return cred.user
 }
@@ -198,6 +257,7 @@ export async function linkGoogleWithPassword(email: string, password: string): P
     throw new Error('email-mismatch')
   }
 
+  await rejectIfStaff(cred.user)
   await linkWithCredential(cred.user, EmailAuthProvider.credential(email, password))
   await ensureCustomerDoc(cred.user)
   return { user: cred.user, needsUsername: await needsUsername(cred.user.uid) }

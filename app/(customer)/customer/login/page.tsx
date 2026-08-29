@@ -42,6 +42,10 @@ function formatError(err: unknown): string {
   if (message === 'name-too-long')     return 'First and last name must each be 50 characters or fewer.'
   if (message === 'email-mismatch')    return "That Google account doesn't match the email you entered."
   if (message === 'user-not-found')    return 'Incorrect email/username or password.'
+  // The password was right — this account simply isn't a customer account.
+  // Saying so plainly beats a generic failure the person will retry three
+  // times before giving up. The sign-in is already undone by this point.
+  if (message === 'staff-account')     return 'That is a staff account. Staff sign in at /admin — for a loyalty account, register with a different email address.'
 
   const code = (err as { code?: string })?.code ?? ''
   switch (code) {

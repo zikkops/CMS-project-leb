@@ -7,7 +7,6 @@ import { usePathname, useRouter } from 'next/navigation'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useCustomerUser, signOutCustomer } from '../../lib/customerAuth'
-import { useIsStaff } from '../../lib/adminAuth'
 import { usePendingInvites, acceptInvite, declineInvite, type ParticipantInvite } from '../../lib/participantInvites'
 import { useIncomingRequests, acceptFriendRequest, declineFriendRequest, type FriendRequest } from '../../lib/friends'
 import { useMyNotifications, markNotificationRead, type StatusNotification } from '../../lib/notifications'
@@ -45,9 +44,14 @@ export default function Navbar() {
   const [hoveredContactItem, setHoveredContactItem] = useState<'reserve' | 'contact' | null>(null)
   const pathname                      = usePathname()
   const router                        = useRouter()
-  const { user: customerUser, loading: customerLoading } = useCustomerUser()
+  // A staff session is not a customer session. Without this the navbar would
+  // greet a signed-in staff member by name and offer them a loyalty profile,
+  // a redemption page and a friends list they have no account for — and open
+  // three Firestore listeners (invites, friend requests, notifications) for a
+  // uid that will never appear in any of them.
+  const { user: signedInUser, loading: customerLoading, isStaff } = useCustomerUser()
+  const customerUser = isStaff ? null : signedInUser
   const [customerName, setCustomerName] = useState<string | null>(null)
-  const isStaff = useIsStaff()
   const { invites: pendingInvites } = usePendingInvites(customerUser?.uid ?? null)
   const friendRequests = useIncomingRequests(customerUser?.uid ?? null)
   const statusNotifications = useMyNotifications(customerUser?.uid ?? null)
