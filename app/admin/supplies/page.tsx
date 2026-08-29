@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
+import { authedFetch, unwrap } from '../../lib/apiClient'
 import { useRequireRole, SECTION_ACCESS } from '../../lib/adminAuth'
 import { listTemplateItems, listProviders, UNIT_LABELS, translateToArabic } from '../../lib/weeklyOrders'
 
@@ -129,28 +130,37 @@ export default function SuppliesPage() {
       name: form.name, nameAr: form.nameAr.trim() || null, category: form.category, unit: form.unit, threshold: form.threshold,
       provider: form.provider.trim() || null, updatedAt: serverTimestamp(),
     }
+    // Quantity is deliberately not sent on an edit — it is only ever set by
+    // a submitted Daily Inventory Count or a received delivery, and the route
+    // enforces that rather than relying on this call omitting the field.
     if (editing) {
-      // Quantity isn't editable here — it's only ever set by a submitted
-      // Daily Inventory Count, so it's deliberately left out of this update.
-      await updateDoc(doc(db, 'supplies', editing.id), data)
+      await unwrap(await authedFetch('/api/admin/inventory', 'PATCH', { id: editing.id, ...data }))
     } else {
-      await addDoc(collection(db, 'supplies'), { ...data, quantity: formQty })
+      await unwrap(await authedFetch('/api/admin/inventory', 'POST', { ...data, quantity: formQty }))
     }
     setSaving(false); setModal(null); load()
   }
 
   async function deleteItem(id: string) {
     setDeletingId(id)
-    await deleteDoc(doc(db, 'supplies', id))
-    setDeletingId(null)
-    setSupplies(prev => prev.filter(s => s.id !== id))
+    try {
+      // The route refuses if an order template item still points at this
+      // supply. Deleting one that is linked leaves deliveries of that item
+      // moving no stock, silently — nothing checked that before.
+      await unwrap(await authedFetch('/api/admin/inventory?id=' + encodeURIComponent(id), 'DELETE'))
+      setSupplies(prev => prev.filter(s => s.id !== id))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not delete that item.')
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   async function commitThrEdit(s: Supply) {
     const v = parseInt(thrVal)
     if (!isNaN(v) && v >= 1 && v !== s.threshold) {
       setSupplies(prev => prev.map(x => x.id === s.id ? { ...x, threshold: v } : x))
-      await updateDoc(doc(db, 'supplies', s.id), { threshold: v, updatedAt: serverTimestamp() })
+      await unwrap(await authedFetch('/api/admin/inventory', 'PATCH', { action: 'threshold', id: s.id, threshold: v }))
     }
     setThrEditId(null); setThrVal('')
   }
@@ -159,29 +169,23 @@ export default function SuppliesPage() {
   // backfills the Arabic name from the matching Weekly Orders template item
   // whenever the supply doesn't already have one of its own. Never
   // overwrites an Arabic name someone already set here by hand.
+  // Runs SERVER-SIDE. The client version hardcoded
+  // { Beirut: 0, Zouk: 0, Broummana: 0 } — the original cafe's branches — so
+  // in any other deployment it created stock keys for branches that do not
+  // exist and none for the ones that do. It also matched template to supply on
+  // a lowercased name and never wrote supplyId, which is the fragile linkage
+  // Phase 01 exists to replace. The route uses the configured BRANCHES and
+  // writes the durable link.
   async function seedFromTemplates() {
     setSeeding(true)
-    const [templates, providers] = await Promise.all([listTemplateItems(), listProviders()])
-    const providerMap = new Map(providers.map(p => [p.id, p.name]))
-    const byName = new Map(supplies.map(s => [s.name.toLowerCase(), s]))
-
-    for (const t of templates) {
-      const existing = byName.get(t.name.toLowerCase())
-      if (existing) {
-        if (t.nameAr && !existing.nameAr) {
-          await updateDoc(doc(db, 'supplies', existing.id), { nameAr: t.nameAr, updatedAt: serverTimestamp() })
-        }
-        continue
-      }
-      await addDoc(collection(db, 'supplies'), {
-        name: t.name, nameAr: t.nameAr || null, category: t.department,
-        quantity: { Beirut: 0, Zouk: 0, Broummana: 0 },
-        unit: UNIT_LABELS[t.unit], threshold: 1,
-        provider: t.providerId ? (providerMap.get(t.providerId) ?? null) : null,
-        updatedAt: serverTimestamp(),
-      })
+    try {
+      const r = await unwrap(await authedFetch('/api/admin/inventory', 'POST', { action: 'seed-from-templates' }))
+      alert(`Seeded from the order template — ${r.created} created, ${r.linked} linked.`)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not seed from templates.')
+    } finally {
+      setSeeding(false); load()
     }
-    setSeeding(false); load()
   }
 
   const visible = useMemo(() => {

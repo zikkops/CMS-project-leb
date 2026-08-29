@@ -3,6 +3,7 @@ import {
   orderBy, limit, getDocs, writeBatch, serverTimestamp, type Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { authedFetch, unwrap } from './apiClient'
 import { BRANCHES } from './branches'
 
 // Faten isn't a stocked branch for consumable supplies — see app/admin/supplies/page.tsx's
@@ -114,15 +115,27 @@ export async function getDailyInventory(branch: string, date: string, department
   return { id: snap.id, ...snap.data() } as DailyInventoryReport
 }
 
-export async function saveDailyInventoryDraft(report: DailyInventoryReport, uid: string): Promise<void> {
-  const id = inventoryDocId(report.branch, report.date, report.department)
-  await setDoc(doc(db, 'dailyInventoryCounts', id), {
-    ...report,
-    id,
-    status: 'draft',
-    updatedAt: serverTimestamp(),
-    updatedBy: uid,
+// Draft and submit both run SERVER-SIDE (Phase 00 standing rule). See
+// app/lib/server/inventory.ts.
+//
+// `uid` is gone from both signatures — the server takes the actor from the
+// verified token — and the branch is checked against the caller's own
+// branches, which nothing did before.
+export async function saveDailyInventoryDraft(report: DailyInventoryReport): Promise<void> {
+  await postCount(report, false)
+}
+
+async function postCount(report: DailyInventoryReport, submit: boolean): Promise<void> {
+  const res = await authedFetch('/api/admin/inventory', 'PATCH', {
+    action: 'count',
+    branch: report.branch,
+    date: report.date,
+    department: report.department,
+    items: report.items.map(i => ({ supplyId: i.supplyId, countedQty: i.countedQty })),
+    notes: report.notes,
+    submit,
   })
+  await unwrap(res)
 }
 
 // Writes the final count doc and, in the same batch, pushes each counted
@@ -130,25 +143,8 @@ export async function saveDailyInventoryDraft(report: DailyInventoryReport, uid:
 // touches this one branch's key inside the quantity map, so it can't
 // clobber another branch's count with stale data even if two branches (or
 // two departments) are being counted around the same time.
-export async function submitDailyInventory(report: DailyInventoryReport, uid: string): Promise<void> {
-  const id = inventoryDocId(report.branch, report.date, report.department)
-  const batch = writeBatch(db)
-  batch.set(doc(db, 'dailyInventoryCounts', id), {
-    ...report,
-    id,
-    status: 'submitted',
-    submittedAt: report.submittedAt ?? serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    updatedBy: uid,
-  })
-  for (const line of report.items) {
-    if (line.countedQty == null) continue
-    batch.update(doc(db, 'supplies', line.supplyId), {
-      [`quantity.${report.branch}`]: line.countedQty,
-      updatedAt: serverTimestamp(),
-    })
-  }
-  await batch.commit()
+export async function submitDailyInventory(report: DailyInventoryReport): Promise<void> {
+  await postCount(report, true)
 }
 
 export async function listDailyInventories(branch: string | 'all', limitCount = 30): Promise<DailyInventoryReport[]> {

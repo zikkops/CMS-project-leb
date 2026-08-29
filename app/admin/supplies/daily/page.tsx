@@ -149,7 +149,7 @@ function DailyInventoryInner() {
     setSaving(true); setErr('')
     try {
       const next = { ...report, items: buildItems() }
-      await saveDailyInventoryDraft(next, user.uid)
+      await saveDailyInventoryDraft(next)
       setReport(next)
       setSaved('draft')
     } catch {
@@ -164,7 +164,7 @@ function DailyInventoryInner() {
     setSubmitting(true); setErr('')
     try {
       const next = { ...report, items: buildItems() }
-      await submitDailyInventory(next, user.uid)
+      await submitDailyInventory(next)
       setReport(next)
       setSaved('submitted')
       setSupplies(prev => prev.map(s => {
