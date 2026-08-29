@@ -108,10 +108,10 @@ export default function TierPerksPage() {
               marginBottom: '0.5rem', display: 'block',
             }}>← Back to Dashboard</a>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)' }}>
-              Level Perks
+              Tier Perks
             </h1>
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.4rem' }}>
-              Shown publicly on the Loyalty page&apos;s &quot;Perks unlocked by level&quot; section
+              Shown publicly on the Loyalty page, under each tier
             </p>
           </div>
           <button onClick={openNew} style={{

@@ -160,7 +160,7 @@ export default function AdminPage() {
       color: 'var(--navy)',
       cards: [
         { label: 'Redemption Items', icon: faTag,    daily: false, desc: 'Add, edit or deactivate items customers can redeem with Points',        href: '/admin/loyalty/redemption-items', access: SECTION_ACCESS.loyalty },
-        { label: 'Level Perks',      icon: faTrophy, daily: false, desc: 'Edit the perks customers unlock at each level, shown on the Loyalty page', href: '/admin/loyalty/perks',            access: SECTION_ACCESS.loyalty },
+        { label: 'Tier Perks',       icon: faTrophy, daily: false, desc: 'Edit the perks customers unlock at each tier, shown on the Loyalty page', href: '/admin/loyalty/perks',            access: SECTION_ACCESS.loyalty },
       ],
     },
     {

@@ -65,7 +65,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
     color: 'var(--navy)',
     items: [
       { label: 'Redemption Items', href: '/admin/loyalty/redemption-items', access: SECTION_ACCESS.loyalty },
-      { label: 'Level Perks',      href: '/admin/loyalty/perks',            access: SECTION_ACCESS.loyalty },
+      { label: 'Tier Perks',       href: '/admin/loyalty/perks',            access: SECTION_ACCESS.loyalty },
     ],
   },
   {

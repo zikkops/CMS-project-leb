@@ -114,7 +114,7 @@ export const FEATURES = {
   loyalty: {
     label: 'Loyalty Programme', group: 'Loyalty', requires: [], defaultEnabled: false,
     sections: ['loyalty'],
-    collections: ['transactions', 'transactionLog', 'redemptionItems', 'redemptions', 'levelPerks'],
+    collections: ['transactions', 'transactionLog', 'redemptionItems', 'redemptions', 'tierPerks'],
   },
   loyaltyEvents: {
     label: 'Event Attendance Points', group: 'Loyalty', requires: ['loyalty', 'events'], defaultEnabled: false,
