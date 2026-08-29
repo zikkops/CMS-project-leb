@@ -2,21 +2,26 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
-import { db } from '../lib/firebase'
-import Navbar from '../components/layout/Navbar'
-import Footer from '../components/layout/Footer'
-import Skeleton from '../components/Skeleton'
+import { db } from '../../lib/firebase'
+import Navbar from '../../components/layout/Navbar'
+import Footer from '../../components/layout/Footer'
+import Skeleton from '../../components/Skeleton'
 import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUsers, faClock, faCakeCandles, faSearch, faXmark } from '@fortawesome/free-solid-svg-icons'
-import { normalizeStock } from '../lib/branches'
-import { BRAND } from '../lib/brand'
+import { normalizeStock } from '../../lib/branches'
+import { BRAND } from '../../lib/brand'
 
-// This page used to be hardcoded to a branch called "Faten" — one of the
-// original café's locations, and not a branch any more. Every read of
-// stock['Faten'] returned 0, so the page rendered permanently empty. It now
-// follows whichever branch is configured first.
-const BRANCH = BRAND.branches[0]
+// Was /faten — hardcoded to a branch called "Faten", one of the original
+// café's locations. Every read of stock['Faten'] returned 0, so the page
+// rendered permanently empty; a later fix pointed it at BRAND.branches[0],
+// which made it work but only ever for the first branch.
+//
+// It is a route parameter now, so every configured branch has a catalogue
+// instead of one page quietly showing a branch nobody asked for. Nothing
+// linked to /faten, so there is no redirect to keep — the old URL was an
+// orphan with another business's branch name in it.
 
 interface Product {
   id: string
@@ -156,6 +161,14 @@ function ProductCard({ product }: { product: Product }) {
 }
 
 export default function BranchCataloguePage() {
+  // Matched against the configured list rather than used as sent. The value
+  // is read straight out of the URL and then used to index a stock map, so an
+  // unrecognised one would render an empty catalogue that looks like a branch
+  // with nothing in it rather than a branch that does not exist.
+  const params = useParams<{ branch: string }>()
+  const requested = decodeURIComponent(String(params?.branch ?? ''))
+  const BRANCH = BRAND.branches.find(b => b.toLowerCase() === requested.toLowerCase()) ?? ''
+
   const [products, setGames]           = useState<Product[]>([])
   const [loading, setLoading]       = useState(true)
   const [search, setSearch]         = useState('')
@@ -165,6 +178,7 @@ export default function BranchCataloguePage() {
   const isMobile = useIsMobile()
 
   useEffect(() => {
+    if (!BRANCH) { setLoading(false); return }
     async function load() {
       const [gamesSnap, catSnap] = await Promise.all([
         getDocs(collection(db, 'products')),
@@ -185,14 +199,14 @@ export default function BranchCataloguePage() {
           branchStock:     stock[BRANCH] ?? 0,
         } as Product
       })
-      const faten = all.filter(g => g.branchStock > 0)
+      const inStock = all.filter(g => g.branchStock > 0)
       const cats = catSnap.docs.map(d => (d.data() as { name: string }).name)
-      setGames(faten)
+      setGames(inStock)
       setCategories(cats.length > 0 ? cats : ['Strategy', 'Party', 'Family', 'Cooperative', 'Card', 'Trivia', 'RPG', 'Puzzle'])
       setLoading(false)
     }
     load()
-  }, [])
+  }, [BRANCH])
 
   const filtered = useMemo(() => {
     return products.filter(g => {
@@ -204,6 +218,37 @@ export default function BranchCataloguePage() {
   }, [products, search, category, stockOnly])
 
   const allCats = useMemo(() => ['All', ...categories], [categories])
+
+  // An unknown branch says so, and lists the real ones. Rendering the normal
+  // page with nothing in it would read as "this branch has no stock", which is
+  // a different and much more alarming thing than "no such branch".
+  if (!BRANCH) {
+    return (
+      <>
+        <Navbar />
+        <main style={{ minHeight: '100vh', backgroundColor: 'var(--black)', paddingTop: '5rem' }}>
+          <div style={{ maxWidth: '640px', margin: '0 auto', padding: isMobile ? '3rem 1.25rem' : '5rem 2rem', textAlign: 'center' }}>
+            <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.6rem' : '2.1rem', color: 'var(--offwhite)', marginBottom: '0.8rem' }}>
+              No such branch
+            </h1>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.9rem', color: 'rgba(245,242,236,0.4)', lineHeight: 1.7, marginBottom: '2rem' }}>
+              {requested ? <>There is no branch called &ldquo;{requested}&rdquo;.</> : 'No branch was named.'}
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', justifyContent: 'center' }}>
+              {BRAND.branches.map(b => (
+                <Link key={b} href={`/branch/${encodeURIComponent(b)}`} style={{
+                  fontFamily: 'var(--font-inter)', fontSize: '0.8rem', textDecoration: 'none',
+                  color: 'var(--offwhite)', border: '1px solid rgba(255,255,255,0.14)',
+                  borderRadius: '3px', padding: '0.55rem 1.1rem',
+                }}>{b}</Link>
+              ))}
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    )
+  }
 
   return (
     <>
