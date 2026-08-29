@@ -231,7 +231,7 @@ export default function About() {
         overflow: 'hidden',
       }}>
         {[
-          { el: <AnimatedNumber target={500} suffix="+" />, label: 'Games in Library' },
+          { el: <AnimatedNumber target={500} suffix="+" />, label: 'Products in Stock' },
           { el: <AnimatedNumber target={3} />, label: 'Branches' },
           { el: <InfinityNumber />, label: 'Good Times' },
         ].map(({ el, label }, i) => (

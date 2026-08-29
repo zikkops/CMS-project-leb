@@ -82,7 +82,7 @@ function parsePrice(raw: string): number {
 }
 
 // Blank wholesale cell means "no wholesale price", which is null on the game
-// doc — distinct from 0, which would read as free. Matches how Manage Games
+// doc — distinct from 0, which would read as free. Matches how Manage Products
 // stores it.
 function parseOptionalPrice(raw: string): number | null {
   const trimmed = (raw ?? '').trim()
@@ -433,7 +433,7 @@ export default function ImportGamesPage() {
             fontFamily: 'var(--font-inter)',
             marginBottom: '0.5rem',
             display: 'block',
-          }}>← Back to Game Library</a>
+          }}>← Back to the Product Catalogue</a>
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)' }}>
             Bulk Import from WooCommerce
           </h1>
@@ -446,7 +446,7 @@ export default function ImportGamesPage() {
           }}>
             Upload a CSV — a WooCommerce export, or an Export Full CSV from this panel edited in a spreadsheet. Games that already exist (matched by name) are updated; blank cells are left as they are.
             Imported stock is assigned to the <strong style={{ color: 'var(--teal)' }}>{IMPORT_BRANCH}</strong> branch —
-            redistribute across branches afterward in the Game Library. Images are downloaded and re-hosted automatically.
+            redistribute across branches afterward in the Product Catalogue. Images are downloaded and re-hosted automatically.
           </p>
         </div>
 
@@ -667,7 +667,7 @@ export default function ImportGamesPage() {
                   color: 'var(--purple)',
                   fontFamily: 'var(--font-inter)',
                   textDecoration: 'none',
-                }}>→ View Game Library</a>
+                }}>→ View the Product Catalogue</a>
               </div>
             )}
           </div>

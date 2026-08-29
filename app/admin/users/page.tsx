@@ -229,7 +229,7 @@ export default function AdminUsersPage() {
           lineHeight: 1.6,
         }}>
           Admin and Manager can access every section below. Social Media is limited to Events, and Gamer is limited
-          to Games. Only Admin can create or edit accounts. Managers can be
+          to Products. Only Admin can create or edit accounts. Managers can be
           assigned one or more branches — they only see loyalty data for their assigned branches. A 👑 Superadmin account
           can only be edited by itself and can never be deleted, by anyone, through this page — that protection is set
           by hand directly in Firebase, not from here.

@@ -254,7 +254,7 @@ export default function AdminGamesPage() {
               display: 'block',
             }}>← Back to Dashboard</a>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)' }}>
-              Game Library
+              Product Catalogue
             </h1>
           </div>
           <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.8rem', width: isMobile ? '100%' : 'auto', flexWrap: 'wrap' }}>
@@ -487,7 +487,7 @@ export default function AdminGamesPage() {
             color: 'rgba(245,242,236,0.2)',
             fontFamily: 'var(--font-inter)',
             fontSize: '0.85rem',
-          }}>No games match these filters.</div>
+          }}>No products match these filters.</div>
         ) : isMobile ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
             {filteredGames.map(game => {

@@ -47,7 +47,7 @@ export const ROLE_COLORS: Record<Role, string> = {
 // camelCase identifiers rather than failing loudly. Adding a section to
 // SECTION_ACCESS now forces a decision about what to call it.
 export const SECTION_LABELS: Record<SectionKey, string> = {
-  games:             'Manage Games',
+  games:             'Manage Products',
   menu:              'Manage Menu',
   events:            'Manage Events',
   loyalty:           'Loyalty Approvals & Catalog',

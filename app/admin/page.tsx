@@ -14,7 +14,7 @@ import { usePendingEventReservations } from '../lib/eventReservations'
 import { usePendingTableReservations } from '../lib/tableReservations'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faCashRegister, faReceipt, faDice, faUtensils, faCalendar, faCalendarCheck,
+  faCashRegister, faReceipt, faBagShopping, faUtensils, faCalendar, faCalendarCheck,
   faCalendarDay, faUsers, faUser, faClock, faMap,
   faClipboard, faThumbsUp, faGift, faTag, faTrophy, faUserShield,
   faFile, faPaperPlane, faTruck, faList, faImage, faScroll, faHandshake, faStore,
@@ -114,7 +114,7 @@ export default function AdminPage() {
   // rather than picked individually for each card.
   const sections = [
     {
-      title: 'Game Sales',
+      title: 'Product Sales',
       color: 'var(--teal)',
       cards: [
         { label: 'Record a Sale',    icon: faCashRegister, daily: true,  desc: 'Process a game purchase, deduct stock, and generate an invoice', href: '/admin/games/purchase', access: SECTION_ACCESS.gamePurchases },
@@ -126,7 +126,7 @@ export default function AdminPage() {
       color: 'var(--teal)',
       cards: [
         { label: 'Event Reservations', icon: faCalendarCheck, daily: true,  desc: 'Approve or reject pending event spot requests',        href: '/admin/events/reservations', access: SECTION_ACCESS.events, badge: pendingEventReservations.length },
-        { label: 'Manage Games',       icon: faDice,          daily: false, desc: 'Add, edit or remove games from the shop',              href: '/admin/games',               access: SECTION_ACCESS.games },
+        { label: 'Manage Products',    icon: faBagShopping,          daily: false, desc: 'Add, edit or remove products from the shop',              href: '/admin/games',               access: SECTION_ACCESS.games },
         { label: 'Manage Menu',        icon: faUtensils,      daily: false, desc: 'Update food and drink items',                           href: '/admin/menu',                access: SECTION_ACCESS.menu },
         { label: 'Manage Events',      icon: faCalendar,      daily: false, desc: 'Create and manage events',                             href: '/admin/events',              access: SECTION_ACCESS.events },
       ],

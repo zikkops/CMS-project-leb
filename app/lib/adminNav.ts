@@ -18,7 +18,7 @@ export interface AdminNavSection {
 // — if a new admin page is added, add it in both places.
 export const ADMIN_NAV: AdminNavSection[] = [
   {
-    title: 'Game Sales',
+    title: 'Product Sales',
     color: 'var(--teal)',
     items: [
       { label: 'Record a Sale',    href: '/admin/games/purchase',  access: SECTION_ACCESS.gamePurchases },
@@ -30,7 +30,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
     title: 'Content Management',
     color: 'var(--teal)',
     items: [
-      { label: 'Manage Games',       href: '/admin/games',             access: SECTION_ACCESS.games },
+      { label: 'Manage Products',       href: '/admin/games',             access: SECTION_ACCESS.games },
       { label: 'Manage Menu',        href: '/admin/menu',              access: SECTION_ACCESS.menu },
       { label: 'Manage Events',      href: '/admin/events',            access: SECTION_ACCESS.events },
       { label: 'Event Reservations', href: '/admin/events/reservations', access: SECTION_ACCESS.events },

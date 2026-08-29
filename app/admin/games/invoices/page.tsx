@@ -114,7 +114,7 @@ export default function InvoicesPage() {
           }}>← Back to Dashboard</a>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)' }}>
-              Game Sales &amp; Invoices
+              Product Sales &amp; Invoices
             </h1>
             <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
               <a href="/admin/games/purchase" style={{

@@ -350,7 +350,7 @@ export default function RecordSalePage() {
                   })}
                   {filteredGames.length === 0 && (
                     <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.3)', padding: '1rem 0' }}>
-                      No games match this search.
+                      No products match this search.
                     </p>
                   )}
                 </div>
@@ -367,7 +367,7 @@ export default function RecordSalePage() {
 
                 {cart.length === 0 ? (
                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.25)', marginBottom: '1.5rem' }}>
-                    No games added yet.
+                    No products added yet.
                   </p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom: '1.2rem' }}>

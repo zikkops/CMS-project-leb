@@ -6,7 +6,7 @@ import Footer from '../components/layout/Footer'
 import Image from 'next/image'
 import { PLACEHOLDER } from '../lib/placeholderAssets'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faDice, faMugHot, faCalendarCheck, faTrophy, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
+import { faBagShopping, faMugHot, faCalendarCheck, faTrophy, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import { BRAND } from '../lib/brand'
 
 function useIsMobile(breakpoint = 768) {
@@ -156,9 +156,9 @@ export default function AboutPage() {
             marginBottom: isMobile ? '3rem' : '6rem',
           }}>
             {[
-              { num: '500+', label: 'Games in Library' },
-              { num: '3',    label: 'Branches in Lebanon' },
-              { num: '5+',   label: 'Years of Play' },
+              { num: '500+', label: 'Products in Stock' },
+              { num: String(BRAND.branches.length), label: BRAND.branches.length === 1 ? 'Branch' : 'Branches' },
+              { num: '5+',   label: 'Years Serving' },
               { num: '∞',    label: 'Good Times' },
             ].map(({ num, label }) => (
               <div key={label} style={{
@@ -216,27 +216,27 @@ export default function AboutPage() {
                   card's own accent colour, and ships nothing. */}
               {([
                 {
-                  icon: faDice,
-                  title: 'Board Game Library',
-                  text: 'Lebanon\'s biggest board game library with 500+ titles. Our Game Masters will help you find the perfect game for your group.',
+                  icon: faBagShopping,
+                  title: 'Shop the Shelves',
+                  text: 'A shelf of products worth taking home, priced in-store and online. Ask any of us and we will point you at the right one.',
                   color: 'var(--teal)',
                 },
                 {
                   icon: faMugHot,
                   title: 'Restaurant & Café',
-                  text: 'Full food and drinks menu designed for long game sessions. From hearty burgers to light snacks and cocktails.',
+                  text: 'A full food and drinks menu built for staying a while. From proper plates to a quick pastry with your coffee.',
                   color: 'var(--red)',
                 },
                 {
                   icon: faCalendarCheck,
                   title: 'Book a Table',
-                  text: 'Reserve a table at any branch ahead of time — pick your spot on the floor plan and bring the group you want to play with.',
+                  text: 'Reserve a table at any branch ahead of time — pick your spot on the floor plan and bring whoever you like.',
                   color: 'var(--purple)',
                 },
                 {
                   icon: faTrophy,
                   title: 'Events & Tournaments',
-                  text: 'Regular tournaments, game nights, family days, and special events at all three branches throughout the year.',
+                  text: 'Tastings, launches, family days and special evenings, across every branch throughout the year.',
                   color: 'var(--navy)',
                 },
               ] as { icon: IconDefinition; title: string; text: string; color: string }[])

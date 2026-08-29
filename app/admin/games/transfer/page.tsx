@@ -158,7 +158,7 @@ export default function TransferStockPage() {
   return (
     <div style={{ maxWidth: '760px', margin: '0 auto', padding: isMobile ? '1.25rem 1rem 3rem' : '2rem 1.5rem 4rem' }}>
       <p style={{ fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--teal)', fontFamily: 'var(--font-inter)', marginBottom: '0.6rem' }}>
-        Game Library
+        Product Catalogue
       </p>
       <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', color: 'var(--offwhite)', marginBottom: '0.4rem' }}>
         Transfer Stock
@@ -249,7 +249,7 @@ export default function TransferStockPage() {
                   <p style={{ padding: '0.8rem 1rem', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)' }}>Loading…</p>
                 ) : filteredGames.length === 0 ? (
                   <p style={{ padding: '0.8rem 1rem', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)' }}>
-                    {search.trim() ? 'No games found.' : 'All games already added.'}
+                    {search.trim() ? 'No products found.' : 'All products already added.'}
                   </p>
                 ) : filteredGames.slice(0, 12).map(g => {
                   const avail = g.stock[fromBranch] ?? 0

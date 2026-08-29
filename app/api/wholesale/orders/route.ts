@@ -159,7 +159,7 @@ export async function POST(request: Request): Promise<Response> {
     const items = []
     for (let i = 0; i < lines.length; i++) {
       const snap = snaps[i]
-      if (!snap.exists) throw new HttpError(400, 'One of those games no longer exists.')
+      if (!snap.exists) throw new HttpError(400, 'One of those products no longer exists.')
       const data = snap.data() ?? {}
       const unitPrice = Number(data.wholesalePrice)
       if (!Number.isFinite(unitPrice) || unitPrice <= 0) {

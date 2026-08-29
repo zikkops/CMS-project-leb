@@ -223,7 +223,7 @@ export default function RetailPage() {
               }} />
               <input
                 type="search"
-                placeholder="Search games…"
+                placeholder="Search products…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 style={{
