@@ -318,7 +318,16 @@ export async function updateAccountAccess(
   uid: string,
   email: string,
   _before: { role: Role; branchIds: string[] },
-  after: { role: Role; branchIds: string[] },
+  after: {
+    role: Role
+    branchIds: string[]
+    // Sent together with the role so one save is one write and one log entry.
+    // These were a separate client updateDoc until Aug 2026, which meant a
+    // grant change was invisible in /admin/logs and could fail on its own
+    // after the role had already committed.
+    sectionGrants: string[]
+    sectionRevocations: string[]
+  },
 ): Promise<void> {
   const res = await authedFetch('/api/admin/accounts', 'PATCH', {
     uid,
@@ -326,6 +335,8 @@ export async function updateAccountAccess(
     email,
     role: after.role,
     branchIds: after.branchIds,
+    sectionGrants: after.sectionGrants,
+    sectionRevocations: after.sectionRevocations,
   })
   await unwrap(res)
 }

@@ -27,7 +27,7 @@ import { adminAuth, adminDb } from '@/app/lib/server/firebaseAdmin'
 import { requireRole, toResponse, HttpError, type Caller } from '@/app/lib/server/auth'
 import { syncClaims } from '@/app/lib/server/claims'
 import { logActivity, logUpdate } from '@/app/lib/server/activityLog'
-import { isRole, type Role } from '@/app/lib/roles'
+import { isRole, SECTION_ACCESS, type Role } from '@/app/lib/roles'
 import { BRANCHES } from '@/app/lib/branches'
 import { FieldValue } from 'firebase-admin/firestore'
 
@@ -40,6 +40,37 @@ export const runtime = 'nodejs'
 interface AccountInput {
   role: Role
   branchIds: string[]
+  /**
+   * Per-user section overrides, undefined when the caller didn't send them.
+   *
+   * Undefined and [] mean different things: undefined leaves the stored
+   * grants alone, [] clears them. POST never sends these — a new account
+   * starts on its role alone.
+   */
+  sectionGrants?: string[]
+  sectionRevocations?: string[]
+}
+
+/**
+ * Validates a grant list against the real section keys.
+ *
+ * These used to be written straight through from the browser by a client
+ * updateDoc, so whatever the page put in the array is what landed. A key that
+ * isn't a real section grants nothing and reads as a typo nobody can see —
+ * and `/admin/users` renders its checkbox grid from Object.keys(SECTION_ACCESS),
+ * so a bogus key never appears there to be unticked again.
+ */
+function parseSections(raw: unknown, label: string): string[] | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!Array.isArray(raw)) throw new HttpError(400, `${label} must be a list.`)
+
+  const keys = raw.filter((k): k is string => typeof k === 'string')
+  const known = Object.keys(SECTION_ACCESS)
+  const unknown = keys.filter(k => !known.includes(k))
+  if (unknown.length > 0) {
+    throw new HttpError(400, `Unknown section: ${unknown.join(', ')}`)
+  }
+  return [...new Set(keys)]
 }
 
 function parseAccountInput(body: Record<string, unknown>): AccountInput {
@@ -62,6 +93,8 @@ function parseAccountInput(body: Record<string, unknown>): AccountInput {
   return {
     role: body.role,
     branchIds,
+    sectionGrants: parseSections(body.sectionGrants, 'Section grants'),
+    sectionRevocations: parseSections(body.sectionRevocations, 'Section revocations'),
   }
 }
 
@@ -187,13 +220,33 @@ export async function PATCH(request: Request): Promise<Response> {
       throw new HttpError(400, 'You cannot remove your own admin role. Ask another admin to do it.')
     }
 
+    // sectionGrants/sectionRevocations used to be a SECOND write, a client
+    // updateDoc fired from /admin/users straight after this route returned.
+    // Two problems with that, both real:
+    //
+    // It was never logged. This route records a before/after for role and
+    // branches, so the log showed "role: barista → barista" and no sign that
+    // the same save had just granted that person Loyalty. Granting access is
+    // exactly the kind of change an audit log exists for.
+    //
+    // And it could fail on its own, after this one had already committed the
+    // role, the branches and the claims — a half-applied save the dialog
+    // reported as an error while half of it had stuck.
+    const arr = (v: unknown) => Array.isArray(v) ? v as string[] : []
+
     const before = {
       role: existing.role,
-      branchIds: Array.isArray(existing.branchIds) ? existing.branchIds : [],
+      branchIds: arr(existing.branchIds),
+      sectionGrants: arr(existing.sectionGrants),
+      sectionRevocations: arr(existing.sectionRevocations),
     }
     const after = {
       role: input.role,
       branchIds: input.branchIds,
+      // Undefined means the caller didn't send them, which leaves what's
+      // stored alone. Sending [] is how they get cleared.
+      sectionGrants: input.sectionGrants ?? before.sectionGrants,
+      sectionRevocations: input.sectionRevocations ?? before.sectionRevocations,
     }
 
     await ref.update(after)

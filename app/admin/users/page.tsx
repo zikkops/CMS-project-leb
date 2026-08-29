@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
-import { collection, getDocs, updateDoc, doc, query, where } from 'firebase/firestore'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import {
   useRequireRole, createAccount, updateAccountAccess, revokeAccountAccess,
@@ -102,14 +102,20 @@ export default function AdminUsersPage() {
     try {
       const branchIds = form.branchIds
       if (editing) {
+        // Grants go in the same call as the role. They used to be a second
+        // client updateDoc right here, which left them out of the activity log
+        // entirely and could fail after the role change had already stuck.
         await updateAccountAccess(
           editing.id,
           editing.email,
           { role: editing.role, branchIds: editing.branchIds },
-          { role: form.role, branchIds }
+          {
+            role: form.role,
+            branchIds,
+            sectionGrants: form.sectionGrants,
+            sectionRevocations: form.sectionRevocations,
+          }
         )
-        // Save section grants + revocations separately from role/branch fields
-        await updateDoc(doc(db, 'users', editing.id), { sectionGrants: form.sectionGrants, sectionRevocations: form.sectionRevocations })
       } else {
         await createAccount(form.email.trim(), form.password, form.role, branchIds)
       }
