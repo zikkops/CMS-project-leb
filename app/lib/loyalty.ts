@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import {
-  collection, query, where, orderBy, limit, onSnapshot, doc, getDoc, getDocs, addDoc,
-  updateDoc, writeBatch, serverTimestamp, documentId, type Timestamp,
+  collection, query, where, orderBy, limit, onSnapshot, doc, getDocs,
+  updateDoc, documentId, type Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import { logCreate, logUpdate } from './activityLog'
 import { authedFetch, unwrap } from './apiClient'
 
 // Mirrors the shape created by the customer submit-check flow
@@ -195,32 +194,30 @@ export async function cancelTransaction(tx: Transaction): Promise<void> {
   await updateDoc(doc(db, 'transactions', tx.id), { status: 'cancelled' })
 }
 
+/**
+ * Logs who attended an event. Runs SERVER-SIDE (Phase 00 standing rule).
+ *
+ * `submittedBy` is gone from the signature and `pointsAmount` was never in
+ * it — both come off the server now. The browser naming its own award was the
+ * same shape of defect awardTableCheckin had; firestore.rules capped the value
+ * at 10,000 but a cap is not a value, and anything under it looked like a
+ * normal submission in the review queue.
+ *
+ * The route also rejects an attendee list containing a staff account or a uid
+ * with no account behind it. Neither check is possible in a rule without a
+ * billed read per attendee.
+ */
 export async function createEventAttendanceTransaction(input: {
-  submittedBy: string
   branchId: string
   eventDate: string
   eventName: string
   attendeeUids: string[]
-}): Promise<void> {
-  await addDoc(collection(db, 'transactions'), {
-    type: 'event',
-    userId: input.attendeeUids,
-    pointsAmount: EVENT_POINTS_PER_PERSON,
-    status: 'pending',
-    submittedBy: input.submittedBy,
-    approvedBy: null,
-    branchId: input.branchId,
-    eventDate: input.eventDate,
-    eventName: input.eventName.trim(),
-    splitCount: input.attendeeUids.length,
-    createdAt: serverTimestamp(),
-  })
-  await logCreate('Loyalty Submission', `Event — ${input.eventName.trim()} (${input.attendeeUids.length} attendees)`, {
-    branchId: input.branchId,
-    eventDate: input.eventDate,
-    attendees: input.attendeeUids.length,
-    pointsAmount: EVENT_POINTS_PER_PERSON,
-  })
+}): Promise<{ attendees: number; pointsEach: number }> {
+  const data = await unwrap(await authedFetch('/api/admin/loyalty/events', 'POST', input))
+  return {
+    attendees: Number(data.attendees ?? input.attendeeUids.length),
+    pointsEach: Number(data.pointsEach ?? EVENT_POINTS_PER_PERSON),
+  }
 }
 
 // Instant check-in award for a table reservation — no pending/approve cycle

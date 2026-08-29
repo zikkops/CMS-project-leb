@@ -30,7 +30,8 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
-import { TABLE_CHECKIN_POINTS } from '../loyaltyTiers'
+import { TABLE_CHECKIN_POINTS, EVENT_POINTS_PER_PERSON } from '../loyaltyTiers'
+import { BRANCHES } from '../branches'
 
 export type ResolveAction = 'approve' | 'reject'
 
@@ -558,4 +559,121 @@ export async function runAnnualReset(force = false): Promise<ResetResult> {
   await settingsRef.set({ nextResetDate, lastResetAt: FieldValue.serverTimestamp() }, { merge: true })
 
   return { status: 'complete', cycle, nextResetDate, customersReset }
+}
+
+// ── Event attendance submissions ────────────────────────────────────────────
+// Staff log who attended an event; each attendee gets a flat award once a
+// loyalty reviewer approves it.
+//
+// This ran in the BROWSER until Aug 2026, and the browser named the award.
+// `pointsAmount` was sent in the request body, so the client decided how much
+// each attendee was worth. firestore.rules capped it at 10,000 to stop a
+// crafted submission minting a fortune, but a cap is not a value: anything
+// from 0 to 10,000 was accepted and looked exactly like a normal submission
+// in the review queue. It comes from the constant here now and the request
+// body has no say.
+//
+// `submittedBy` was also the browser's word. The rule pinned it to
+// request.auth.uid, so it could not be forged — but the route reads it off the
+// verified token anyway, because a field the caller cannot influence is
+// simpler to reason about than one a rule happens to be guarding.
+//
+// The staff-beneficiary rule is the part only this can enforce. The comment on
+// the transactions rule says "the server route enforces the wider rule" — for
+// event attendance that was not true, because there was no server route. A
+// rule can cheaply stop the submitter naming THEMSELVES, but checking whether
+// any of an unbounded list of attendees is a staff account needs a read per
+// uid. Here that read is free.
+
+export interface EventSubmissionInput {
+  branchId: string
+  eventDate: string
+  eventName: string
+  attendeeUids: string[]
+}
+
+// Above any real event, low enough that a mistake is not a catastrophe.
+const MAX_ATTENDEES = 200
+
+export function parseEventSubmissionInput(body: Record<string, unknown>): EventSubmissionInput {
+  const branchId = String(body.branchId ?? '').trim()
+  if (!(BRANCHES as readonly string[]).includes(branchId)) {
+    throw new HttpError(400, 'Unknown branch.')
+  }
+
+  const eventDate = String(body.eventDate ?? '').trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+    throw new HttpError(400, 'Event date must be a calendar date.')
+  }
+
+  const eventName = String(body.eventName ?? '').trim()
+  if (!eventName) throw new HttpError(400, 'Event name is required.')
+  if (eventName.length > 200) throw new HttpError(400, 'Event name is too long.')
+
+  const raw = Array.isArray(body.attendeeUids) ? body.attendeeUids : []
+  // Deduplicated before counting: the same person listed twice was two shares
+  // of the award for one attendance, and splitCount was wrong to match.
+  const attendeeUids = [...new Set(raw.filter((u): u is string => typeof u === 'string' && u.trim() !== ''))]
+  if (attendeeUids.length === 0) throw new HttpError(400, 'Add at least one attendee.')
+  if (attendeeUids.length > MAX_ATTENDEES) {
+    throw new HttpError(400, `Too many attendees at once (max ${MAX_ATTENDEES}).`)
+  }
+
+  return { branchId, eventDate, eventName: eventName.slice(0, 200), attendeeUids }
+}
+
+export interface EventSubmissionResult {
+  id: string
+  attendees: number
+  pointsEach: number
+}
+
+export async function createEventSubmission(
+  caller: Caller,
+  input: EventSubmissionInput,
+): Promise<EventSubmissionResult> {
+  const db = adminDb()
+
+  // Every attendee must be a real account, and none of them may be staff.
+  // A missing uid used to produce a pending transaction crediting nobody,
+  // which sat in the queue looking approvable.
+  const snaps = await db.getAll(...input.attendeeUids.map(uid => db.doc(`users/${uid}`)))
+
+  const missing: string[] = []
+  const staff: string[] = []
+  snaps.forEach((snap, i) => {
+    if (!snap.exists) { missing.push(input.attendeeUids[i]); return }
+    const data = snap.data() ?? {}
+    if (data.isStaff === true) staff.push(String(data.email ?? input.attendeeUids[i]))
+  })
+
+  if (missing.length > 0) {
+    throw new HttpError(400, `${missing.length} attendee${missing.length === 1 ? '' : 's'} no longer ${missing.length === 1 ? 'has an account' : 'have accounts'}.`)
+  }
+  if (staff.length > 0) {
+    throw new HttpError(400,
+      `Staff accounts cannot be credited as attendees: ${staff.slice(0, 3).join(', ')}${staff.length > 3 ? `, and ${staff.length - 3} more` : ''}.`)
+  }
+
+  const ref = await db.collection('transactions').add({
+    type: 'event',
+    userId: input.attendeeUids,
+    // From the constant, never from the request.
+    pointsAmount: EVENT_POINTS_PER_PERSON,
+    status: 'pending',
+    // From the verified token, never from the request.
+    submittedBy: caller.uid,
+    approvedBy: null,
+    branchId: input.branchId,
+    eventDate: input.eventDate,
+    eventName: input.eventName,
+    splitCount: input.attendeeUids.length,
+    createdAt: FieldValue.serverTimestamp(),
+  })
+
+  return {
+    id: ref.id,
+    attendees: input.attendeeUids.length,
+    pointsEach: EVENT_POINTS_PER_PERSON,
+  }
 }

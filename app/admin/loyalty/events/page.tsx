@@ -93,8 +93,9 @@ export default function LoyaltyEventsPage() {
     if (!user || !validate()) return
     setSubmitting(true)
     try {
+      // submittedBy is no longer sent — the route reads it off the verified
+      // token, so the browser cannot name someone else as the submitter.
       await createEventAttendanceTransaction({
-        submittedBy: user.uid,
         branchId,
         eventDate,
         eventName,
