@@ -2,9 +2,12 @@ import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore'
 import { db } from './firebase'
 import { authedFetch, unwrap } from './apiClient'
 import { BRANCHES } from './branches'
+// Re-exported below so existing import sites keep working; defined in a
+// module with no imports so route handlers can validate against it.
+import { DEPARTMENTS, type Department } from './departments'
 
 export type OrderUnit = 'box' | 'kg' | 'liter' | 'gallon' | 'bottle' | 'bag' | 'pcs' | 'jar' | 'block' | 'can'
-export type Department = 'Kitchen' | 'Bar' | 'Cleaning'
+export type { Department }
 
 export const UNIT_LABELS: Record<OrderUnit, string> = {
   box:    'Box',
@@ -19,7 +22,7 @@ export const UNIT_LABELS: Record<OrderUnit, string> = {
   can:    'Can',
 }
 
-export const DEPARTMENTS: Department[] = ['Kitchen', 'Bar', 'Cleaning']
+export { DEPARTMENTS }
 
 // ---- Providers ----
 

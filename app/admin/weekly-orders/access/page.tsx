@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { collection, getDocs, updateDoc, doc, query, where } from 'firebase/firestore'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../../../lib/firebase'
-import { useRequireRole, ROLE_LABELS, ROLE_COLORS, type Role } from '../../../lib/adminAuth'
+import { useRequireRole, updateOrderDepts, ROLE_LABELS, ROLE_COLORS, type Role } from '../../../lib/adminAuth'
 import { DEPARTMENTS, type Department } from '../../../lib/weeklyOrders'
 
 const DEPT_COLOR: Record<Department, string> = {
@@ -58,7 +58,10 @@ export default function WeeklyOrdersAccessPage() {
     setAccounts(prev => prev.map(a => a.id === account.id ? { ...a, orderDepts: next } : a))
     setSaving(account.id)
     try {
-      await updateDoc(doc(db, 'users', account.id), { orderDepts: next })
+      // Sends only orderDepts — a partial save, so toggling a department
+      // here can't write back a role this page loaded before someone else
+      // changed it. The route validates the names and logs the change.
+      await updateOrderDepts(account.id, account.email, next)
       setSaved(account.id)
       setTimeout(() => setSaved(null), 1500)
     } catch {

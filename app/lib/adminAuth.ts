@@ -341,6 +341,22 @@ export async function updateAccountAccess(
   await unwrap(res)
 }
 
+/**
+ * Sets which weekly-order departments a staff account may submit for.
+ *
+ * A partial save: it sends only orderDepts, so it can't revert a role change
+ * somebody else made while this page was open. /admin/weekly-orders/access
+ * used to write this with a client updateDoc, which was unlogged and stored
+ * whatever string the page put in the array.
+ */
+export async function updateOrderDepts(
+  uid: string,
+  email: string,
+  orderDepts: string[],
+): Promise<void> {
+  await unwrap(await authedFetch('/api/admin/accounts', 'PATCH', { uid, email, orderDepts }))
+}
+
 // Removes a person's staff standing while leaving their customer identity —
 // points, bookings, history — completely intact. Their login still works.
 //

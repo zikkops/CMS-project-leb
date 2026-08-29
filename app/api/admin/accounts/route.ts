@@ -29,6 +29,7 @@ import { syncClaims } from '@/app/lib/server/claims'
 import { logActivity, logUpdate } from '@/app/lib/server/activityLog'
 import { isRole, SECTION_ACCESS, type Role } from '@/app/lib/roles'
 import { BRANCHES } from '@/app/lib/branches'
+import { isDepartment } from '@/app/lib/departments'
 import { FieldValue } from 'firebase-admin/firestore'
 
 // The Admin SDK opens gRPC connections and reads a PEM private key — neither
@@ -38,8 +39,16 @@ import { FieldValue } from 'firebase-admin/firestore'
 export const runtime = 'nodejs'
 
 interface AccountInput {
-  role: Role
-  branchIds: string[]
+  /**
+   * Required on POST, optional on PATCH.
+   *
+   * PATCH has to work as a partial update: /admin/weekly-orders/access toggles
+   * one department and knows nothing about the account's role. Forcing it to
+   * send one back would mean echoing whatever the page loaded, which is how a
+   * role change made elsewhere gets silently reverted by an unrelated save.
+   */
+  role?: Role
+  branchIds?: string[]
   /**
    * Per-user section overrides, undefined when the caller didn't send them.
    *
@@ -49,6 +58,14 @@ interface AccountInput {
    */
   sectionGrants?: string[]
   sectionRevocations?: string[]
+  /**
+   * Which weekly-order departments this account may submit for.
+   *
+   * Same undefined-vs-[] rule as the grants above. Set from
+   * /admin/weekly-orders/access, which used to write it with a client
+   * updateDoc — unlogged, and accepting whatever string the page sent.
+   */
+  orderDepts?: string[]
 }
 
 /**
@@ -73,28 +90,50 @@ function parseSections(raw: unknown, label: string): string[] | undefined {
   return [...new Set(keys)]
 }
 
-function parseAccountInput(body: Record<string, unknown>): AccountInput {
-  if (!isRole(body.role)) {
-    throw new HttpError(400, 'Unknown role.')
-  }
+function parseAccountInput(
+  body: Record<string, unknown>,
+  { requireRole: roleRequired }: { requireRole: boolean },
+): AccountInput {
+  const roleGiven = body.role !== undefined && body.role !== null
+  if (roleRequired && !roleGiven) throw new HttpError(400, 'Unknown role.')
+  if (roleGiven && !isRole(body.role)) throw new HttpError(400, 'Unknown role.')
+  const role = roleGiven ? body.role as Role : undefined
 
+  const branchesGiven = body.branchIds !== undefined && body.branchIds !== null
+  if (roleRequired && !branchesGiven) {
+    // A new account with no branch is scoped to nothing; the old flow allowed
+    // it and produced an account that could sign in and see nothing.
+    throw new HttpError(400, 'Select at least one branch.')
+  }
   const rawBranches = Array.isArray(body.branchIds) ? body.branchIds : []
-  const branchIds = rawBranches.filter((b): b is string => typeof b === 'string')
+  const branchIds = branchesGiven
+    ? rawBranches.filter((b): b is string => typeof b === 'string')
+    : undefined
 
   // Validate against the real branch list rather than storing whatever arrives.
   // The old flow wrote branchIds straight through from the browser; a typo (or
   // a crafted request) produced an account scoped to a branch that does not
   // exist, which reads as "no access" in some views and "all access" in others.
-  const unknown = branchIds.filter(b => !(BRANCHES as readonly string[]).includes(b))
+  const unknown = (branchIds ?? []).filter(b => !(BRANCHES as readonly string[]).includes(b))
   if (unknown.length > 0) {
     throw new HttpError(400, `Unknown branch: ${unknown.join(', ')}`)
   }
 
+  const rawDepts = body.orderDepts
+  let orderDepts: string[] | undefined
+  if (rawDepts !== undefined && rawDepts !== null) {
+    if (!Array.isArray(rawDepts)) throw new HttpError(400, 'Order departments must be a list.')
+    const bad = rawDepts.filter(d => !isDepartment(d))
+    if (bad.length > 0) throw new HttpError(400, `Unknown department: ${bad.join(', ')}`)
+    orderDepts = [...new Set(rawDepts as string[])]
+  }
+
   return {
-    role: body.role,
+    role,
     branchIds,
     sectionGrants: parseSections(body.sectionGrants, 'Section grants'),
     sectionRevocations: parseSections(body.sectionRevocations, 'Section revocations'),
+    orderDepts,
   }
 }
 
@@ -136,7 +175,7 @@ export async function POST(request: Request): Promise<Response> {
     if (!email) throw new HttpError(400, 'Invalid email address.')
     if (password.length < 6) throw new HttpError(400, 'Password must be at least 6 characters.')
 
-    const input = parseAccountInput(body)
+    const input = parseAccountInput(body, { requireRole: true })
 
     let uid: string
     try {
@@ -194,7 +233,7 @@ export async function PATCH(request: Request): Promise<Response> {
     const uid = typeof body.uid === 'string' ? body.uid : ''
     if (!uid) throw new HttpError(400, 'Missing account id.')
 
-    const input = parseAccountInput(body)
+    const input = parseAccountInput(body, { requireRole: false })
 
     const ref = adminDb().doc(`users/${uid}`)
     const snap = await ref.get()
@@ -216,7 +255,7 @@ export async function PATCH(request: Request): Promise<Response> {
     // called this out for feature flags ("no state where a superadmin can lock
     // themselves out"); the same reasoning applies harder to roles, because
     // unlike a flag there's no console toggle to undo it from the UI.
-    if (uid === actor.uid && input.role !== 'admin') {
+    if (uid === actor.uid && input.role !== undefined && input.role !== 'admin') {
       throw new HttpError(400, 'You cannot remove your own admin role. Ask another admin to do it.')
     }
 
@@ -239,14 +278,18 @@ export async function PATCH(request: Request): Promise<Response> {
       branchIds: arr(existing.branchIds),
       sectionGrants: arr(existing.sectionGrants),
       sectionRevocations: arr(existing.sectionRevocations),
+      orderDepts: arr(existing.orderDepts),
     }
+    // Every field follows the same rule: undefined means the caller didn't
+    // send it and what's stored stays; [] is how a list gets cleared. That
+    // distinction is what lets one page save a role without touching grants
+    // and another toggle a department without touching the role.
     const after = {
-      role: input.role,
-      branchIds: input.branchIds,
-      // Undefined means the caller didn't send them, which leaves what's
-      // stored alone. Sending [] is how they get cleared.
+      role: input.role ?? before.role,
+      branchIds: input.branchIds ?? before.branchIds,
       sectionGrants: input.sectionGrants ?? before.sectionGrants,
       sectionRevocations: input.sectionRevocations ?? before.sectionRevocations,
+      orderDepts: input.orderDepts ?? before.orderDepts,
     }
 
     await ref.update(after)

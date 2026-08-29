@@ -325,12 +325,22 @@ service cloud.firestore {
         .hasAny(['points', 'pointsEarned']);
     }
 
-    // sectionGrants/sectionRevocations are still written from /admin/users
-    // (the checkbox grid) — they're not in the claims, so there's no
-    // token-drift problem, and admin is the only role that reaches that page.
+    // Access fields that no client writes any more.
+    //
+    // sectionGrants/sectionRevocations came from /admin/users (the checkbox
+    // grid) and orderDepts from /admin/weekly-orders/access, both as client
+    // updateDocs. Both now go through PATCH /api/admin/accounts, which
+    // validates the keys against SECTION_ACCESS and DEPARTMENTS and records a
+    // before/after — neither write was logged before, so granting somebody a
+    // section left no trace at all.
+    //
+    // They were never a hole: admin was already the only role that could
+    // write them. What this closes is the gap between what the app does and
+    // what the rules still permit, so an admin cannot quietly change
+    // someone's access with a direct SDK call and leave no audit entry.
     function touchesGrantFields() {
       return request.resource.data.diff(resource.data).affectedKeys()
-        .hasAny(['sectionGrants', 'sectionRevocations']);
+        .hasAny(['sectionGrants', 'sectionRevocations', 'orderDepts']);
     }
 
     match /users/{userId} {
@@ -366,7 +376,7 @@ service cloud.firestore {
         // actually a boundary, so no admin can quietly strip the grants of the
         // one person who could undo them. Reading resource.data here is free —
         // the document being written is already loaded.
-        (hasRole(['admin']) && !touchesBalanceFields() &&
+        (hasRole(['admin']) && !touchesBalanceFields() && !touchesGrantFields() &&
           (resource.data.get('superadmin', false) != true || request.auth.uid == userId))
       );
 
