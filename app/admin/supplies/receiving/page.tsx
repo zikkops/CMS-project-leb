@@ -26,7 +26,7 @@ import { db } from '../../../lib/firebase'
 import {
   DELIVERY_BRANCHES, DELIVERY_DEPARTMENTS, DEFAULT_VAT_RATE,
   REJECT_REASON_LABELS, computeTotals, isShort, priceChange, round2,
-  saveDelivery, seedLinesFromOrder,
+  saveDelivery, seedLinesFromOrder, unplannedLine,
   type Currency, type DeliveryLine, type RejectReason,
 } from '../../../lib/deliveries'
 import {
@@ -80,6 +80,7 @@ interface SupplyRow {
   category: string
   unit: string
   avgUnitCost: number
+  vatable?: boolean
 }
 
 function fmt(n: number, currency: Currency): string {
@@ -97,19 +98,31 @@ function fmt(n: number, currency: Currency): string {
 // transitions and, here, would drop focus out of the input mid-typing.
 // (CONTRIBUTING.md, gotcha #2.)
 function LineRow({
-  line, index, currency, isMobile, lastCost, onChange,
+  line, index, currency, rate, isMobile, lastCost, onChange,
 }: {
   line: DeliveryLine
   index: number
   currency: Currency
+  /** LBP per USD, or 0 when the delivery is priced in USD. */
+  rate: number
   isMobile: boolean
+  /** The running average, always in USD — see `lastCostLocal` below. */
   lastCost: number
   onChange: (index: number, patch: Partial<DeliveryLine>) => void
 }) {
   const [showReject, setShowReject] = useState(line.qtyRejected > 0)
 
   const short = isShort(line)
-  const drift = priceChange(lastCost, line.unitCost)
+
+  // avgUnitCost is stored in USD; line.unitCost is in the delivery's currency.
+  // Comparing them directly made every LBP delivery read as a ~9,000,000%
+  // price rise and flagged every single line as an exception — which is the
+  // fastest way to teach someone to ignore the warning colour entirely.
+  const lbp = currency === 'LBP' && rate > 0
+  const lastCostLocal = lbp ? lastCost * rate : lastCost
+  const usdEquivalent = lbp ? round2(line.unitCost / rate) : null
+
+  const drift = priceChange(lastCostLocal, line.unitCost)
   const priceUp = drift !== null && drift > 0.02
   const touched = short || line.qtyRejected > 0 || priceUp
 
@@ -169,11 +182,43 @@ function LineRow({
             onChange={e => onChange(index, { unitCost: Number(e.target.value) })}
             style={{ ...inp, width: '100%', textAlign: 'center', fontWeight: 600, color: priceUp ? '#C9962C' : '#F5F2EC' }}
           />
+          {/* Costs are entered in whatever the invoice is written in, but
+              everything downstream — the running average, food cost — is USD.
+              Showing the conversion as you type is what makes an LBP invoice
+              checkable against the item's usual price without a calculator. */}
+          {usdEquivalent !== null && (
+            <p style={{
+              fontFamily: 'var(--font-inter)', fontSize: '0.62rem', textAlign: 'center',
+              color: 'rgba(245,242,236,0.3)', marginTop: '0.25rem',
+            }}>
+              ≈ ${usdEquivalent.toFixed(2)}
+            </p>
+          )}
         </div>
-        <div style={{ textAlign: isMobile ? 'left' : 'right', gridColumn: isMobile ? '1 / -1' : undefined }}>
+        <div style={{
+          textAlign: isMobile ? 'left' : 'right', gridColumn: isMobile ? '1 / -1' : undefined,
+          display: 'flex', flexDirection: isMobile ? 'row' : 'column',
+          alignItems: isMobile ? 'center' : 'flex-end', gap: '0.5rem',
+        }}>
           <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.55)', fontWeight: 600 }}>
             {fmt(round2(line.qtyReceived * line.unitCost), currency)}
           </span>
+          {/* Seeded from the item, overridable here: the same product arrives
+              taxed from one supplier and untaxed from another, and the person
+              holding the invoice is the only one who knows which. */}
+          <button
+            type="button"
+            onClick={() => onChange(index, { vatable: line.vatable === false })}
+            title={line.vatable === false ? 'No VAT on this line' : 'VAT applies to this line'}
+            style={{
+              background: line.vatable === false ? 'transparent' : 'rgba(0,160,152,0.1)',
+              border: `1px solid ${line.vatable === false ? 'rgba(255,255,255,0.1)' : 'rgba(0,160,152,0.35)'}`,
+              color: line.vatable === false ? 'rgba(245,242,236,0.3)' : 'var(--teal)',
+              borderRadius: '3px', padding: '0.2rem 0.45rem', cursor: 'pointer',
+              fontFamily: 'var(--font-inter)', fontSize: '0.6rem', letterSpacing: '0.06em',
+              fontWeight: 700, whiteSpace: 'nowrap',
+            }}
+          >{line.vatable === false ? 'NO VAT' : 'VAT'}</button>
         </div>
       </div>
 
@@ -189,7 +234,7 @@ function LineRow({
               22% in six weeks" is a renegotiation, and it starts here. */}
           {priceUp && drift !== null && (
             <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', fontWeight: 700, color: '#C9962C' }}>
-              price up {(drift * 100).toFixed(0)}% vs {fmt(lastCost, currency)}
+              price up {(drift * 100).toFixed(0)}% vs {fmt(lastCostLocal, currency)}
             </span>
           )}
         </div>
@@ -274,6 +319,7 @@ function ReceivingInner() {
   const [notes,         setNotes]         = useState('')
   const [lines,         setLines]         = useState<DeliveryLine[]>([])
   const [unlinkedCount, setUnlinkedCount] = useState(0)
+  const [providerByTemplate, setProviderByTemplate] = useState<Map<string, string>>(new Map())
 
   const [saving, setSaving] = useState(false)
   const [err,     setErr]    = useState('')
@@ -333,7 +379,7 @@ function ReceivingInner() {
     setOrderId(id)
     setErr(''); setDone(''); setWarning('')
 
-    if (!id) { setLines([]); setUnlinkedCount(0); return }
+    if (!id) { setLines([]); setUnlinkedCount(0); setProviderByTemplate(new Map()); return }
 
     const report = reports.find(r => r.id === id)
     if (!report) return
@@ -351,6 +397,7 @@ function ReceivingInner() {
         unit: supply?.unit ?? item.unit,
         quantity: item.quantity,
         currentAvgCost: supply?.avgUnitCost ?? 0,
+        vatable: supply?.vatable !== false,
       }
     })
 
@@ -361,7 +408,16 @@ function ReceivingInner() {
     // look successful and do nothing. Surface the count instead.
     setUnlinkedCount(seedSources.length - seeded.length)
 
-    if (report.items[0]?.providerId) setProviderId(report.items[0].providerId)
+    // A weekly order is placed across several suppliers at once, but they
+    // arrive one van at a time. Keep the template -> supplier map so picking a
+    // supplier can narrow the sheet to the delivery actually at the door.
+    setProviderByTemplate(new Map(
+      report.items.filter(i => i.providerId).map(i => [i.templateId, i.providerId as string])
+    ))
+    // Only pre-select when the whole order is one supplier's. Defaulting to
+    // the first line's supplier on a mixed order would silently hide the rest.
+    const ids = new Set(report.items.map(i => i.providerId).filter(Boolean))
+    setProviderId(ids.size === 1 ? [...ids][0] as string : '')
   }
 
   function patchLine(index: number, patch: Partial<DeliveryLine>) {
@@ -380,42 +436,63 @@ function ReceivingInner() {
   // only has to undo any edits made so far — which is exactly what a receiver
   // wants after realising they were correcting the wrong line.
   function confirmAllAsOrdered() {
-    setLines(prev => prev.map(l => ({
-      ...l,
-      qtyReceived: l.qtyOrdered,
-      qtyRejected: 0,
-      rejectReason: null,
-    })))
+    const onScreen = new Set(visible.map(v => v.index))
+    setLines(prev => prev.map((l, i) => (
+      // Skip anything filtered out by the supplier selector, and skip
+      // unplanned lines entirely — those were ordered in no quantity, so
+      // "as ordered" would reset whatever the receiver just counted to zero.
+      !onScreen.has(i) || l.templateId === null ? l : {
+        ...l,
+        qtyReceived: l.qtyOrdered,
+        lineTotal: round2(l.qtyOrdered * l.unitCost),
+        qtyRejected: 0,
+        rejectReason: null,
+      }
+    )))
   }
 
   function addUnplannedLine(supplyId: string) {
     const s = supplyById.get(supplyId)
     if (!s || lines.some(l => l.supplyId === supplyId)) return
-    setLines(prev => [...prev, {
-      supplyId: s.id,
-      templateId: null,
-      name: s.name,
-      nameAr: s.nameAr ?? null,
-      unit: s.unit,
-      qtyOrdered: 0,
-      qtyReceived: 0,
-      qtyRejected: 0,
-      rejectReason: null,
-      unitCost: s.avgUnitCost,
-      lineTotal: 0,
-      expiryDate: null,
-    }])
+    setLines(prev => [...prev, unplannedLine(s)])
   }
 
+  // Picking a supplier narrows the sheet to that supplier's lines — and the
+  // delivery that gets posted is exactly what is on screen. That is the point:
+  // one van, one invoice, one delivery document. The rest of the order stays
+  // outstanding and is received again when the next van shows up;
+  // fulfilmentByTemplateId already sums split shipments back against the order.
+  //
+  // Unplanned lines carry no template and so belong to no supplier on the
+  // order. They stay visible whoever is selected, because they are being added
+  // for the van standing at the door right now.
+  const visible = useMemo(() => {
+    const rows = lines.map((line, index) => ({ line, index }))
+    if (!providerId) return rows
+    return rows.filter(({ line }) =>
+      line.templateId === null || providerByTemplate.get(line.templateId) === providerId)
+  }, [lines, providerId, providerByTemplate])
+
+  const hiddenCount = lines.length - visible.length
+
+  const onOrderByProvider = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const l of lines) {
+      const pid = l.templateId ? providerByTemplate.get(l.templateId) : undefined
+      if (pid) counts.set(pid, (counts.get(pid) ?? 0) + 1)
+    }
+    return counts
+  }, [lines, providerByTemplate])
+
   const totals = useMemo(
-    () => computeTotals(lines, DEFAULT_VAT_RATE),
-    [lines],
+    () => computeTotals(visible.map(v => v.line), DEFAULT_VAT_RATE),
+    [visible],
   )
 
-  const exceptions = lines.filter(l => isShort(l) || l.qtyRejected > 0).length
+  const exceptions = visible.filter(v => isShort(v.line) || v.line.qtyRejected > 0).length
 
   async function submit(status: 'draft' | 'received') {
-    if (!user || lines.length === 0) return
+    if (!user || visible.length === 0) return
     setSaving(true); setErr(''); setDone(''); setWarning('')
     try {
       const provider = providers.find(p => p.id === providerId)
@@ -430,7 +507,10 @@ function ReceivingInner() {
         rateUsed: currency === 'LBP' ? Number(rateUsed) : 0,
         status,
         notes,
-        lines,
+        // What is on screen, not what is in state. With a supplier selected
+        // the two differ, and posting the hidden lines would record stock that
+        // never arrived.
+        lines: visible.map(v => v.line),
       })
       if (result.warning) setWarning(result.warning)
       setDone(status === 'draft'
@@ -535,11 +615,22 @@ function ReceivingInner() {
             {/* Invoice + currency */}
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
               <div>
-                <label style={labelStyle}>Provider</label>
+                <label style={labelStyle}>Supplier</label>
                 <select value={providerId} onChange={e => setProviderId(e.target.value)} style={{ ...inp, width: '100%', background: '#1a1a1a', cursor: 'pointer' }}>
-                  <option value="">— Select —</option>
-                  {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  <option value="">— All suppliers —</option>
+                  {providers.map(p => {
+                    // How many of the loaded order's lines are this supplier's.
+                    // Shown in the option itself so it is obvious before
+                    // selecting which suppliers are actually on this order.
+                    const n = onOrderByProvider.get(p.id) ?? 0
+                    return <option key={p.id} value={p.id}>{p.name}{n > 0 ? ` (${n})` : ''}</option>
+                  })}
                 </select>
+                {hiddenCount > 0 && (
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.62rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.3rem' }}>
+                    Showing only this supplier&apos;s lines. Receive the rest when their van arrives.
+                  </p>
+                )}
               </div>
               <div>
                 <label style={labelStyle}>Invoice number</label>
@@ -604,7 +695,12 @@ function ReceivingInner() {
                   gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem',
                 }}>
                   <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)' }}>
-                    {lines.length} line{lines.length === 1 ? '' : 's'}
+                    {visible.length} line{visible.length === 1 ? '' : 's'}
+                    {hiddenCount > 0 && (
+                      <span style={{ color: 'rgba(245,242,236,0.28)' }}>
+                        {' '}· {hiddenCount} on this order from another supplier
+                      </span>
+                    )}
                     {exceptions > 0 && (
                       <span style={{ color: '#C9962C', fontWeight: 700 }}> · {exceptions} exception{exceptions === 1 ? '' : 's'}</span>
                     )}
@@ -618,12 +714,13 @@ function ReceivingInner() {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.6rem', marginBottom: '1.5rem' }}>
-                  {lines.map((line, i) => (
+                  {visible.map(({ line, index }) => (
                     <LineRow
                       key={line.supplyId}
                       line={line}
-                      index={i}
+                      index={index}
                       currency={currency}
+                      rate={currency === 'LBP' ? Number(rateUsed) || 0 : 0}
                       isMobile={isMobile}
                       lastCost={supplyById.get(line.supplyId)?.avgUnitCost ?? 0}
                       onChange={patchLine}
@@ -651,6 +748,11 @@ function ReceivingInner() {
                 }}>
                   {[
                     ['Subtotal', totals.subtotal],
+                    // Only shown when some of the invoice is exempt. On an
+                    // all-taxable delivery it would just repeat the subtotal.
+                    ...(totals.taxableSubtotal === totals.subtotal
+                      ? []
+                      : [['Of which taxable', totals.taxableSubtotal] as [string, number]]),
                     [`VAT (${(DEFAULT_VAT_RATE * 100).toFixed(0)}%)`, totals.vat],
                   ].map(([label, value]) => (
                     <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', color: 'rgba(245,242,236,0.45)' }}>

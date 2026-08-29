@@ -83,6 +83,14 @@ export interface DeliveryLine {
   unitCost: number        // in the delivery's currency, per `unit`
   lineTotal: number       // qtyReceived × unitCost, recomputed server-side
 
+  // Whether VAT applies to THIS line. Defaulted from the supply's own
+  // `vatable` flag when the line is seeded, and overridable per delivery
+  // because the same item can arrive taxed from one supplier and untaxed from
+  // another. Optional so deliveries recorded before this existed still read —
+  // `undefined` is treated as taxable, which is what a single whole-invoice
+  // VAT rate meant for every line at the time they were written.
+  vatable?: boolean
+
   expiryDate?: string | null   // 'YYYY-MM-DD', optional, per batch
 }
 
@@ -151,13 +159,66 @@ export function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100
 }
 
+/**
+ * Invoice totals, with VAT charged per line rather than on the whole subtotal.
+ *
+ * A real supplier invoice mixes taxed and untaxed items — most raw food is
+ * zero-rated while cleaning chemicals and paper goods are not — so a single
+ * rate across the subtotal cannot match the paper bill. It was close enough
+ * to look right and wrong by a few percent, which is the worst kind of wrong
+ * for a figure that feeds food cost.
+ *
+ * `taxableSubtotal` is returned alongside so the form can show WHY the VAT
+ * figure is what it is; reconciling against a supplier is much easier when the
+ * taxed portion is visible rather than inferred.
+ *
+ * A line with `vatable` undefined counts as taxable — that is what the old
+ * whole-invoice rate did to every line, so existing deliveries reprint at the
+ * totals they were saved with.
+ */
 export function computeTotals(
   lines: DeliveryLine[],
   vatRate: number = DEFAULT_VAT_RATE,
-): { subtotal: number; vat: number; grand: number } {
+): { subtotal: number; taxableSubtotal: number; vat: number; grand: number } {
   const subtotal = round2(lines.reduce((sum, l) => sum + lineTotal(l), 0))
-  const vat = round2(subtotal * vatRate)
-  return { subtotal, vat, grand: round2(subtotal + vat) }
+  const taxableSubtotal = round2(
+    lines.reduce((sum, l) => (l.vatable === false ? sum : sum + lineTotal(l)), 0)
+  )
+  const vat = round2(taxableSubtotal * vatRate)
+  return { subtotal, taxableSubtotal, vat, grand: round2(subtotal + vat) }
+}
+
+/**
+ * A blank line for an item that was NOT on the weekly order.
+ *
+ * Deliveries arrive with things nobody ordered — a substitution, a free case,
+ * something the rep threw in. The data model always allowed it (templateId
+ * null, qtyOrdered 0, and isShort() deliberately returns false for it), and
+ * the receiving form's own empty state has always invited it. There was simply
+ * no way to add one.
+ */
+export function unplannedLine(supply: {
+  id: string
+  name: string
+  nameAr?: string | null
+  unit: string
+  avgUnitCost?: number
+  vatable?: boolean
+}): DeliveryLine {
+  return {
+    supplyId: supply.id,
+    templateId: null,
+    name: supply.name,
+    nameAr: supply.nameAr ?? null,
+    unit: supply.unit,
+    qtyOrdered: 0,
+    qtyReceived: 0,
+    qtyRejected: 0,
+    rejectReason: null,
+    unitCost: supply.avgUnitCost ?? 0,
+    lineTotal: 0,
+    vatable: supply.vatable !== false,
+  }
 }
 
 // ── Weighted average cost ──────────────────────────────────────────────────
@@ -213,6 +274,7 @@ export interface SeedSource {
   unit: OrderUnit | string
   quantity: number
   currentAvgCost: number
+  vatable?: boolean
 }
 
 export function seedLinesFromOrder(items: SeedSource[]): DeliveryLine[] {
@@ -233,6 +295,7 @@ export function seedLinesFromOrder(items: SeedSource[]): DeliveryLine[] {
       rejectReason: null,
       unitCost: i.currentAvgCost,
       lineTotal: round2(i.quantity * i.currentAvgCost),
+      vatable: i.vatable !== false,
       expiryDate: null,
     }))
 }

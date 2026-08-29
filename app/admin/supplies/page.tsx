@@ -23,6 +23,10 @@ interface Supply {
   threshold: number
   category: Category
   provider?: string
+  // Absent on every item created before VAT moved onto the item. Undefined
+  // reads as taxable, which is what the single whole-invoice rate did to
+  // every line at the time.
+  vatable?: boolean
 }
 
 const CATEGORIES: Category[] = ['Kitchen', 'Bar', 'Cleaning', 'Other']
@@ -55,7 +59,7 @@ const S_BG     = { ok: 'rgba(0,160,152,0.06)',   low: 'rgba(201,150,44,0.08)',  
 const S_BORDER = { ok: 'rgba(0,160,152,0.18)',   low: 'rgba(201,150,44,0.26)',  out: 'rgba(228,51,41,0.32)'  }
 const S_LABEL  = { ok: 'OK', low: 'Low', out: 'Out' }
 
-const EMPTY_FORM = { name: '', nameAr: '', category: 'Kitchen' as Category, unit: 'pieces', threshold: 5, provider: '' }
+const EMPTY_FORM = { name: '', nameAr: '', category: 'Kitchen' as Category, unit: 'pieces', threshold: 5, provider: '', vatable: true }
 
 const inp: React.CSSProperties = {
   background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
@@ -109,7 +113,7 @@ export default function SuppliesPage() {
 
   function openAdd() { setForm(EMPTY_FORM); setFormQty(EMPTY_QTY); setEditing(null); setModal('add') }
   function openEdit(s: Supply) {
-    setForm({ name: s.name, nameAr: s.nameAr ?? '', category: s.category, unit: s.unit, threshold: s.threshold, provider: s.provider ?? '' })
+    setForm({ name: s.name, nameAr: s.nameAr ?? '', category: s.category, unit: s.unit, threshold: s.threshold, provider: s.provider ?? '', vatable: s.vatable !== false })
     setFormQty({ ...EMPTY_QTY, ...s.quantity })
     setEditing(s); setModal('edit')
   }
@@ -128,7 +132,7 @@ export default function SuppliesPage() {
     setSaving(true)
     const data = {
       name: form.name, nameAr: form.nameAr.trim() || null, category: form.category, unit: form.unit, threshold: form.threshold,
-      provider: form.provider.trim() || null, updatedAt: serverTimestamp(),
+      provider: form.provider.trim() || null, vatable: form.vatable, updatedAt: serverTimestamp(),
     }
     // Quantity is deliberately not sent on an edit — it is only ever set by
     // a submitted Daily Inventory Count or a received delivery, and the route
@@ -435,6 +439,35 @@ export default function SuppliesPage() {
                   </div>
                 </div>
               )}
+
+              {/* VAT belongs on the item, not on the delivery. Raw food is
+                  zero-rated here and chemicals and paper goods are not, so the
+                  answer is a property of what the thing IS. Receiving seeds
+                  each line from this and still lets the line override it. */}
+              <div>
+                <label style={lbl}>VAT</label>
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, vatable: !f.vatable }))}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.6rem', width: '100%',
+                    background: form.vatable ? 'rgba(0,160,152,0.1)' : 'transparent',
+                    border: `1px solid ${form.vatable ? 'rgba(0,160,152,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: '4px', padding: '0.6rem 0.7rem', cursor: 'pointer',
+                    color: form.vatable ? '#00A098' : 'rgba(245,242,236,0.4)',
+                    fontFamily: 'var(--font-inter)', fontSize: '0.8rem', textAlign: 'left',
+                  }}
+                >
+                  <span style={{
+                    width: '15px', height: '15px', flexShrink: 0, borderRadius: '3px',
+                    border: `1px solid ${form.vatable ? '#00A098' : 'rgba(255,255,255,0.2)'}`,
+                    background: form.vatable ? '#00A098' : 'transparent',
+                    color: '#000', fontSize: '0.65rem', lineHeight: '15px', textAlign: 'center',
+                  }}>{form.vatable ? '✓' : ''}</span>
+                  {form.vatable ? 'VAT applies to this item' : 'Zero-rated — no VAT'}
+                </button>
+                <p style={{ fontSize: '0.62rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.25rem' }}>Used as the default when receiving; each delivery can override it</p>
+              </div>
 
               <div>
                 <label style={lbl}>Minimum (Alert Threshold)</label>

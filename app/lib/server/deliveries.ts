@@ -140,6 +140,10 @@ export function parseDelivery(body: Record<string, unknown>): ParsedDelivery {
       // actually is.
       lineTotal: round2(qtyReceived * unitCost),
       unitCost,
+      // Seeded from the supply, overridden here when the person receiving says
+      // this particular delivery arrived taxed (or not). Absent means taxable,
+      // matching how the old single whole-invoice rate behaved.
+      vatable: l.vatable !== false,
       expiryDate: typeof l.expiryDate === 'string' && l.expiryDate ? l.expiryDate : null,
     }
   })

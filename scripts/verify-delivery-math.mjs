@@ -45,7 +45,7 @@ for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
 }
 
 const {
-  weightedAverageCost, computeTotals, shortfall, isShort, priceChange,
+  weightedAverageCost, computeTotals, shortfall, isShort, priceChange, unplannedLine,
   seedLinesFromOrder, costOfGoodsUsd, foodCostPercent, fulfilmentByTemplateId,
 } = await import(`file://${join(out, 'deliveryMath.js')}`)
 
@@ -77,6 +77,33 @@ eq('grand', t.grand, 112.55)
 // total disagrees with the supplier's paper bill by a cent.
 const many = computeTotals(Array.from({ length: 12 }, () => ({ qtyReceived: 0.1, unitCost: 0.2 })), 0)
 eq('12 lines of 0.1x0.2 == 0.24 exactly', many.subtotal, 0.24)
+
+// Per-line VAT. A supplier invoice mixes taxed and untaxed items — raw food is
+// zero-rated, chemicals and paper goods are not — so one rate on the whole
+// subtotal cannot reconcile against the paper bill.
+const mixed = computeTotals([
+  { qtyReceived: 10, unitCost: 5, vatable: false },   // 50.00 untaxed
+  { qtyReceived: 4,  unitCost: 25, vatable: true },   // 100.00 taxed
+])
+eq('mixed: subtotal is every line', mixed.subtotal, 150)
+eq('mixed: taxable portion only', mixed.taxableSubtotal, 100)
+eq('mixed: vat on the taxable portion', mixed.vat, 11)
+eq('mixed: grand', mixed.grand, 161)
+// Deliveries saved before per-line VAT existed have no flag on any line. They
+// must still total exactly as they did under one whole-invoice rate.
+const legacy = computeTotals([{ qtyReceived: 17, unitCost: 4.20 }, { qtyReceived: 3, unitCost: 10 }])
+eq('undefined vatable is taxable (legacy)', legacy.vat, 11.15)
+eq('all lines exempt: no vat', computeTotals([{ qtyReceived: 2, unitCost: 9, vatable: false }]).vat, 0)
+
+console.log(String.fromCharCode(10) + 'unplannedLine')
+const u = unplannedLine({ id: 's1', name: 'Free case', unit: 'case', avgUnitCost: 3.5 })
+eq('carries no template link', u.templateId, null)
+eq('ordered nothing', u.qtyOrdered, 0)
+eq('so it is never short', isShort(u), false)
+eq('seeds cost from the running average', u.unitCost, 3.5)
+eq('taxable unless the supply says otherwise', u.vatable, true)
+eq('supply marked exempt carries through',
+  unplannedLine({ id: 's2', name: 'Flour', unit: 'kg', vatable: false }).vatable, false)
 
 console.log('\nshortfall / isShort')
 eq('ordered 20, received 17', shortfall({ qtyOrdered: 20, qtyReceived: 17 }), 3)

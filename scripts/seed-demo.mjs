@@ -139,6 +139,13 @@ const PROVIDERS = [
 // [slug, name, department, unit, provider, category, unitCost]
 // unitCost seeds avgUnitCost so the receiving form has a price to pre-fill and
 // price-drift detection has a baseline to compare against.
+// Which order categories carry VAT. Basic foodstuffs are zero-rated and
+// everything else is not, which is the split a café actually sees on its
+// invoices — and the reason VAT is a per-item flag rather than one rate on the
+// whole bill. Derived from the category so the item table stays readable
+// instead of growing an eighth column repeated forty times.
+const VATABLE_CATEGORIES = new Set(['Chemicals', 'Paper', 'Soft Drinks', 'Syrups'])
+
 const ITEMS = [
   ['whole-milk',      'Whole Milk',          'Kitchen', 'liter',  'prov-dairy',    'Milk',        1.20],
   ['skim-milk',       'Skim Milk',           'Kitchen', 'liter',  'prov-dairy',    'Milk',        1.25],
@@ -450,6 +457,7 @@ ITEMS.forEach(([slug, name, dept, unit, providerId, category, cost], i) => {
     quantity: zeroStock(),
     threshold: 5,
     provider: PROVIDERS.find(p => p.id === providerId)?.name ?? null,
+    vatable: VATABLE_CATEGORIES.has(category),
     avgUnitCost: cost,
     lastUnitCost: cost,
     updatedAt: FieldValue.serverTimestamp(),

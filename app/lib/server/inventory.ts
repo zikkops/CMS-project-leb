@@ -44,6 +44,12 @@ export interface SupplyInput {
   unit: string
   threshold: number
   provider: string | null
+  // Whether VAT applies to this item by default. Most raw food is zero-rated
+  // and chemicals and paper goods are not, so the answer belongs on the item
+  // rather than being re-decided on every delivery. Receiving seeds each line
+  // from it and lets the line override, because the same item can arrive taxed
+  // from one supplier and untaxed from another.
+  vatable: boolean
 }
 
 export function parseSupplyInput(body: Record<string, unknown>): SupplyInput {
@@ -62,6 +68,9 @@ export function parseSupplyInput(body: Record<string, unknown>): SupplyInput {
     unit: String(body.unit ?? '').trim().slice(0, 50),
     threshold,
     provider: body.provider ? String(body.provider).trim().slice(0, 200) : null,
+    // Default true: the old whole-invoice VAT rate taxed every line, so an
+    // item that predates this flag keeps totalling the way it always did.
+    vatable: body.vatable !== false,
   }
 }
 
@@ -182,6 +191,10 @@ export async function seedSuppliesFromTemplates(): Promise<SeedResult> {
       unit: data.unit ?? '',
       threshold: 1,
       provider: data.providerId ? (providerName.get(data.providerId) ?? null) : null,
+      // Written explicitly rather than left to the read-side default, so an
+      // item seeded from a template shows the same VAT state in the inventory
+      // form as one created by hand.
+      vatable: true,
       updatedAt: FieldValue.serverTimestamp(),
     })
     await t.ref.update({ supplyId: ref.id })
