@@ -1,6 +1,8 @@
-// Manual correction of a customer's points. Phase 00 standing rule.
+// Staff acting on a customer's account. Phase 00 standing rule.
 //
-// PATCH  set the spendable balance and/or the earned-total
+// PATCH   set the spendable balance and/or the earned-total, or schedule the
+//         annual points reset
+// DELETE  remove a customer entirely — Auth login included
 //
 // Only the two loyalty figures. Everything else on a customer document is
 // either theirs to edit (avatar, theme, username) or nobody's (isStaff, role —
@@ -11,7 +13,9 @@
 
 import { requireSection, toResponse, HttpError, type Caller } from '@/app/lib/server/auth'
 import { parseAdjustInput, adjustCustomerBalance } from '@/app/lib/server/loyalty'
-import { logUpdate } from '@/app/lib/server/activityLog'
+import { deleteCustomerAccount, setLoyaltyResetDate } from '@/app/lib/server/customerAccounts'
+import { adminDb } from '@/app/lib/server/firebaseAdmin'
+import { logUpdate, logDelete } from '@/app/lib/server/activityLog'
 
 export const runtime = 'nodejs'
 
@@ -28,6 +32,17 @@ async function readBody(request: Request): Promise<Record<string, unknown>> {
 export async function PATCH(request: Request): Promise<Response> {
   try {
     const caller: Caller = await requireSection(request, 'loyalty')
+
+    // Scheduling the reset shares this route because it is the same screen and
+    // the same section — /admin/loyalty/customers is where both live.
+    const early = await request.clone().json().catch(() => ({})) as Record<string, unknown>
+    if (early.action === 'reset-date') {
+      const dateStr = typeof early.nextResetDate === 'string' ? early.nextResetDate.trim() : ''
+      const { before } = await setLoyaltyResetDate(dateStr)
+      await logUpdate(caller, 'Loyalty Reset Schedule', 'Next reset date',
+        { nextResetDate: before }, { nextResetDate: dateStr })
+      return Response.json({ ok: true })
+    }
     const input = parseAdjustInput(await readBody(request))
 
     const result = await adjustCustomerBalance(caller, input)
@@ -37,6 +52,30 @@ export async function PATCH(request: Request): Promise<Response> {
     await logUpdate(caller, 'Customer Account', result.label, result.before, result.after)
 
     return Response.json({ ok: true, ...result.after })
+  } catch (err) {
+    return toResponse(err)
+  }
+}
+
+export async function DELETE(request: Request): Promise<Response> {
+  try {
+    const caller: Caller = await requireSection(request, 'loyalty')
+    const uid = new URL(request.url).searchParams.get('uid') ?? ''
+    if (!uid) throw new HttpError(400, 'Missing customer id.')
+
+    // The label comes from the stored document before it is deleted — after,
+    // there is nothing left to name them by, and an audit entry reading
+    // "deleted <uid>" helps nobody reading it a year later.
+    const snap = await adminDb().doc(`users/${uid}`).get()
+    const label = String(snap.data()?.email ?? snap.data()?.username ?? uid)
+
+    const result = await deleteCustomerAccount(uid)
+    await logDelete(caller, 'Customer Account', label, {
+      uid,
+      authDeleted: result.authDeleted,
+      docsDeleted: result.docsDeleted,
+    })
+    return Response.json({ ok: true, ...result })
   } catch (err) {
     return toResponse(err)
   }

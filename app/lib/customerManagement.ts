@@ -1,12 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import {
-  collection, doc, onSnapshot, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, writeBatch,
-} from 'firebase/firestore'
+import { collection, doc, onSnapshot, getDoc } from 'firebase/firestore'
 import { sendPasswordResetEmail } from 'firebase/auth'
 import { auth, db } from './firebase'
-import { logActivity, logUpdate, logDelete } from './activityLog'
+import { logActivity } from './activityLog'
 import { authedFetch, unwrap } from './apiClient'
 
 export interface CustomerAccount {
@@ -145,24 +143,22 @@ export async function updateCustomerBalance(
   await unwrap(res)
 }
 
-// Deletes the customer's Firestore profile (points, history references,
-// theme, avatar) only. Their Firebase Auth login isn't touched, so signing
-// back in lands them on a brand-new blank profile, same as a first-time
-// signup.
-//
-// This used to say true deletion 'isn't possible without server-side Admin SDK
-// access, which this app deliberately doesn't have'. That has been wrong since
-// Phase 00 — adminAuth().deleteUser() is available and the accounts route
-// already uses it for rollback. This function is simply still on the old path;
-// it is one of the privileged writes npm run audit:writes is tracking.
+/**
+ * Deletes a customer — properly.
+ *
+ * This used to remove the Firestore profile and nothing else, so the Auth
+ * login survived and signing back in produced a fresh blank account. The
+ * person was never actually removed. The note that used to sit here had
+ * already spotted the fix was available since Phase 00 and left it undone.
+ *
+ * /api/admin/loyalty/customers deletes the Auth user first and then every
+ * document, including the private subcollection that holds the phone number
+ * and avatar hash — Firestore does not cascade, so those were being orphaned
+ * where nothing lists them.
+ */
 export async function deleteCustomerAccount(customer: CustomerAccount): Promise<void> {
-  // Firestore doesn't cascade-delete subcollections — the private/contact
-  // and private/avatar docs (phone number, avatar delete-hash) would
-  // otherwise be orphaned.
-  await deleteDoc(doc(db, 'users', customer.id, 'private', 'contact'))
-  await deleteDoc(doc(db, 'users', customer.id, 'private', 'avatar'))
-  await deleteDoc(doc(db, 'users', customer.id))
-  await logDelete('Customer Account', customer.email || customer.username, { ...customer })
+  await unwrap(await authedFetch(
+    `/api/admin/loyalty/customers?uid=${encodeURIComponent(customer.id)}`, 'DELETE'))
 }
 
 export async function resendCustomerPasswordReset(email: string): Promise<void> {
@@ -176,21 +172,14 @@ export interface LoyaltyResetSettings {
   nextResetDate: string // 'YYYY-MM-DD'
 }
 
-function todayStr(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
 function oneYearFromToday(): string {
   const d = new Date()
   d.setFullYear(d.getFullYear() + 1)
   return d.toISOString().slice(0, 10)
 }
 
-function oneYearAfter(dateStr: string): string {
-  const d = new Date(dateStr)
-  d.setFullYear(d.getFullYear() + 1)
-  return d.toISOString().slice(0, 10)
-}
+// todayStr() and oneYearAfter() went with the browser-side reset logic.
+// The server owns both now — see app/lib/server/loyalty.ts.
 
 const resetSettingsRef = doc(db, 'appSettings', 'loyaltyReset')
 
@@ -211,9 +200,23 @@ export function useLoyaltyResetSettings() {
   return { settings, loading, defaultDate: oneYearFromToday() }
 }
 
-export async function saveLoyaltyResetDate(dateStr: string, before: string | null): Promise<void> {
-  await setDoc(resetSettingsRef, { nextResetDate: dateStr }, { merge: true })
-  await logUpdate('Loyalty Reset Schedule', 'Next reset date', { nextResetDate: before }, { nextResetDate: dateStr })
+/**
+ * Schedules the next annual points reset.
+ *
+ * The route refuses a date that is not in the future. The reset is a nightly
+ * cron that fires once today reaches the stored date, so saving yesterday
+ * zeroes every customer's balance on the next run — with no confirmation step
+ * anywhere. A typo in a date field should not be able to do that, and until
+ * now it could.
+ *
+ * `before` is no longer read here; the route reads the stored value itself so
+ * the audit entry records what was actually replaced rather than what the
+ * browser believed it was replacing.
+ */
+export async function saveLoyaltyResetDate(dateStr: string, _before?: string | null): Promise<void> {
+  await unwrap(await authedFetch('/api/admin/loyalty/customers', 'PATCH', {
+    action: 'reset-date', nextResetDate: dateStr,
+  }))
 }
 
 // Runs SERVER-SIDE, on a schedule (Phase 00's "real cron"). See

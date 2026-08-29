@@ -32,7 +32,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
-const BASELINE = 45
+const BASELINE = 41
 
 const LIST = process.argv.includes('--list')
 
