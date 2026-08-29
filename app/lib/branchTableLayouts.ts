@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { doc, onSnapshot, setDoc, serverTimestamp, type Timestamp } from 'firebase/firestore'
+import { doc, onSnapshot, type Timestamp } from 'firebase/firestore'
 import { db } from './firebase'
-import { logUpdate } from './activityLog'
+import { authedFetch, unwrap } from './apiClient'
 
 // One floor-plan layout per branch — doc id is the branch name itself
 // (see app/lib/branches.ts), so "does this branch have a layout yet" is a
@@ -182,38 +182,37 @@ export function useBranchTableLayout(branch: string | null) {
   return { layout, loading }
 }
 
-// Always overwrites the whole doc (not a partial merge) — the editor holds
-// the complete, current `tables` array in local state for the whole
-// editing session and only commits once, on "Save Layout" (see
-// app/admin/branches/tables/page.tsx), so there's nothing to merge against.
-// Image fields fall back to whatever was already saved when the caller
-// isn't replacing the floor plan in this same save.
-export async function saveBranchTableLayout(
-  input: {
-    branch: string
-    tables: TableMarker[]
-    imageUrl?: string | null
-    imageDeleteUrl?: string | null
-    imageFileName?: string | null
-    imageWidth?: number | null
-    imageHeight?: number | null
-    staffUid: string
-  },
-  before: BranchTableLayout | null
-): Promise<void> {
-  await setDoc(doc(db, 'branchTableLayouts', input.branch), {
-    branch: input.branch,
-    imageUrl: input.imageUrl !== undefined ? input.imageUrl : (before?.imageUrl ?? null),
-    imageDeleteUrl: input.imageDeleteUrl !== undefined ? input.imageDeleteUrl : (before?.imageDeleteUrl ?? null),
-    imageFileName: input.imageFileName !== undefined ? input.imageFileName : (before?.imageFileName ?? null),
-    imageWidth: input.imageWidth !== undefined ? input.imageWidth : (before?.imageWidth ?? null),
-    imageHeight: input.imageHeight !== undefined ? input.imageHeight : (before?.imageHeight ?? null),
-    tables: input.tables,
-    updatedAt: serverTimestamp(),
-    updatedBy: input.staffUid,
-  })
-
-  await logUpdate('Branch Table Layout', input.branch, { tableCount: before?.tables.length ?? 0 }, { tableCount: input.tables.length })
+/**
+ * Saves a branch floor plan. Runs SERVER-SIDE (Phase 00 standing rule).
+ *
+ * Still a whole-document replacement, matching the editor: it holds the
+ * complete `tables` array in local state for the session and commits once on
+ * "Save Layout", so there is nothing to merge against. Image fields left
+ * undefined carry over from what is stored — that is how a save that isn't
+ * replacing the floor plan keeps it.
+ *
+ * `staffUid` is gone from the signature; the route takes it from the verified
+ * token. `before` is gone too — the route reads the stored document for both
+ * the image fallback and the log's before-count, which also removes the case
+ * where a stale `before` from a browser open for an hour decided what got
+ * written back.
+ *
+ * The route validates every marker. This collection is `allow read: if true`
+ * because the public table map renders from it, so an unchecked write went
+ * straight out to every visitor — and it now also enforces that adjacency is
+ * symmetric and points at tables that exist, which toggleAdjacency maintains
+ * but nothing guaranteed.
+ */
+export async function saveBranchTableLayout(input: {
+  branch: string
+  tables: TableMarker[]
+  imageUrl?: string | null
+  imageDeleteUrl?: string | null
+  imageFileName?: string | null
+  imageWidth?: number | null
+  imageHeight?: number | null
+}): Promise<void> {
+  await unwrap(await authedFetch('/api/admin/branch-tables', 'PUT', input))
 }
 
 export function newTableMarker(existing: TableMarker[], imageWidth: number, imageHeight: number): TableMarker {

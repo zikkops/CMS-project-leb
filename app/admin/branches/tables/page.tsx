@@ -188,10 +188,13 @@ export default function BranchTablesPage() {
     if (!user) return
     setSaving(true)
     try {
-      await saveBranchTableLayout(
-        { branch, tables: editTables, imageUrl, imageDeleteUrl, imageFileName, imageWidth, imageHeight, staffUid: user.uid },
-        layout
-      )
+      // staffUid and the `layout` snapshot are both gone: the route takes
+      // the author from the verified token and re-reads the stored document
+      // for the image fallback, so a page left open for an hour can no longer
+      // write a stale `before` back over newer image fields.
+      await saveBranchTableLayout({
+        branch, tables: editTables, imageUrl, imageDeleteUrl, imageFileName, imageWidth, imageHeight,
+      })
       setDirty(false)
     } finally {
       setSaving(false)
