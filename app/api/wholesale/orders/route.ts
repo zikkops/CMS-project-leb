@@ -12,7 +12,8 @@ import { adminAuth, adminDb } from '@/app/lib/server/firebaseAdmin'
 import { toResponse, HttpError, bearerToken, requireSection } from '@/app/lib/server/auth'
 import { sendEmail, emailConfigured } from '@/app/lib/server/email'
 import { FieldValue } from 'firebase-admin/firestore'
-import { formatInvoiceNumber, INVOICE_NUMBER_PATTERN } from '@/app/lib/invoiceFormat'
+import { INVOICE_NUMBER_PATTERN } from '@/app/lib/invoiceFormat'
+import { issueInvoiceNumber } from '@/app/lib/server/invoiceNumber'
 
 export const runtime = 'nodejs'
 
@@ -118,20 +119,8 @@ export async function GET(request: Request): Promise<Response> {
   try {
     await requireWholesale(request)
 
-    const db = adminDb()
-    const ref = db.doc('appSettings/invoiceCounter')
-    const issuedAt = new Date()
-    const year = issuedAt.getFullYear()
-
-    const sequence = await db.runTransaction(async tx => {
-      const snap = await tx.get(ref)
-      const data = snap.data() ?? {}
-      const next = data.year === year ? (data.nextNumber ?? 0) + 1 : 1
-      tx.set(ref, { year, nextNumber: next }, { merge: true })
-      return next
-    })
-
-    return Response.json({ invoiceNumber: formatInvoiceNumber(sequence, issuedAt) })
+    const { invoiceNumber } = await issueInvoiceNumber()
+    return Response.json({ invoiceNumber })
   } catch (err) {
     return toResponse(err)
   }

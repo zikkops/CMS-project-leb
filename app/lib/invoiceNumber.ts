@@ -17,39 +17,32 @@
 // The sequence resets each calendar year, and is shared by wholesale orders and
 // counter sales so the business has one invoice series.
 
-import { doc, runTransaction } from 'firebase/firestore'
-import { db } from './firebase'
+import { authedFetch, unwrap } from './apiClient'
 
 // Formatting lives in invoiceFormat.ts so route handlers can share it.
 export { formatInvoiceNumber, quarterOf } from './invoiceFormat'
-import { formatInvoiceNumber } from './invoiceFormat'
 
-// NOTE: this client-side counter only works for an ADMIN. appSettings is
-// `allow write: if hasRole(['admin'])`, so any other caller gets a 403 here.
-// Wholesale accounts therefore ask the server for a number instead — see
-// issueInvoiceNumber() in app/api/wholesale/orders/route.ts.
+// There is no client-side counter any more, and there never usefully was
+// one. appSettings/invoiceCounter is `allow write: if false`, so the
+// transaction that used to live here returned permission-denied for every
+// caller — including an admin, which the note it replaced insisted was fine.
+// The invoice just silently never appeared.
+//
+// Numbers are minted server-side now: /api/admin/invoice-number for staff,
+// and GET /api/wholesale/orders for a shop's own browser. Both call
+// issueInvoiceNumber() in app/lib/server/invoiceNumber.ts.
 
-// Atomic sequential counter, shared with counter sales so the business has one
-// invoice series rather than two that both start at 0001. Resets each calendar
-// year. Gaps are possible if a later step fails, which is normal and accepted
-// in accounting systems.
-export async function nextInvoiceSequence(): Promise<{ sequence: number; issuedAt: Date }> {
-  const counterRef = doc(db, 'appSettings', 'invoiceCounter')
-  const issuedAt = new Date()
-  const year = issuedAt.getFullYear()
-  let sequence = 1
-
-  await runTransaction(db, async (tx) => {
-    const snap = await tx.get(counterRef)
-    const data = snap.data() ?? {}
-    sequence = data.year === year ? (data.nextNumber ?? 0) + 1 : 1
-    tx.set(counterRef, { year, nextNumber: sequence })
-  })
-
-  return { sequence, issuedAt }
-}
-
+/**
+ * The next invoice number, minted by the server.
+ *
+ * Every call burns a sequence number, so this is not something to retry
+ * blindly or call speculatively — ask for a number when you are about to use
+ * it. Gaps are normal and accepted in accounting; two invoices sharing a
+ * number is not.
+ */
 export async function nextFormattedInvoiceNumber(): Promise<string> {
-  const { sequence, issuedAt } = await nextInvoiceSequence()
-  return formatInvoiceNumber(sequence, issuedAt)
+  const data = await unwrap(await authedFetch('/api/admin/invoice-number', 'GET'))
+  const invoiceNumber = typeof data.invoiceNumber === 'string' ? data.invoiceNumber : ''
+  if (!invoiceNumber) throw new Error('The server did not return an invoice number.')
+  return invoiceNumber
 }

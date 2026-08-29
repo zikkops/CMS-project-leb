@@ -1,11 +1,10 @@
 'use client'
 
 import {
-  collection, doc, getDocs, updateDoc, runTransaction,
+  collection, doc, getDocs, runTransaction,
   serverTimestamp, query, orderBy, limit, Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import { nextFormattedInvoiceNumber } from './invoiceNumber'
 import { logActivity } from './activityLog'
 import { uploadImage } from './media'
 import { authedFetch, unwrap } from './apiClient'
@@ -43,14 +42,14 @@ export interface GamePurchaseOrder {
   refundNote: string | null
 }
 
-// Invoice numbers now come from app/lib/invoiceNumber.ts in the OB-Q1-012026-0001
-// format, shared with wholesale so the business has one series. The counter doc
-// and its transaction are unchanged — only the rendered string differs, so
-// invoices issued before this keep their INV-2026-0001 numbers, which is
-// correct: an issued invoice number is a record, not a computed value.
-export async function nextInvoiceNumber(): Promise<string> {
-  return nextFormattedInvoiceNumber()
-}
+// nextInvoiceNumber() was here and nothing called it — a pass-through to
+// nextFormattedInvoiceNumber() left behind when counter sales moved to
+// /api/admin/purchases, which issues its number inside the same transaction as
+// the stock movement.
+//
+// Invoices issued before the format change keep their INV-2026-0001 numbers,
+// which is correct: an issued invoice number is a record, not a computed
+// value.
 
 function truncate(ctx: CanvasRenderingContext2D, text: string, maxW: number): string {
   if (ctx.measureText(text).width <= maxW) return text
