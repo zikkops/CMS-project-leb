@@ -102,13 +102,15 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
   not from these notes — service account installed, claims backfilled and
   present on the Auth user, and a **claims-based ruleset is deployed** (live
   since 2026-08-28T17:07Z). Older notes saying "built, not deployed" are stale.
-  - **One outstanding drift:** the live rules are the pre-D&D-removal revision.
-    They still define `isDm()`, `canDnd*()`, `dndCampaigns`, `dndReservations`,
-    `dndDmLocks`, `lfpEntries` and `dndGroups` — about 134 lines governing
-    collections no code touches any more. `firestore.rules` here is the
-    stripped version; deploying it is the cleanup. Diffed 28 Aug: the D&D
-    removal is the *only* difference, so it is safe, but a rules deploy still
-    has no gradual rollout.
+  - **No drift.** The D&D cleanup this note used to list as outstanding is
+    deployed — checked against the live ruleset 29 Aug 2026, not from these
+    notes. Nothing in the live rules mentions `isDm()`, `dndCampaigns` or any
+    of the rest except one comment about an unrelated past bug.
+  - Live ruleset as of 29 Aug 17:18Z also carries: staff barred from being
+    the beneficiary of their own loyalty transaction or a redemption,
+    `appSettings/business` locked to the server, `appSettings/features`
+    world-readable, and the dead `appSettings/loyaltyReset` any-staff-write
+    exception removed. Verified behaviourally, not just by reading the file.
 - **01 (stock receiving): built, and now testable.** `npm run seed:demo`
   writes a submitted weekly order, so the order → receive → count chain can
   finally be exercised end to end. That chain working is the phase's
