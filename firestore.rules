@@ -124,7 +124,11 @@ service cloud.firestore {
 
     // One helper per section, mirroring SECTION_ACCESS in app/lib/roles.ts.
     // Keep these in the same order as that file so a drift is easy to spot.
-    function canProducts()             { return can('products',             ['admin', 'manager', 'retail']); }
+    // canProducts() was here and is gone the same way the others were. Every
+    // collection it governed is now `write: if false`: products and
+    // productCategories behind /api/admin/products, and wholesaleOrders
+    // updates behind PATCH /api/wholesale/orders. The section key itself is
+    // very much alive — the routes gate on it via requireSection('products').
     // canMenu() was here and is gone the same way: menuCategories and
     // menuItems both moved to `write: if false` behind /api/admin/menu.
     function canEvents()            { return can('events',            ['admin', 'manager', 'social']); }
