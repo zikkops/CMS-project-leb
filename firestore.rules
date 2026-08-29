@@ -125,10 +125,13 @@ service cloud.firestore {
     // One helper per section, mirroring SECTION_ACCESS in app/lib/roles.ts.
     // Keep these in the same order as that file so a drift is easy to spot.
     function canProducts()             { return can('products',             ['admin', 'manager', 'retail']); }
-    function canMenu()              { return can('menu',              ['admin', 'manager']); }
+    // canMenu() was here and is gone the same way: menuCategories and
+    // menuItems both moved to `write: if false` behind /api/admin/menu.
     function canEvents()            { return can('events',            ['admin', 'manager', 'social']); }
     function canLoyalty()           { return can('loyalty',           ['admin', 'manager']); }
-    function canBranchTables()      { return can('branchTables',      ['admin', 'manager']); }
+    // canBranchTables() was here and is gone the same way: branchTableLayouts
+    // moved to `write: if false` when floor plans went behind
+    // PUT /api/admin/branch-tables, leaving it governing nothing.
     // canTableReservations() was here and is gone for the same reason
     // canGamePurchases() was: approve, reject and check-in all moved to route
     // handlers, so nothing calls it. A defined-but-uncalled helper in a
@@ -607,9 +610,17 @@ service cloud.firestore {
     // One layout doc per branch, doc id == the branch name itself — public
     // read (customers need to see the map to book, signed in or not),
     // editor-role write (the admin table map editor).
+    // World-readable on purpose: the public table map renders straight off
+    // this, for visitors who are not signed in.
+    //
+    // Which is exactly why the write moved. Whatever the browser put here went
+    // out to everyone unchecked — shapes, capacities, geometry, and an
+    // adjacency graph the booking flow reads. PUT /api/admin/branch-tables
+    // validates every marker and enforces that adjacency is symmetric and
+    // points at tables that exist.
     match /branchTableLayouts/{branch} {
       allow read: if true;
-      allow write: if canBranchTables();
+      allow write: if false;
     }
 
     // Same shape as eventReservations — instant lock,
