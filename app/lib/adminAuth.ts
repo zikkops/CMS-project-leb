@@ -6,6 +6,8 @@ import { onAuthStateChanged, signOut, type User } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import { ALL_ROLES, SECTION_ACCESS, hasSectionAccess, type Role, type SectionKey } from './roles'
+import { featureForSection, isFeatureOn } from './features'
+import { useFeatureFlags } from './useFeatures'
 import { authedFetch, unwrap } from './apiClient'
 
 // Role, ALL_ROLES, SECTION_ACCESS and hasSectionAccess moved to ./roles so the
@@ -225,11 +227,26 @@ export function useIsStaff(): boolean {
 export function useRequireRole(allowed: Role[]) {
   const router = useRouter()
   const { user, role, branchIds, orderDepts, sectionGrants, sectionRevocations, superadmin, loading, provisioned } = useAdminUser()
+  const { flags, loading: featuresLoading } = useFeatureFlags()
 
   // Detect which section key this call is gating by reference equality —
   // all callers pass SECTION_ACCESS.xxx directly, so the array object is the same.
   const sectionKey = Object.entries(SECTION_ACCESS).find(([, v]) => v === allowed)?.[0]
   const hasAccess = hasSectionAccess(role, allowed, sectionGrants, sectionKey, sectionRevocations)
+
+  // Enforcement layer 2 from app/lib/features.ts, applied here rather than
+  // page by page.
+  //
+  // useRequireFeature() existed as a standalone hook and no page ever called
+  // it — which is the same way the registry itself sat unread for months. A
+  // guard that every page has to remember to add is a guard that pages forget.
+  // This one is already on every admin page, and it has already resolved the
+  // section key, so the feature is one lookup away.
+  //
+  // Cosmetic, like the navigation. A switched-off module's pages redirect;
+  // what actually stops anyone doing anything is their role.
+  const feature = sectionKey ? featureForSection(sectionKey) : undefined
+  const featureOn = featuresLoading || !feature || isFeatureOn(feature, flags)
 
   useEffect(() => {
     if (loading) return
@@ -241,12 +258,16 @@ export function useRequireRole(allowed: Role[]) {
       signOut(auth).then(() => router.replace('/admin/login'))
       return
     }
-    if (!hasAccess) {
+    // Feature before access: a module that is switched off is switched off for
+    // everyone, so "this module is not in use" is the truer answer than "you
+    // are not allowed" — and it avoids telling someone they lack a permission
+    // that would not help them anyway.
+    if (!featureOn || !hasAccess) {
       router.replace('/admin')
     }
-  }, [loading, user, hasAccess, provisioned, router])
+  }, [loading, user, hasAccess, featureOn, provisioned, router])
 
-  const checking = loading || !user || !provisioned || !hasAccess
+  const checking = loading || featuresLoading || !user || !provisioned || !hasAccess || !featureOn
   return { checking, role, branchIds, orderDepts, sectionGrants, sectionRevocations, superadmin, user }
 }
 

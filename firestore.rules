@@ -130,7 +130,14 @@ service cloud.firestore {
     function canLoyalty()           { return can('loyalty',           ['admin', 'manager']); }
     function canBranchTables()      { return can('branchTables',      ['admin', 'manager']); }
     function canTableReservations() { return can('tableReservations', ['admin', 'manager']); }
-    function canGamePurchases()     { return can('gamePurchases',     ['admin', 'manager', 'gamer']); }
+    // canGamePurchases() was here and nothing called it — the compiler said so
+    // on every deploy. gamePurchaseOrders moved to `write: if false` when
+    // purchases went behind /api/admin/purchases, which left the helper
+    // governing nothing.
+    //
+    // Removed for the same reason there is deliberately no isSuperadmin()
+    // helper below: a defined-but-uncalled function in a security file reads
+    // as though something enforces it.
     function canWeeklyOrders()      { return can('weeklyOrders',      ['admin', 'manager']); }
     function canEndOfDay()          { return can('endOfDay',          ['admin', 'manager']); }
     function canSupplies()          { return can('supplies',          ['admin', 'manager', 'kitchen_crew', 'barista']); }

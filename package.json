@@ -16,7 +16,8 @@
     "fix:env": "node scripts/fix-env.mjs",
     "audit:writes": "node scripts/audit-client-writes.mjs",
     "add:index": "node scripts/add-index.mjs",
-    "harden:customers": "node --env-file=.env.local scripts/harden-customer-fields.mjs"
+    "harden:customers": "node --env-file=.env.local scripts/harden-customer-fields.mjs",
+    "verify:features": "node scripts/verify-features.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
