@@ -141,8 +141,11 @@ export default function TransferStockPage() {
       setItems([])
       setResult({ ok: true, msg: `Transferred ${fromBranch} → ${toBranch}: ${summary}` })
     } catch (err) {
-      const msg = err instanceof Error && err.message.startsWith('insufficient-stock:')
-        ? `Not enough stock: ${err.message.replace('insufficient-stock:', '')} doesn't have that many copies at ${fromBranch}.`
+      // The route names the product and both figures — "Catan: only 2 at
+      // Main, tried to move 5" — which is more use than a sentinel the browser
+      // had to reword. Fall back only when there is genuinely no message.
+      const msg = err instanceof Error && err.message
+        ? err.message
         : 'Transfer failed. Please try again.'
       setResult({ ok: false, msg })
     } finally {

@@ -1,14 +1,10 @@
 'use client'
 
-import {
-  collection, doc, getDocs, runTransaction,
-  serverTimestamp, query, orderBy, limit, Timestamp,
-} from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, limit, Timestamp } from 'firebase/firestore'
 import { db } from './firebase'
-import { logActivity } from './activityLog'
 import { uploadImage } from './media'
 import { authedFetch, unwrap } from './apiClient'
-import { BRANCHES, normalizeStock } from './branches'
+import { BRANCHES } from './branches'
 import { BRAND } from './brand'
 
 export interface PurchaseItem {
@@ -326,36 +322,30 @@ export async function refundOrder(
   await unwrap(res)
 }
 
-// Atomically moves copies of one or more games from one branch to another in a
-// single Firestore transaction — all reads happen first, all stock is validated,
-// then all writes are applied together so a failure on any one game rolls back
-// everything. Throws 'insufficient-stock:<gameName>' if any game doesn't have
-// enough stock at fromBranch.
+/**
+ * Moves copies of one or more products between branches.
+ *
+ * The Firestore transaction that used to be here was correct in itself — all
+ * reads before all writes, every quantity checked before anything moved — but
+ * the browser chose the branches and nothing checked they existed. A transfer
+ * to an unconfigured branch name wrote stock under a key nothing renders: the
+ * copies left the source branch and became shrinkage with a matching surplus
+ * nobody could find.
+ *
+ * The route validates both branches against the configured list, rejects a
+ * same-branch transfer, rejects a repeated product, and re-reads the on-hand
+ * figure inside its own transaction so a stale count cannot talk it into
+ * moving more than exists.
+ *
+ * Throws with the server's message, which names the product and both figures
+ * — the old 'insufficient-stock:<name>' sentinel is gone.
+ */
 export async function transferGameStock(
   items: { gameId: string; gameName: string; quantity: number }[],
   fromBranch: string,
   toBranch: string,
 ): Promise<void> {
-  const refs = items.map(item => doc(db, 'games', item.gameId))
-  await runTransaction(db, async tx => {
-    const snaps = await Promise.all(refs.map(ref => tx.get(ref)))
-    for (let i = 0; i < items.length; i++) {
-      if (!snaps[i].exists()) throw new Error(`game-not-found:${items[i].gameId}`)
-      const stock = normalizeStock(snaps[i].data()!.stock)
-      if ((stock[fromBranch] ?? 0) < items[i].quantity)
-        throw new Error(`insufficient-stock:${items[i].gameName}`)
-    }
-    for (let i = 0; i < items.length; i++) {
-      const stock = normalizeStock(snaps[i].data()!.stock)
-      stock[fromBranch] = (stock[fromBranch] ?? 0) - items[i].quantity
-      stock[toBranch]   = (stock[toBranch]   ?? 0) + items[i].quantity
-      tx.update(refs[i], { stock, updatedAt: serverTimestamp() })
-    }
-  })
-  await logActivity(
-    'update', 'Stock Transfer',
-    `${fromBranch} → ${toBranch}: ${items.map(i => `${i.gameName} ×${i.quantity}`).join(', ')}`,
-  )
+  await unwrap(await authedFetch('/api/admin/stock-transfer', 'POST', { fromBranch, toBranch, items }))
 }
 
 export async function listPurchaseOrders(max = 200): Promise<GamePurchaseOrder[]> {
