@@ -46,7 +46,7 @@ for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
 
 const {
   weightedAverageCost, computeTotals, shortfall, isShort, priceChange, unplannedLine,
-  seedLinesFromOrder, costOfGoodsUsd, foodCostPercent, fulfilmentByTemplateId,
+  seedLinesFromOrder, costOfGoodsUsd, foodCostPercent, fulfilmentByTemplateId, deliveryDocLabel,
 } = await import(`file://${join(out, 'deliveryMath.js')}`)
 
 let pass = 0, fail = 0
@@ -146,6 +146,19 @@ eq('two shipments sum, draft ignored', fulfilmentByTemplateId([
   { status: 'received', lines: [{ templateId: 't1', qtyReceived: 5 }] },
   { status: 'draft', lines: [{ templateId: 't1', qtyReceived: 99 }] },
 ]).t1, 17)
+
+console.log(String.fromCharCode(10) + 'deliveryDocLabel')
+eq('every part present',
+  deliveryDocLabel({ branch: 'Main', department: 'Kitchen', providerName: 'Dairy Co', invoiceNumber: 'F-201' }),
+  'Main — Kitchen — Dairy Co — F-201')
+// An unplanned delivery has no named supplier, which used to leave a gap
+// between two dashes in the audit log.
+eq('no supplier leaves no gap',
+  deliveryDocLabel({ branch: 'Main', department: 'Kitchen', providerName: '', invoiceNumber: 'F-201' }),
+  'Main — Kitchen — F-201')
+eq('neither supplier nor invoice',
+  deliveryDocLabel({ branch: 'Main', department: 'Bar', providerName: '', invoiceNumber: '' }),
+  'Main — Bar')
 
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

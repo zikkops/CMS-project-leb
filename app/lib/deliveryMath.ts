@@ -331,8 +331,13 @@ export function foodCostPercent(cogsUsd: number, netSalesUsd: number): number | 
 }
 
 export function deliveryDocLabel(d: Pick<Delivery, 'branch' | 'department' | 'providerName' | 'invoiceNumber'>): string {
-  const invoice = d.invoiceNumber ? ` — ${d.invoiceNumber}` : ''
-  return `${d.branch} — ${d.department} — ${d.providerName}${invoice}`
+  // Built by joining only the parts that exist. Interpolating them all
+  // unconditionally left "Main — Kitchen —  — WALK-0001" in the audit log
+  // whenever a delivery arrived without a named supplier, which is every
+  // unplanned one.
+  return [d.branch, d.department, d.providerName, d.invoiceNumber]
+    .filter(part => part && String(part).trim())
+    .join(' — ')
 }
 
 // How much of each ordered line has actually arrived, across every delivery
