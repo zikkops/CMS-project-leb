@@ -201,6 +201,11 @@ service cloud.firestore {
     // QUERYING them rather than trusting the list a stale page was holding.
     match /menuCategories/{id} { allow read: if true; allow write: if false; }
     match /menuItems/{id}      { allow read: if true; allow write: if false; }
+    // Menu modifier groups (Phase 03). World-readable for the same reason the
+    // menu is: the public menu shows what a drink can be made with, and the
+    // waiter's order screen reads the same documents. Writes go through
+    // /api/admin/modifiers, which is where the price of a choice is validated.
+    match /modifierGroups/{id} { allow read: if true; allow write: if false; }
     // /api/admin/events owns writes now. It refuses to delete an event anyone
     // still holds a spot at, and refuses a maximum party size below the
     // minimum — which makes an event unbookable while explaining nothing,
