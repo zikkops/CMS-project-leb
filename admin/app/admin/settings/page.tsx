@@ -152,6 +152,8 @@ export default function BusinessSettingsPage() {
   const [rate, setRate] = useState('')
   const [tips, setTips] = useState('')
   const [prefix, setPrefix] = useState('')
+  const [staffFood, setStaffFood] = useState('')
+  const [staffDrink, setStaffDrink] = useState('')
 
   // Whether the prefix can still be chosen. Not in the settings document —
   // it's a fact about the invoice counter, which is server-only — so it comes
@@ -172,6 +174,8 @@ export default function BusinessSettingsPage() {
     setRate(String(settings.exchangeRate))
     setTips(String(+(settings.tipsDeductionRate * 100).toFixed(4)))
     setPrefix(settings.invoicePrefix)
+    setStaffFood(String(+(settings.staffDiscountFood * 100).toFixed(4)))
+    setStaffDrink(String(+(settings.staffDiscountDrink * 100).toFixed(4)))
   }, [loading, settings])
 
   useEffect(() => {
@@ -190,7 +194,9 @@ export default function BusinessSettingsPage() {
     Number(vat)  / 100 !== settings.vatRate ||
     Number(rate)        !== settings.exchangeRate ||
     Number(tips) / 100 !== settings.tipsDeductionRate ||
-    prefix !== settings.invoicePrefix
+    prefix !== settings.invoicePrefix ||
+    Number(staffFood) / 100 !== settings.staffDiscountFood ||
+    Number(staffDrink) / 100 !== settings.staffDiscountDrink
 
   async function save() {
     setSaving(true); setErr(''); setDone('')
@@ -201,6 +207,8 @@ export default function BusinessSettingsPage() {
           exchangeRate:      Number(rate),
           tipsDeductionRate: Number(tips) / 100,
           invoicePrefix:     prefix,
+          staffDiscountFood:  Number(staffFood) / 100,
+          staffDiscountDrink: Number(staffDrink) / 100,
         })
       )
       const changed = Number(r.changed ?? 0)
@@ -259,6 +267,24 @@ export default function BusinessSettingsPage() {
           <RateField
             label="Tips deduction" suffix="%" step="0.5" value={tips} onChange={setTips} isMobile={isMobile}
             hint="Taken off the tips pool before it is split between staff."
+          />
+          <RateField
+            label="Staff discount — food" suffix="% off" step="5"
+            value={staffFood} onChange={setStaffFood} isMobile={isMobile}
+            hint={`Taken off food and sweets on a check marked as a staff meal. ${
+              Number(staffFood) > 0
+                ? `At ${Number(staffFood)}% off, staff pay ${(100 - Number(staffFood)).toFixed(0)}% — $10.00 becomes ${((1 - Number(staffFood) / 100) * 10).toFixed(2)}.`
+                : 'Zero means no discount.'
+            }`}
+          />
+          <RateField
+            label="Staff discount — drinks" suffix="% off" step="5"
+            value={staffDrink} onChange={setStaffDrink} isMobile={isMobile}
+            hint={`Taken off anything from the bar. ${
+              Number(staffDrink) > 0
+                ? `At ${Number(staffDrink)}% off, staff pay ${(100 - Number(staffDrink)).toFixed(0)}% — $10.00 becomes ${((1 - Number(staffDrink) / 100) * 10).toFixed(2)}.`
+                : 'Zero means no discount.'
+            }`}
           />
           <PrefixField
             value={prefix}

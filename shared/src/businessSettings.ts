@@ -43,6 +43,20 @@ export interface BusinessSettings {
   /** Fraction deducted from tips before distribution. */
   tipsDeductionRate: number
   /**
+   * Staff meal discounts, as the fraction taken OFF.
+   *
+   * 0.7 means seventy percent off — staff pay thirty. Stored as "off" rather
+   * than "pays" because that is how the rule is spoken ("staff get 70% off"),
+   * and a field whose name disagrees with how people say it out loud is a
+   * field somebody eventually inverts. The settings page shows both figures
+   * side by side so the reading cannot be in doubt.
+   *
+   * Split by what is being bought, not by who is buying: food and drink carry
+   * different margins, which is the whole reason a café sets two rates.
+   */
+  staffDiscountFood: number
+  staffDiscountDrink: number
+  /**
    * The letters an invoice number starts with, e.g. the AC of
    * AC-Q3-082026-0001.
    *
@@ -62,7 +76,9 @@ export interface BusinessSettings {
 }
 
 /** The numeric settings, which share bounds checking and a form control. */
-export type RateKey = 'vatRate' | 'exchangeRate' | 'tipsDeductionRate'
+export type RateKey =
+  | 'vatRate' | 'exchangeRate' | 'tipsDeductionRate'
+  | 'staffDiscountFood' | 'staffDiscountDrink'
 
 /** What the app used before any of this was editable. */
 export const SETTINGS_DEFAULTS: BusinessSettings = {
@@ -70,6 +86,10 @@ export const SETTINGS_DEFAULTS: BusinessSettings = {
   exchangeRate:      BRAND.locale.exchangeRate,
   tipsDeductionRate: BRAND.tipsDeductionRate,
   invoicePrefix:     FALLBACK_INVOICE_PREFIX,
+  // No staff discount until somebody sets one. A default that quietly took
+  // money off every staff check would be a rate nobody chose.
+  staffDiscountFood:  0,
+  staffDiscountDrink: 0,
 }
 
 // Bounds, shared with the route so the form and the server agree on what is
@@ -80,6 +100,10 @@ export const SETTINGS_LIMITS: Record<RateKey, { min: number; max: number }> = {
   vatRate:           { min: 0, max: 0.5 },
   exchangeRate:      { min: 1, max: 100_000_000 },
   tipsDeductionRate: { min: 0, max: 0.5 },
+  // Up to 100% — a free staff meal is a real policy. Not above it: a discount
+  // over the price would have the café paying its staff to eat.
+  staffDiscountFood:  { min: 0, max: 1 },
+  staffDiscountDrink: { min: 0, max: 1 },
 }
 
 /**
@@ -115,6 +139,8 @@ export function parseSettings(data: Record<string, unknown> | undefined): Busine
     vatRate:           readRate(data?.vatRate, 'vatRate'),
     exchangeRate:      readRate(data?.exchangeRate, 'exchangeRate'),
     tipsDeductionRate: readRate(data?.tipsDeductionRate, 'tipsDeductionRate'),
+    staffDiscountFood:  readRate(data?.staffDiscountFood, 'staffDiscountFood'),
+    staffDiscountDrink: readRate(data?.staffDiscountDrink, 'staffDiscountDrink'),
     invoicePrefix:     readInvoicePrefix(data?.invoicePrefix),
   }
 }

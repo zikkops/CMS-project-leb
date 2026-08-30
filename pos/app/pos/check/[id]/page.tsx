@@ -19,14 +19,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
-import { lineTotal, orderedTotal, type CheckLine } from '@big-cms/shared/checks'
+import {
+  lineTotal, grossLineTotal, lineDiscount, checkTotals,
+  type CheckLine, type StaffDiscount,
+} from '@big-cms/shared/checks'
 import { minutesWaiting, urgency } from '@big-cms/shared/tickets'
 import {
   validateSelection, selectionLabel, lineUnitPrice, describeSelections,
   type ModifierGroup,
 } from '@big-cms/shared/modifiers'
 import {
-  useCheck, usePosMenu, addLines, sendCheck, voidLine, moveCheck, closeCheck,
+  useCheck, usePosMenu, addLines, sendCheck, voidLine, moveCheck, closeCheck, setStaffMeal,
   type DraftLine, type PosMenuItem,
 } from '../../../lib/usePos'
 
@@ -78,11 +81,13 @@ const tap: React.CSSProperties = {
 // A component declared inside a render body is a new type on every keystroke,
 // so React remounts it and any open sheet closes itself. (CONTRIBUTING.md #2.)
 
-function LineRow({ line, now, onVoid }: {
+function LineRow({ line, now, discount, onVoid }: {
   line: CheckLine
   now: number
+  discount: StaffDiscount | null
   onVoid: (() => void) | null
 }) {
+  const off = lineDiscount(line, discount)
   const voided = line.status === 'void'
   const sentMs = line.status === 'sent' && line.sentAt ? Date.parse(line.sentAt) : NaN
   const mins = Number.isFinite(sentMs) ? minutesWaiting(sentMs, now) : null
@@ -126,8 +131,13 @@ function LineRow({ line, now, onVoid }: {
 
       <div style={{ textAlign: 'right' }}>
         <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>
-          {money(lineTotal(line))}
+          {money(lineTotal(line, discount))}
         </p>
+        {off > 0 && (
+          <p style={{
+            fontSize: '0.65rem', color: 'var(--teal)', marginTop: '0.1rem',
+          }}>was {money(grossLineTotal(line))}</p>
+        )}
         {onVoid && (
           <button onClick={onVoid} style={{
             marginTop: '0.3rem', background: 'none', border: 'none', padding: '0.25rem 0',
@@ -382,7 +392,10 @@ export default function CheckPage() {
     )
   }
 
-  const sentTotal = orderedTotal(check.lines)
+  const totals = checkTotals(check)
+  // Drafts are shown at full price: the discount is applied server-side when
+  // the lines land, and guessing it here would show one number before Send
+  // and another after.
   const draftTotal = drafts.reduce((s, d) => s + d.unitPrice * d.quantity, 0)
   const unsentOnServer = check.lines.filter(l => l.status === 'draft').length
   const canSend = drafts.length > 0 || unsentOnServer > 0
@@ -404,9 +417,19 @@ export default function CheckPage() {
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.6rem', color: 'var(--offwhite)' }}>
             Table {check.tableNumber}
           </h1>
-          <span style={{ fontSize: '1.1rem', color: 'var(--teal)', fontWeight: 600 }}>
-            {money(sentTotal + draftTotal)}
-          </span>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontSize: '1.1rem', color: 'var(--teal)', fontWeight: 600 }}>
+              {money(totals.net + draftTotal)}
+            </span>
+            {/* Shown as its own figure rather than folded into the total: a
+                staff meal that quietly shows a smaller number is one nobody
+                can audit. */}
+            {totals.discount > 0 && (
+              <p style={{ fontSize: '0.7rem', color: 'rgba(245,242,236,0.4)', marginTop: '0.15rem' }}>
+                {money(totals.gross)} − {money(totals.discount)} staff
+              </p>
+            )}
+          </div>
         </div>
 
         {liveError && (
@@ -435,7 +458,7 @@ export default function CheckPage() {
         )}
 
         {check.lines.map(l => (
-          <LineRow key={l.id} line={l} now={now}
+          <LineRow key={l.id} line={l} now={now} discount={check.staffDiscount ?? null}
             onVoid={l.status === 'void' ? null : () => handleVoid(l.id)} />
         ))}
         {drafts.map((d, i) => (
@@ -444,6 +467,19 @@ export default function CheckPage() {
         ))}
 
         <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
+          <button
+            onClick={async () => {
+              setError('')
+              try { await setStaffMeal(checkId, !check.staffDiscount) }
+              catch (err) { setError(err instanceof Error ? err.message : 'Could not change that.') }
+            }}
+            style={{
+              ...tap, flex: 1, minWidth: '120px',
+              backgroundColor: check.staffDiscount ? 'rgba(0,160,152,0.18)' : 'transparent',
+              border: `1px solid ${check.staffDiscount ? 'var(--teal)' : 'rgba(255,255,255,0.14)'}`,
+              color: check.staffDiscount ? 'var(--offwhite)' : 'rgba(245,242,236,0.6)',
+            }}
+          >{check.staffDiscount ? '✓ Staff meal' : 'Staff meal'}</button>
           <button onClick={() => setMoving(true)} style={{
             ...tap, flex: 1, minWidth: '120px', backgroundColor: 'transparent',
             border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(245,242,236,0.6)',

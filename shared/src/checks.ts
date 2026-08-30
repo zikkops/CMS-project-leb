@@ -93,6 +93,21 @@ export interface CheckLine {
   voidReason: string | null
 }
 
+/**
+ * The staff-meal rates, copied onto a check when it is marked as one.
+ *
+ * Snapshotted for the reason every rate in this codebase is: a check written
+ * tonight must not re-price itself because somebody changed the policy next
+ * month. null means this is an ordinary check.
+ */
+export interface StaffDiscount {
+  /** Fraction taken OFF food. 0.7 is seventy percent off. */
+  food: number
+  drink: number
+  appliedBy: string
+  appliedByEmail: string
+}
+
 export interface Check {
   id: string
   branch: string
@@ -107,6 +122,8 @@ export interface Check {
   openedBy: string
   openedByEmail: string
   closedAt: string | null
+  /** null on an ordinary check. Set by the staff-meal toggle. */
+  staffDiscount: StaffDiscount | null
 }
 
 // ── Bounds ────────────────────────────────────────────────────────────────
@@ -122,13 +139,51 @@ export const CHECK_LIMITS = {
   noteLength: 200,
 } as const
 
+// ── Staff meals ────────────────────────────────────────────────────────────
+
+/**
+ * Which rate a line takes, from the station it was routed to.
+ *
+ * The station already encodes what was bought — Bar means a drink, Kitchen and
+ * Sweets mean food — so nothing new has to be stored on the line to know which
+ * rate applies. Merchandise has no station and takes no staff discount: a
+ * board game is bought stock with a real cost, not a plate of food, and
+ * discounting it is a different policy nobody has asked for.
+ */
+export function staffRateFor(line: CheckLine, discount: StaffDiscount | null): number {
+  if (!discount) return 0
+  if (line.source === 'product') return 0
+  if (line.station === 'Bar') return discount.drink
+  if (line.station === 'Kitchen' || line.station === 'Sweets') return discount.food
+  // A section nobody mapped to a station. No rate rather than a guess.
+  return 0
+}
+
+/** What comes off one line, in the main currency. */
+export function lineDiscount(line: CheckLine, discount: StaffDiscount | null): number {
+  const rate = staffRateFor(line, discount)
+  if (rate <= 0) return 0
+  return Math.round(grossLineTotal(line) * rate * 100) / 100
+}
+
 // ── Money on a line (not a bill — see the header) ──────────────────────────
 
-/** One line's total, modifiers included. Voided lines count as zero. */
-export function lineTotal(line: CheckLine): number {
+/** One line before any discount. Voided lines count as zero. */
+export function grossLineTotal(line: CheckLine): number {
   if (line.status === 'void') return 0
   const unit = lineUnitPrice(line.unitPrice, line.modifiers)
   return Math.round(unit * line.quantity * 100) / 100
+}
+
+/**
+ * One line's total.
+ *
+ * Takes the discount rather than reading it from anywhere, so a caller that
+ * has not thought about staff meals gets the undiscounted figure instead of
+ * silently the wrong one.
+ */
+export function lineTotal(line: CheckLine, discount: StaffDiscount | null = null): number {
+  return Math.round((grossLineTotal(line) - lineDiscount(line, discount)) * 100) / 100
 }
 
 /**
@@ -138,8 +193,31 @@ export function lineTotal(line: CheckLine): number {
  * Those are Phase 04 and each is a decision this must not pre-empt by
  * pretending to be the total somebody pays.
  */
-export function orderedTotal(lines: CheckLine[]): number {
-  return Math.round(lines.reduce((sum, l) => sum + lineTotal(l), 0) * 100) / 100
+export function orderedTotal(lines: CheckLine[], discount: StaffDiscount | null = null): number {
+  return Math.round(lines.reduce((sum, l) => sum + lineTotal(l, discount), 0) * 100) / 100
+}
+
+export interface CheckTotals {
+  /** Before any staff discount. */
+  gross: number
+  /** What the discount took off. Zero on an ordinary check. */
+  discount: number
+  /** What is owed, before VAT and service — those are Phase 04. */
+  net: number
+}
+
+/**
+ * The three figures a check screen shows.
+ *
+ * Discount is returned separately rather than folded into the total, because a
+ * staff meal that quietly shows a smaller number is a staff meal nobody can
+ * audit. It should be visible as a line somebody signed off.
+ */
+export function checkTotals(check: Pick<Check, 'lines' | 'staffDiscount'>): CheckTotals {
+  const gross = Math.round(check.lines.reduce((s, l) => s + grossLineTotal(l), 0) * 100) / 100
+  const discount = Math.round(
+    check.lines.reduce((s, l) => s + lineDiscount(l, check.staffDiscount), 0) * 100) / 100
+  return { gross, discount, net: Math.round((gross - discount) * 100) / 100 }
 }
 
 // ── Reading a check ────────────────────────────────────────────────────────

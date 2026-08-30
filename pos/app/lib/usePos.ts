@@ -334,6 +334,10 @@ export async function moveCheck(checkId: string, tableNumber: number): Promise<v
   await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'move', tableNumber }))
 }
 
+export async function setStaffMeal(checkId: string, on: boolean): Promise<void> {
+  await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'staffMeal', on }))
+}
+
 export async function closeCheck(checkId: string): Promise<void> {
   await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'close' }))
 }

@@ -13,6 +13,7 @@
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import {
   parseLineRequests, openCheck, addLines, sendCheck, voidLine, moveCheck, closeCheck,
+  setStaffMeal,
 } from '@big-cms/shared/server/checks'
 import { logActivity } from '@big-cms/shared/server/activityLog'
 
@@ -84,6 +85,17 @@ export async function PATCH(request: Request): Promise<Response> {
         await logActivity(caller, 'update', 'POS',
           `Moved a check from table ${result.from} to table ${result.to}`)
         return Response.json({ ok: true, ...result })
+      }
+      case 'staffMeal': {
+        // Logged. A discount is the one thing on a check somebody should be
+        // answerable for, and the entry names the rates that were applied
+        // rather than just that a discount happened.
+        const on = body.on === true
+        const r = await setStaffMeal(caller, checkId, on)
+        await logActivity(caller, 'update', 'POS', on
+          ? `Staff meal on a check — ${Math.round(r.food * 100)}% off food, ${Math.round(r.drink * 100)}% off drinks`
+          : 'Staff meal removed from a check')
+        return Response.json({ ok: true, ...r })
       }
       case 'close': {
         const result = await closeCheck(caller, checkId)

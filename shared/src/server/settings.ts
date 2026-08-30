@@ -47,6 +47,8 @@ export function parseSettingsInput(body: Record<string, unknown>): BusinessSetti
     vatRate:           rate(body.vatRate, 'vatRate', 'VAT rate'),
     exchangeRate:      rate(body.exchangeRate, 'exchangeRate', 'Exchange rate'),
     tipsDeductionRate: rate(body.tipsDeductionRate, 'tipsDeductionRate', 'Tips deduction'),
+    staffDiscountFood:  rate(body.staffDiscountFood, 'staffDiscountFood', 'Staff discount on food'),
+    staffDiscountDrink: rate(body.staffDiscountDrink, 'staffDiscountDrink', 'Staff discount on drinks'),
     invoicePrefix:     rawPrefix,
   }
 }
@@ -59,6 +61,8 @@ export async function readSettings(): Promise<BusinessSettings> {
     vatRate:           Number(d.vatRate ?? SETTINGS_DEFAULTS.vatRate),
     exchangeRate:      Number(d.exchangeRate ?? SETTINGS_DEFAULTS.exchangeRate),
     tipsDeductionRate: Number(d.tipsDeductionRate ?? SETTINGS_DEFAULTS.tipsDeductionRate),
+    staffDiscountFood:  Number(d.staffDiscountFood ?? SETTINGS_DEFAULTS.staffDiscountFood),
+    staffDiscountDrink: Number(d.staffDiscountDrink ?? SETTINGS_DEFAULTS.staffDiscountDrink),
     invoicePrefix:     readInvoicePrefix(d.invoicePrefix),
   }
 }

@@ -25,6 +25,7 @@ import {
 import { validateSelection, toSelections, type ModifierGroup } from '../modifiers'
 import { effectivePrice } from '../productPricing'
 import { toTicketLines } from '../tickets'
+import { readSettings } from './settings'
 
 const CHECKS = 'checks'
 const TICKETS = 'kitchenTickets'
@@ -290,6 +291,7 @@ export async function openCheck(
       status: 'open',
       guestCount,
       lines: [],
+      staffDiscount: null,
       openedBy: caller.uid,
       openedByEmail: caller.email ?? '',
       openedAt: FieldValue.serverTimestamp(),
@@ -447,6 +449,62 @@ export async function voidLine(
     }
 
     return { wasSent }
+  })
+}
+
+/**
+ * Marks a check as a staff meal, or takes the mark off.
+ *
+ * The RATES are copied onto the check at the moment it is marked, not read at
+ * bill time. Same rule as the end-of-day exchange rate and the delivery VAT: a
+ * staff meal eaten tonight must not re-price itself because somebody changed
+ * the policy next month.
+ *
+ * Who applied it is recorded, because a discount is the one thing on a check
+ * that somebody should be answerable for — and this is deliberately the only
+ * discount the till can apply. Arbitrary money off a line is Phase 04, with
+ * approval limits attached; a fixed rate a superadmin configured is a policy,
+ * not discretion.
+ */
+export async function setStaffMeal(
+  caller: Caller,
+  checkId: string,
+  on: boolean,
+): Promise<{ on: boolean; food: number; drink: number }> {
+  const db = adminDb()
+
+  // Read the settings before the transaction: a transaction may not read after
+  // its first write, and this is an unrelated document.
+  const settings = on ? await readSettings() : null
+
+  return db.runTransaction(async tx => {
+    const check = await readCheck(tx, checkId)
+    if (check.status !== 'open') throw new HttpError(409, 'That check is closed.')
+
+    const staffDiscount = on && settings
+      ? {
+          food: settings.staffDiscountFood,
+          drink: settings.staffDiscountDrink,
+          appliedBy: caller.uid,
+          appliedByEmail: caller.email ?? '',
+        }
+      : null
+
+    if (on && staffDiscount && staffDiscount.food === 0 && staffDiscount.drink === 0) {
+      throw new HttpError(400,
+        'No staff discount is configured. A superadmin sets the rates under Settings → Business.')
+    }
+
+    tx.update(db.doc(`${CHECKS}/${checkId}`), {
+      staffDiscount,
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+
+    return {
+      on,
+      food: staffDiscount?.food ?? 0,
+      drink: staffDiscount?.drink ?? 0,
+    }
   })
 }
 
