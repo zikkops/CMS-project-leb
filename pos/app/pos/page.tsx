@@ -149,7 +149,7 @@ export default function FloorPage() {
   // till still taking payment, precisely so a waiter who cannot send an order
   // walks ten steps to it.
   const [branch] = useState(BRAND.branches[0] ?? '')
-  const { checks } = useOpenChecks(branch)
+  const { checks, error: liveError } = useOpenChecks(branch)
 
   const [adding, setAdding] = useState(false)
   const [tableNumber, setTableNumber] = useState('')
@@ -229,6 +229,14 @@ export default function FloorPage() {
             {open.length} open · {money(floorTotal)}
           </p>
         </div>
+
+        {liveError && (
+          <p style={{
+            color: '#C9962C', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6,
+            background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.25)',
+            borderRadius: '3px', padding: '0.7rem 0.9rem',
+          }}>{liveError}</p>
+        )}
 
         {error && !adding && (
           <p style={{

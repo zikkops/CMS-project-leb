@@ -280,7 +280,7 @@ export default function CheckPage() {
   const params = useParams<{ id: string }>()
   const checkId = String(params?.id ?? '')
 
-  const { check } = useCheck(checkId)
+  const { check, error: liveError } = useCheck(checkId)
   const now = useNow()
   const menu = usePosMenu()
 
@@ -374,7 +374,11 @@ export default function CheckPage() {
       <main style={{
         minHeight: '100vh', backgroundColor: 'var(--black)', padding: '3rem 1.25rem',
         fontFamily: 'var(--font-inter)', color: 'rgba(245,242,236,0.4)', textAlign: 'center',
-      }}>Loading the check…</main>
+      }}>
+        {/* Without this branch a refused read reads as "Loading…" forever,
+            which is the same silent failure wearing a spinner. */}
+        {liveError || 'Loading the check…'}
+      </main>
     )
   }
 
@@ -404,6 +408,14 @@ export default function CheckPage() {
             {money(sentTotal + draftTotal)}
           </span>
         </div>
+
+        {liveError && (
+          <p style={{
+            color: '#C9962C', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6,
+            background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.25)',
+            borderRadius: '3px', padding: '0.7rem 0.9rem',
+          }}>{liveError}</p>
+        )}
 
         {error && (
           <p style={{

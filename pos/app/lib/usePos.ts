@@ -27,12 +27,36 @@ import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import type { Check, Station } from '@big-cms/shared/checks'
 import { ACTIVE_TICKET_STATUSES, type Ticket } from '@big-cms/shared/tickets'
 
+// ── Listener failures are surfaced, not swallowed ─────────────────────────
+// These used to end in `() => setLoading(false)`, which turned a
+// permission-denied into an empty list. A waiter then saw "no tables open" on
+// a floor with six tables open, and there was nothing anywhere — no toast, no
+// console line they would look at — to say the read had been refused rather
+// than returning nothing.
+//
+// The commonest cause is the rules for a new collection not being deployed
+// yet, which produces exactly that: a working app, a correct query, and
+// silence. So the message names it.
+function listenerMessage(err: unknown): string {
+  const code = (err as { code?: string })?.code ?? ''
+  if (code === 'permission-denied') {
+    return 'Not allowed to read this. If the POS was deployed recently, the Firestore rules for it may not be live yet.'
+  }
+  if (code === 'failed-precondition') {
+    return 'This query needs a Firestore index that does not exist yet — the console link is in the browser log.'
+  }
+  return 'Lost connection to the live data. Showing the last known state.'
+}
+
 // ── Reads ─────────────────────────────────────────────────────────────────
 
 /** Open checks at one branch. Scoped — see the note above. */
-export function useOpenChecks(branch: string): { checks: Check[]; loading: boolean } {
+export function useOpenChecks(branch: string): {
+  checks: Check[]; loading: boolean; error: string
+} {
   const [checks, setChecks] = useState<Check[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (!branch) { setLoading(false); return }
@@ -45,21 +69,28 @@ export function useOpenChecks(branch: string): { checks: Check[]; loading: boole
       snap => {
         setChecks(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Check))
         setLoading(false)
+        setError('')
       },
-      // A dropped listener must not blank the floor mid-service. Offline
-      // persistence keeps serving the last known state; this only stops the
-      // spinner so the screen shows what it has.
-      () => setLoading(false),
+      err => {
+        // A dropped listener must not blank the floor mid-service — offline
+        // persistence keeps serving the last known state — but it must say so.
+        console.error('[useOpenChecks] listener failed:', err)
+        setError(listenerMessage(err))
+        setLoading(false)
+      },
     )
   }, [branch])
 
-  return { checks, loading }
+  return { checks, loading, error }
 }
 
 /** One check, live — a second waiter adding to the same table shows up here. */
-export function useCheck(checkId: string): { check: Check | null; loading: boolean } {
+export function useCheck(checkId: string): {
+  check: Check | null; loading: boolean; error: string
+} {
   const [check, setCheck] = useState<Check | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (!checkId) { setLoading(false); return }
@@ -67,20 +98,26 @@ export function useCheck(checkId: string): { check: Check | null; loading: boole
       snap => {
         setCheck(snap.exists() ? ({ id: snap.id, ...snap.data() } as Check) : null)
         setLoading(false)
+        setError('')
       },
-      () => setLoading(false),
+      err => {
+        console.error('[useCheck] listener failed:', err)
+        setError(listenerMessage(err))
+        setLoading(false)
+      },
     )
   }, [checkId])
 
-  return { check, loading }
+  return { check, loading, error }
 }
 
 /** Tickets still on one pass. Bumped ones are gone, which is the point. */
 export function useStationTickets(branch: string, station: Station): {
-  tickets: Ticket[]; loading: boolean
+  tickets: Ticket[]; loading: boolean; error: string
 } {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (!branch) { setLoading(false); return }
@@ -95,12 +132,17 @@ export function useStationTickets(branch: string, station: Station): {
       snap => {
         setTickets(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Ticket))
         setLoading(false)
+        setError('')
       },
-      () => setLoading(false),
+      err => {
+        console.error('[useStationTickets] listener failed:', err)
+        setError(listenerMessage(err))
+        setLoading(false)
+      },
     )
   }, [branch, station])
 
-  return { tickets, loading }
+  return { tickets, loading, error }
 }
 
 // ── The menu a waiter orders from ─────────────────────────────────────────
