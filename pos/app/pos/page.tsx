@@ -12,6 +12,13 @@
 // @big-cms/shared/modifiers and /api/admin/modifiers.
 
 import { BRAND } from '@big-cms/shared/brand'
+import { adminUrl } from '@big-cms/shared/appUrls'
+
+// The POS and the admin panel are separate deployments, so this is an absolute
+// URL or nothing. Staff manage the menu the POS sells from there, so the way
+// through matters — but a link that 404s is worse than no link, which is why
+// it only renders when NEXT_PUBLIC_ADMIN_URL is set.
+const ADMIN_HOME = adminUrl()
 
 export default function PosPage() {
   return (
@@ -35,6 +42,15 @@ export default function PosPage() {
           Order entry is being built. This app is deployed and reachable — the
           screen is what is coming next.
         </p>
+        {ADMIN_HOME && (
+          <a href={ADMIN_HOME} style={{
+            display: 'inline-block', marginTop: '2rem',
+            fontSize: '0.72rem', letterSpacing: '0.14em', textTransform: 'uppercase',
+            color: 'var(--offwhite)', textDecoration: 'none',
+            border: '1px solid rgba(255,255,255,0.14)', borderRadius: '2px',
+            padding: '0.65rem 1.4rem',
+          }}>Admin panel</a>
+        )}
       </div>
     </main>
   )

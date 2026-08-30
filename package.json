@@ -28,7 +28,8 @@
     "add:index": "node scripts/add-index.mjs",
     "harden:customers": "node --env-file=.env.local scripts/harden-customer-fields.mjs",
     "verify:features": "node scripts/verify-features.mjs",
-    "verify:hosts": "node scripts/verify-hosts.mjs"
+    "verify:hosts": "node scripts/verify-hosts.mjs",
+    "verify:checks": "node scripts/verify-checks.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
