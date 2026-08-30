@@ -44,7 +44,8 @@ const line = (over = {}) => ({
   id: 'l1', source: 'menu', refId: 'm1', name: 'Flat White',
   unitPrice: 4, modifiers: [], quantity: 1, seat: null, course: null,
   station: 'Bar', status: 'draft', note: '',
-  addedBy: 'u', addedByEmail: 'u@x', sentAt: null, voidReason: null, ...over,
+  addedBy: 'u', addedByEmail: 'u@x', sentAt: null,
+  voidReason: null, voidReasonKey: null, voidWasWaste: null, ...over,
 })
 
 console.log('\nlineTotal — modifiers are added, then multiplied')
@@ -182,6 +183,78 @@ console.log('\nbillTotals — both figures, and the adjustment shown')
   // +50. The 300 LBP gap is exactly the drift the rule exists to prevent —
   // and on a receipt it is a total that does not equal the sum of its lines.
   eq('and drifts by 300 LBP over ten lines', perLine - once, 300)
+}
+
+console.log('\nstaff discounts — the rate comes from the station')
+{
+  const disc = { food: 0.7, drink: 0.5, appliedBy: 'u', appliedByEmail: 'u@x' }
+  // Bar is a drink, Kitchen and Sweets are food. Nothing extra is stored on
+  // the line to know which — the station already says what was bought.
+  eq('Bar takes the drink rate', C.staffRateFor(line({ station: 'Bar' }), disc), 0.5)
+  eq('Kitchen takes the food rate', C.staffRateFor(line({ station: 'Kitchen' }), disc), 0.7)
+  eq('Sweets takes the food rate', C.staffRateFor(line({ station: 'Sweets' }), disc), 0.7)
+  // A board game is bought stock with a real cost, not a plate of food.
+  eq('merchandise takes nothing',
+    C.staffRateFor(line({ source: 'product', station: null }), disc), 0)
+  eq('no discount at all is zero', C.staffRateFor(line({ station: 'Bar' }), null), 0)
+  // A section nobody mapped to a station gets no rate rather than a guess.
+  eq('an unmapped station takes nothing', C.staffRateFor(line({ station: null }), disc), 0)
+
+  eq('70% off $9.25 is $6.48 off',
+    C.lineDiscount(line({ station: 'Kitchen', unitPrice: 9.25 }), disc), 6.48)
+  eq('50% off a $3 drink is $1.50',
+    C.lineDiscount(line({ station: 'Bar', unitPrice: 3 }), disc), 1.5)
+  // A voided line is already zero, so there is nothing to take off it.
+  eq('a voided line discounts nothing',
+    C.lineDiscount(line({ station: 'Bar', unitPrice: 3, status: 'void' }), disc), 0)
+}
+
+console.log('\ncheckTotals — the discount is its own figure, not folded in')
+{
+  const disc = { food: 0.7, drink: 0.5, appliedBy: 'u', appliedByEmail: 'u@x' }
+  const lines = [
+    line({ id: 'a', station: 'Bar', unitPrice: 3 }),
+    line({ id: 'b', station: 'Kitchen', unitPrice: 9.25 }),
+    line({ id: 'c', source: 'product', station: null, unitPrice: 29 }),
+  ]
+  const plain = C.checkTotals({ lines, staffDiscount: null })
+  eq('ordinary check: nothing off', plain.discount, 0)
+  eq('ordinary check: gross is net', plain.gross === plain.net, true)
+
+  const staff = C.checkTotals({ lines, staffDiscount: disc })
+  eq('staff meal: gross unchanged', staff.gross, 41.25)
+  eq('staff meal: 1.50 + 6.48 off', staff.discount, 7.98)
+  eq('staff meal: net', staff.net, 33.27)
+  // Returned separately so a staff meal is auditable rather than just smaller.
+  eq('gross minus discount is net', +(staff.gross - staff.discount).toFixed(2), staff.net)
+}
+
+console.log('\nvoid reasons — the reason decides the shelf')
+{
+  // The whole point: "changed his mind" leaves a sellable item, "damaged"
+  // destroys one, and a till that treats them alike gets its stock wrong.
+  eq('changed their mind returns it', C.voidReason('changed-mind').returnsToStock, true)
+  eq('and is not waste', C.voidReason('changed-mind').isWaste, false)
+  eq('rung up by mistake returns it', C.voidReason('rung-wrong').returnsToStock, true)
+  eq('damaged does not return', C.voidReason('damaged').returnsToStock, false)
+  eq('and is waste', C.voidReason('damaged').isWaste, true)
+  eq('made wrong does not return', C.voidReason('made-wrong').returnsToStock, false)
+  eq('sent back does not return', C.voidReason('sent-back').returnsToStock, false)
+
+  // Guessing wrong here invents inventory that is not on the shelf, so the
+  // catch-all deliberately does not.
+  eq('Other does NOT return to stock', C.voidReason('other').returnsToStock, false)
+  eq('an unknown key is undefined', C.voidReason('made-up'), undefined)
+
+  // Every reason must answer both questions, or a line ends up half-classified.
+  eq('every reason states both flags',
+    C.VOID_REASONS.every(r => typeof r.returnsToStock === 'boolean' && typeof r.isWaste === 'boolean'),
+    true)
+  eq('every key is unique',
+    new Set(C.VOID_REASONS.map(r => r.key)).size, C.VOID_REASONS.length)
+  // Something that goes back on the shelf was not consumed, by definition.
+  eq('nothing both returns and counts as waste',
+    C.VOID_REASONS.some(r => r.returnsToStock && r.isWaste), false)
 }
 
 console.log(`\n${pass} passed, ${fail} failed\n`)
