@@ -52,6 +52,20 @@ export const FEATURES = {
   logs:      { label: 'Activity Log',   group: 'Core', requires: [], locked: true, defaultEnabled: true, collections: ['activityLog'] },
   media:     { label: 'Media Library',  group: 'Core', requires: [], locked: true, defaultEnabled: true, collections: ['mediaLibrary'] },
 
+  // ── Point of sale (Phase 03) ─────────────────────────────────────────────
+  // This is the tier switch. A client who bought the website and not the POS
+  // has these off, and the sections vanish from every screen that reads the
+  // registry. `pos` requires `menu` because a till with nothing to sell is
+  // not a working POS, it is a bug report.
+  pos: {
+    label: 'Point of Sale', group: 'Operations', requires: ['menu'], defaultEnabled: false,
+    sections: ['pos'], collections: ['checks'],
+  },
+  kds: {
+    label: 'Kitchen Display', group: 'Operations', requires: ['pos'], defaultEnabled: false,
+    sections: ['kds'], collections: ['kitchenTickets'],
+  },
+
   // ── Operations — the actual product ──────────────────────────────────────
   menu: {
     label: 'Menu', group: 'Operations', requires: [], defaultEnabled: true,

@@ -58,6 +58,8 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
   productTransfers:     'Transfer Stock',
   weeklyOrders:       'Weekly Order Reports',
   weeklyOrdersSubmit: 'Submit a Weekly Order',
+  pos:                'Point of Sale',
+  kds:                'Kitchen Display',
   endOfDay:           'End of Day Reports',
   endOfDayHistory:    'End of Day History',
   supplies:              'Inventory Management',

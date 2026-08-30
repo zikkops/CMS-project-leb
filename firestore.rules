@@ -133,6 +133,8 @@ service cloud.firestore {
     // menuItems both moved to `write: if false` behind /api/admin/menu.
     function canEvents()            { return can('events',            ['admin', 'manager', 'social']); }
     function canLoyalty()           { return can('loyalty',           ['admin', 'manager']); }
+    function canPos()               { return can('pos',               ['admin', 'manager', 'barista']); }
+    function canKds()               { return can('kds',               ['admin', 'manager', 'kitchen_crew', 'barista']); }
     // canBranchTables() was here and is gone the same way: branchTableLayouts
     // moved to `write: if false` when floor plans went behind
     // PUT /api/admin/branch-tables, leaving it governing nothing.
@@ -237,6 +239,33 @@ service cloud.firestore {
     //
     // update/delete were already false and stay false. An audit log nobody can
     // edit afterwards is most of the point.
+    // ── Point of sale (Phase 03) ─────────────────────────────────────────
+    // Reads are live listeners and stay on the client: a waiter's phone
+    // watches the open checks on its branch, a KDS watches the tickets on its
+    // pass. That is the part of Firestore worth having, and the reason it was
+    // chosen over Postgres.
+    //
+    // Writes are all server-side. Not for the usual reason — these are staff
+    // screens, so nobody untrusted is near them — but because a check line
+    // carries a PRICE, and a browser that can write one can write any. The
+    // route looks every price up from the menu; a client write would let a
+    // crafted request add a one-cent steak that looks entirely ordinary
+    // afterwards, since nothing downstream ever re-questions a price already
+    // on a line.
+    match /checks/{id} {
+      allow read: if canPos() || canKds();
+      allow write: if false;
+    }
+    // The KDS is often a screen nobody is signed into as a manager, so reads
+    // are the wider grant. Bumping goes through the route, which is also where
+    // the state machine lives — a ticket cannot leave 'bumped', and that has
+    // to hold on a shared touchscreen where two people reach for the same
+    // ticket at once.
+    match /kitchenTickets/{id} {
+      allow read: if canKds() || canPos();
+      allow write: if false;
+    }
+
     match /activityLog/{id} {
       allow read:   if isStaff();
       allow create: if false;

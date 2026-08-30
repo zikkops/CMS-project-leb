@@ -53,6 +53,17 @@ export const SECTION_ACCESS = {
   productTransfers:     ['admin', 'manager', 'retail'] as Role[],
   weeklyOrders:       ['admin', 'manager'] as Role[],
   weeklyOrdersSubmit: ALL_ROLES,
+  // ── Point of sale (Phase 03) ─────────────────────────────────────────────
+  // Two keys rather than one, because taking an order and working the pass are
+  // different jobs done by different people. Kitchen crew belong on the KDS and
+  // nowhere near order entry; a barista does both.
+  //
+  // Added to SECTION_ACCESS deliberately — CLAUDE.md warns against doing this
+  // casually because /admin/users renders a grant checkbox per key. Here that
+  // is the point: "can this person take orders" is exactly the sort of thing a
+  // manager needs to hand out for one shift without changing somebody's role.
+  pos:                ['admin', 'manager', 'barista'] as Role[],
+  kds:                ['admin', 'manager', 'kitchen_crew', 'barista'] as Role[],
   endOfDay:           ['admin', 'manager'] as Role[],
   endOfDayHistory:    ['admin', 'manager', 'social', 'retail', 'barista'] as Role[],
   // Consumable inventory — the item list behind the Daily Inventory Count.
