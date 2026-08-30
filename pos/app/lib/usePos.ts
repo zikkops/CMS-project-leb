@@ -212,10 +212,10 @@ export interface DraftLine {
 }
 
 export async function openCheck(
-  branch: string, tableId: string, guestCount: number,
+  branch: string, tableNumber: number, guestCount: number,
 ): Promise<string> {
   const data = await unwrap(await authedFetch('/api/pos/checks', 'POST',
-    { branch, tableId, guestCount }))
+    { branch, tableNumber, guestCount }))
   return String(data.id ?? '')
 }
 
@@ -253,8 +253,8 @@ export async function voidLine(checkId: string, lineId: string, reason: string):
     { checkId, action: 'void', lineId, reason }))
 }
 
-export async function moveCheck(checkId: string, tableId: string): Promise<void> {
-  await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'move', tableId }))
+export async function moveCheck(checkId: string, tableNumber: number): Promise<void> {
+  await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'move', tableNumber }))
 }
 
 export async function closeCheck(checkId: string): Promise<void> {

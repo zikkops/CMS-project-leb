@@ -235,9 +235,32 @@ async function readCheck(tx: Transaction, id: string): Promise<Check> {
  * than silently given a second check on the same table — which is how a table
  * ends up paying twice for one order.
  */
+/**
+ * Resolves a table number to the id a check is keyed on.
+ *
+ * A number on the floor plan resolves to that marker's id, so a check and the
+ * customer-facing map are talking about the same table.
+ *
+ * A number that is NOT on the plan is still allowed, keyed as `n:7`. The POS
+ * has to work in a café that has not drawn its floor plan yet — requiring one
+ * first would mean a product that cannot take an order until somebody has done
+ * an unrelated setup task, and "table 7" is perfectly meaningful without a
+ * diagram. The id is synthesised rather than random so that opening 7 twice
+ * collides the way a real table does, and the duplicate check still bites.
+ */
+async function resolveTable(
+  branch: string,
+  tableNumber: number,
+): Promise<{ tableId: string; tableNumber: number }> {
+  const layout = await adminDb().doc(`branchTableLayouts/${branch}`).get()
+  const tables = (layout.data()?.tables ?? []) as { id: string; number: number }[]
+  const onPlan = tables.find(t => t.number === tableNumber)
+  return { tableId: onPlan ? onPlan.id : `n:${tableNumber}`, tableNumber }
+}
+
 export async function openCheck(
   caller: Caller,
-  input: { branch: string; tableId: string; guestCount: number },
+  input: { branch: string; tableNumber: number; guestCount: number },
 ): Promise<{ id: string }> {
   const db = adminDb()
 
@@ -245,28 +268,25 @@ export async function openCheck(
     throw new HttpError(400, 'Unknown branch.')
   }
   const guestCount = whole(input.guestCount, 'Guest count', 1, CHECK_LIMITS.maxGuests)
-
-  const layout = await db.doc(`branchTableLayouts/${input.branch}`).get()
-  const tables = (layout.data()?.tables ?? []) as { id: string; number: number }[]
-  const table = tables.find(t => t.id === input.tableId)
-  if (!table) throw new HttpError(400, 'That table is not on this branch’s floor plan.')
+  const number = whole(input.tableNumber, 'Table number', 1, 9999)
+  const table = await resolveTable(input.branch, number)
 
   return db.runTransaction(async tx => {
     const open = await tx.get(db.collection(CHECKS)
       .where('branch', '==', input.branch)
-      .where('tableId', '==', input.tableId)
+      .where('tableId', '==', table.tableId)
       .where('status', '==', 'open')
       .limit(1))
     if (!open.empty) {
-      throw new HttpError(409, `Table ${table.number} already has an open check.`)
+      throw new HttpError(409, `Table ${table.tableNumber} already has an open check.`)
     }
 
     const ref = db.collection(CHECKS).doc()
     tx.set(ref, {
       branch: input.branch,
-      tableId: input.tableId,
+      tableId: table.tableId,
       // Snapshotted: renumbering the floor plan must not rewrite history.
-      tableNumber: table.number,
+      tableNumber: table.tableNumber,
       status: 'open',
       guestCount,
       lines: [],
@@ -434,36 +454,46 @@ export async function voidLine(
 export async function moveCheck(
   caller: Caller,
   checkId: string,
-  tableId: string,
+  tableNumber: number,
 ): Promise<{ from: number; to: number }> {
   const db = adminDb()
+  const number = whole(tableNumber, 'Table number', 1, 9999)
+
+  // Resolved before the transaction: it reads the floor plan, and a
+  // transaction may not read after its first write.
+  const first = await readCheck2(checkId)
+  const table = await resolveTable(first.branch, number)
 
   return db.runTransaction(async tx => {
     const check = await readCheck(tx, checkId)
     if (check.status !== 'open') throw new HttpError(409, 'That check is closed.')
-    if (check.tableId === tableId) throw new HttpError(400, 'That check is already on that table.')
-
-    const layout = await tx.get(db.doc(`branchTableLayouts/${check.branch}`))
-    const tables = (layout.data()?.tables ?? []) as { id: string; number: number }[]
-    const table = tables.find(t => t.id === tableId)
-    if (!table) throw new HttpError(400, 'That table is not on this branch’s floor plan.')
+    if (check.tableId === table.tableId) {
+      throw new HttpError(400, 'That check is already on that table.')
+    }
 
     const occupied = await tx.get(db.collection(CHECKS)
       .where('branch', '==', check.branch)
-      .where('tableId', '==', tableId)
+      .where('tableId', '==', table.tableId)
       .where('status', '==', 'open')
       .limit(1))
     if (!occupied.empty) {
-      throw new HttpError(409, `Table ${table.number} already has an open check.`)
+      throw new HttpError(409, `Table ${table.tableNumber} already has an open check.`)
     }
 
     tx.update(db.doc(`${CHECKS}/${checkId}`), {
-      tableId,
-      tableNumber: table.number,
+      tableId: table.tableId,
+      tableNumber: table.tableNumber,
       updatedAt: FieldValue.serverTimestamp(),
     })
-    return { from: check.tableNumber, to: table.number }
+    return { from: check.tableNumber, to: table.tableNumber }
   })
+}
+
+/** A plain read, for the branch, before a transaction opens. */
+async function readCheck2(id: string): Promise<Check> {
+  const snap = await adminDb().doc(`${CHECKS}/${id}`).get()
+  if (!snap.exists) throw new HttpError(404, 'That check no longer exists.')
+  return { id: snap.id, ...(snap.data() as Omit<Check, 'id'>) }
 }
 
 /**

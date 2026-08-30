@@ -19,8 +19,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
-import { useBranchTableLayout } from '@big-cms/shared/branchTableLayouts'
 import { lineTotal, orderedTotal, type CheckLine } from '@big-cms/shared/checks'
+import { minutesWaiting, urgency } from '@big-cms/shared/tickets'
 import {
   validateSelection, selectionLabel, lineUnitPrice, describeSelections,
   type ModifierGroup,
@@ -42,7 +42,22 @@ function useIsMobile(breakpoint = 768) {
   return isMobile
 }
 
-const money = (n: number) => `$${n.toFixed(2)}`
+function useNow(everyMs = 15_000) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), everyMs)
+    return () => clearInterval(id)
+  }, [everyMs])
+  return now
+}
+
+const money = (n: number) => `${n.toFixed(2)}`
+
+const URGENCY_COLOUR = {
+  fresh: 'rgba(245,242,236,0.45)',
+  aging: '#C9962C',
+  late: 'var(--red)',
+} as const
 
 const sheet: React.CSSProperties = {
   position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)',
@@ -63,8 +78,14 @@ const tap: React.CSSProperties = {
 // A component declared inside a render body is a new type on every keystroke,
 // so React remounts it and any open sheet closes itself. (CONTRIBUTING.md #2.)
 
-function LineRow({ line, onVoid }: { line: CheckLine; onVoid: (() => void) | null }) {
+function LineRow({ line, now, onVoid }: {
+  line: CheckLine
+  now: number
+  onVoid: (() => void) | null
+}) {
   const voided = line.status === 'void'
+  const sentMs = line.status === 'sent' && line.sentAt ? Date.parse(line.sentAt) : NaN
+  const mins = Number.isFinite(sentMs) ? minutesWaiting(sentMs, now) : null
   return (
     <div style={{
       display: 'flex', gap: '0.6rem', alignItems: 'flex-start',
@@ -95,7 +116,11 @@ function LineRow({ line, onVoid }: { line: CheckLine; onVoid: (() => void) | nul
           {line.seat !== null ? `Seat ${line.seat}` : 'Table'}
           {line.course !== null && ` · Course ${line.course}`}
           {' · '}
-          {voided ? `Voided — ${line.voidReason}` : line.status === 'sent' ? 'Sent' : 'Not sent'}
+          {voided
+            ? `Voided — ${line.voidReason}`
+            : mins !== null
+              ? <>Sent <span style={{ color: URGENCY_COLOUR[urgency(mins)] }}>{mins}m ago</span></>
+              : 'Not sent'}
         </p>
       </div>
 
@@ -256,8 +281,8 @@ export default function CheckPage() {
   const checkId = String(params?.id ?? '')
 
   const { check } = useCheck(checkId)
+  const now = useNow()
   const menu = usePosMenu()
-  const { layout } = useBranchTableLayout(check?.branch ?? '')
 
   const [drafts, setDrafts] = useState<DraftLine[]>([])
   const [picking, setPicking] = useState(false)
@@ -267,18 +292,21 @@ export default function CheckPage() {
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const [moving, setMoving] = useState(false)
+  const [moveTo, setMoveTo] = useState('')
 
   const categories = useMemo(
     () => menu.categories.filter(c => menu.items.some(i => i.categoryId === c.id)),
     [menu.categories, menu.items],
   )
-  useEffect(() => {
-    if (!category && categories.length > 0) setCategory(categories[0].id)
-  }, [category, categories])
+  // Derived, not stored with an effect to seed it. Setting state during an
+  // effect to supply a default renders once with nothing selected and again
+  // with the default — and React flags it, because that is a cascading render
+  // for a value that was always computable.
+  const activeCategory = category || categories[0]?.id || ''
 
   const shown = useMemo(
-    () => menu.items.filter(i => i.categoryId === category && i.available),
-    [menu.items, category],
+    () => menu.items.filter(i => i.categoryId === activeCategory && i.available),
+    [menu.items, activeCategory],
   )
 
   function addDraft(item: PosMenuItem, optionIds: string[], label: string) {
@@ -324,9 +352,12 @@ export default function CheckPage() {
     catch (err) { setError(err instanceof Error ? err.message : 'Could not void.') }
   }
 
-  async function handleMove(tableId: string) {
+  async function handleMove() {
+    const n = Number(moveTo)
+    if (!Number.isInteger(n) || n < 1) { setError('Enter a table number.'); return }
     setMoving(false)
-    try { await moveCheck(checkId, tableId) }
+    setMoveTo('')
+    try { await moveCheck(checkId, n) }
     catch (err) { setError(err instanceof Error ? err.message : 'Could not move.') }
   }
 
@@ -392,7 +423,7 @@ export default function CheckPage() {
         )}
 
         {check.lines.map(l => (
-          <LineRow key={l.id} line={l}
+          <LineRow key={l.id} line={l} now={now}
             onVoid={l.status === 'void' ? null : () => handleVoid(l.id)} />
         ))}
         {drafts.map((d, i) => (
@@ -471,8 +502,8 @@ export default function CheckPage() {
               {categories.map(c => (
                 <button key={c.id} onClick={() => setCategory(c.id)} style={{
                   ...tap, minHeight: '40px', padding: '0 0.9rem', whiteSpace: 'nowrap',
-                  backgroundColor: category === c.id ? 'rgba(255,255,255,0.08)' : 'transparent',
-                  border: `1px solid ${category === c.id ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)'}`,
+                  backgroundColor: activeCategory === c.id ? 'rgba(255,255,255,0.08)' : 'transparent',
+                  border: `1px solid ${activeCategory === c.id ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)'}`,
                   color: 'var(--offwhite)', fontSize: '0.78rem',
                 }}>{c.name}</button>
               ))}
@@ -516,16 +547,39 @@ export default function CheckPage() {
               fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem',
               color: 'var(--offwhite)', marginBottom: '1rem',
             }}>Move to which table?</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: '0.5rem' }}>
-              {[...(layout?.tables ?? [])].sort((a, b) => a.number - b.number)
-                .filter(t => t.id !== check.tableId)
-                .map(t => (
-                  <button key={t.id} onClick={() => handleMove(t.id)} style={{
-                    ...tap, minHeight: '60px', backgroundColor: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.1)', color: 'var(--offwhite)',
-                    fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem',
-                  }}>{t.number}</button>
-                ))}
+
+            {/* Typed, the same way a table is opened — the floor plan is not
+                required for the POS to work, so it cannot be the only way to
+                name a table here either. */}
+            <input
+              value={moveTo}
+              onChange={e => setMoveTo(e.target.value.replace(/[^0-9]/g, ''))}
+              inputMode="numeric"
+              autoFocus
+              placeholder="Table number"
+              style={{
+                width: '100%', minHeight: '56px', textAlign: 'center',
+                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.14)',
+                borderRadius: '4px', color: 'var(--offwhite)',
+                fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', outline: 'none',
+              }}
+            />
+
+            <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem' }}>
+              <button onClick={() => { setMoving(false); setMoveTo('') }} style={{
+                ...tap, flex: 1, backgroundColor: 'transparent',
+                border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(245,242,236,0.6)',
+              }}>Cancel</button>
+              <button
+                disabled={!moveTo}
+                onClick={handleMove}
+                style={{
+                  ...tap, flex: 2, border: 'none', color: '#fff',
+                  backgroundColor: moveTo ? 'var(--teal)' : 'rgba(0,160,152,0.25)',
+                  cursor: moveTo ? 'pointer' : 'default',
+                  letterSpacing: '0.1em', textTransform: 'uppercase',
+                }}
+              >Move to {moveTo || '…'}</button>
             </div>
           </div>
         </div>

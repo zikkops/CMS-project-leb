@@ -45,7 +45,9 @@ export async function POST(request: Request): Promise<Response> {
 
     const { id } = await openCheck(caller, {
       branch: String(body.branch ?? ''),
-      tableId: String(body.tableId ?? ''),
+      // A number, not an id. A waiter types "7"; whether table 7 is on the
+      // floor plan is the server's problem, not the phone's.
+      tableNumber: Number(body.tableNumber ?? 0),
       guestCount: Number(body.guestCount ?? 1),
     })
     return Response.json({ ok: true, id })
@@ -78,7 +80,7 @@ export async function PATCH(request: Request): Promise<Response> {
         return Response.json({ ok: true, ...result })
       }
       case 'move': {
-        const result = await moveCheck(caller, checkId, String(body.tableId ?? ''))
+        const result = await moveCheck(caller, checkId, Number(body.tableNumber ?? 0))
         await logActivity(caller, 'update', 'POS',
           `Moved a check from table ${result.from} to table ${result.to}`)
         return Response.json({ ok: true, ...result })
