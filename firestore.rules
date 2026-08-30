@@ -131,7 +131,10 @@ service cloud.firestore {
     // very much alive — the routes gate on it via requireSection('products').
     // canMenu() was here and is gone the same way: menuCategories and
     // menuItems both moved to `write: if false` behind /api/admin/menu.
-    function canEvents()            { return can('events',            ['admin', 'manager', 'social']); }
+    // canEvents() was here and is gone the way the others went: events and
+    // eventTypes are both `write: if false` behind /api/admin/events, so it
+    // governed nothing. The compiler said so on the deploy that added the POS
+    // rules — which is exactly what that warning is for.
     function canLoyalty()           { return can('loyalty',           ['admin', 'manager']); }
     function canPos()               { return can('pos',               ['admin', 'manager', 'barista']); }
     function canKds()               { return can('kds',               ['admin', 'manager', 'kitchen_crew', 'barista']); }
