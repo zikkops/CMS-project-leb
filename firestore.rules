@@ -17,7 +17,7 @@ service cloud.firestore {
     // write in the app. Reading a custom claim off the token costs nothing.
     //
     // So role, branchIds, superadmin and the DM flag now ride in the ID token
-    // as custom claims (app/lib/server/claims.ts writes them; nothing else
+    // as custom claims (shared/src/server/claims.ts writes them; nothing else
     // may). This file reads them, and granularity becomes affordable.
     //
     // ── The document fallback, and when to delete it ──────────────────────
@@ -89,7 +89,7 @@ service cloud.firestore {
     // ═══════════════════════════════════════════════════════════════════════
     // AUTHORIZATION
     //
-    // can() mirrors hasSectionAccess() in app/lib/roles.ts — same section
+    // can() mirrors hasSectionAccess() in shared/src/roles.ts — same section
     // keys, same role lists, same DM rule — so a rule and the page that
     // writes through it can't disagree about who's allowed.
     //
@@ -122,7 +122,7 @@ service cloud.firestore {
       );
     }
 
-    // One helper per section, mirroring SECTION_ACCESS in app/lib/roles.ts.
+    // One helper per section, mirroring SECTION_ACCESS in shared/src/roles.ts.
     // Keep these in the same order as that file so a drift is easy to spot.
     // canProducts() was here and is gone the same way the others were. Every
     // collection it governed is now `write: if false`: products and
@@ -131,8 +131,13 @@ service cloud.firestore {
     // very much alive — the routes gate on it via requireSection('products').
     // canMenu() was here and is gone the same way: menuCategories and
     // menuItems both moved to `write: if false` behind /api/admin/menu.
-    function canEvents()            { return can('events',            ['admin', 'manager', 'social']); }
+    // canEvents() was here and is gone the way the others went: events and
+    // eventTypes are both `write: if false` behind /api/admin/events, so it
+    // governed nothing. The compiler said so on the deploy that added the POS
+    // rules — which is exactly what that warning is for.
     function canLoyalty()           { return can('loyalty',           ['admin', 'manager']); }
+    function canPos()               { return can('pos',               ['admin', 'manager', 'barista']); }
+    function canKds()               { return can('kds',               ['admin', 'manager', 'kitchen_crew', 'barista']); }
     // canBranchTables() was here and is gone the same way: branchTableLayouts
     // moved to `write: if false` when floor plans went behind
     // PUT /api/admin/branch-tables, leaving it governing nothing.
@@ -224,7 +229,7 @@ service cloud.firestore {
     // But it is an AUDIT LOG: update and delete are now denied outright, where
     // the old blanket `write` allowed both. An audit trail anyone audited can
     // edit isn't one. (Server-side writes via the Admin SDK bypass rules
-    // entirely, so app/lib/server/activityLog.ts is unaffected.)
+    // entirely, so shared/src/server/activityLog.ts is unaffected.)
     // The audit trail. Reads stay on the client — /admin/logs and the loyalty
     // activity page both list from here live.
     //
@@ -232,11 +237,38 @@ service cloud.firestore {
     // userEmail and userId taken from auth.currentUser: the same account that
     // performed an action also authored the record of it, and could have
     // authored a record of something that never happened. Every entry now
-    // comes from app/lib/server/activityLog.ts, attributed from a verified
+    // comes from shared/src/server/activityLog.ts, attributed from a verified
     // token, written by the route that did the work.
     //
     // update/delete were already false and stay false. An audit log nobody can
     // edit afterwards is most of the point.
+    // ── Point of sale (Phase 03) ─────────────────────────────────────────
+    // Reads are live listeners and stay on the client: a waiter's phone
+    // watches the open checks on its branch, a KDS watches the tickets on its
+    // pass. That is the part of Firestore worth having, and the reason it was
+    // chosen over Postgres.
+    //
+    // Writes are all server-side. Not for the usual reason — these are staff
+    // screens, so nobody untrusted is near them — but because a check line
+    // carries a PRICE, and a browser that can write one can write any. The
+    // route looks every price up from the menu; a client write would let a
+    // crafted request add a one-cent steak that looks entirely ordinary
+    // afterwards, since nothing downstream ever re-questions a price already
+    // on a line.
+    match /checks/{id} {
+      allow read: if canPos() || canKds();
+      allow write: if false;
+    }
+    // The KDS is often a screen nobody is signed into as a manager, so reads
+    // are the wider grant. Bumping goes through the route, which is also where
+    // the state machine lives — a ticket cannot leave 'bumped', and that has
+    // to hold on a shared touchscreen where two people reach for the same
+    // ticket at once.
+    match /kitchenTickets/{id} {
+      allow read: if canKds() || canPos();
+      allow write: if false;
+    }
+
     match /activityLog/{id} {
       allow read:   if isStaff();
       allow create: if false;
@@ -287,7 +319,7 @@ service cloud.firestore {
     // username), but points/pointsEarned must stay unchanged in a
     // customer-initiated update — the only legitimate way to move either is a
     // staff-approved transaction or redemption (see approveTransaction in
-    // app/lib/loyalty.ts and confirmRedemption in app/lib/redemptions.ts). On
+    // shared/src/loyalty.ts and confirmRedemption in shared/src/redemptions.ts). On
     // creation a customer may only set them to 0, matching what
     // ensureCustomerDoc always writes.
     //
@@ -714,7 +746,7 @@ service cloud.firestore {
     // exceptions below.
     //
     // The invoice sequence is issued inside the same server transaction as the
-    // sale it belongs to (app/lib/server/purchases.ts). A browser that could
+    // sale it belongs to (shared/src/server/purchases.ts). A browser that could
     // write this document could hand itself a duplicate invoice number, or
     // rewind the series so the next sale collides with an existing invoice.
     match /appSettings/invoiceCounter {

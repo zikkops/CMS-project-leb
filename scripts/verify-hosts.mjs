@@ -1,4 +1,4 @@
-// Assertions over the hostname routing in app/lib/hosts.ts.
+// Assertions over the hostname routing in shared/src/hosts.ts.
 //
 // Same shape as verify-delivery-math.mjs and for the same reason: no test
 // runner in this repo yet, so this transpiles the real module with the
@@ -23,7 +23,7 @@ import { join } from 'node:path'
 // the edge and these have to be reasonable about without a request.
 const out = mkdtempSync(join(tmpdir(), 'hosts-verify-'))
 execSync(
-  `npx tsc app/lib/hosts.ts --outDir ${out} --module esnext --target es2022 ` +
+  `npx tsc shared/src/hosts.ts --outDir ${out} --module esnext --target es2022 ` +
   `--skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' }
 )
@@ -86,9 +86,10 @@ eq('/administrator is NOT /admin', isPathAllowed('/administrator', 'admin', BOTH
 console.log('\nisPathAllowed — pos surface')
 eq('/pos allowed', isPathAllowed('/pos', 'pos', BOTH), true)
 eq('/pos/floor allowed', isPathAllowed('/pos/floor', 'pos', BOTH), true)
-// Until the POS has a sign-in of its own, staff authenticate through the
-// existing page. Refusing it here would be a locked door with no handle.
-eq('/admin/login allowed', isPathAllowed('/admin/login', 'pos', BOTH), true)
+// The POS has its own sign-in under /pos now, so the admin login is no more
+// its business than any other admin page.
+eq('/pos/login allowed', isPathAllowed('/pos/login', 'pos', BOTH), true)
+eq('/admin/login refused', isPathAllowed('/admin/login', 'pos', BOTH), false)
 eq('/admin/users refused', isPathAllowed('/admin/users', 'pos', BOTH), false)
 eq('/menu refused', isPathAllowed('/menu', 'pos', BOTH), false)
 

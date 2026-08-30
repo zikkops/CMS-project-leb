@@ -44,16 +44,17 @@ NEXT_PUBLIC_FIREBASE_APP_ID=
 FIREBASE_SERVICE_ACCOUNT=
 
 # ── Scheduled jobs ───────────────────────────────────────────────────────────
-# Shared secret for Vercel Cron. Vercel sends it as `Authorization: Bearer
-# <value>` on every scheduled request, and /api/admin/loyalty/reset compares it
-# before doing anything.
+# Shared secret for the scheduled loyalty reset. The scheduler sends it as
+# `Authorization: Bearer <value>` on a GET to /api/admin/loyalty/reset, and the
+# route compares it before doing anything. See docs/scheduled-jobs.md — the
+# method has to be GET, and POST returns a 401 that reads like a wrong secret.
 #
 # That route zeroes every customer's points balance, so the handler FAILS
 # CLOSED when this is unset — it returns 503 rather than running. An unset
 # secret must never mean "anyone may call this", because unset is exactly the
 # state nobody is watching for.
 #
-# Any long random string. Set the same value in the Vercel project settings.
+# Any long random string. Set the same value in the host's cron job.
 CRON_SECRET=
 
 
@@ -76,6 +77,46 @@ CRON_SECRET=
 IMGBB_API_KEY=
 
 
+# ── 3b. The three hostnames ─────────────────────────────────────────────────
+# Two pairs that sound alike and do different jobs. Leaving all four unset is
+# a working configuration: every path is served on every host, which is what a
+# single-domain deployment wants.
+#
+# ADMIN_HOST / POS_HOST — the SPLIT. proxy.ts reads them on the server to
+# decide which hostname may serve /admin and /pos. Set ADMIN_HOST and the
+# customer domain returns a bare 404 for /admin — not a redirect, not a login
+# page, nothing that confirms an admin panel exists.
+#
+#   Deliberately NOT NEXT_PUBLIC_. A public copy would inline the admin
+#   hostname into every visitor's JS bundle, which is the one thing the split
+#   exists to prevent.
+#
+#   Bare hostname, no scheme and no path. Set each one only once its DNS
+#   actually resolves — the host stops serving those paths the moment you do.
+
+ADMIN_HOST=
+POS_HOST=
+
+# NEXT_PUBLIC_ADMIN_URL / NEXT_PUBLIC_POS_URL — the LINK. Where the customer
+# site sends a staff member who is already signed in: the Navbar shortcut, the
+# hero, and the post-login redirect. Unset means those simply are not
+# rendered, which is the correct answer for an operator who wants the admin
+# panel undiscoverable from the customer site. Staff type the URL.
+#
+#   Setting one is a decision to publish that hostname to every visitor, since
+#   an inlined NEXT_PUBLIC_ value is in the bundle whether or not the viewer
+#   is staff. That is the trade; it is not a leak, but do it on purpose.
+#
+#   ⚠ INLINED AT BUILD TIME. Setting these in the host's control panel after
+#   deploying does nothing — they have to be present when `npm run build`
+#   runs. Rebuild after changing them.
+#
+#   Full origin, scheme optional (https:// is assumed), trailing slash fine.
+
+NEXT_PUBLIC_ADMIN_URL=
+NEXT_PUBLIC_POS_URL=
+
+
 # ── 4. Email — DELIBERATELY BLANK ───────────────────────────────────────────
 # Do not fill these on the demo.
 #
@@ -88,7 +129,7 @@ NEXT_PUBLIC_WHOLESALE_ORDERS_EMAIL=
 
 
 # ── 5. Brand ────────────────────────────────────────────────────────────────
-# Everything below has a neutral default in app/lib/brand.ts, so the block is
+# Everything below has a neutral default in shared/src/brand.ts, so the block is
 # commented out on purpose.
 #
 # LEAVE IT COMMENTED while this is a demo. Setting NEXT_PUBLIC_BRAND_NAME is

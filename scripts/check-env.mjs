@@ -133,6 +133,52 @@ if (!process.env.IMGBB_API_KEY) {
   notes.push('No imgbb key — image uploads will fail with a clear error. Nothing else affected.')
 }
 
+// The near-miss that costs an afternoon: the key is present, under a name
+// nothing reads. Anything NEXT_PUBLIC_ is inlined into the client bundle, so
+// this spelling is both broken AND the one that would publish the key if some
+// client file ever referenced it.
+if (!process.env.IMGBB_API_KEY && process.env.NEXT_PUBLIC_IMGBB_API_KEY) {
+  errors.push(
+    'NEXT_PUBLIC_IMGBB_API_KEY is set but IMGBB_API_KEY is not. Nothing reads the\n' +
+    '           NEXT_PUBLIC_ one, so uploads fail — and that prefix is what would put the\n' +
+    '           key in every visitor\'s JS bundle. Drop the prefix.'
+  )
+}
+
+// ── The hostnames ──────────────────────────────────────────────────────────
+// All four unset is a working single-domain deployment, so none of this is an
+// error. What IS worth saying out loud is which half is configured, because
+// the two pairs fail in opposite directions: the HOST pair without the URL
+// pair is a split nobody can navigate to, and the URL pair without the HOST
+// pair is a link to a hostname that is not serving anything different.
+const hostAdmin = (process.env.ADMIN_HOST ?? '').trim()
+const hostPos = (process.env.POS_HOST ?? '').trim()
+const urlAdmin = (process.env.NEXT_PUBLIC_ADMIN_URL ?? '').trim()
+const urlPos = (process.env.NEXT_PUBLIC_POS_URL ?? '').trim()
+
+if (!hostAdmin && !hostPos && !urlAdmin && !urlPos) {
+  notes.push('No hostname split — every path served on every host. Correct for one domain.')
+} else {
+  if (hostAdmin) notes.push(`/admin is served only on ${hostAdmin}; elsewhere it 404s.`)
+  if (hostPos) notes.push(`/pos is served only on ${hostPos}; elsewhere it 404s.`)
+
+  if (urlAdmin && !hostAdmin) {
+    warnings.push(
+      'NEXT_PUBLIC_ADMIN_URL is set but ADMIN_HOST is not. The customer site links to\n' +
+      '           that hostname, but nothing stops /admin being served on every host too.'
+    )
+  }
+  if (hostAdmin && !urlAdmin) {
+    notes.push('No admin link on the customer site — staff type the URL. Deliberate if you want it undiscoverable.')
+  }
+  if (urlPos) {
+    notes.push('NEXT_PUBLIC_POS_URL is set, but nothing imports posUrl() yet — it links from nowhere.')
+  }
+  if (urlAdmin || urlPos) {
+    notes.push('NEXT_PUBLIC_ values are inlined at build time — rebuild after changing them.')
+  }
+}
+
 const branches = (process.env.NEXT_PUBLIC_BRANCHES ?? '').split(',').map(s => s.trim()).filter(Boolean)
 if (branches.length > 0) notes.push(`Branches: ${branches.join(', ')}`)
 

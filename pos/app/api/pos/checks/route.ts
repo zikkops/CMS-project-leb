@@ -1,0 +1,134 @@
+// Open checks. Phase 03, POS v1.
+//
+// POST   open a check on a table, or add lines to one
+// PATCH  send, void a line, move to another table, or close
+//
+// Gated on the `pos` section, which is grantable per person: taking orders is
+// a shift-by-shift thing a manager hands out without changing a role.
+//
+// Every price is looked up server-side. The browser sends an item id, a
+// quantity and modifier option ids — never a price, a name or a station. See
+// the note at the top of @big-cms/shared/server/checks.
+
+import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
+import {
+  parseLineRequests, openCheck, addLines, sendCheck, voidLine, moveCheck, closeCheck,
+  setStaffMeal, refundCheck,
+} from '@big-cms/shared/server/checks'
+import { logActivity } from '@big-cms/shared/server/activityLog'
+
+export const runtime = 'nodejs'
+
+async function readBody(request: Request): Promise<Record<string, unknown>> {
+  try {
+    const body = await request.json()
+    if (!body || typeof body !== 'object') throw new Error('not an object')
+    return body as Record<string, unknown>
+  } catch {
+    throw new HttpError(400, 'Invalid request body.')
+  }
+}
+
+export async function POST(request: Request): Promise<Response> {
+  try {
+    const caller: Caller = await requireSection(request, 'pos')
+    const body = await readBody(request)
+
+    // Adding to an existing check names one; opening a new check names a table.
+    //
+    // A request carrying `lines` but no checkId used to fall through to the
+    // open path, which then failed on the missing branch with "Unknown
+    // branch" — an error about the wrong thing entirely, and one that sent me
+    // looking at the branch config for several minutes. Say what is actually
+    // wrong.
+    const checkId = typeof body.checkId === 'string' ? body.checkId : ''
+    if (!checkId && Array.isArray(body.lines)) {
+      throw new HttpError(400, 'Missing check id — items can only be added to an open check.')
+    }
+    if (checkId) {
+      const result = await addLines(caller, checkId, parseLineRequests(body))
+      // Deliberately not logged. A service is hundreds of these, and an audit
+      // entry per item would bury every other thing that happened that day.
+      // The check itself is the record of what was ordered.
+      return Response.json({ ok: true, ...result })
+    }
+
+    const { id } = await openCheck(caller, {
+      branch: String(body.branch ?? ''),
+      // A number, not an id. A waiter types "7"; whether table 7 is on the
+      // floor plan is the server's problem, not the phone's.
+      tableNumber: Number(body.tableNumber ?? 0),
+      guestCount: Number(body.guestCount ?? 1),
+    })
+    return Response.json({ ok: true, id })
+  } catch (err) {
+    return toResponse(err)
+  }
+}
+
+export async function PATCH(request: Request): Promise<Response> {
+  try {
+    const caller: Caller = await requireSection(request, 'pos')
+    const body = await readBody(request)
+
+    const checkId = typeof body.checkId === 'string' ? body.checkId : ''
+    if (!checkId) throw new HttpError(400, 'Missing check id.')
+
+    switch (String(body.action ?? '')) {
+      case 'send': {
+        const result = await sendCheck(caller, checkId)
+        return Response.json({ ok: true, ...result })
+      }
+      case 'void': {
+        // Logged, unlike adding an item: striking something off is a decision
+        // with a reason attached, and it is the one a manager asks about.
+        const result = await voidLine(
+          caller,
+          checkId,
+          String(body.lineId ?? ''),
+          String(body.reasonKey ?? ''),
+          String(body.note ?? ''),
+        )
+        await logActivity(caller, 'delete', 'POS',
+          `Voided an item${result.wasSent ? ' after it was sent' : ''} — ${result.label}` +
+          (result.restored > 0 ? ` — ${result.restored} back on the shelf` : ''))
+        return Response.json({ ok: true, ...result })
+      }
+      case 'move': {
+        const result = await moveCheck(caller, checkId, Number(body.tableNumber ?? 0))
+        await logActivity(caller, 'update', 'POS',
+          `Moved a check from table ${result.from} to table ${result.to}`)
+        return Response.json({ ok: true, ...result })
+      }
+      case 'staffMeal': {
+        // Logged. A discount is the one thing on a check somebody should be
+        // answerable for, and the entry names the rates that were applied
+        // rather than just that a discount happened.
+        const on = body.on === true
+        const r = await setStaffMeal(caller, checkId, on)
+        await logActivity(caller, 'update', 'POS', on
+          ? `Staff meal on a check — ${Math.round(r.food * 100)}% off food, ${Math.round(r.drink * 100)}% off drinks`
+          : 'Staff meal removed from a check')
+        return Response.json({ ok: true, ...r })
+      }
+      case 'close': {
+        const result = await closeCheck(caller, checkId)
+        return Response.json({ ok: true, ...result })
+      }
+      case 'refund': {
+        // Logged, and the entry names the receipt rather than a document id —
+        // "which refund was that" is asked with a piece of paper in hand.
+        const result = await refundCheck(caller, checkId, String(body.reason ?? ''))
+        await logActivity(caller, 'update', 'POS',
+          `Refunded receipt ${result.receiptNumber} (table ${result.tableNumber})` +
+          (result.restored > 0 ? ` — ${result.restored} item(s) back on the shelf` : '') +
+          ` — ${String(body.reason ?? '').trim()}`)
+        return Response.json({ ok: true, ...result })
+      }
+      default:
+        throw new HttpError(400, 'Unknown action.')
+    }
+  } catch (err) {
+    return toResponse(err)
+  }
+}

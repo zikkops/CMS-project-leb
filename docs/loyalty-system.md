@@ -20,7 +20,7 @@ people to hoard, which is the opposite of what a café wants.
 
 ## Tiers
 
-`app/lib/loyaltyTiers.ts` owns this, in pure functions with no Firestore access
+`shared/src/loyaltyTiers.ts` owns this, in pure functions with no Firestore access
 — which is why the server can import it too.
 
 | Tier | From |
@@ -64,7 +64,7 @@ branches (admins see everything).
 
 **The approval itself runs on the server**, through
 `/api/admin/loyalty/transactions` and `resolveTransaction()` in
-`app/lib/server/loyalty.ts`. Three things matter about that and are easy to
+`shared/src/server/loyalty.ts`. Three things matter about that and are easy to
 undo by accident:
 
 - The amount is taken from the **stored transaction**, never from the request.
@@ -88,17 +88,22 @@ Confirmation goes through `/api/admin/loyalty/redemptions` and
 
 ## Tier perks
 
-`app/lib/tierPerks.ts`, collection `tierPerks`, one document per tier keyed by
+`shared/src/tierPerks.ts`, collection `tierPerks`, one document per tier keyed by
 tier label. Sorted in memory by `TIER_ORDER` — Firestore would sort them
 alphabetically and hand you Bronze, Gold, Platinum, Silver.
 
 ## The annual reset
 
-`runAnnualReset()` in `app/lib/server/loyalty.ts`, reached two ways:
+`runAnnualReset()` in `shared/src/server/loyalty.ts`, reached two ways:
 
-- **A Vercel cron**, `GET /api/admin/loyalty/reset` at 03:00 daily, authorised
-  by `Authorization: Bearer $CRON_SECRET`. Configured in `vercel.json`.
-- **An admin**, `POST` to the same route, which accepts `force: true`.
+- **A scheduler**, `GET /api/admin/loyalty/reset` on the admin app once a
+  day, authorised by `Authorization: Bearer $CRON_SECRET`. This lives in the
+  host's cron panel, not in the repo — see
+  [scheduled-jobs.md](./scheduled-jobs.md) for the exact command and for why
+  the method has to be GET.
+- **An admin**, `POST` to the same route, which accepts `force: true`. This
+  path requires a signed-in admin, which is why a scheduler using POST gets a
+  401 that reads like a wrong secret and is not.
 
 It reads `appSettings/loyaltyReset.nextResetDate` and, when the date has
 arrived, zeroes `points` and `pointsEarned` in batches of 500.
@@ -130,7 +135,7 @@ hasn't been migrated yet, and is one of the remaining client-side writes
 
 | Want to… | Look at |
 |---|---|
-| Change tier thresholds, or what an action earns | `app/lib/loyaltyTiers.ts` |
-| Change how approval moves a balance | `app/lib/server/loyalty.ts` |
+| Change tier thresholds, or what an action earns | `shared/src/loyaltyTiers.ts` |
+| Change how approval moves a balance | `shared/src/server/loyalty.ts` |
 | Add a new way to earn | Follow the `transactions` pattern — create it pending, resolve it server-side |
 | See the audit trail | `/admin/logs`, or `/admin/loyalty/activity` filtered to loyalty sections |

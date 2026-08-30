@@ -1,8 +1,17 @@
 # Deploying the claims-based Firestore rules
 
-The rewrite in `firestore.rules` replaces one blanket `isStaff()` check with
-per-role, per-section authorization read from custom claims. It closes the
-feature audit's P0.
+> **This deploy has happened.** The claims-based ruleset went live on
+> 2026-08-28 and was verified behaviourally against the live project, not just
+> read back from the file. The P0 is closed.
+>
+> The page is kept as the runbook, because the next rules change needs exactly
+> this procedure. Read the verification table as "what was checked", and reuse
+> it as "what to check" — the shape of the test is what transfers, not the
+> specific collection names, some of which have since been renamed
+> (`games` → `products`, `xp`/`obCoins` → `points`/`pointsEarned`).
+
+The rewrite in `firestore.rules` replaced one blanket `isStaff()` check with
+per-role, per-section authorization read from custom claims.
 
 **A rules deploy has no gradual rollout.** There is no canary, no percentage,
 no per-user flag. The moment it lands it applies to every request. Read this
@@ -16,7 +25,7 @@ whole page before running the deploy command.
 
 `docs/server-setup.md` steps 1–6, finished. Specifically:
 
-- `FIREBASE_SERVICE_ACCOUNT` set in Vercel **and** redeployed.
+- `FIREBASE_SERVICE_ACCOUNT` set in the host's environment **and** redeployed.
 - `npm run backfill:claims -- --apply` run against **production**.
 - A real staff login verified to carry `claims.staff === true` and the right
   `claims.role`.
@@ -118,7 +127,7 @@ only for tokens that predate claims, which trends to zero on its own.
 ### Role gating — the actual fix
 
 Writes are now gated on the roles each section names in
-`app/lib/roles.ts`. A `gamer` can no longer write to `menuItems`; a `barista`
+`shared/src/roles.ts`. A `gamer` can no longer write to `menuItems`; a `barista`
 can no longer write to `games`. Previously any staff account could write to any
 staff-gated collection with a direct SDK call — the UI just hid the button.
 
@@ -187,7 +196,7 @@ from Manage Users rather than widening the rule.
 **Audit logs are append-only.** `activityLog`, `transactionLog`,
 `weeklyOrderLogs` and `endOfDayLogs` now deny update and delete outright, where
 a blanket `write` previously allowed both. Server-side writes bypass rules, so
-`app/lib/server/activityLog.ts` is unaffected.
+`shared/src/server/activityLog.ts` is unaffected.
 
 **Privilege fields are denied to every client.** `isStaff`, `role`,
 `superadmin`, `branchIds`, `isDungeonMaster` and `claimsUpdatedAt` cannot be
@@ -196,7 +205,7 @@ changes and revocation all run through `/api/admin/accounts`. Before this, any
 staff account could make itself an admin by writing its own document.
 
 **Balance fields narrowed.** Only `admin`/`manager` (the `loyalty` section) can
-move `xp`/`obCoins`, down from any staff member.
+move `points`/`pointsEarned`, down from any staff member.
 
 **A superadmin's document can only be edited by that superadmin.** `/admin/users`
 already greyed the button out; it's now a rule.
@@ -238,7 +247,7 @@ needs a data audit first. One tightening at a time.
 3. **Delete the deprecated `users` create branch** that checks
    `exists(/adminInvitations/$(userId))`, at the same time.
 4. **Delete the `appSettings/loyaltyReset` exception** when the annual reset
-   moves to Vercel Cron — a cron route runs on the Admin SDK and bypasses rules,
+   moves to a scheduled route — a cron route runs on the Admin SDK and bypasses rules,
    so no client will need to write there.
 
 ## Worth doing next

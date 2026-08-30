@@ -2,7 +2,7 @@
 //
 //   npm run verify:features
 //
-// The registry sat in app/lib/features.ts for months with nothing reading it,
+// The registry sat in shared/src/features.ts for months with nothing reading it,
 // and useRequireFeature() was described in its own header as enforcement
 // layer 2 while not existing at all. Both are now wired. This is what stops
 // them drifting apart again, because the failure mode is silent in both
@@ -20,8 +20,8 @@
 
 import { readFileSync } from 'node:fs'
 
-const roles = readFileSync('app/lib/roles.ts', 'utf8')
-const features = readFileSync('app/lib/features.ts', 'utf8')
+const roles = readFileSync('shared/src/roles.ts', 'utf8')
+const features = readFileSync('shared/src/features.ts', 'utf8')
 
 // ── SECTION_ACCESS keys ───────────────────────────────────────────────────
 // Bounded to the object literal itself. An earlier version of this scan took
@@ -30,7 +30,7 @@ const features = readFileSync('app/lib/features.ts', 'utf8')
 // reporting two orphan sections that do not exist.
 const start = roles.indexOf('SECTION_ACCESS = {')
 if (start === -1) {
-  console.error('Could not find SECTION_ACCESS in app/lib/roles.ts.')
+  console.error('Could not find SECTION_ACCESS in shared/src/roles.ts.')
   process.exit(1)
 }
 let depth = 0, end = start
@@ -65,7 +65,7 @@ if (orphans.length) {
   console.error('Sections no feature governs — these pages cannot be switched off:')
   for (const s of orphans) console.error(`  ${s}`)
   console.error('\nAdd each to the `sections` list of the feature that owns it in')
-  console.error('app/lib/features.ts, or add a feature for it.\n')
+  console.error('shared/src/features.ts, or add a feature for it.\n')
 }
 
 if (ghosts.length) {

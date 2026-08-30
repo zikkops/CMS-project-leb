@@ -1,0 +1,35 @@
+{
+  "//": "Shared TypeScript settings for every app and package. Each app extends this and adds only what is genuinely its own — its own `paths` for @/* and its own include list. Keeping the strictness here means a new app cannot quietly be laxer than the others.",
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@big-cms/shared/server/*": [
+        "./shared/src/server/*"
+      ],
+      "@big-cms/shared/*": [
+        "./shared/src/*"
+      ]
+    }
+  }
+}

@@ -47,18 +47,20 @@ is loyalty XP; with a POS it is cash.
 
 ### What exists now
 
-`app/lib/server/**` — Next.js route handlers running the Firebase **Admin SDK**
-on the same Vercel deployment. No new infrastructure, no Cloud Functions.
+`shared/src/server/**` — Next.js route handlers running the Firebase **Admin SDK**
+inside the same deployments as the apps themselves. No new infrastructure, no
+Cloud Functions. The shared layer is imported by all three apps' `app/api/**`;
+each one ships only the routes it actually serves.
 
 | File | Covers |
 |---|---|
 | `server/firebaseAdmin.ts` | Lazy, memoized Admin SDK init from one base64 env var |
 | `server/auth.ts` | `getCaller()` / `requireStaff()` / `requireRole()` / `requireSection()` — token verification and authorization for route handlers |
 | `server/claims.ts` | The one place that derives and writes custom claims from a `users/{uid}` document |
-| `server/activityLog.ts` | Server-side twin of `app/lib/activityLog.ts`, same collection and shape |
+| `server/activityLog.ts` | Server-side twin of `shared/src/activityLog.ts`, same collection and shape |
 
 **The import rule:** these modules read a service-account private key. They may
-be imported from `app/api/**` and `scripts/**`, and nowhere else — never from a
+be imported from an app's `app/api/**` and `scripts/**`, and nowhere else — never from a
 file carrying `'use client'`, never from a module a client component imports.
 `firebase-admin` is in `serverExternalPackages` (`next.config.ts`), which both
 keeps it out of the bundler's hands and makes an accidental client import fail
@@ -107,13 +109,19 @@ Still outstanding:
 
 - **Firestore rules still gate on the broad `isStaff()` helper.** Claims exist
   now, but the rules haven't been rewritten to read them. This is the largest
-  hole in the platform: any staff account, whatever its role, can write to any
-  staff-gated collection via a direct SDK call. Rewrite collection by
-  collection — a rules deploy has no gradual rollout.
-- **No cron job.** Anything that needs to happen on a date is still checked
-  passively on the next relevant page load — see `checkAndRunLoyaltyReset()` in
-  `app/lib/customerManagement.ts`. Vercel Cron plus a route handler replaces
-  this; it just hasn't been built.
+  hole in the platform: any staff account, whatever its role, could write to
+  any staff-gated collection via a direct SDK call. **Fixed and deployed** —
+  rules now read the role claim, one collection at a time, because a rules
+  deploy has no gradual rollout.
+- **The one scheduled job runs off the host's cron, not the app.** The
+  annual loyalty reset is `GET /api/admin/loyalty/reset` on the admin app,
+  triggered daily by a Hostinger cron. It was a Vercel cron declared in
+  `vercel.json`; the site moved to Hostinger and it silently stopped, which
+  is the failure mode worth remembering — a cron that never fires logs
+  nothing and looks exactly like one that fired with nothing to do. See
+  [docs/scheduled-jobs.md](./docs/scheduled-jobs.md). The old passive check on
+  page load, `checkAndRunLoyaltyReset()` in
+  `shared/src/customerManagement.ts`, is still there as a backstop.
 - **`deleteCustomerAccount()` still doesn't delete the Auth login.** Now
   possible via `adminAuth().deleteUser()`; not yet done. Until it is, a deleted
   customer who signs in again gets a brand-new blank profile.
@@ -123,7 +131,7 @@ Still outstanding:
 
 ### The older `serverAuth.ts` pattern
 
-`app/lib/serverAuth.ts` predates the Admin SDK and still backs the two image
+`shared/src/serverAuth.ts` predates the Admin SDK and still backs the two image
 routes (`app/api/import-image`, `app/api/media/delete`). It verifies an ID
 token over the Identity Toolkit REST API, and does authorization reads over the
 Firestore REST API **passing the caller's own idToken as the Bearer auth** — so
@@ -133,7 +141,7 @@ session would be. It grants no access the caller doesn't already have.
 That property is its limit as well as its virtue: it can only ever confirm
 facts the caller could already read for themselves, never enforce a decision
 the browser isn't trusted to make. Leave it where it is; don't extend it. New
-routes use `app/lib/server/auth.ts`.
+routes use `shared/src/server/auth.ts`.
 
 One mistake it exists to prevent, still worth knowing: don't call the Firestore
 *client* SDK's `getDoc`/`getDocs` bare inside a route handler to check a role.
@@ -147,13 +155,13 @@ you into loosening a rule to anonymous-readable just to make the check possible.
 `adminUsers/{uid}` collection. They do not, and no such collection exists.**
 Staff and customers share the single `users/{uid}` collection; a staff account
 is one with `isStaff: true` plus role fields alongside the loyalty fields every
-customer document has. `app/lib/adminAuth.ts` and `app/lib/serverAuth.ts` both
+customer document has. `shared/src/adminAuth.ts` and `shared/src/serverAuth.ts` both
 read `users/{uid}.isStaff`; that is the source of truth.
 
 | | Staff | Customers |
 |---|---|---|
 | Firestore document | `users/{uid}` with `isStaff: true` | `users/{uid}` |
-| Distinguishing fields | `role`, `branchIds`, `superadmin`, `sectionGrants`, `sectionRevocations` | `xp`, `level`, `obCoins`, `themeId`, `badges` |
+| Distinguishing fields | `role`, `branchIds`, `superadmin`, `sectionGrants`, `sectionRevocations` | `points`, `pointsEarned`, `themeId`, `badges` |
 | Hook | `useAdminUser()` / `useRequireRole()` | `useCustomerUser()` |
 | Login page | `/admin/login` | `/customer/login` |
 
@@ -164,14 +172,14 @@ One shared collection, two roles for a document.
 
 Worth knowing what this shape implies: the same document carries a staff
 member's authorization fields *and* their spendable currency. The `users`
-update rule handles that by locking specific fields (`xp`/`obCoins` must stay
+update rule handles that by locking specific fields (`points`/`pointsEarned` must stay
 unchanged unless the writer is staff) rather than gating the whole document —
 see the Firestore Rules section below for why that distinction matters.
 
 New staff accounts are created through `POST /api/admin/accounts`. First-time
 provisioning of the very first admin is still done by hand in the Firebase
 Console (create `users/{uid}` with `isStaff: true`, `role: 'admin'`,
-`superadmin: true`, `xp: 0`, `obCoins: 0`) — deliberately, because a
+`superadmin: true`, `points: 0`, `pointsEarned: 0`) — deliberately, because a
 self-elect-first-admin rule can't be expressed safely; see the last bullet of
 the Firestore Rules section.
 
@@ -179,7 +187,7 @@ Full detail on the staff side is in [docs/admin-panel.md](./docs/admin-panel.md)
 
 ## Data Layer Convention
 
-Almost all Firestore access goes through `app/lib/*.ts` — one file per feature area, each exporting a mix of:
+Almost all Firestore access goes through `shared/src/*.ts` — one file per feature area, each exporting a mix of:
 - **Hooks** (`useXxx`) that wrap `onSnapshot` for live data — most UI reads are live listeners, not one-off `getDocs` calls, so admin queues and customer profiles update in real time without a manual refresh.
 - **Plain async functions** for writes (`createXxx`, `updateXxx`, `approveXxx`/`rejectXxx`) that the UI calls directly from event handlers.
 
@@ -201,16 +209,22 @@ Almost all Firestore access goes through `app/lib/*.ts` — one file per feature
 
 ## Firestore Schema
 
-22 top-level collections. None of them have subcollections — everything is flat, with foreign-key-style string fields (`tableId`, `branchId`, `userId`, etc.) instead of nesting.
+Around forty top-level collections — `firestore.rules` is the authoritative
+list, since a collection with no rule is denied. None of them have
+subcollections: everything is flat, with foreign-key-style string fields
+(`tableId`, `branchId`, `userId`, `checkId`) instead of nesting. That is a
+deliberate choice, not an oversight — collection-group queries and rules on
+subcollections are both worse than a flat id.
 
 **Staff & customers**
-- `users/{uid}` — every account. Customer fields: `username`, `displayName`, `email`, `avatarUrl`, `themeId`, `xp`, `level`, `levelTitle`, `obCoins`, `badges`. A staff account is the same document plus `isStaff: true`, `role`, `branchIds`, `superadmin`, `sectionGrants`, `sectionRevocations` and `claimsUpdatedAt`. There is no `adminUsers` collection — see Two Identities above.
+- `users/{uid}` — every account. Customer fields: `username`, `displayName`, `email`, `avatarUrl`, `themeId`, `points`, `pointsEarned`, `badges`. A staff account is the same document plus `isStaff: true`, `role`, `branchIds`, `superadmin`, `sectionGrants`, `sectionRevocations` and `claimsUpdatedAt`. There is no `adminUsers` collection — see Two Identities above.
 - `usernames/{lowercased-username}` — uniqueness reservation, written inside the same transaction as account creation
 
 **Content (admin-managed, public-readable)**
-- `games`, `gameCategories` — shop catalog; `games.stock` is a `Record<branchName, number>`
-- `menuCategories`, `menuItems`
+- `products`, `productCategories` — shop catalog; `products.stock` is a `Record<branchName, number>`. (Called `games` before the fork de-branded it. If you find `games` anywhere, it is stale.)
+- `menuCategories`, `menuItems`, `modifierGroups` — the menu, and the option sets a POS line can carry
 - `events`, `eventTypes`
+- `productWholesale`, `wholesaleOrders` — the trade side: shops that buy from us, gated on a `wholesale` claim
 
 **Loyalty economy**
 - `transactions` — one doc per check/event attendance submission, `status: pending|approved|rejected`
@@ -226,10 +240,25 @@ Almost all Firestore access goes through `app/lib/*.ts` — one file per feature
 **Social**
 - `friendRequests` — single collection for both pending requests and accepted friendships (a `status` field distinguishes them)
 
+**Stock and ordering (phase 01)**
+- `supplies` — what a branch consumes, as opposed to `products`, which it sells
+- `orderProviders`, `orderCategoryMeta`, `orderTemplateItems` — suppliers and the standing weekly order template
+- `weeklyOrderReports`, `weeklyOrderLogs` — one order per branch per week, and its history
+- `deliveries` — what actually arrived against an order, and at what cost
+- `dailyInventoryCounts` — the count that closes the loop between ordered, received and used
+- `productPurchaseOrders` — buying stock for the shop, the `products` equivalent of a weekly order
+
+**POS (phase 03)**
+- `checks` — one per table visit. Lines carry a snapshot of price, name and station, so history can't move when the menu does. `source: 'menu' | 'product'` is what decides whether Send draws stock.
+- `kitchenTickets` — a separate collection, not a field on the check: the kitchen screen must not re-render on every till keystroke, and a ticket's lifecycle (`new → preparing → ready → bumped`) is not the check's.
+- `branchTableLayouts`, `branchStaff` — the floor plan and who is on it
+- `endOfDayReports`, `endOfDayLogs` — the day's close
+
 **Operational**
-- `activityLog` — every admin create/update/delete, written by `app/lib/activityLog.ts`
+- `activityLog` — every admin create/update/delete, written by `shared/src/server/activityLog.ts`
 - `mediaLibrary` — every image ever uploaded through any admin form, for the shared media picker
-- `appSettings/loyaltyReset` — the one doc holding `nextResetDate` for the annual points reset
+- `notifications` — per-user, read by the bell
+- `appSettings/` — a handful of singleton documents rather than a collection: `loyaltyReset` (`nextResetDate`), `business` (VAT, currency, rates — server-write only), `features` (the feature-flag registry, world-readable so a signed-out page can hide a disabled section), `invoiceCounter` and `skuCounter` (server-issued sequences)
 
 ## The Table Booking System
 
@@ -266,7 +295,7 @@ Security rules **are** version-controlled, in `firestore.rules` at the project r
 
 Every rule follows the same shape: a broad `isStaff()` helper (checks `users/{uid}.isStaff`, not a specific role) gates staff-only writes, while customer-owned documents check `request.auth.uid == resource.data.<ownerField>`.
 
-**Granular role checks are not enforced in rules — only in the client via `useRequireRole`. This is now a known hole, not a tradeoff.** Any staff account, whatever its role, can write to any staff-gated collection via a direct SDK call; the UI just won't show them the button. It was an acceptable position while every account was a trusted employee and the worst case was mis-awarded loyalty XP. It is not acceptable for a system heading toward taking payments, and it is the P0 in the feature audit.
+**Granular role checks are enforced in rules as of Aug 2026.** They used to live only in the client, in `useRequireRole` — any staff account could write to any staff-gated collection via a direct SDK call and the UI merely hid the button. That was tolerable while every account was a trusted employee and the worst case was mis-awarded loyalty XP; it stopped being tolerable once the POS existed. Rules now read the role from the token (`hasRole()`, `can()`), mirroring `SECTION_ACCESS`. Two carve-outs are deliberate and documented in `firestore.rules`: section *revocations* are not enforced (they would cost a read on every staff write), and section *grants* are, because that read only happens after the role check has already failed.
 
 The fix is unblocked, not done. Custom claims now carry `role`, so a rule can read `request.auth.token.role` for free where it previously would have paid a billed document read per evaluation. Rewrite collection by collection — never in one sweep, because a rules deploy has no gradual rollout and a wrong rule breaks that collection for everyone at once. Backfill claims and verify a real token carries them *before* deploying the first claim-checking rule (see [docs/server-setup.md](./docs/server-setup.md)).
 
@@ -275,5 +304,5 @@ The fix is unblocked, not done. Custom claims now carry `role`, so a rule can re
 If you add a new collection, **add its rule to `firestore.rules` and deploy it** — there's no other safety net catching a missing rule (Firestore denies anything unmatched by default, so forgetting a rule fails closed, but a rule that's *wrong* — too permissive — won't be caught by anything automated). A few patterns worth reusing:
 - **Schema/bounds validation on create**, not just "who can write": see `transactions`' `xpAmount`/`coinsAmount` caps — a `create` rule that only checks ownership lets the *creator* set any value for fields a normal UI flow would compute for them.
 - **Narrow "customer can update their own participation" rules**, not blanket `isStaff()`: see `tableReservations`/`eventReservations`' update rule, which allows a non-staff edit only when `status` doesn't change — wide enough for the decline-invite flow to work, narrow enough that a customer still can't self-approve their own booking.
-- **Lock specific high-value fields, not the whole document**, when a document is otherwise legitimately self-editable: see `users`' update rule — a customer can freely rewrite their own avatar/theme/username/etc., but `xp`/`obCoins` must stay equal to `resource.data.xp`/`obCoins` (i.e. unchanged) unless the writer is staff. Before this fix, "customer owns this doc" had silently meant "customer owns every field on this doc, including their own currency balance" — `allow write: if auth.uid == userId` doesn't stop the owner from writing *anything*, just because the *intended* write path (the app's UI) never asks for that field.
+- **Lock specific high-value fields, not the whole document**, when a document is otherwise legitimately self-editable: see `users`' update rule — a customer can freely rewrite their own avatar/theme/username/etc., but `points`/`pointsEarned` must stay equal to `resource.data.points`/`pointsEarned` (i.e. unchanged) unless the writer is staff. Before this fix, "customer owns this doc" had silently meant "customer owns every field on this doc, including their own currency balance" — `allow write: if auth.uid == userId` doesn't stop the owner from writing *anything*, just because the *intended* write path (the app's UI) never asks for that field.
 - **Don't try to replicate app-level bootstrap logic in rules that rules can't actually express.** The old staff-account rule tried to allow a one-time "first admin self-elects" write by checking `request.auth != null` — but rules have no way to check "is this whole collection empty," only "does this one document exist," so it ended up allowing *every* signup to self-promote, not just the first. When client-side logic and rules can't agree on the same check, provision by hand instead of weakening the rule to match.

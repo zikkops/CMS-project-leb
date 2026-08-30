@@ -1,0 +1,11 @@
+{
+  "name": "@big-cms/shared",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    "./styles/*": "./src/styles/*",
+    "./components/*": "./src/components/*.tsx",
+    "./server/*": "./src/server/*.ts",
+    "./*": "./src/*.ts"
+  }
+}

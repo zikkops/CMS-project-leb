@@ -2,10 +2,20 @@
   "name": "big-cms-project",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "web",
+    "admin",
+    "pos",
+    "shared"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "npm run dev --workspace web",
+    "dev:admin": "npm run dev --workspace admin",
+    "dev:pos": "npm run dev --workspace pos",
+    "build": "npm run build --workspaces --if-present",
+    "build:web": "npm run build --workspace web",
+    "build:admin": "npm run build --workspace admin",
+    "build:pos": "npm run build --workspace pos",
     "lint": "eslint",
     "backfill:claims": "node --env-file=.env.local scripts/backfill-claims.mjs",
     "link:supplies": "node --env-file=.env.local scripts/link-template-supplies.mjs",
@@ -18,7 +28,10 @@
     "add:index": "node scripts/add-index.mjs",
     "harden:customers": "node --env-file=.env.local scripts/harden-customer-fields.mjs",
     "verify:features": "node scripts/verify-features.mjs",
-    "verify:hosts": "node scripts/verify-hosts.mjs"
+    "verify:hosts": "node scripts/verify-hosts.mjs",
+    "verify:checks": "node scripts/verify-checks.mjs",
+    "cron:reset": "node scripts/cron-reset.mjs",
+    "package": "node scripts/package-app.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
