@@ -452,6 +452,7 @@ panel does nothing.
 |---|---|
 | `MODULE_NOT_FOUND` on start | Startup file is `server.js`. It is `admin/server.js` — one level in. |
 | App starts, every page unstyled | `.next/static` missing. Re-run `npm run package`, do not debug CSS. |
+| One subdomain 404s everything, main site fine | Application root points at the wrong app. See [Which app serves which hostname](#which-app-serves-which-hostname). |
 | `auth/invalid-api-key` in the browser | Built without `.env.local`. Create it (Step 4) and rebuild. |
 | `auth/unauthorized-domain` on login | Step 10. |
 | `/admin` still redirects on the apex | `web` was not restarted after `ADMIN_HOST`, or the variable was set on admin only. |
