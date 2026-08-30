@@ -29,6 +29,12 @@
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { execFileSync } from 'node:child_process'
+import { createRequire } from 'node:module'
+// The same loader next.config.ts uses, so this script sees exactly what the
+// build will see rather than a second opinion about it.
+import { loadRootEnv } from '../env.mjs'
+
+const NEXT_BIN = createRequire(import.meta.url).resolve('next/dist/bin/next')
 
 const APPS = ['web', 'admin', 'pos']
 
@@ -47,16 +53,50 @@ if (!APPS.includes(app)) {
 const root = resolve(import.meta.dirname, '..')
 const out = join(root, 'dist', app)
 
+// ── Refuse to build blind ──────────────────────────────────────────────────
+// NEXT_PUBLIC_* values are inlined at compile time, and firebase.ts reads six
+// of them with no fallback and no validation. Build without them and nothing
+// complains: the build succeeds, and initializeApp() gets a config of six
+// undefineds. The failure surfaces later, in the browser, as
+// auth/invalid-api-key on a page that otherwise renders — by which point the
+// question being asked is 'why is login broken' rather than 'what did I not
+// set'.
+//
+// This is the first-deploy trap specifically. .env.local is gitignored, so a
+// fresh clone on a server has none, and the build that produces a broken
+// bundle looks exactly like the build that produces a working one.
+loadRootEnv()
+
+const missing = [
+  'NEXT_PUBLIC_FIREBASE_API_KEY',
+  'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
+  'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
+  'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
+  'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
+  'NEXT_PUBLIC_FIREBASE_APP_ID',
+].filter(k => !process.env[k])
+
+if (missing.length > 0) {
+  console.error('\nRefusing to build: these are inlined at compile time and are not set.\n')
+  for (const k of missing) console.error('  ' + k)
+  console.error('\nPut them in .env.local at the repo root — the SAME root as package.json,')
+  console.error('not inside ' + app + '/. It is gitignored, so a fresh clone does not have one.')
+  console.error('Copy docs/env-local.template.txt and fill it in, then run npm run check:env.\n')
+  process.exit(1)
+}
+
 // ── Build ──────────────────────────────────────────────────────────────────
 // --no-build is for re-assembling after a build you already ran, not for
 // shipping a stale .next. If there is no build at all, refuse rather than
 // package an empty folder that fails on the server instead of here.
 if (!skipBuild) {
   console.log(`Building ${app}…`)
-  // npm.cmd rather than shell:true — passing args through a shell concatenates
-  // rather than escapes them, and Node deprecated the combination for that reason.
-  execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', `build:${app}`], {
-    cwd: root, stdio: 'inherit',
+  // The Next binary directly, not 'npm run build'. Spawning npm means spawning
+  // npm.cmd on Windows, which since Node 20 needs shell:true, which in turn is
+  // deprecated for argument-passing. Going straight to the CLI avoids the shell
+  // on both platforms and is one process fewer either way.
+  execFileSync(process.execPath, [NEXT_BIN, 'build'], {
+    cwd: join(root, app), stdio: 'inherit',
   })
 }
 
