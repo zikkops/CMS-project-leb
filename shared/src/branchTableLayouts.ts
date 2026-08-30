@@ -6,7 +6,7 @@ import { db } from './firebase'
 import { authedFetch, unwrap } from './apiClient'
 
 // One floor-plan layout per branch — doc id is the branch name itself
-// (see app/lib/branches.ts), so "does this branch have a layout yet" is a
+// (see shared/src/branches.ts), so "does this branch have a layout yet" is a
 // plain getDoc/onSnapshot, no query needed. The whole `tables` array is
 // always read and written together (the map view needs every table at
 // once; the admin editor saves a whole drag/resize/adjacency session in

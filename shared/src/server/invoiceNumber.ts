@@ -6,7 +6,7 @@
 //
 // ── Why this file exists ───────────────────────────────────────────────────
 // The same counter transaction had been written three times: once in the
-// browser (app/lib/invoiceNumber.ts), once in the wholesale route, and once
+// browser (shared/src/invoiceNumber.ts), once in the wholesale route, and once
 // inside createPurchaseOrder(). The browser copy could not work at all —
 // appSettings/invoiceCounter is `allow write: if false`, so it returned
 // permission-denied for every caller including an admin, and the invoice

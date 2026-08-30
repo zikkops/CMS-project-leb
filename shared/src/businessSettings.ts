@@ -11,7 +11,7 @@
 // re-values the moment someone changes it. That is not the case here, and it
 // is worth knowing why before touching any of this:
 //
-//   - a delivery stores its own `vatRate` (app/lib/server/deliveries.ts)
+//   - a delivery stores its own `vatRate` (shared/src/server/deliveries.ts)
 //   - an end-of-day report stores its own `exchangeRate` (server/endOfDay.ts)
 //
 // Both capture the rate that was actually applied, at the moment it was
@@ -19,10 +19,10 @@
 // reach backwards. Keep it that way: the day something reads the live rate to
 // display an old document is the day history starts moving.
 //
-// No 'use client' and no Firebase import here on purpose: app/lib/server/**
-// and the route handler both import this, and pulling app/lib/firebase.ts in
+// No 'use client' and no Firebase import here on purpose: shared/src/server/**
+// and the route handler both import this, and pulling shared/src/firebase.ts in
 // would put the client SDK in the server bundle. The listener lives in
-// app/lib/useBusinessSettings.ts.
+// shared/src/useBusinessSettings.ts.
 //
 // ── Fail-safe, not fail-open ───────────────────────────────────────────────
 // A missing or unreadable settings document falls back to the brand config,
@@ -69,7 +69,7 @@ export interface BusinessSettings {
    * prevent.
    *
    * So it is chosen during setup and locked as soon as a number has been
-   * issued. The lock lives in app/lib/server/settings.ts, where the counter
+   * issued. The lock lives in shared/src/server/settings.ts, where the counter
    * can actually be read.
    */
   invoicePrefix: string

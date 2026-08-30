@@ -8,7 +8,7 @@ import {
 import { db } from './firebase'
 import { authedFetch, unwrap } from './apiClient'
 
-// Kept in its own file, separate from app/lib/loyalty.ts — redemptions are a
+// Kept in its own file, separate from shared/src/loyalty.ts — redemptions are a
 // distinct flow (spending coins) from transactions (earning them), with
 // their own collections. transactionLog is shared between both (a `type`
 // discriminator distinguishes redemption entries from transaction ones).
@@ -204,7 +204,7 @@ export function usePendingRedemptions(branchFilter: string[] | 'all' | null) {
 // race as the credit path in loyalty.ts: two confirmations at once both saw
 // enough balance, and one deduction was lost.
 //
-// app/lib/server/loyalty.ts takes the cost from the stored redemption,
+// shared/src/server/loyalty.ts takes the cost from the stored redemption,
 // re-checks the balance INSIDE the transaction, and deducts with an atomic
 // increment. `managerUid` is gone — the server reads the actor from the token.
 async function resolve(redemption: Redemption, action: 'approve' | 'reject', reason?: string): Promise<void> {

@@ -5,7 +5,7 @@
 // Reusable on purpose. "Milk" is one group attached to every coffee, not a
 // copy per item — otherwise adding oat milk means editing fourteen documents
 // and missing one. Items reference groups by id; a check line snapshots what
-// was chosen (see ModifierSelection in app/lib/modifiers.ts).
+// was chosen (see ModifierSelection in shared/src/modifiers.ts).
 
 import { FieldValue } from 'firebase-admin/firestore'
 import { randomUUID } from 'node:crypto'

@@ -17,7 +17,7 @@ const inputStyle = {
 
 // Shared by the D&D Session and Event Attendance submission panels — search
 // the customer directory (role: "customer", same data source the customer
-// "Split with Friends" search reads from in app/lib/friends.ts) and build a
+// "Split with Friends" search reads from in shared/src/friends.ts) and build a
 // list of attendees as removable chips.
 export default function AttendeeSearch({
   selected, onAdd, onRemove, currentUid, isMobile,

@@ -109,7 +109,7 @@ export function clearAdminSessionCookie() {
 // wouldn't otherwise reach this browser until the token happened to rotate.
 //
 // The server stamps `claimsUpdatedAt` on the document every time it writes
-// claims (see app/lib/server/claims.ts). If that stamp is newer than the token
+// claims (see shared/src/server/claims.ts). If that stamp is newer than the token
 // in hand, the token is stale by definition — force a refresh and the new
 // claims arrive in seconds instead of up to an hour.
 async function refreshStaleClaims(u: User, data: Record<string, unknown> | null) {
@@ -223,7 +223,7 @@ export function useIsStaff(): boolean {
 }
 
 // hasSectionAccess() now lives in ./roles (re-exported at the top of this
-// file) so the server guard in app/lib/server/auth.ts evaluates access with
+// file) so the server guard in shared/src/server/auth.ts evaluates access with
 // the exact same predicate this hook does.
 
 /**
@@ -256,7 +256,7 @@ export function useRequireRole(
   const sectionKey = Object.entries(SECTION_ACCESS).find(([, v]) => v === allowed)?.[0]
   const hasAccess = hasSectionAccess(role, allowed, sectionGrants, sectionKey, sectionRevocations)
 
-  // Enforcement layer 2 from app/lib/features.ts, applied here rather than
+  // Enforcement layer 2 from shared/src/features.ts, applied here rather than
   // page by page.
   //
   // useRequireFeature() existed as a standalone hook and no page ever called

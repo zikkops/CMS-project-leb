@@ -2,7 +2,7 @@
 
 // The superadmin switchboard.
 //
-// app/lib/features.ts has carried the registry, the dependency graph and a
+// shared/src/features.ts has carried the registry, the dependency graph and a
 // full design for this screen since the fork, and nothing ever read any of it
 // — every module was on regardless of what the flags said. This is the screen
 // that makes the registry real.

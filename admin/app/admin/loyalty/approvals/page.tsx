@@ -108,7 +108,7 @@ export default function LoyaltyApprovalsPage() {
 
   // Same branchId+checkNumber on more than one pending check submission —
   // possibly two different customers, which the customer-side duplicate
-  // check (checkNumberAlreadyUsed in app/lib/loyalty.ts) structurally can't
+  // check (checkNumberAlreadyUsed in shared/src/loyalty.ts) structurally can't
   // see across accounts (Firestore rules only let a customer read another
   // customer's transaction once it's approved). Purely a flag for the
   // reviewer here; nothing is blocked.

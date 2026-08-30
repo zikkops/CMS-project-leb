@@ -3,7 +3,7 @@
 // These used to be 22 bundled photographs of the original café's actual food,
 // served from /public/images/menu. They were the café's own photography and
 // can't ship in a product demo, so this now maps to the shared placeholder
-// manifest instead — see app/lib/placeholderAssets.ts.
+// manifest instead — see shared/src/placeholderAssets.ts.
 //
 // ── Firestore wins ─────────────────────────────────────────────────────────
 // This map used to take precedence over the `image` stored on the

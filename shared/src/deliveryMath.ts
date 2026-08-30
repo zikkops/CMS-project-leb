@@ -1,7 +1,7 @@
 // Pure calculations and types for goods receiving. NO Firestore, NO Firebase,
 // no imports that reach either — deliberately.
 //
-// app/lib/server/deliveries.ts needs these functions, and it runs in a
+// shared/src/server/deliveries.ts needs these functions, and it runs in a
 // serverless function on the Admin SDK. If they lived alongside the client
 // read helpers, importing one value would execute `import { db } from
 // './firebase'` and stand up a browser Firestore instance inside every
@@ -10,7 +10,7 @@
 // It's also what lets scripts/verify-delivery-math.mjs import this module
 // directly instead of transpiling and stripping it.
 //
-// app/lib/deliveries.ts re-exports everything here, so import from either.
+// shared/src/deliveries.ts re-exports everything here, so import from either.
 
 // `import type` only — fully erased at compile time, so this module still
 // pulls no Firebase code into a serverless bundle. Do not turn either of these

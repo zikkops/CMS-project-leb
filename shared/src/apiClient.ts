@@ -38,7 +38,7 @@ export async function authedFetch(path: string, method: string, body?: unknown):
  * Unwraps a route response, throwing the server's own message.
  *
  * Route handlers return `{ error }` already written for a human (see
- * toResponse in app/lib/server/auth.ts), so this passes it straight through
+ * toResponse in shared/src/server/auth.ts), so this passes it straight through
  * rather than inventing a second set of copy that then drifts from the first.
  */
 export async function unwrap(res: Response): Promise<Record<string, unknown>> {

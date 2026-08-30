@@ -5,7 +5,7 @@
 // auth.currentUser said, and every admin screen called into it.
 //
 // Every one of those writers has moved behind a route handler, and each took
-// its logging with it — app/lib/server/activityLog.ts is where entries are
+// its logging with it — shared/src/server/activityLog.ts is where entries are
 // written now, from a verified token. When the last of them went (the
 // password-reset notice on a customer account) nothing was left here to write
 // with, so the writer is gone rather than kept around unused.

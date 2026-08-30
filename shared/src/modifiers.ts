@@ -6,7 +6,7 @@
 // line, the price and later the recipe cost all read from that. Retrofitting
 // modifiers into an existing check model is a rewrite, not a migration.
 //
-// No React and no Firebase import: app/lib/server/** validates against these
+// No React and no Firebase import: shared/src/server/** validates against these
 // rules and the browser renders from them, so both halves have to be able to
 // import this. Same split as roles.ts and businessSettings.ts.
 

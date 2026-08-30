@@ -1,7 +1,7 @@
 // SERVER ONLY — see firebaseAdmin.ts for the import rule.
 //
 // Writing the feature flags. The registry and the dependency graph stay in
-// code (app/lib/features.ts); this only ever persists what a superadmin chose.
+// code (shared/src/features.ts); this only ever persists what a superadmin chose.
 
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from './firebaseAdmin'

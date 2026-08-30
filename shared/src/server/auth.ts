@@ -2,7 +2,7 @@
 //
 // Authorization for route handlers, backed by the Admin SDK.
 //
-// This supersedes app/lib/serverAuth.ts for every NEW route. serverAuth.ts
+// This supersedes shared/src/serverAuth.ts for every NEW route. serverAuth.ts
 // still exists and still works — it verifies a token over the Identity Toolkit
 // REST API and does authorization reads over the Firestore REST API *as the
 // calling user*, which was the only way to check anything server-side without

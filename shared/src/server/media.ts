@@ -11,7 +11,7 @@ import { HttpError } from './auth'
 /**
  * Collections that may reference a hosted image, and the field it lives in.
  *
- * Kept in step with IMAGE_SOURCES in app/lib/media.ts, which drives the
+ * Kept in step with IMAGE_SOURCES in shared/src/media.ts, which drives the
  * browser-side warning. Both lists exist because both jobs are real: the
  * browser needs to warn BEFORE the click, and the server needs to enforce
  * AFTER it. If a collection gains an image field, add it here too or a delete

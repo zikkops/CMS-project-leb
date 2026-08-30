@@ -1,6 +1,6 @@
 // SERVER ONLY — see firebaseAdmin.ts for the import rule.
 //
-// The server-side twin of app/lib/activityLog.ts. Same collection, same
+// The server-side twin of shared/src/activityLog.ts. Same collection, same
 // document shape, so /admin/logs renders entries from a route handler exactly
 // as it renders entries written from the browser.
 //

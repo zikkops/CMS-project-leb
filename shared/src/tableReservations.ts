@@ -9,9 +9,9 @@ import { db } from './firebase'
 import { createStatusNotification } from './notifications'
 import { authedFetch, unwrap } from './apiClient'
 
-// Mirrors app/lib/dndReservations.ts's conflict-locking pattern exactly,
+// Mirrors shared/src/dndReservations.ts's conflict-locking pattern exactly,
 // generalized from one locked resource (a DM) to N (every table in a
-// joint booking) — this app has no Admin SDK/Cloud Functions, so a
+// joint booking) — this predates the Admin SDK layer, so a
 // runTransaction reading deterministic per-bucket lock documents is the
 // only race-safe option available client-side (see ARCHITECTURE.md).
 // Self-contained on purpose, not importing the date-math helpers from
@@ -69,7 +69,7 @@ export interface TableReservation {
 }
 
 // dateKey, bucketIndex, lockDocId and bucketStartTimesInRange moved to
-// app/lib/tableLocks.ts. Releasing a lock happens server-side now, and both
+// shared/src/tableLocks.ts. Releasing a lock happens server-side now, and both
 // sides have to compute byte-identical ids or a rejection orphans the locks
 // it meant to free.
 function allStartTimesForDate(dateStr: string, openingStart: string, openingEnd: string): Date[] {

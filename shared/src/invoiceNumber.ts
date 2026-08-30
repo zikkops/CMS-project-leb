@@ -30,7 +30,7 @@ export { formatInvoiceNumber, quarterOf } from './invoiceFormat'
 //
 // Numbers are minted server-side now: /api/admin/invoice-number for staff,
 // and GET /api/wholesale/orders for a shop's own browser. Both call
-// issueInvoiceNumber() in app/lib/server/invoiceNumber.ts.
+// issueInvoiceNumber() in shared/src/server/invoiceNumber.ts.
 
 /**
  * The next invoice number, minted by the server.

@@ -10,7 +10,7 @@ import {
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, runTransaction } from 'firebase/firestore'
 import { auth, db } from './firebase'
 
-// Independent from app/lib/adminAuth.ts on purpose — customers and staff are
+// Independent from shared/src/adminAuth.ts on purpose — customers and staff are
 // different audiences with different permission models.
 //
 // They are NOT different collections. Both live in `users/{uid}`, and a staff
@@ -25,7 +25,7 @@ import { auth, db } from './firebase'
 // Reads the `staff` custom claim rather than the user document: it is the same
 // source firestore.rules checks, it costs no billed read, and it cannot
 // disagree with the rules the way a separately-read document can. Claims are
-// minted on every account create, edit and delete (app/lib/server/claims.ts).
+// minted on every account create, edit and delete (shared/src/server/claims.ts).
 //
 // The document fallback mirrors isStaff() in firestore.rules and exists for
 // the same reason: a token issued before the claims backfill carries none.

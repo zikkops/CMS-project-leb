@@ -134,7 +134,7 @@ export function useAllCustomers() {
 // top-up usually means moving only the balance.
 //
 // There is no longer a level to recompute — status is derived from
-// pointsEarned on read (see app/lib/loyaltyTiers.ts), so nothing can drift.
+// pointsEarned on read (see shared/src/loyaltyTiers.ts), so nothing can drift.
 // Both run SERVER-SIDE (Phase 00 standing rule). Firestore rules permit
 // loyalty staff to write balance fields and cannot check what is written, so
 // the audit entry was the only record of a correction — written by the same
@@ -209,7 +209,7 @@ function oneYearFromToday(): string {
 }
 
 // todayStr() and oneYearAfter() went with the browser-side reset logic.
-// The server owns both now — see app/lib/server/loyalty.ts.
+// The server owns both now — see shared/src/server/loyalty.ts.
 
 const resetSettingsRef = doc(db, 'appSettings', 'loyaltyReset')
 
@@ -284,7 +284,7 @@ export async function runLoyaltyResetNow(force = false): Promise<{ status: strin
 // since nothing would ever retry. For a migration whose whole purpose is to
 // stop exposing personal data, failing silently in the exposed direction is
 // the wrong way round. (The annual points reset had the same bug; see
-// app/lib/server/loyalty.ts.)
+// shared/src/server/loyalty.ts.)
 //
 // And the timing was wrong. They fixed a data shape that only ever existed in
 // the original café's database, yet ran on every admin dashboard load forever.

@@ -16,7 +16,7 @@ export function proxy(request: NextRequest) {
 
   // ── Which hostname is this, and does this path belong on it? ─────────────
   // Inert until ADMIN_HOST / POS_HOST are set: with neither configured every
-  // path is allowed on every host, exactly as before. See app/lib/hosts.ts.
+  // path is allowed on every host, exactly as before. See shared/src/hosts.ts.
   // Named hosts, not config — `export const config` below is the matcher, and
   // shadowing it inside the handler is a trap for whoever reads this next.
   const hosts = hostConfigFromEnv(process.env)

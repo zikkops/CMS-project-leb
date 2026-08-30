@@ -6,7 +6,7 @@
 // they disagree, a customer is quoted one number and charged another — so the
 // rule lives here once and all three read it.
 //
-// No React, no Firebase: app/lib/server/** imports this too.
+// No React, no Firebase: shared/src/server/** imports this too.
 
 export interface Priced {
   price: number

@@ -9,7 +9,7 @@ import { authedFetch, unwrap } from './apiClient'
 // Staff-managed marketing content: what each status tier is worth. Shown on
 // the public loyalty page and on a customer's own profile.
 //
-// Replaces app/lib/levelPerks.ts, which keyed perks to a level from 1 to 50
+// Replaces shared/src/levelPerks.ts, which keyed perks to a level from 1 to 50
 // and derived the tier label from the level on read. With levels gone, the
 // tier IS the key — there is no longer a number in between to derive from.
 //

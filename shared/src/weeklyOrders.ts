@@ -173,7 +173,7 @@ export async function deleteTemplateItem(id: string, _name: string): Promise<voi
 // ---- Reports ----
 
 // Submitting runs SERVER-SIDE (Phase 00 standing rule). See
-// app/lib/server/weeklyOrders.ts.
+// shared/src/server/weeklyOrders.ts.
 //
 // The request now names template items and quantities only. Every other field
 // on a line — name, unit, category, provider, pack size — is read from the

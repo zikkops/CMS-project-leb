@@ -21,7 +21,7 @@ export interface Transaction {
   type: 'check' | 'event'
   userId: string[]
   // One figure. This was pointsAmount + pointsAmount — two currencies awarded at
-  // two different rates for the same purchase. See app/lib/loyaltyTiers.ts.
+  // two different rates for the same purchase. See shared/src/loyaltyTiers.ts.
   pointsAmount: number
   status: 'pending' | 'approved' | 'rejected' | 'cancelled'
   submittedBy: string
@@ -156,7 +156,7 @@ export async function resolveStaffEmails(uids: string[]): Promise<Map<string, st
 // and two managers approving for the same customer at the same moment both
 // read the same starting balance so one credit vanished.
 //
-// app/lib/server/loyalty.ts takes the amount from the STORED transaction and
+// shared/src/server/loyalty.ts takes the amount from the STORED transaction and
 // applies it with an atomic increment, inside one Firestore transaction with
 // the status flip. It also enforces branch scoping, which was previously only
 // a property of the query that built the queue.

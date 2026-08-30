@@ -9,7 +9,7 @@ import { db } from './firebase'
 
 // Friend requests live in their own collection rather than as arrays on
 // users/{uid} — a customer can only write their own user doc (see
-// app/lib/customerAuth.ts), so there's no way to add yourself to someone
+// shared/src/customerAuth.ts), so there's no way to add yourself to someone
 // else's "incoming requests" array without a separate, narrowly-scoped
 // collection. Each party's display info is denormalized onto the request
 // doc at creation time, so showing a request/friend never needs an extra

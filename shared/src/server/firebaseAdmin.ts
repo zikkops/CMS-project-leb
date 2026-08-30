@@ -1,10 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// SERVER ONLY. Nothing in `app/lib/server/**` may ever be imported from a file
+// SERVER ONLY. Nothing in `shared/src/server/**` may ever be imported from a file
 // that carries 'use client', or from any module a client component imports.
 // This file reads a service-account private key; if it were ever pulled into a
 // browser bundle, that key ships to every visitor.
 //
-// The rule to remember: `app/lib/server/*` is reachable from `app/api/**`
+// The rule to remember: `shared/src/server/*` is reachable from `app/api/**`
 // route handlers and from `scripts/**` only.
 //
 // See ARCHITECTURE.md § The Server Layer for why this exists and what it
@@ -21,7 +21,7 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 // obvious instead of surfacing as a cryptic missing-Node-builtin error.
 if (typeof window !== 'undefined') {
   throw new Error(
-    'app/lib/server/firebaseAdmin.ts was imported from the browser. ' +
+    'shared/src/server/firebaseAdmin.ts was imported from the browser. ' +
     'Server-layer modules must only be imported from app/api/** or scripts/**.'
   )
 }
@@ -83,7 +83,7 @@ function readServiceAccount(): Required<ServiceAccountJson> {
 
 // Serverless functions are re-used across invocations, so initializeApp() must
 // not run twice in the same process — hence the getApps() check, mirroring the
-// same pattern app/lib/firebase.ts already uses for the client SDK.
+// same pattern shared/src/firebase.ts already uses for the client SDK.
 const ADMIN_APP_NAME = 'cms-admin'
 
 function adminApp(): App {

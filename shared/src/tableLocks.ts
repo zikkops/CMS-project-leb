@@ -10,14 +10,14 @@
 // pending request already holds its slot. Rejecting is what releases it.
 //
 // ── Why this is its own file ───────────────────────────────────────────────
-// These four functions were private to app/lib/tableReservations.ts, which is
+// These four functions were private to shared/src/tableReservations.ts, which is
 // a 'use client' module. Rejecting a booking has to delete exactly the same
 // lock documents the request created, and that now happens server-side — so
 // the id formula has to be reachable from both. It must produce byte-identical
 // ids on either side or a rejection leaves orphaned locks that silently block
 // a table forever.
 //
-// No React and no Firebase import here on purpose, so app/lib/server/** can
+// No React and no Firebase import here on purpose, so shared/src/server/** can
 // import it without dragging the client SDK into the server bundle.
 
 /** Bookings are held in half-hour slots. */

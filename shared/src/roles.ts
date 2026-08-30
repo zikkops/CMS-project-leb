@@ -1,6 +1,6 @@
 // Shared authorization vocabulary. Deliberately has NO 'use client' directive
-// and no imports, so both the browser (app/lib/adminAuth.ts) and the server
-// layer (app/lib/server/**, app/api/**) can read from one definition.
+// and no imports, so both the browser (shared/src/adminAuth.ts) and the server
+// layer (shared/src/server/**, app/api/**) can read from one definition.
 //
 // Before this file existed, `Role`, `ALL_ROLES` and `SECTION_ACCESS` lived
 // inside adminAuth.ts, which is a client module — a route handler importing

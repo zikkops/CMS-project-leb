@@ -16,7 +16,7 @@ const LOGIN_PATH = '/customer/login'
 const ADMIN_HOME = adminUrl()
 
 // Scoped to the (customer) route group only — entirely separate from the
-// admin/CMS auth in app/admin and app/lib/adminAuth.ts.
+// admin/CMS auth in app/admin and shared/src/adminAuth.ts.
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()

@@ -118,7 +118,7 @@ export async function getDailyInventory(branch: string, date: string, department
 }
 
 // Draft and submit both run SERVER-SIDE (Phase 00 standing rule). See
-// app/lib/server/inventory.ts.
+// shared/src/server/inventory.ts.
 //
 // `uid` is gone from both signatures — the server takes the actor from the
 // verified token — and the branch is checked against the caller's own

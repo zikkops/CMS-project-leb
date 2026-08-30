@@ -60,7 +60,7 @@ export default function RecordSalePage() {
 
   useEffect(() => {
     // The trade price is needed to ring up a wholesale sale, and it is not on
-    // the product document any more — see app/lib/server/products.ts.
+    // the product document any more — see shared/src/server/products.ts.
     ;(async () => {
       const snap = await getDocs(collection(db, 'products'))
       let wholesale: Record<string, number> = {}

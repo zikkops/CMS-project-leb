@@ -171,7 +171,7 @@ export async function getEndOfDayReport(branch: string, date: string): Promise<E
 }
 
 // Saving runs SERVER-SIDE (Phase 00 standing rule). See
-// app/lib/server/endOfDay.ts.
+// shared/src/server/endOfDay.ts.
 //
 // This is the closest thing the app has to a till: drawer counts, what the
 // system said, and tips — which feed the monthly payroll figure. The client

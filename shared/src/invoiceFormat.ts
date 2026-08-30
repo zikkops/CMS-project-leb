@@ -12,7 +12,7 @@
 //
 // The prefix used to be the literal 'OB', the initials of the café this was
 // forked from. It is a per-business setting now, chosen once during setup and
-// then locked — see app/lib/server/settings.ts for why locking matters.
+// then locked — see shared/src/server/settings.ts for why locking matters.
 
 // 1 = January (calendar quarters). Set to 7 for a July–June fiscal year.
 export const FISCAL_YEAR_START_MONTH = 1

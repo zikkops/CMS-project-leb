@@ -6,7 +6,7 @@
 // to express "the branches that hold stock", each independently, each able to
 // drift from the others.
 //
-// Both lists now come from app/lib/brand.ts.
+// Both lists now come from shared/src/brand.ts.
 //
 // ── A type change worth knowing about ──────────────────────────────────────
 // `BRANCHES` was `as const`, so `typeof BRANCHES[number]` was the union

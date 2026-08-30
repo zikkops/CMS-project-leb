@@ -3,7 +3,7 @@
 //
 // WHAT THIS REPLACED
 // Creating a staff account used to be a four-step dance in the browser
-// (app/lib/adminAuth.ts, createAccount), because no step could be trusted to
+// (shared/src/adminAuth.ts, createAccount), because no step could be trusted to
 // the admin's own session:
 //   1. POST identitytoolkit accounts:signUp to mint the Auth user, capturing
 //      the NEW user's idToken out of the response
@@ -166,7 +166,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     // Mirrors useRequireRole(['admin']) on /admin/users exactly. Deliberately
     // a role check rather than a section check — see the note at the bottom of
-    // app/lib/roles.ts for why account management must not be grantable.
+    // shared/src/roles.ts for why account management must not be grantable.
     const actor: Caller = await requireRole(request, ['admin'])
     const body = await readBody(request)
 
@@ -226,7 +226,7 @@ export async function PATCH(request: Request): Promise<Response> {
   try {
     // Mirrors useRequireRole(['admin']) on /admin/users exactly. Deliberately
     // a role check rather than a section check — see the note at the bottom of
-    // app/lib/roles.ts for why account management must not be grantable.
+    // shared/src/roles.ts for why account management must not be grantable.
     const actor: Caller = await requireRole(request, ['admin'])
     const body = await readBody(request)
 

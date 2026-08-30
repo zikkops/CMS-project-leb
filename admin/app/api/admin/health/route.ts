@@ -2,7 +2,7 @@
 // scope that could fail to load.
 //
 // ── Why this exists ───────────────────────────────────────────────────────
-// Every route under app/api/admin/** imports app/lib/server/firebaseAdmin at
+// Every route under app/api/admin/** imports shared/src/server/firebaseAdmin at
 // module scope. If that import fails on the host — a missing package, a Node
 // version mismatch — Next cannot evaluate the route module at all, so it
 // returns its own HTML error page before any handler runs. The result is a 500
@@ -22,7 +22,7 @@
 //
 // Delete it once the deployment is healthy, or keep it as an uptime check.
 
-// NOTHING is imported at module scope from app/lib/server/**.
+// NOTHING is imported at module scope from shared/src/server/**.
 //
 // The first version of this file imported toResponse from server/auth "for
 // tidiness". server/auth imports firebaseAdmin at module scope, so the

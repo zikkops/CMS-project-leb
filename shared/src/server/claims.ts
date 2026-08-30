@@ -56,7 +56,7 @@ interface UserDocShape {
   wholesaleActive?: unknown
 }
 
-// Mirrors normalizeBranchIds() in app/lib/adminAuth.ts — accounts created
+// Mirrors normalizeBranchIds() in shared/src/adminAuth.ts — accounts created
 // before multi-branch support have a singular `branchId` string instead of a
 // `branchIds` array, and must not silently lose their branch here.
 function normalizeBranchIds(data: UserDocShape): string[] {
@@ -118,7 +118,7 @@ export interface SyncOptions {
 // Reads the user doc, derives the claims, writes them to the Auth user, and
 // stamps `claimsUpdatedAt` back onto the doc. That stamp is what lets a signed
 // -in browser notice its token is stale and force a refresh (see
-// useAdminUser() in app/lib/adminAuth.ts) rather than waiting out the hour.
+// useAdminUser() in shared/src/adminAuth.ts) rather than waiting out the hour.
 export async function syncClaims(uid: string, options: SyncOptions = {}): Promise<ClaimSet> {
   const { revokeSessions = false } = options
 

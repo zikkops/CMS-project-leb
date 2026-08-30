@@ -1,7 +1,7 @@
 'use client'
 
 // The live read side of the feature registry — layers 1 and 2 of the three
-// described in app/lib/features.ts.
+// described in shared/src/features.ts.
 //
 // The registry has existed since the fork and nothing has ever read it. Every
 // module was on regardless of what the flags said, which made the switchboard
@@ -10,7 +10,7 @@
 //
 // Split from features.ts for the same reason businessSettings.ts is split from
 // useBusinessSettings.ts: features.ts must stay importable by the server, and
-// anything importing app/lib/firebase.ts drags the client SDK into the server
+// anything importing shared/src/firebase.ts drags the client SDK into the server
 // bundle.
 //
 // ── Both of these layers are cosmetic ──────────────────────────────────────

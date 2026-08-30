@@ -26,7 +26,7 @@ interface Product {
   saleEndsAt?: string | null
   stock: Record<string, number>
   image: string
-  // Issued once on create and never rewritten — see app/lib/skuFormat.ts.
+  // Issued once on create and never rewritten — see shared/src/skuFormat.ts.
   // Optional because products that predate the backfill may not carry one.
   sku?: string
 }

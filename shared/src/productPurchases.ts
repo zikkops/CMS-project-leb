@@ -232,7 +232,7 @@ async function uploadInvoiceImage(
 }
 
 // Recording a sale and refunding one both run SERVER-SIDE (Phase 00 standing
-// rule). See app/lib/server/purchases.ts.
+// rule). See shared/src/server/purchases.ts.
 //
 // The old client versions used a real runTransaction and were careful about
 // stock. What they could not be careful about was PRICE: the browser read the

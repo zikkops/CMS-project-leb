@@ -1,7 +1,7 @@
 # Server setup — Firebase Admin SDK
 
 Phase 00 of the product plan. This adds a privileged server layer to the
-existing Vercel deployment: Next.js route handlers running the Firebase Admin
+existing deployment: Next.js route handlers running the Firebase Admin
 SDK. No new infrastructure, no Cloud Functions, no second host.
 
 Do these steps in order. Step 4 (backfill) must happen before any Firestore
@@ -47,7 +47,7 @@ Then:
   FIREBASE_SERVICE_ACCOUNT=<the base64 string>
   ```
 
-- **Vercel** — Project → Settings → Environment Variables. Name
+- **On the host** (Hostinger) — set it as a server-side environment variable. Name
   `FIREBASE_SERVICE_ACCOUNT`, paste the same value, tick **Production**,
   **Preview** and **Development**. Redeploy — env var changes don't apply to
   an existing deployment.
@@ -132,27 +132,29 @@ possible; only the claims one is built.
 
 | | Status |
 |---|---|
-| Server-issued receipt sequences | Possible. Needed for the POS, not before. |
-| Server-computed bill totals | Possible. Same. |
+| Server-issued receipt sequences | **Built.** `shared/src/server/invoiceNumber.ts`, used on check close. |
+| Server-computed bill totals | **Built.** The browser sends item ids and quantities; price, name and station are looked up server-side. |
 | Role + tenant in custom claims | **Built.** Rules can now read `request.auth.token.role`. |
-| Real cron (Vercel Cron) and true account deletion | Possible. `vercel.json` + a route; the loyalty reset is the first candidate. |
+| True account deletion | Possible via `adminAuth().deleteUser()`; not yet done. The scheduled loyalty reset is built — see [scheduled-jobs.md](./scheduled-jobs.md). |
 
-## What comes next, in order
+## What came next, and what is left
 
-1. **Rewrite `firestore.rules` to read claims**, one collection at a time, never
-   in one sweep. This is the audit's P0 — today any staff account can write to
-   any staff-gated collection via a direct SDK call, and the UI merely hides
-   the button. Claims are what make that fix affordable: `request.auth.token.role`
-   costs nothing to read, where a document lookup costs a billed read per rule
-   evaluation.
-2. **Move the remaining privileged writes behind routes.** The rule from here
-   on: no client SDK writes. Reads can stay on `onSnapshot` — that's the part
-   of Firestore worth keeping.
-3. **Vercel Cron** for the annual loyalty reset, replacing
-   `checkAndRunLoyaltyReset()`'s passive fire-on-dashboard-load.
-4. **True account deletion** — `deleteCustomerAccount()` currently deletes the
-   profile but not the Auth login, so a deleted customer signing in gets a
-   blank new profile.
+1. ~~**Rewrite `firestore.rules` to read claims**~~ — **done and deployed.**
+   Every staff-gated collection now checks `request.auth.token.role` rather
+   than a broad `isStaff()`. It went out one collection at a time, which is
+   the only way a rules change can go out: a deploy has no gradual rollout, so
+   a wrong rule breaks that collection for every user at once.
+2. ~~**Move the remaining privileged writes behind routes**~~ — **done.**
+   `npm run audit:writes` is at zero and its baseline is zero, so the next one
+   to reappear fails the check. The rule stands: no client SDK writes. Reads
+   stay on `onSnapshot` — that's the part of Firestore worth keeping.
+3. ~~**A real cron** for the annual loyalty reset~~ — **built**, and it runs
+   from the host's cron panel rather than anything in this repo. See
+   [scheduled-jobs.md](./scheduled-jobs.md). `checkAndRunLoyaltyReset()`'s
+   passive fire-on-page-load survives as a backstop.
+4. **True account deletion** — still outstanding. `deleteCustomerAccount()`
+   deletes the profile but not the Auth login, so a deleted customer signing
+   in gets a blank new profile.
 
 ## Cleanup, once nothing calls the old path
 
@@ -184,13 +186,13 @@ cannot do.
 
 ## The import rule
 
-Everything under `app/lib/server/**` reads a service-account private key. It
-may be imported from `app/api/**` and `scripts/**` — nowhere else. Never from a
+Everything under `shared/src/server/**` reads a service-account private key. It
+may be imported from an app's `app/api/**` and from `scripts/**` — nowhere else. Never from a
 file carrying `'use client'`, and never from a module a client component
 imports.
 
-`app/lib/serverAuth.ts` is the older pattern and still backs the two image
+`shared/src/serverAuth.ts` is the older pattern and still backs the two image
 routes. It verifies a token over REST and does authorization reads *as the
 calling user*, so it can only ever confirm facts the caller could already read
 for themselves. Leave it where it is; don't extend it. New routes use
-`app/lib/server/auth.ts`.
+`shared/src/server/auth.ts`.

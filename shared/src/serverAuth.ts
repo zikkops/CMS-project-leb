@@ -1,8 +1,9 @@
 // Server-only helpers for Route Handlers. Verifies a Firebase ID token via
 // the Identity Toolkit REST API, and does narrowly-scoped Firestore reads
-// via the Firestore REST API — instead of the Admin SDK (this app has no
-// service account / Admin SDK access — see app/api/import-image/route.ts
-// for why). Every Firestore read here is performed *as the calling user*,
+// via the Firestore REST API rather than the Admin SDK. That is a leftover:
+// this file predates the Phase 00 server layer, from back when there really
+// was no service account. New routes use shared/src/server/auth.ts instead.
+// Every Firestore read here is performed *as the calling user*,
 // by passing their own idToken as the request's Bearer auth, so it's bound
 // by the exact same security rules a client-side `getDoc` from their own
 // browser would be. This file grants no access the caller doesn't already

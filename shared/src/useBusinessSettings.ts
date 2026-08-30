@@ -2,8 +2,8 @@
 
 // The live-settings hook, split out from businessSettings.ts.
 //
-// That module has to be importable by app/lib/server/** and app/api/**, and
-// anything importing app/lib/firebase.ts drags the Firebase CLIENT SDK into
+// That module has to be importable by shared/src/server/** and app/api/**, and
+// anything importing shared/src/firebase.ts drags the Firebase CLIENT SDK into
 // the server bundle. Same split as roles.ts (shared) and adminAuth.ts
 // (browser) — the shared half stays free of both React and Firebase.
 

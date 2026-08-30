@@ -6,7 +6,7 @@
 // purpose: sections are handed out per user as checkboxes in /admin/users, and
 // "can change the VAT rate" must not be something somebody ticks by accident
 // while granting a barista the stock count. Same reasoning as account
-// management — see the note in app/lib/roles.ts.
+// management — see the note in shared/src/roles.ts.
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
