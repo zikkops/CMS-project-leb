@@ -26,6 +26,7 @@ import { validateSelection, toSelections, type ModifierGroup } from '../modifier
 import { effectivePrice } from '../productPricing'
 import { toTicketLines } from '../tickets'
 import { readSettings } from './settings'
+import { issueInvoiceNumber } from './invoiceNumber'
 
 const CHECKS = 'checks'
 const TICKETS = 'kitchenTickets'
@@ -292,6 +293,7 @@ export async function openCheck(
       guestCount,
       lines: [],
       staffDiscount: null,
+      receiptNumber: null,
       openedBy: caller.uid,
       openedByEmail: caller.email ?? '',
       openedAt: FieldValue.serverTimestamp(),
@@ -592,8 +594,17 @@ async function readCheck2(id: string): Promise<Check> {
  * v1 only: no payment, no tender, no bill. Closing means the table is free
  * again. Phase 04 puts money in front of this.
  */
-export async function closeCheck(caller: Caller, checkId: string): Promise<{ tableNumber: number }> {
+export async function closeCheck(
+  caller: Caller,
+  checkId: string,
+): Promise<{ tableNumber: number; receiptNumber: string }> {
   const db = adminDb()
+
+  // Issued BEFORE the transaction, because issueInvoiceNumber runs one of its
+  // own and transactions do not nest. A number burnt on a close that then
+  // fails leaves a gap in the sequence, which is normal in accounting and far
+  // better than two checks sharing one.
+  const { invoiceNumber } = await issueInvoiceNumber()
 
   return db.runTransaction(async tx => {
     const check = await readCheck(tx, checkId)
@@ -608,10 +619,76 @@ export async function closeCheck(caller: Caller, checkId: string): Promise<{ tab
 
     tx.update(db.doc(`${CHECKS}/${checkId}`), {
       status: 'closed',
+      receiptNumber: invoiceNumber,
       closedBy: caller.uid,
       closedByEmail: caller.email ?? '',
       closedAt: FieldValue.serverTimestamp(),
     })
-    return { tableNumber: check.tableNumber }
+    return { tableNumber: check.tableNumber, receiptNumber: invoiceNumber }
+  })
+}
+
+/**
+ * Reverses a closed check.
+ *
+ * Modelled on refundPurchaseOrder, which already does this for retail sales —
+ * same status, same fields, same reasoning — so the two do not drift into two
+ * different ideas of what a refund is.
+ *
+ * The check is marked, never deleted or reopened. What was ordered has to
+ * survive the reversal, because "what did we give money back for" is the
+ * question a refund exists to answer.
+ *
+ * Worth being plain about what this does while there is no payment step: it
+ * records that a closed check was reversed and puts merchandise back on the
+ * shelf. It does not move money, because no money moved through here — the
+ * old till still takes payment. Phase 04 puts tender underneath this and the
+ * shape does not change.
+ */
+export async function refundCheck(
+  caller: Caller,
+  checkId: string,
+  reason: string,
+): Promise<{ tableNumber: number; receiptNumber: string; restored: number }> {
+  const db = adminDb()
+  const trimmed = reason.trim()
+  if (!trimmed) throw new HttpError(400, 'A refund needs a reason.')
+
+  return db.runTransaction(async tx => {
+    const check = await readCheck(tx, checkId)
+
+    if (check.status === 'refunded') {
+      // Checked INSIDE the transaction: two taps on Refund would otherwise
+      // both pass and put the merchandise back twice.
+      throw new HttpError(409, 'That check has already been refunded.')
+    }
+    if (check.status !== 'closed') {
+      throw new HttpError(409, 'Only a closed check can be refunded. Close it first.')
+    }
+
+    // Merchandise goes back on the shelf. Food does not — it was made and it
+    // is gone, and returning it to a count would inflate a number nobody can
+    // reconcile against a bin.
+    let restored = 0
+    for (const l of check.lines) {
+      if (l.source !== 'product' || l.status === 'void') continue
+      tx.update(db.doc(`products/${l.refId}`), {
+        [`stock.${check.branch}`]: FieldValue.increment(l.quantity),
+      })
+      restored += l.quantity
+    }
+
+    tx.update(db.doc(`${CHECKS}/${checkId}`), {
+      status: 'refunded',
+      refundedAt: FieldValue.serverTimestamp(),
+      refundedBy: caller.email ?? caller.uid,
+      refundReason: trimmed.slice(0, CHECK_LIMITS.noteLength),
+    })
+
+    return {
+      tableNumber: check.tableNumber,
+      receiptNumber: check.receiptNumber ?? checkId,
+      restored,
+    }
   })
 }

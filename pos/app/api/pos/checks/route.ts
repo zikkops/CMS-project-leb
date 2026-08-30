@@ -13,7 +13,7 @@
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import {
   parseLineRequests, openCheck, addLines, sendCheck, voidLine, moveCheck, closeCheck,
-  setStaffMeal,
+  setStaffMeal, refundCheck,
 } from '@big-cms/shared/server/checks'
 import { logActivity } from '@big-cms/shared/server/activityLog'
 
@@ -108,6 +108,16 @@ export async function PATCH(request: Request): Promise<Response> {
       }
       case 'close': {
         const result = await closeCheck(caller, checkId)
+        return Response.json({ ok: true, ...result })
+      }
+      case 'refund': {
+        // Logged, and the entry names the receipt rather than a document id —
+        // "which refund was that" is asked with a piece of paper in hand.
+        const result = await refundCheck(caller, checkId, String(body.reason ?? ''))
+        await logActivity(caller, 'update', 'POS',
+          `Refunded receipt ${result.receiptNumber} (table ${result.tableNumber})` +
+          (result.restored > 0 ? ` — ${result.restored} item(s) back on the shelf` : '') +
+          ` — ${String(body.reason ?? '').trim()}`)
         return Response.json({ ok: true, ...result })
       }
       default:

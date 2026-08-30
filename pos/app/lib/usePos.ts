@@ -214,7 +214,10 @@ export function useClosedChecks(branch: string, max = 50): {
     const q = query(
       collection(db, 'checks'),
       where('branch', '==', branch),
-      where('status', '==', 'closed'),
+      // Refunded checks stay in the list. A refund that disappears from the
+      // review screen is a refund nobody can find afterwards, which defeats
+      // the point of recording one.
+      where('status', 'in', ['closed', 'refunded']),
       orderBy('closedAt', 'desc'),
       limit(max),
     )
@@ -452,6 +455,10 @@ export async function moveCheck(checkId: string, tableNumber: number): Promise<v
 
 export async function setStaffMeal(checkId: string, on: boolean): Promise<void> {
   await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'staffMeal', on }))
+}
+
+export async function refundCheck(checkId: string, reason: string): Promise<void> {
+  await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'refund', reason }))
 }
 
 export async function closeCheck(checkId: string): Promise<void> {

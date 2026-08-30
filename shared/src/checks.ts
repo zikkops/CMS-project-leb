@@ -29,7 +29,24 @@ export type LineStatus =
   | 'sent'    // a ticket exists for it
   | 'void'    // struck off; kept rather than deleted, see below
 
-export type CheckStatus = 'open' | 'closed' | 'cancelled'
+export type CheckStatus =
+  | 'open'
+  | 'closed'
+  /**
+   * Closed and then reversed.
+   *
+   * A separate status rather than deleting or reopening the check: the record
+   * of what was ordered has to survive the reversal, because "what did we give
+   * money back for" is the question a refund exists to answer.
+   *
+   * Worth being plain about what this does and does not mean while there is no
+   * payment step. It records that a closed check was reversed and puts any
+   * merchandise back on the shelf. It does not move money, because no money
+   * moved through here in the first place — the till still takes payment.
+   * Phase 04 puts tender underneath this and the shape does not change.
+   */
+  | 'refunded'
+  | 'cancelled'
 
 /**
  * Where a line goes when it is sent.
@@ -122,6 +139,12 @@ export interface Check {
   openedBy: string
   openedByEmail: string
   closedAt: string | null
+  /**
+   * Issued when the check closes, from the same sequence counter sales and
+   * wholesale orders use — one series for the business, which is what an
+   * accountant expects. Null while the check is still open.
+   */
+  receiptNumber: string | null
   /** null on an ordinary check. Set by the staff-meal toggle. */
   staffDiscount: StaffDiscount | null
 }

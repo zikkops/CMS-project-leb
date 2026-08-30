@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { BRAND } from '@big-cms/shared/brand'
 import { checkTotals, type Check } from '@big-cms/shared/checks'
-import { useClosedChecks } from '../../lib/usePos'
+import { useClosedChecks, refundCheck } from '../../lib/usePos'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -54,12 +54,33 @@ function timeOf(check: Check): string {
     .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
+/** Date and time together, for the expanded view and for a refund record. */
+function stampOf(seconds: number | undefined): string {
+  if (!seconds) return ''
+  return new Date(seconds * 1000).toLocaleString([], {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
 /** One closed check. Module scope — see CONTRIBUTING.md gotcha #2. */
-function ClosedRow({ check, isMobile }: { check: Check; isMobile: boolean }) {
+function ClosedRow({ check, isMobile, onRefund }: {
+  check: Check
+  isMobile: boolean
+  onRefund: () => void
+}) {
   const [open, setOpen] = useState(false)
   const totals = checkTotals(check)
   const items = check.lines.filter(l => l.status !== 'void')
   const voided = check.lines.filter(l => l.status === 'void')
+  const refunded = check.status === 'refunded'
+  const meta = check as unknown as {
+    closedAt?: { seconds?: number }
+    refundedAt?: { seconds?: number }
+    refundedBy?: string
+    refundReason?: string
+    closedByEmail?: string
+  }
 
   return (
     <div style={{
@@ -78,10 +99,24 @@ function ClosedRow({ check, isMobile }: { check: Check; isMobile: boolean }) {
         <span style={{
           fontFamily: 'var(--font-cinzel)', fontSize: '1.3rem',
           minWidth: '2.2rem', textAlign: 'center',
+          color: refunded ? 'rgba(228,51,41,0.7)' : 'var(--offwhite)',
         }}>{check.tableNumber}</span>
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: '0.85rem' }}>
+            {/* The receipt number first: it is what somebody is holding when
+                they come to ask about a check. */}
+            {check.receiptNumber && (
+              <span style={{ color: 'rgba(245,242,236,0.55)', fontFamily: 'monospace', fontSize: '0.78rem' }}>
+                {check.receiptNumber}{' · '}
+              </span>
+            )}
+            {refunded && (
+              <span style={{
+                color: 'var(--red)', fontWeight: 600,
+                letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '0.7rem',
+              }}>Refunded · </span>
+            )}
             {items.length} {items.length === 1 ? 'item' : 'items'}
             {check.staffDiscount && (
               <span style={{ color: 'var(--teal)' }}> · staff meal</span>
@@ -96,9 +131,11 @@ function ClosedRow({ check, isMobile }: { check: Check; isMobile: boolean }) {
         </div>
 
         <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: '0.95rem', color: 'var(--teal)', fontWeight: 600 }}>
-            {money(totals.net)}
-          </p>
+          <p style={{
+            fontSize: '0.95rem', fontWeight: 600,
+            color: refunded ? 'rgba(245,242,236,0.35)' : 'var(--teal)',
+            textDecoration: refunded ? 'line-through' : 'none',
+          }}>{money(totals.net)}</p>
           {totals.discount > 0 && (
             <p style={{ fontSize: '0.65rem', color: 'rgba(245,242,236,0.35)' }}>
               was {money(totals.gross)}
@@ -111,6 +148,25 @@ function ClosedRow({ check, isMobile }: { check: Check; isMobile: boolean }) {
         <div style={{
           padding: '0 1rem 0.9rem', borderTop: '1px solid rgba(255,255,255,0.06)',
         }}>
+          <p style={{
+            fontFamily: 'var(--font-inter)', fontSize: '0.7rem',
+            color: 'rgba(245,242,236,0.35)', paddingTop: '0.7rem', lineHeight: 1.7,
+          }}>
+            Closed {stampOf(meta.closedAt?.seconds)}
+            {meta.closedByEmail ? ` by ${meta.closedByEmail}` : ''}
+          </p>
+
+          {refunded && (
+            <p style={{
+              fontFamily: 'var(--font-inter)', fontSize: '0.72rem',
+              color: 'var(--red)', lineHeight: 1.7, marginTop: '0.2rem',
+            }}>
+              Refunded {stampOf(meta.refundedAt?.seconds)}
+              {meta.refundedBy ? ` by ${meta.refundedBy}` : ''}
+              {meta.refundReason ? ` — ${meta.refundReason}` : ''}
+            </p>
+          )}
+
           {check.lines.map(l => (
             <p key={l.id} style={{
               fontFamily: 'var(--font-inter)', fontSize: '0.8rem',
@@ -130,6 +186,20 @@ function ClosedRow({ check, isMobile }: { check: Check; isMobile: boolean }) {
               )}
             </p>
           ))}
+
+          {/* Behind the expand, like every other destructive action in this
+              app — a Refund button on a collapsed row would sit under the
+              thumb of anybody scrolling the list. */}
+          {!refunded && (
+            <button onClick={onRefund} style={{
+              width: '100%', minHeight: '44px', marginTop: '0.9rem',
+              borderRadius: '4px', cursor: 'pointer',
+              backgroundColor: 'rgba(228,51,41,0.08)',
+              border: '1px solid rgba(228,51,41,0.35)', color: 'var(--red)',
+              fontFamily: 'var(--font-inter)', fontSize: '0.78rem',
+              letterSpacing: '0.08em', textTransform: 'uppercase',
+            }}>Refund this check</button>
+          )}
         </div>
       )}
     </div>
@@ -142,6 +212,16 @@ export default function ClosedChecksPage() {
   const router = useRouter()
   const [branch] = useState(BRAND.branches[0] ?? '')
   const { checks, error } = useClosedChecks(branch)
+  const [failed, setFailed] = useState('')
+
+  async function handleRefund(check: Check) {
+    const reason = window.prompt(
+      `Refund ${check.receiptNumber ?? `table ${check.tableNumber}`}? Why?`)
+    if (!reason?.trim()) return
+    setFailed('')
+    try { await refundCheck(check.id, reason.trim()) }
+    catch (err) { setFailed(err instanceof Error ? err.message : 'Could not refund that check.') }
+  }
 
   // Grouped by the day they closed, so a service reads as a service.
   const days = useMemo(() => {
@@ -177,9 +257,20 @@ export default function ClosedChecksPage() {
           fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)',
           lineHeight: 1.6, marginBottom: '1.5rem', maxWidth: '52ch',
         }}>
-          What was ordered and sent. Not a sales report — VAT, service and
-          payment are not part of this version.
+          Receipts for what was ordered and sent, newest first. Tap one to see
+          its lines, who closed it and when, and to refund it.
+          {' '}Not a sales report — VAT, service and payment are not part of
+          this version, so a refund here records the reversal and returns
+          merchandise to stock rather than moving money.
         </p>
+
+        {failed && (
+          <p style={{
+            color: 'var(--red)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6,
+            background: 'rgba(228,51,41,0.08)', border: '1px solid rgba(228,51,41,0.25)',
+            borderRadius: '3px', padding: '0.7rem 0.9rem',
+          }}>{failed}</p>
+        )}
 
         {error && (
           <p style={{
@@ -210,7 +301,10 @@ export default function ClosedChecksPage() {
                   {list.length} {list.length === 1 ? 'check' : 'checks'} · {money(dayNet)}
                 </p>
               </div>
-              {list.map(c => <ClosedRow key={c.id} check={c} isMobile={isMobile} />)}
+              {list.map(c => (
+                <ClosedRow key={c.id} check={c} isMobile={isMobile}
+                  onRefund={() => handleRefund(c)} />
+              ))}
             </div>
           )
         })}
