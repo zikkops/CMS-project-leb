@@ -20,7 +20,7 @@
 
 import { useEffect, useState } from 'react'
 import {
-  collection, doc, onSnapshot, orderBy, query, where,
+  collection, doc, limit, onSnapshot, orderBy, query, where,
 } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth, db } from '@big-cms/shared/firebase'
@@ -79,7 +79,7 @@ export function useOpenChecks(branch: string): {
   checks: Check[]; loading: boolean; error: string
 } {
   const [checks, setChecks] = useState<Check[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState('')
 
   const { ready, signedIn } = useAuthReady()
@@ -87,7 +87,6 @@ export function useOpenChecks(branch: string): {
   useEffect(() => {
     if (!branch || !ready) return
     // Signed out is not an error, it is a redirect already in flight.
-    if (!signedIn) { setLoading(false); return }
     const q = query(
       collection(db, 'checks'),
       where('branch', '==', branch),
@@ -96,7 +95,7 @@ export function useOpenChecks(branch: string): {
     return onSnapshot(q,
       snap => {
         setChecks(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Check))
-        setLoading(false)
+        setLoaded(true)
         setError('')
       },
       err => {
@@ -104,12 +103,12 @@ export function useOpenChecks(branch: string): {
         // persistence keeps serving the last known state — but it must say so.
         console.error('[useOpenChecks] listener failed:', err)
         setError(listenerMessage(err))
-        setLoading(false)
+        setLoaded(true)
       },
     )
   }, [branch, ready, signedIn])
 
-  return { checks, loading, error }
+  return { checks, loading: !ready || (signedIn && !loaded), error }
 }
 
 /** One check, live — a second waiter adding to the same table shows up here. */
@@ -117,66 +116,123 @@ export function useCheck(checkId: string): {
   check: Check | null; loading: boolean; error: string
 } {
   const [check, setCheck] = useState<Check | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState('')
 
   const { ready, signedIn } = useAuthReady()
 
   useEffect(() => {
     if (!checkId || !ready) return
-    if (!signedIn) { setLoading(false); return }
     return onSnapshot(doc(db, 'checks', checkId),
       snap => {
         setCheck(snap.exists() ? ({ id: snap.id, ...snap.data() } as Check) : null)
-        setLoading(false)
+        setLoaded(true)
         setError('')
       },
       err => {
         console.error('[useCheck] listener failed:', err)
         setError(listenerMessage(err))
-        setLoading(false)
+        setLoaded(true)
       },
     )
   }, [checkId, ready, signedIn])
 
-  return { check, loading, error }
+  return { check, loading: !ready || (signedIn && !loaded), error }
 }
 
-/** Tickets still on one pass. Bumped ones are gone, which is the point. */
-export function useStationTickets(branch: string, station: Station): {
+/**
+ * Tickets still on a pass. Bumped ones are gone, which is the point.
+ *
+ * A null station means every pass on one screen. Small cafés have one monitor
+ * for the whole kitchen, and making them choose a station they do not have is
+ * how a screen ends up showing a third of the orders.
+ */
+export function useStationTickets(branch: string, station: Station | null): {
   tickets: Ticket[]; loading: boolean; error: string
 } {
   const [tickets, setTickets] = useState<Ticket[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState('')
 
   const { ready, signedIn } = useAuthReady()
 
   useEffect(() => {
     if (!branch || !ready) return
-    if (!signedIn) { setLoading(false); return }
-    const q = query(
-      collection(db, 'kitchenTickets'),
-      where('branch', '==', branch),
-      where('station', '==', station),
-      where('status', 'in', ACTIVE_TICKET_STATUSES),
-      orderBy('sentAt', 'asc'),
-    )
+    const q = station
+      ? query(
+          collection(db, 'kitchenTickets'),
+          where('branch', '==', branch),
+          where('station', '==', station),
+          where('status', 'in', ACTIVE_TICKET_STATUSES),
+          orderBy('sentAt', 'asc'),
+        )
+      : query(
+          collection(db, 'kitchenTickets'),
+          where('branch', '==', branch),
+          where('status', 'in', ACTIVE_TICKET_STATUSES),
+          orderBy('sentAt', 'asc'),
+        )
     return onSnapshot(q,
       snap => {
         setTickets(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Ticket))
-        setLoading(false)
+        setLoaded(true)
         setError('')
       },
       err => {
         console.error('[useStationTickets] listener failed:', err)
         setError(listenerMessage(err))
-        setLoading(false)
+        setLoaded(true)
       },
     )
   }, [branch, station, ready, signedIn])
 
-  return { tickets, loading, error }
+  return { tickets, loading: !ready || (signedIn && !loaded), error }
+}
+
+/**
+ * Checks closed at this branch, newest first.
+ *
+ * A closed check used to vanish — the table went free and nothing anywhere
+ * showed what had gone through it. That is survivable for one table and not
+ * survivable for a service: the first question after a busy Friday is "what
+ * did we actually send", and the answer was nowhere.
+ *
+ * Capped rather than open-ended. This is a review screen, not an accounting
+ * export, and a query that grows all year is one that eventually costs a
+ * thousand reads to open.
+ */
+export function useClosedChecks(branch: string, max = 50): {
+  checks: Check[]; loading: boolean; error: string
+} {
+  const [checks, setChecks] = useState<Check[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState('')
+  const { ready, signedIn } = useAuthReady()
+
+  useEffect(() => {
+    if (!branch || !ready) return
+    const q = query(
+      collection(db, 'checks'),
+      where('branch', '==', branch),
+      where('status', '==', 'closed'),
+      orderBy('closedAt', 'desc'),
+      limit(max),
+    )
+    return onSnapshot(q,
+      snap => {
+        setChecks(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Check))
+        setLoaded(true)
+        setError('')
+      },
+      err => {
+        console.error('[useClosedChecks] listener failed:', err)
+        setError(listenerMessage(err))
+        setLoaded(true)
+      },
+    )
+  }, [branch, ready, signedIn, max])
+
+  return { checks, loading: !ready || (signedIn && !loaded), error }
 }
 
 // ── The menu a waiter orders from ─────────────────────────────────────────
@@ -297,7 +353,7 @@ export interface PosProduct {
  */
 export function useRetailProducts(branch: string): { products: PosProduct[]; loading: boolean } {
   const [products, setProducts] = useState<PosProduct[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loaded, setLoaded] = useState(false)
   const { ready } = useAuthReady()
 
   useEffect(() => {
@@ -322,13 +378,13 @@ export function useRetailProducts(branch: string): { products: PosProduct[]; loa
             stock: Number.isFinite(stock) ? stock : 0,
           }
         }).sort((a, b) => a.name.localeCompare(b.name)))
-        setLoading(false)
+        setLoaded(true)
       },
-      err => { console.error('[useRetailProducts] listener failed:', err); setLoading(false) },
+      err => { console.error('[useRetailProducts] listener failed:', err); setLoaded(true) },
     )
   }, [ready, branch])
 
-  return { products, loading }
+  return { products, loading: !ready || !loaded }
 }
 
 // ── Writes — all through the route, none direct ───────────────────────────

@@ -232,6 +232,11 @@ export default function FloorPage() {
             {/* The pass, for whoever is carrying the phone that is also the
                 kitchen screen. Gated separately — a waiter without the KDS
                 section lands on its own explanation, not a blank page. */}
+            <a href="/pos/closed" style={{
+              fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase',
+              color: 'rgba(245,242,236,0.35)', textDecoration: 'none',
+              display: 'inline-block', marginTop: '0.35rem', marginRight: '0.8rem',
+            }}>Closed →</a>
             <a href="/pos/kds" style={{
               fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase',
               color: 'rgba(245,242,236,0.35)', textDecoration: 'none',

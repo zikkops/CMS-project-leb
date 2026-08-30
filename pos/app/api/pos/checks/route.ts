@@ -35,7 +35,16 @@ export async function POST(request: Request): Promise<Response> {
     const body = await readBody(request)
 
     // Adding to an existing check names one; opening a new check names a table.
+    //
+    // A request carrying `lines` but no checkId used to fall through to the
+    // open path, which then failed on the missing branch with "Unknown
+    // branch" — an error about the wrong thing entirely, and one that sent me
+    // looking at the branch config for several minutes. Say what is actually
+    // wrong.
     const checkId = typeof body.checkId === 'string' ? body.checkId : ''
+    if (!checkId && Array.isArray(body.lines)) {
+      throw new HttpError(400, 'Missing check id — items can only be added to an open check.')
+    }
     if (checkId) {
       const result = await addLines(caller, checkId, parseLineRequests(body))
       // Deliberately not logged. A service is hundreds of these, and an audit

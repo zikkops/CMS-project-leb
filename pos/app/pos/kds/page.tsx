@@ -68,11 +68,12 @@ const NEXT_ACTION: Record<string, { to: TicketStatus; label: string } | null> = 
 
 /** One ticket. Module scope — see CONTRIBUTING.md gotcha #2. */
 function TicketCard({
-  ticket, now, busy, onAdvance, onBack, isMobile,
+  ticket, now, busy, showStation, onAdvance, onBack, isMobile,
 }: {
   ticket: Ticket
   now: number
   busy: boolean
+  showStation: boolean
   onAdvance: (to: TicketStatus) => void
   onBack: () => void
   isMobile: boolean
@@ -103,6 +104,13 @@ function TicketCard({
           color: 'var(--offwhite)',
         }}>
           T{ticket.tableNumber}
+          {showStation && (
+            <span style={{
+              fontFamily: 'var(--font-inter)', fontSize: '0.65rem',
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              color: 'var(--teal)', marginLeft: '0.5rem',
+            }}>{ticket.station}</span>
+          )}
           {ticket.round > 1 && (
             <span style={{ fontSize: '0.7rem', color: 'rgba(245,242,236,0.4)', marginLeft: '0.4rem' }}>
               round {ticket.round}
@@ -199,26 +207,37 @@ export default function KdsPage() {
   const now = useNow()
 
   const [branch] = useState(BRAND.branches[0] ?? '')
-  const [station, setStation] = useState<Station | null>(null)
+  // 'All' is a real choice, not the absence of one — so the picker still has
+  // to be answered before anything renders. null means "not chosen yet".
+  const [station, setStation] = useState<Station | 'All' | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
 
-  // Read once on mount rather than during render: localStorage does not exist
-  // on the server, and reading it while rendering makes the first paint differ
-  // between server and client.
+  // Read once on mount rather than during render, because localStorage does
+  // not exist on the server and reading it while rendering makes the server
+  // and client produce different HTML.
+  //
+  // The lint rule below is a performance heuristic about cascading renders,
+  // and it is right in general. Here the cascade is exactly one render on
+  // mount, and it is the price of not mismatching hydration — a lazy
+  // useState initialiser would read storage during render and reintroduce
+  // exactly that. Disabled knowingly rather than worked around.
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY)
-      if (saved && (STATIONS as string[]).includes(saved)) setStation(saved as Station)
+      if (saved === 'All' || (saved && (STATIONS as string[]).includes(saved))) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setStation(saved as Station | 'All')
+      }
     } catch { /* private window, storage disabled — the picker just shows */ }
   }, [])
 
-  function choose(s: Station) {
+  function choose(s: Station | 'All') {
     setStation(s)
     try { window.localStorage.setItem(STORAGE_KEY, s) } catch { /* not fatal */ }
   }
 
-  const { tickets, error: liveError } = useStationTickets(branch, station ?? 'Kitchen')
+  const { tickets, error: liveError } = useStationTickets(branch, station === 'All' ? null : station)
 
   async function move(ticket: Ticket, to: TicketStatus) {
     setBusy(ticket.id)
@@ -275,7 +294,7 @@ export default function KdsPage() {
             lineHeight: 1.7, marginBottom: '1.5rem',
           }}>Remembered on this device.</p>
           <div style={{ display: 'grid', gap: '0.6rem' }}>
-            {STATIONS.map(s => (
+            {([...STATIONS, 'All'] as const).map(s => (
               <button key={s} onClick={() => choose(s)} style={{
                 minHeight: '60px', borderRadius: '5px', cursor: 'pointer',
                 backgroundColor: 'rgba(255,255,255,0.04)',
@@ -342,6 +361,7 @@ export default function KdsPage() {
               ticket={t}
               now={now}
               busy={busy === t.id}
+              showStation={station === 'All'}
               isMobile={isMobile}
               onAdvance={to => move(t, to)}
               onBack={() => move(t, t.status === 'ready' ? 'preparing' : 'new')}

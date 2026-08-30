@@ -55,7 +55,32 @@ function useNow(everyMs = 15_000) {
   return now
 }
 
-const money = (n: number) => `${n.toFixed(2)}`
+const money = (n: number) => `$${n.toFixed(2)}`
+
+/**
+ * Whether two drafts are the same order and should be one line at a quantity.
+ *
+ * Three taps on Espresso is "3× Espresso", not three lines — on the check, on
+ * the kitchen ticket, and in the head of whoever is making them. Anything that
+ * differs keeps them apart: a different seat is a different person, a
+ * different note is a different plate, a different modifier is a different
+ * drink.
+ */
+function sameOrder(a: DraftLine, b: DraftLine): boolean {
+  return a.source === b.source
+    && a.refId === b.refId
+    && a.seat === b.seat
+    && a.course === b.course
+    && a.note === b.note
+    && [...a.modifierOptionIds].sort().join('|') === [...b.modifierOptionIds].sort().join('|')
+}
+
+/** Adds a draft, merging it into an identical one if there is one. */
+function withDraft(drafts: DraftLine[], next: DraftLine): DraftLine[] {
+  const i = drafts.findIndex(d => sameOrder(d, next))
+  if (i === -1) return [...drafts, next]
+  return drafts.map((d, n) => n === i ? { ...d, quantity: d.quantity + next.quantity } : d)
+}
 
 const URGENCY_COLOUR = {
   fresh: 'rgba(245,242,236,0.45)',
@@ -151,19 +176,33 @@ function LineRow({ line, now, discount, onVoid }: {
   )
 }
 
-function DraftRow({ draft, onRemove, onNote }: {
+function DraftRow({ draft, onRemove, onNote, onQuantity }: {
   draft: DraftLine
   onRemove: () => void
   onNote: () => void
+  onQuantity: (next: number) => void
 }) {
   return (
     <div style={{
       display: 'flex', gap: '0.6rem', alignItems: 'flex-start',
       padding: '0.7rem 0', borderBottom: '1px solid rgba(201,150,44,0.2)',
     }}>
-      <span style={{ fontSize: '0.85rem', color: '#C9962C', minWidth: '1.6rem', fontWeight: 600 }}>
-        {draft.quantity}×
-      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
+        <button onClick={() => onQuantity(draft.quantity - 1)} style={{
+          width: '30px', minHeight: '30px', borderRadius: '3px', cursor: 'pointer',
+          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
+          color: 'rgba(245,242,236,0.6)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem',
+        }}>−</button>
+        <span style={{
+          fontSize: '0.85rem', color: '#C9962C', minWidth: '1.7rem',
+          fontWeight: 600, textAlign: 'center',
+        }}>{draft.quantity}×</span>
+        <button onClick={() => onQuantity(draft.quantity + 1)} style={{
+          width: '30px', minHeight: '30px', borderRadius: '3px', cursor: 'pointer',
+          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
+          color: 'rgba(245,242,236,0.6)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem',
+        }}>+</button>
+      </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: '0.9rem', color: 'var(--offwhite)' }}>{draft.name}</p>
         {draft.modifierLabel && (
@@ -342,22 +381,22 @@ export default function CheckPage() {
   )
 
   function addDraft(item: PosMenuItem, optionIds: string[], label: string) {
-    setDrafts(d => [...d, {
+    setDrafts(d => withDraft(d, {
       source: 'menu', refId: item.id, name: item.name, unitPrice: item.price,
       quantity: 1, modifierOptionIds: optionIds, modifierLabel: label,
       seat, course, note: '',
-    }])
+    }))
     setModifierFor(null)
   }
 
   function addProduct(p: PosProduct) {
-    setDrafts(d => [...d, {
+    setDrafts(d => withDraft(d, {
       // Merchandise: no modifiers, no course — it is not cooked and does not
       // arrive with anything. The server refuses modifiers on it too.
       source: 'product', refId: p.id, name: p.name, unitPrice: p.price,
       quantity: 1, modifierOptionIds: [], modifierLabel: '',
       seat, course: null, note: '',
-    }])
+    }))
   }
 
   function pick(item: PosMenuItem) {
@@ -498,6 +537,13 @@ export default function CheckPage() {
             key={i}
             draft={d}
             onRemove={() => setDrafts(list => list.filter((_, n) => n !== i))}
+            onQuantity={next => {
+              // Down to zero removes it, which is what tapping minus on a
+              // single item means — not "zero of these please".
+              if (next < 1) { setDrafts(list => list.filter((_, n) => n !== i)); return }
+              setDrafts(list => list.map((x, n) =>
+                n === i ? { ...x, quantity: Math.min(next, 99) } : x))
+            }}
             onNote={() => {
               // A prompt rather than a sheet: this is the rare path, and an
               // allergy typed on a moving floor wants the fewest taps between
