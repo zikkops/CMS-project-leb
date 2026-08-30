@@ -107,11 +107,11 @@ const tap: React.CSSProperties = {
 // A component declared inside a render body is a new type on every keystroke,
 // so React remounts it and any open sheet closes itself. (CONTRIBUTING.md #2.)
 
-function LineRow({ line, now, discount, onVoid }: {
+function LineRow({ line, now, discount, onMore }: {
   line: CheckLine
   now: number
   discount: StaffDiscount | null
-  onVoid: (() => void) | null
+  onMore: (() => void) | null
 }) {
   const off = lineDiscount(line, discount)
   const voided = line.status === 'void'
@@ -164,12 +164,23 @@ function LineRow({ line, now, discount, onVoid }: {
             fontSize: '0.65rem', color: 'var(--teal)', marginTop: '0.1rem',
           }}>was {money(grossLineTotal(line))}</p>
         )}
-        {onVoid && (
-          <button onClick={onVoid} style={{
-            marginTop: '0.3rem', background: 'none', border: 'none', padding: '0.25rem 0',
-            color: 'var(--red)', fontSize: '0.68rem', cursor: 'pointer',
-            fontFamily: 'var(--font-inter)', letterSpacing: '0.08em', textTransform: 'uppercase',
-          }}>Void</button>
+        {/* Not a Void button sitting on every line. Striking an order off is
+            one mis-tap away from a plate the kitchen has already started, and
+            a phone held one-handed on a moving floor is where mis-taps
+            happen. This opens the options; the destructive one is behind it,
+            with a reason required after that. */}
+        {onMore && (
+          <button
+            onClick={onMore}
+            aria-label="Line options"
+            style={{
+              marginTop: '0.3rem', background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.1)', borderRadius: '3px',
+              width: '32px', minHeight: '28px', cursor: 'pointer',
+              color: 'rgba(245,242,236,0.45)', fontSize: '0.9rem', lineHeight: 1,
+              fontFamily: 'var(--font-inter)',
+            }}
+          >⋯</button>
         )}
       </div>
     </div>
@@ -363,6 +374,9 @@ export default function CheckPage() {
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const [moving, setMoving] = useState(false)
+  const [actions, setActions] = useState(false)
+  const [lineMenu, setLineMenu] = useState<CheckLine | null>(null)
+  const [closing, setClosing] = useState(false)
   const [moveTo, setMoveTo] = useState('')
 
   const categories = useMemo(
@@ -530,7 +544,7 @@ export default function CheckPage() {
 
         {check.lines.map(l => (
           <LineRow key={l.id} line={l} now={now} discount={check.staffDiscount ?? null}
-            onVoid={l.status === 'void' ? null : () => handleVoid(l.id)} />
+            onMore={l.status === 'void' ? null : () => setLineMenu(l)} />
         ))}
         {drafts.map((d, i) => (
           <DraftRow
@@ -556,29 +570,12 @@ export default function CheckPage() {
           />
         ))}
 
-        <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
-          <button
-            onClick={async () => {
-              setError('')
-              try { await setStaffMeal(checkId, !check.staffDiscount) }
-              catch (err) { setError(err instanceof Error ? err.message : 'Could not change that.') }
-            }}
-            style={{
-              ...tap, flex: 1, minWidth: '120px',
-              backgroundColor: check.staffDiscount ? 'rgba(0,160,152,0.18)' : 'transparent',
-              border: `1px solid ${check.staffDiscount ? 'var(--teal)' : 'rgba(255,255,255,0.14)'}`,
-              color: check.staffDiscount ? 'var(--offwhite)' : 'rgba(245,242,236,0.6)',
-            }}
-          >{check.staffDiscount ? '✓ Staff meal' : 'Staff meal'}</button>
-          <button onClick={() => setMoving(true)} style={{
-            ...tap, flex: 1, minWidth: '120px', backgroundColor: 'transparent',
-            border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(245,242,236,0.6)',
-          }}>Move table</button>
-          <button onClick={handleClose} style={{
-            ...tap, flex: 1, minWidth: '120px', backgroundColor: 'transparent',
-            border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(245,242,236,0.6)',
-          }}>Close check</button>
-        </div>
+        {/* One button rather than three in a row. Closing a check and moving
+            a table sat directly under the order, a thumb's width from it. */}
+        <button onClick={() => setActions(true)} style={{
+          ...tap, width: '100%', marginTop: '1.5rem', backgroundColor: 'transparent',
+          border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(245,242,236,0.55)',
+        }}>Check options{check.staffDiscount ? ' · staff meal on' : ''}</button>
       </div>
 
       {/* Sticky, because a waiter's thumb lives at the bottom of the screen. */}
@@ -735,6 +732,129 @@ export default function CheckPage() {
           onCancel={() => setModifierFor(null)}
           onAdd={(ids, label) => addDraft(modifierFor, ids, label)}
         />
+      )}
+
+      {/* Line options. The void is the only destructive thing here, so it is
+          the only one coloured as such, and it still asks for a reason after
+          this. Two deliberate taps and a sentence — a mis-tap does not get
+          past the first. */}
+      {lineMenu && (
+        <div style={sheet} onClick={() => setLineMenu(null)}>
+          <div style={sheetInner} onClick={e => e.stopPropagation()}>
+            <h2 style={{
+              fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem',
+              color: 'var(--offwhite)', marginBottom: '0.3rem',
+            }}>{lineMenu.quantity}× {lineMenu.name}</h2>
+            <p style={{
+              fontSize: '0.75rem', color: 'rgba(245,242,236,0.35)', marginBottom: '1.2rem',
+            }}>
+              {lineMenu.status === 'sent'
+                ? 'Already sent to the kitchen. Voiding it tells the pass.'
+                : 'Not sent yet.'}
+            </p>
+
+            <button
+              onClick={() => { const l = lineMenu; setLineMenu(null); handleVoid(l.id) }}
+              style={{
+                ...tap, width: '100%', backgroundColor: 'rgba(228,51,41,0.1)',
+                border: '1px solid rgba(228,51,41,0.4)', color: 'var(--red)',
+                letterSpacing: '0.08em', textTransform: 'uppercase',
+              }}
+            >Void this item</button>
+
+            <button onClick={() => setLineMenu(null)} style={{
+              ...tap, width: '100%', marginTop: '0.6rem', backgroundColor: 'transparent',
+              border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(245,242,236,0.6)',
+            }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Check options. Staff meal is not destructive and sits first; the two
+          that change or end the check are below a divider, so the thumb has to
+          travel to reach them. */}
+      {actions && (
+        <div style={sheet} onClick={() => setActions(false)}>
+          <div style={sheetInner} onClick={e => e.stopPropagation()}>
+            <h2 style={{
+              fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem',
+              color: 'var(--offwhite)', marginBottom: '1rem',
+            }}>Table {check.tableNumber}</h2>
+
+            <button
+              onClick={async () => {
+                setActions(false)
+                setError('')
+                try { await setStaffMeal(checkId, !check.staffDiscount) }
+                catch (err) { setError(err instanceof Error ? err.message : 'Could not change that.') }
+              }}
+              style={{
+                ...tap, width: '100%',
+                backgroundColor: check.staffDiscount ? 'rgba(0,160,152,0.18)' : 'transparent',
+                border: `1px solid ${check.staffDiscount ? 'var(--teal)' : 'rgba(255,255,255,0.14)'}`,
+                color: check.staffDiscount ? 'var(--offwhite)' : 'rgba(245,242,236,0.7)',
+              }}
+            >{check.staffDiscount ? '✓ Staff meal — tap to remove' : 'Mark as a staff meal'}</button>
+
+            <div style={{
+              height: '1px', background: 'rgba(255,255,255,0.08)', margin: '1.2rem 0',
+            }} />
+
+            <button
+              onClick={() => { setActions(false); setMoving(true) }}
+              style={{
+                ...tap, width: '100%', backgroundColor: 'transparent',
+                border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(245,242,236,0.7)',
+              }}
+            >Move to another table</button>
+
+            <button
+              onClick={() => { setActions(false); setClosing(true) }}
+              style={{
+                ...tap, width: '100%', marginTop: '0.6rem', backgroundColor: 'transparent',
+                border: '1px solid rgba(228,51,41,0.35)', color: 'var(--red)',
+              }}
+            >Close this check</button>
+
+            <button onClick={() => setActions(false)} style={{
+              ...tap, width: '100%', marginTop: '1.2rem', backgroundColor: 'transparent',
+              border: 'none', color: 'rgba(245,242,236,0.4)',
+            }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Closing had no confirmation at all, and it cannot be undone — the
+          table goes free and the check leaves the floor. */}
+      {closing && (
+        <div style={sheet} onClick={() => setClosing(false)}>
+          <div style={sheetInner} onClick={e => e.stopPropagation()}>
+            <h2 style={{
+              fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem',
+              color: 'var(--offwhite)', marginBottom: '0.5rem',
+            }}>Close table {check.tableNumber}?</h2>
+            <p style={{
+              fontSize: '0.85rem', color: 'rgba(245,242,236,0.4)',
+              lineHeight: 1.7, marginBottom: '1.2rem',
+            }}>
+              {money(totals.net)} across {check.lines.filter(l => l.status !== 'void').length} items.
+              The table goes free and this check leaves the floor. It cannot be reopened.
+            </p>
+            <div style={{ display: 'flex', gap: '0.6rem' }}>
+              <button onClick={() => setClosing(false)} style={{
+                ...tap, flex: 1, backgroundColor: 'transparent',
+                border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(245,242,236,0.6)',
+              }}>Keep it open</button>
+              <button
+                onClick={() => { setClosing(false); handleClose() }}
+                style={{
+                  ...tap, flex: 2, border: 'none', backgroundColor: 'var(--red)', color: '#fff',
+                  letterSpacing: '0.1em', textTransform: 'uppercase',
+                }}
+              >Close</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {moving && (
