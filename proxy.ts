@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import {
+  hostConfigFromEnv, classifySurface, isPathAllowed, rootRedirectFor, shouldNoIndex,
+} from './app/lib/hosts'
 
 const SESSION_COOKIE = 'admin_session'
 
@@ -48,11 +51,42 @@ export function proxy(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
+  // ── Which hostname is this, and does this path belong on it? ─────────────
+  // Inert until ADMIN_HOST / POS_HOST are set: with neither configured every
+  // path is allowed on every host, exactly as before. See app/lib/hosts.ts.
+  // Named hosts, not config — `export const config` below is the matcher, and
+  // shadowing it inside the handler is a trap for whoever reads this next.
+  const hosts = hostConfigFromEnv(process.env)
+  const surface = classifySurface(request.headers.get('host') ?? '', hosts)
+
+  if (pathname === '/') {
+    const root = rootRedirectFor(surface)
+    if (root) return NextResponse.redirect(new URL(root, request.url))
+  }
+
+  if (!isPathAllowed(pathname, surface, hosts)) {
+    // A bare 404, not a redirect and not the styled not-found page. A redirect
+    // to /admin/login would confirm the admin panel exists on a host that is
+    // supposed to have no admin panel, and the branded page names the
+    // business. Nothing here is the whole point.
+    return new NextResponse('Not found', {
+      status: 404,
+      headers: { 'Content-Type': 'text/plain', 'X-Robots-Tag': 'noindex, nofollow' },
+    })
+  }
+
+  // Applied to every response below via withHeaders().
+  const extra: Record<string, string> = { 'Content-Security-Policy': csp }
+  if (shouldNoIndex(surface)) extra['X-Robots-Tag'] = 'noindex, nofollow'
+
+  const withHeaders = (response: NextResponse): NextResponse => {
+    for (const [k, v] of Object.entries(extra)) response.headers.set(k, v)
+    return response
+  }
+
   // Let the login page through without a session check
   if (pathname === '/admin/login') {
-    const response = NextResponse.next()
-    response.headers.set('Content-Security-Policy', csp)
-    return response
+    return withHeaders(NextResponse.next())
   }
 
   // All other /admin/** routes require the session cookie (optimistic check —
@@ -61,9 +95,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/admin/login', request.url))
   }
 
-  const response = NextResponse.next()
-  response.headers.set('Content-Security-Policy', csp)
-  return response
+  return withHeaders(NextResponse.next())
 }
 
 export const config = {
