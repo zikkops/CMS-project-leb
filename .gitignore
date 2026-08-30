@@ -62,3 +62,6 @@ pos/.next/
 
 # Built deployables — scripts/package-app.mjs
 /dist/
+
+# Scratch patch scripts — written, run, deleted. Never committed.
+.patch.mjs
