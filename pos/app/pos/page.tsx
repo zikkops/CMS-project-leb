@@ -100,7 +100,7 @@ function TableButton({
 export default function FloorPage() {
   // Its own login and its own home: the POS is a separate deployment with no
   // /admin/login in it, and the default would 404 a waiter who is not signed in.
-  const { checking } = useRequireRole(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
+  const { checking, blocked } = useRequireRole(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
   const isMobile = useIsMobile()
   const router = useRouter()
 
@@ -141,6 +141,31 @@ export default function FloorPage() {
       setError(err instanceof Error ? err.message : 'Could not open that table.')
       setOpening(null)
     }
+  }
+
+  // The POS is its own home, so there is nowhere to redirect somebody who
+  // cannot be here — which means this page has to say so itself. Rendering
+  // null instead is a blank screen that looks like a broken deployment.
+  if (blocked) {
+    return (
+      <main style={{
+        minHeight: '100vh', backgroundColor: 'var(--black)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '2rem', fontFamily: 'var(--font-inter)',
+      }}>
+        <div style={{ maxWidth: '40ch', textAlign: 'center' }}>
+          <h1 style={{
+            fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem',
+            color: 'var(--offwhite)', marginBottom: '0.8rem',
+          }}>{blocked === 'feature' ? 'Point of Sale is switched off' : 'You do not have till access'}</h1>
+          <p style={{ fontSize: '0.88rem', color: 'rgba(245,242,236,0.4)', lineHeight: 1.7 }}>
+            {blocked === 'feature'
+              ? 'A superadmin can switch it on in the admin panel under Settings → Features. It needs the Menu module on as well.'
+              : 'Ask a manager to grant you the Point of Sale section in the admin panel under Staff Accounts.'}
+          </p>
+        </div>
+      </main>
+    )
   }
 
   if (checking) return null

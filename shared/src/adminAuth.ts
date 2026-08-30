@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from './firebase'
@@ -247,6 +247,7 @@ export function useRequireRole(
   const loginPath = routes.login ?? '/admin/login'
   const homePath = routes.home ?? '/admin'
   const router = useRouter()
+  const pathname = usePathname()
   const { user, role, branchIds, orderDepts, sectionGrants, sectionRevocations, superadmin, loading, provisioned } = useAdminUser()
   const { flags, loading: featuresLoading } = useFeatureFlags()
 
@@ -284,12 +285,27 @@ export function useRequireRole(
     // are not allowed" — and it avoids telling someone they lack a permission
     // that would not help them anyway.
     if (!featureOn || !hasAccess) {
-      router.replace(homePath)
+      // Redirecting to the page you are already on renders nothing, forever.
+      // That is exactly what happened to the POS: its home IS the guarded
+      // page, so a switched-off feature produced a blank screen with no
+      // explanation and no way to tell whether it was broken or forbidden.
+      // The caller gets `blocked` instead and can say which.
+      if (pathname !== homePath) router.replace(homePath)
     }
-  }, [loading, user, hasAccess, featureOn, provisioned, router, loginPath, homePath])
+  }, [loading, user, hasAccess, featureOn, provisioned, router, loginPath, homePath, pathname])
 
   const checking = loading || featuresLoading || !user || !provisioned || !hasAccess || !featureOn
-  return { checking, role, branchIds, orderDepts, sectionGrants, sectionRevocations, superadmin, user }
+
+  // Why this page is not rendering, when it is not simply still loading.
+  // Null while checking — "not yet known" and "not allowed" are different
+  // answers and a page that conflates them flickers an error on every load.
+  const blocked: 'feature' | 'access' | null =
+    loading || featuresLoading || !user || !provisioned ? null
+    : !featureOn ? 'feature'
+    : !hasAccess ? 'access'
+    : null
+
+  return { checking, blocked, role, branchIds, orderDepts, sectionGrants, sectionRevocations, superadmin, user }
 }
 
 // Staff accounts live in the same `users` collection as customers — they just
