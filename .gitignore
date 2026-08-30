@@ -59,3 +59,6 @@ web/.next/
 admin/.next/
 pos/.next/
 */tsconfig.tsbuildinfo
+
+# Built deployables — scripts/package-app.mjs
+/dist/

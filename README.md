@@ -135,5 +135,6 @@ if two apps need it, it belongs in `shared/`.
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — system design and Firestore schema
 - [CONTRIBUTING.md](./CONTRIBUTING.md) — code conventions and patterns used throughout
 - [docs/loyalty-system.md](./docs/loyalty-system.md) — points, tiers and the annual reset
+- [docs/deploying.md](./docs/deploying.md) — the three apps onto three subdomains
 - [docs/server-setup.md](./docs/server-setup.md) — service account, custom claims, rules deploys
 - [docs/admin-panel.md](./docs/admin-panel.md) — admin auth, roles, and route map
