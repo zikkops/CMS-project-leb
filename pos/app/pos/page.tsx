@@ -74,7 +74,22 @@ function lastSentAt(lines: CheckLine[]): number | null {
   return latest
 }
 
-/** One open table. Module scope — see CONTRIBUTING.md gotcha #2. */
+/**
+ * One open table, as a square.
+ *
+ * A grid rather than a list because a floor is a set of places, not a
+ * sequence — a waiter looks for "table 7", and finding it among tiles is a
+ * glance where finding it down a list is a read. Several fit on a phone
+ * without scrolling, which is the whole point during a service.
+ *
+ * Four things, in the order somebody actually wants them: which table, how
+ * long since it fired, what it has run to, and whether anything is still
+ * sitting unsent on somebody's phone. Everything else — guest count, item
+ * count — is on the check itself, one tap away, and putting it here would
+ * shrink the number that matters.
+ *
+ * Module scope — see CONTRIBUTING.md gotcha #2.
+ */
 function CheckCard({
   check, now, onOpen, isMobile,
 }: {
@@ -85,7 +100,6 @@ function CheckCard({
 }) {
   const total = orderedTotal(check.lines)
   const unsent = check.lines.filter(l => l.status === 'draft').length
-  const items = check.lines.filter(l => l.status !== 'void').length
   const sentAt = lastSentAt(check.lines)
   const mins = sentAt === null ? null : minutesWaiting(sentAt, now)
   const level = mins === null ? 'fresh' : urgency(mins)
@@ -94,47 +108,44 @@ function CheckCard({
     <button
       onClick={onOpen}
       style={{
-        minHeight: '92px', display: 'flex', alignItems: 'center', gap: '0.9rem',
-        textAlign: 'left', width: '100%',
-        backgroundColor: 'rgba(0,160,152,0.08)',
+        // Square. aspectRatio rather than a fixed height so the tiles grow
+        // with the column width instead of going letterbox on a wide screen.
+        aspectRatio: '1',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: '0.15rem',
+        width: '100%', cursor: 'pointer',
+        backgroundColor: level === 'late' ? 'rgba(228,51,41,0.1)' : 'rgba(0,160,152,0.08)',
         border: `1px solid ${level === 'late' ? 'var(--red)' : 'rgba(0,160,152,0.4)'}`,
-        borderRadius: '5px', cursor: 'pointer', color: 'var(--offwhite)',
-        fontFamily: 'var(--font-inter)', padding: isMobile ? '0.8rem' : '1rem',
+        borderRadius: '6px', color: 'var(--offwhite)',
+        fontFamily: 'var(--font-inter)', padding: '0.5rem',
+        position: 'relative', overflow: 'hidden',
       }}
     >
+      {/* Unsent is a corner flag rather than a line of text: it is a warning,
+          and a warning that costs the number its space is a bad trade. */}
+      {unsent > 0 && (
+        <span style={{
+          position: 'absolute', top: 0, right: 0,
+          backgroundColor: '#C9962C', color: '#1a1a1a',
+          fontSize: '0.6rem', fontWeight: 700,
+          padding: '0.15rem 0.4rem', borderBottomLeftRadius: '5px',
+        }}>{unsent}</span>
+      )}
+
       <span style={{
-        fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', lineHeight: 1,
-        minWidth: '2.4rem', textAlign: 'center',
+        fontFamily: 'var(--font-cinzel)',
+        fontSize: isMobile ? '2rem' : '2.3rem', lineHeight: 1,
       }}>{check.tableNumber}</span>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: '1rem', color: 'var(--teal)', fontWeight: 600 }}>{money(total)}</p>
-        <p style={{ fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)', marginTop: '0.2rem' }}>
-          {check.guestCount} {check.guestCount === 1 ? 'guest' : 'guests'}
-          {items > 0 && ` · ${items} ${items === 1 ? 'item' : 'items'}`}
-        </p>
-      </div>
+      <span style={{
+        fontSize: isMobile ? '0.8rem' : '0.85rem',
+        color: 'var(--teal)', fontWeight: 600,
+      }}>{money(total)}</span>
 
-      <div style={{ textAlign: 'right' }}>
-        {mins === null ? (
-          <p style={{ fontSize: '0.7rem', color: 'rgba(245,242,236,0.3)' }}>Nothing sent</p>
-        ) : (
-          <>
-            <p style={{ fontSize: '1rem', color: URGENCY_COLOUR[level], fontWeight: 600 }}>
-              {mins}m
-            </p>
-            <p style={{ fontSize: '0.6rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.1rem' }}>
-              since sent
-            </p>
-          </>
-        )}
-        {unsent > 0 && (
-          <p style={{
-            fontSize: '0.6rem', color: '#C9962C', marginTop: '0.25rem',
-            letterSpacing: '0.06em', textTransform: 'uppercase',
-          }}>{unsent} unsent</p>
-        )}
-      </div>
+      <span style={{
+        fontSize: '0.72rem', fontWeight: 600,
+        color: mins === null ? 'rgba(245,242,236,0.3)' : URGENCY_COLOUR[level],
+      }}>{mins === null ? 'not sent' : `${mins}m`}</span>
     </button>
   )
 }
@@ -270,7 +281,13 @@ export default function FloorPage() {
             Tap <strong style={{ color: 'rgba(245,242,236,0.5)' }}>Add table</strong> to start one.
           </p>
         ) : (
-          <div style={{ display: 'grid', gap: '0.6rem' }}>
+          <div style={{
+            display: 'grid',
+            // Squares wide enough for a two-digit table number at 2rem, and no
+            // wider than a thumb needs — more tables visible beats bigger ones.
+            gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '104px' : '128px'}, 1fr))`,
+            gap: '0.6rem',
+          }}>
             {open.map(c => (
               <CheckCard
                 key={c.id}
