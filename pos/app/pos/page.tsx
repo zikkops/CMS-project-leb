@@ -225,9 +225,19 @@ export default function FloorPage() {
               color: 'var(--offwhite)',
             }}>Open tables</h1>
           </div>
-          <p style={{ fontSize: '0.8rem', color: 'rgba(245,242,236,0.4)' }}>
-            {open.length} open · {money(floorTotal)}
-          </p>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: '0.8rem', color: 'rgba(245,242,236,0.4)' }}>
+              {open.length} open · {money(floorTotal)}
+            </p>
+            {/* The pass, for whoever is carrying the phone that is also the
+                kitchen screen. Gated separately — a waiter without the KDS
+                section lands on its own explanation, not a blank page. */}
+            <a href="/pos/kds" style={{
+              fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase',
+              color: 'rgba(245,242,236,0.35)', textDecoration: 'none',
+              display: 'inline-block', marginTop: '0.35rem',
+            }}>Kitchen display →</a>
+          </div>
         </div>
 
         {liveError && (
