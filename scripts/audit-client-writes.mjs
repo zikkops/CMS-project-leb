@@ -39,7 +39,7 @@ const LIST = process.argv.includes('--list')
 // ── Classification ────────────────────────────────────────────────────────
 // Keyed by the enclosing function name. Deliberately explicit rather than
 // inferred from the path: app/admin/** is a good hint but not a rule (a staff
-// page can legitimately write a customer-owned doc), and app/lib/** mixes both
+// page can legitimately write a customer-owned doc), and packages/shared/src/** mixes both
 // kinds inside a single module — redemptions.ts holds both "staff defines a
 // reward" and "customer asks to redeem one".
 //
@@ -121,21 +121,27 @@ const PRIV = new Set([
 
 // ── Scan ──────────────────────────────────────────────────────────────────
 
+// Both trees: the client writes live in apps/**, and packages/shared holds the
+// modules they call into — a client write hiding in a shared module is exactly
+// the kind this is looking for, so scanning only apps/ would miss it.
 const files = []
-;(function walk(dir) {
+const walk = (dir) => {
   for (const entry of readdirSync(dir)) {
+    if (entry === 'node_modules' || entry === '.next') continue
     const p = join(dir, entry).split('\\').join('/')
     if (statSync(p).isDirectory()) walk(p)
     else if (/\.tsx?$/.test(p)) files.push(p)
   }
-})('app')
+}
+walk('apps')
+walk('packages')
 
 const WRITE = /\b(addDoc|setDoc|updateDoc|deleteDoc|writeBatch|runTransaction)\s*\(/
 
 const hits = []
 for (const file of files) {
   // The server layer and route handlers are the destination, not the problem.
-  if (file.includes('app/lib/server/') || file.includes('app/api/')) continue
+  if (file.includes('shared/src/server/') || file.includes('/api/')) continue
 
   const lines = readFileSync(file, 'utf8').split(/\r?\n/)
   lines.forEach((line, i) => {
@@ -165,7 +171,7 @@ for (const file of files) {
     // handler, which can't be named usefully. Falling back to the path stops
     // that from showing up as untriaged forever.
     //
-    // No such fallback for app/lib/**: those modules mix both kinds inside one
+    // No such fallback for packages/shared/src/**: those modules mix both kinds inside one
     // file, so anything there must be classified by name, deliberately.
     const kind =
       PRIV.has(fn) ? 'PRIV'

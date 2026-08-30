@@ -2,10 +2,18 @@
   "name": "big-cms-project",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "npm run dev --workspace apps/web",
+    "dev:admin": "npm run dev --workspace apps/admin",
+    "dev:pos": "npm run dev --workspace apps/pos",
+    "build": "npm run build --workspaces --if-present",
+    "build:web": "npm run build --workspace apps/web",
+    "build:admin": "npm run build --workspace apps/admin",
+    "build:pos": "npm run build --workspace apps/pos",
     "lint": "eslint",
     "backfill:claims": "node --env-file=.env.local scripts/backfill-claims.mjs",
     "link:supplies": "node --env-file=.env.local scripts/link-template-supplies.mjs",

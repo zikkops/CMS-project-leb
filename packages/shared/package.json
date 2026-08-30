@@ -1,0 +1,9 @@
+{
+  "name": "@big-cms/shared",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    "./*": "./src/*.ts",
+    "./server/*": "./src/server/*.ts"
+  }
+}

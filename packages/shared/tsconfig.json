@@ -1,0 +1,7 @@
+{
+  "//": "For editors and `tsc --noEmit` over the package alone. Next transpiles these sources directly via transpilePackages — there is no build output.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "baseUrl": "." },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
+}
