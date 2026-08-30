@@ -19,7 +19,7 @@ import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
 import {
-  CHECK_LIMITS, stationForSection,
+  CHECK_LIMITS, stationForSection, voidReason,
   type Check, type CheckLine, type LineSource,
 } from '../checks'
 import { validateSelection, toSelections, type ModifierGroup } from '../modifiers'
@@ -216,6 +216,8 @@ function line(
     addedByEmail: caller.email ?? '',
     sentAt: null,
     voidReason: null,
+    voidReasonKey: null,
+    voidWasWaste: null,
   }
 }
 
@@ -434,11 +436,21 @@ export async function voidLine(
   caller: Caller,
   checkId: string,
   lineId: string,
-  reason: string,
-): Promise<{ wasSent: boolean }> {
+  reasonKey: string,
+  note: string,
+): Promise<{ wasSent: boolean; restored: number; label: string }> {
   const db = adminDb()
-  const trimmed = reason.trim()
-  if (!trimmed) throw new HttpError(400, 'A void needs a reason.')
+
+  const reason = voidReason(reasonKey)
+  if (!reason) throw new HttpError(400, 'Choose a reason for the void.')
+
+  const trimmedNote = note.trim().slice(0, CHECK_LIMITS.noteLength)
+  // "Other" without a word about it is the same as no reason at all, which is
+  // what having a reason list was meant to stop.
+  if (reason.key === 'other' && !trimmedNote) {
+    throw new HttpError(400, 'Say what happened when the reason is Other.')
+  }
+  const label = trimmedNote ? `${reason.label} — ${trimmedNote}` : reason.label
 
   return db.runTransaction(async tx => {
     const check = await readCheck(tx, checkId)
@@ -453,18 +465,32 @@ export async function voidLine(
       ? await tx.get(db.collection(TICKETS).where('checkId', '==', checkId))
       : null
 
-    // A voided merchandise line goes back on the shelf — but only if it had
-    // been sent, because an unsent one never came off it.
-    if (wasSent && target.source === 'product') {
+    // Back on the shelf only when the item still exists. "Changed their mind"
+    // hands a board game back; "damaged" does not, and crediting stock for it
+    // would invent a copy that is not there.
+    //
+    // Still gated on wasSent as well: an unsent line never came off the shelf,
+    // so returning it would create stock out of nothing.
+    let restored = 0
+    if (wasSent && target.source === 'product' && reason.returnsToStock) {
       tx.update(db.doc(`products/${target.refId}`), {
         [`stock.${check.branch}`]: FieldValue.increment(target.quantity),
       })
+      restored = target.quantity
     }
 
     tx.update(db.doc(`${CHECKS}/${checkId}`), {
       lines: check.lines.map(l =>
         l.id === lineId
-          ? { ...l, status: 'void', voidReason: trimmed.slice(0, CHECK_LIMITS.noteLength) }
+          ? {
+              ...l,
+              status: 'void',
+              voidReason: label,
+              voidReasonKey: reason.key,
+              // Copied, not looked up later: changing the reason list must not
+              // re-classify a void that already happened.
+              voidWasWaste: reason.isWaste,
+            }
           : l),
       updatedAt: FieldValue.serverTimestamp(),
     })
@@ -482,7 +508,7 @@ export async function voidLine(
       }
     }
 
-    return { wasSent }
+    return { wasSent, restored, label }
   })
 }
 

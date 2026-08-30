@@ -74,6 +74,58 @@ export function stationForSection(section: string | null | undefined): Station |
   return STATION_FOR_SECTION[String(section ?? '')] ?? null
 }
 
+// ── Why something was struck off ───────────────────────────────────────────
+//
+// A void used to take free text, and free text cannot be acted on. "Changed
+// his mind" and "dropped it" are different events: the first leaves a sellable
+// item, the second destroys one, and a till that treats them the same either
+// loses stock it still has or keeps stock it does not.
+//
+// So the reason is a CHOICE, and the choice carries what follows from it.
+// Free text stays, as a note beside the reason rather than instead of it.
+
+export interface VoidReasonDef {
+  key: string
+  label: string
+  /**
+   * Whether the thing still exists and can be sold again.
+   *
+   * Only merchandise acts on this — a board game handed back goes on the
+   * shelf. Food has no per-ingredient stock in this version, so nothing
+   * changes either way for it; the flag is still recorded, because the day
+   * recipes land it is the field that says whether the ingredients were used.
+   */
+  returnsToStock: boolean
+  /**
+   * Whether this counts as waste: made or consumed, and lost.
+   *
+   * Nothing reads this yet. It is recorded from the first version because
+   * waste is on the roadmap and a void without it is a void nobody can go
+   * back and classify — the person who knew is gone by then.
+   */
+  isWaste: boolean
+}
+
+export const VOID_REASONS: VoidReasonDef[] = [
+  // Nothing was consumed. The item is still there.
+  { key: 'changed-mind', label: 'Customer changed their mind', returnsToStock: true, isWaste: false },
+  { key: 'rung-wrong', label: 'Rung up by mistake', returnsToStock: true, isWaste: false },
+  { key: 'not-available', label: 'Not available after all', returnsToStock: true, isWaste: false },
+
+  // It was made, or it is gone. Either way it is not going back.
+  { key: 'made-wrong', label: 'Made wrong', returnsToStock: false, isWaste: true },
+  { key: 'sent-back', label: 'Customer sent it back', returnsToStock: false, isWaste: true },
+  { key: 'damaged', label: 'Damaged or spilled', returnsToStock: false, isWaste: true },
+
+  // Deliberately last and deliberately not defaulting to "returns": guessing
+  // wrong in that direction invents stock that is not on the shelf.
+  { key: 'other', label: 'Other', returnsToStock: false, isWaste: true },
+]
+
+export function voidReason(key: string): VoidReasonDef | undefined {
+  return VOID_REASONS.find(r => r.key === key)
+}
+
 export interface CheckLine {
   /** Stable for the life of the check — edits, voids and tickets all cite it. */
   id: string
@@ -106,8 +158,18 @@ export interface CheckLine {
   addedByEmail: string
   /** Set when a ticket was created for it; null while still a draft. */
   sentAt: string | null
-  /** Why it was struck off. Required — see voidLine below. */
+  /**
+   * Why it was struck off, as a chosen reason plus anything typed.
+   *
+   * voidReason keeps the human sentence so old lines written before the
+   * reasons existed still read correctly; voidReasonKey is the one a report
+   * can group by.
+   */
   voidReason: string | null
+  voidReasonKey: string | null
+  /** Copied from the reason, so a later change to the list cannot re-classify
+   *  a void that already happened. */
+  voidWasWaste: boolean | null
 }
 
 /**

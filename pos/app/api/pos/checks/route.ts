@@ -82,11 +82,16 @@ export async function PATCH(request: Request): Promise<Response> {
       case 'void': {
         // Logged, unlike adding an item: striking something off is a decision
         // with a reason attached, and it is the one a manager asks about.
-        const lineId = String(body.lineId ?? '')
-        const reason = String(body.reason ?? '')
-        const result = await voidLine(caller, checkId, lineId, reason)
+        const result = await voidLine(
+          caller,
+          checkId,
+          String(body.lineId ?? ''),
+          String(body.reasonKey ?? ''),
+          String(body.note ?? ''),
+        )
         await logActivity(caller, 'delete', 'POS',
-          `Voided an item${result.wasSent ? ' after it was sent' : ''} — ${reason}`)
+          `Voided an item${result.wasSent ? ' after it was sent' : ''} — ${result.label}` +
+          (result.restored > 0 ? ` — ${result.restored} back on the shelf` : ''))
         return Response.json({ ok: true, ...result })
       }
       case 'move': {

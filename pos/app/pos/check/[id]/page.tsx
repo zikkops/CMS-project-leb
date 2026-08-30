@@ -20,7 +20,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import {
-  lineTotal, grossLineTotal, lineDiscount, checkTotals,
+  lineTotal, grossLineTotal, lineDiscount, checkTotals, VOID_REASONS,
   type CheckLine, type StaffDiscount,
 } from '@big-cms/shared/checks'
 import { minutesWaiting, urgency } from '@big-cms/shared/tickets'
@@ -440,10 +440,10 @@ export default function CheckPage() {
     }
   }
 
-  async function handleVoid(lineId: string) {
-    const reason = window.prompt('Why is this being voided?')
-    if (!reason?.trim()) return
-    try { await voidLine(checkId, lineId, reason.trim()) }
+  async function handleVoid(lineId: string, reasonKey: string, note: string) {
+    setLineMenu(null)
+    setError('')
+    try { await voidLine(checkId, lineId, reasonKey, note) }
     catch (err) { setError(err instanceof Error ? err.message : 'Could not void.') }
   }
 
@@ -753,17 +753,51 @@ export default function CheckPage() {
                 : 'Not sent yet.'}
             </p>
 
-            <button
-              onClick={() => { const l = lineMenu; setLineMenu(null); handleVoid(l.id) }}
-              style={{
-                ...tap, width: '100%', backgroundColor: 'rgba(228,51,41,0.1)',
-                border: '1px solid rgba(228,51,41,0.4)', color: 'var(--red)',
-                letterSpacing: '0.08em', textTransform: 'uppercase',
-              }}
-            >Void this item</button>
+            <p style={{
+              fontSize: '0.64rem', letterSpacing: '0.14em', textTransform: 'uppercase',
+              color: 'rgba(245,242,236,0.35)', marginBottom: '0.5rem',
+            }}>Void — why?</p>
+
+            <div style={{ display: 'grid', gap: '0.4rem' }}>
+              {VOID_REASONS.map(r => {
+                // Merchandise is the only thing where this changes stock, so
+                // it is the only place the consequence is worth spelling out.
+                // Saying "goes back on the shelf" under a cappuccino would be
+                // noise at best and a lie at worst.
+                const showsStock = lineMenu.source === 'product' && lineMenu.status === 'sent'
+                return (
+                  <button
+                    key={r.key}
+                    onClick={() => {
+                      const note = r.key === 'other'
+                        ? (window.prompt('What happened?') ?? '')
+                        : ''
+                      if (r.key === 'other' && !note.trim()) return
+                      handleVoid(lineMenu.id, r.key, note)
+                    }}
+                    style={{
+                      ...tap, width: '100%', textAlign: 'left', padding: '0.6rem 0.9rem',
+                      backgroundColor: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.12)', color: 'var(--offwhite)',
+                      display: 'flex', flexDirection: 'column', gap: '0.15rem',
+                    }}
+                  >
+                    <span>{r.label}</span>
+                    {showsStock && (
+                      <span style={{
+                        fontSize: '0.68rem',
+                        color: r.returnsToStock ? 'var(--teal)' : 'rgba(228,51,41,0.7)',
+                      }}>
+                        {r.returnsToStock ? 'goes back on the shelf' : 'not returned to stock'}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
 
             <button onClick={() => setLineMenu(null)} style={{
-              ...tap, width: '100%', marginTop: '0.6rem', backgroundColor: 'transparent',
+              ...tap, width: '100%', marginTop: '0.9rem', backgroundColor: 'transparent',
               border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(245,242,236,0.6)',
             }}>Cancel</button>
           </div>

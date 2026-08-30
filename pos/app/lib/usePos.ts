@@ -444,9 +444,11 @@ export async function sendCheck(checkId: string): Promise<{ station: string; lin
   return (data.tickets ?? []) as { station: string; lines: number }[]
 }
 
-export async function voidLine(checkId: string, lineId: string, reason: string): Promise<void> {
+export async function voidLine(
+  checkId: string, lineId: string, reasonKey: string, note: string,
+): Promise<void> {
   await unwrap(await authedFetch('/api/pos/checks', 'PATCH',
-    { checkId, action: 'void', lineId, reason }))
+    { checkId, action: 'void', lineId, reasonKey, note }))
 }
 
 export async function moveCheck(checkId: string, tableNumber: number): Promise<void> {
