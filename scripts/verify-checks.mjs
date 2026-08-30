@@ -17,7 +17,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'checks-verify-'))
 execSync(
-  `npx tsc shared/src/checks.ts shared/src/tickets.ts --outDir ${out} --module esnext ` +
+  `npx tsc shared/src/checks.ts shared/src/tickets.ts shared/src/money.ts --outDir ${out} --module esnext ` +
   `--target es2022 --skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' }
 )
@@ -28,6 +28,7 @@ for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
 
 const C = await import(`file://${join(out, 'checks.js')}`)
 const T = await import(`file://${join(out, 'tickets.js')}`)
+const M = await import(`file://${join(out, 'money.js')}`)
 
 let pass = 0, fail = 0
 const eq = (name, got, want) => {
@@ -152,6 +153,36 @@ eq('7 minutes', T.urgency(7), 'fresh')
 eq('8 minutes', T.urgency(8), 'aging')
 eq('15 minutes', T.urgency(15), 'late')
 eq('minutes never negative', T.minutesWaiting(2000, 1000), 0)
+
+console.log('\nmoney — the bill total rounds, the lines do not')
+// $3.67 at 89,500 is 328,465 exactly; the bill asks for 328,500.
+eq('rounds up to the nearest 100', M.roundLbpTotal(328465), 328500)
+eq('rounds down to the nearest 100', M.roundLbpTotal(328420), 328400)
+eq('exactly halfway goes up', M.roundLbpTotal(328450), 328500)
+eq('already round is untouched', M.roundLbpTotal(328500), 328500)
+eq('zero stays zero', M.roundLbpTotal(0), 0)
+// The rule is 100, not 1 — rounding to the nearest unit would be no rule.
+eq('does not round to the nearest 1', M.roundLbpTotal(328401), 328400)
+
+console.log('\nbillTotals — both figures, and the adjustment shown')
+{
+  const b = M.billTotals(3.67, 89500)
+  eq('usd stays exact', b.usd, 3.67)
+  eq('lbp exact, unrounded', b.lbpExact, 328465)
+  eq('lbp asked for', b.lbp, 328500)
+  eq('rounding is a stated figure, not a drift', b.rounding, 35)
+}
+{
+  // The reason the rule is on the total: rounding each line accumulates.
+  const perLine = Array.from({ length: 10 }, () => M.roundLbpTotal(M.usdToLbp(3.67, 89500)))
+    .reduce((a, b) => a + b, 0)
+  const once = M.billTotals(36.7, 89500).lbp
+  eq('per-line rounding disagrees with rounding once', perLine === once, false)
+  // Ten lines each rounding up 35 is +350; the same money rounded once is
+  // +50. The 300 LBP gap is exactly the drift the rule exists to prevent —
+  // and on a receipt it is a total that does not equal the sum of its lines.
+  eq('and drifts by 300 LBP over ten lines', perLine - once, 300)
+}
 
 console.log(`\n${pass} passed, ${fail} failed\n`)
 process.exit(fail === 0 ? 0 : 1)
