@@ -1,4 +1,4 @@
-// Assertions over the money and stock calculations in packages/shared/src/deliveryMath.ts.
+// Assertions over the money and stock calculations in shared/src/deliveryMath.ts.
 //
 // This repo has no test runner and adding one wasn't in scope for Phase 01, so
 // this is a plain script with no new dependency: it transpiles the real module
@@ -25,7 +25,7 @@ import { join } from 'node:path'
 // pure calculations live in their own module.
 const out = mkdtempSync(join(tmpdir(), 'delivery-verify-'))
 execSync(
-  `npx tsc packages/shared/src/deliveryMath.ts --outDir ${out} --module esnext --target es2022 ` +
+  `npx tsc shared/src/deliveryMath.ts --outDir ${out} --module esnext --target es2022 ` +
   `--skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' }
 )

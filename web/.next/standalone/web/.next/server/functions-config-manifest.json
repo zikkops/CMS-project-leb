@@ -21,40 +21,8 @@
         }
       ]
     },
-    "/api/admin/accounts": {},
-    "/api/admin/branch-tables": {},
-    "/api/admin/deliveries": {},
-    "/api/admin/end-of-day": {},
-    "/api/admin/events": {},
-    "/api/admin/features": {},
-    "/api/admin/health": {},
-    "/api/admin/inventory": {},
-    "/api/admin/invoice-number": {},
-    "/api/admin/loyalty/catalogue": {},
-    "/api/admin/loyalty/customers": {},
-    "/api/admin/loyalty/customers/password-reset": {},
-    "/api/admin/loyalty/events": {},
-    "/api/admin/loyalty/redemptions": {},
-    "/api/admin/loyalty/reset": {
-      "maxDuration": 60
-    },
-    "/api/admin/loyalty/transactions": {},
-    "/api/admin/media": {},
-    "/api/admin/menu": {},
-    "/api/admin/modifiers": {},
-    "/api/admin/ordering": {},
-    "/api/admin/products": {},
-    "/api/admin/products/import": {
-      "maxDuration": 60
-    },
-    "/api/admin/purchases": {},
-    "/api/admin/reservations": {},
-    "/api/admin/settings": {},
-    "/api/admin/sku": {},
-    "/api/admin/stock-transfer": {},
-    "/api/admin/tables/checkin": {},
-    "/api/admin/weekly-orders": {},
-    "/api/admin/wholesale-accounts": {},
+    "/api/media/delete": {},
+    "/api/upload-image": {},
     "/api/wholesale/orders": {}
   }
 }

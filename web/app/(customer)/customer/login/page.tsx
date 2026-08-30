@@ -13,15 +13,20 @@ import {
 } from '@big-cms/shared/customerAuth'
 import { db } from '@big-cms/shared/firebase'
 import { setAdminSessionCookie } from '@big-cms/shared/adminAuth'
+import { adminUrl } from '@big-cms/shared/appUrls'
 
 async function postLoginTarget(user: User): Promise<string> {
   const snap = await getDoc(doc(db, 'users', user.uid))
   if (snap.exists() && snap.data()?.isStaff === true) {
     setAdminSessionCookie()
     const role = snap.data()?.role ?? ''
-    return (role === 'kitchen_crew' || role === 'barista')
+    const path = (role === 'kitchen_crew' || role === 'barista')
       ? '/admin/weekly-orders/submit'
       : '/admin'
+    // The admin panel is a separate deployment now, so this has to be an
+    // absolute URL. With NEXT_PUBLIC_ADMIN_URL unset there is nowhere to send
+    // them — their own profile is a real page, which a 404 is not.
+    return adminUrl(path) ?? '/customer/profile'
   }
   return '/customer/profile'
 }

@@ -40,7 +40,7 @@ const PATTERNS = [
   {
     label: 'Original brand name',
     re: /\bonboard\b(?!\s+App\b)/i,
-    why: 'Move to BRAND.name in packages/shared/src/brand.ts.',
+    why: 'Move to BRAND.name in shared/src/brand.ts.',
     severity: 'high',
   },
   {
@@ -48,7 +48,7 @@ const PATTERNS = [
     // Separate from the name above: the full phrase appeared in headings where
     // "onboard" alone did not, and it is the form a visitor actually read.
     re: /\bGames\s*&\s*Tales\b/i,
-    why: 'Move to BRAND.name in packages/shared/src/brand.ts.',
+    why: 'Move to BRAND.name in shared/src/brand.ts.',
     severity: 'high',
   },
   {

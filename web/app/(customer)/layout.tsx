@@ -3,11 +3,17 @@
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useCustomerUser } from '@big-cms/shared/customerAuth'
+import { adminUrl } from '@big-cms/shared/appUrls'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
 
 const LOGIN_PATH = '/customer/login'
-const ADMIN_PATH = '/admin'
+
+// The admin panel is a separate deployment, so this is an absolute URL or
+// nothing. What matters here is that a staff account does not sit in the
+// customer area — sending them home achieves that when there is no admin app
+// to send them to, and never leaves them on a 404.
+const ADMIN_HOME = adminUrl()
 
 // Scoped to the (customer) route group only — entirely separate from the
 // admin/CMS auth in app/admin and app/lib/adminAuth.ts.
@@ -24,7 +30,8 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
     // straight in — including into /customer/login itself, which is why this
     // check comes before the LOGIN_PATH exemption below.
     if (user && isStaff) {
-      router.replace(ADMIN_PATH)
+      if (ADMIN_HOME) window.location.href = ADMIN_HOME
+      else router.replace('/')
       return
     }
     if (!user && pathname !== LOGIN_PATH) {

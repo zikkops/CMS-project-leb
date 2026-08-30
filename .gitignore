@@ -53,3 +53,9 @@ demo-customer.txt
 # Per-app Next build output (the monorepo has one per workspace).
 apps/*/.next/
 apps/*/tsconfig.tsbuildinfo
+
+# Per-app Next output for the flat layout.
+web/.next/
+admin/.next/
+pos/.next/
+*/tsconfig.tsbuildinfo

@@ -7,6 +7,23 @@ import { gsap } from 'gsap'
 import { useIsStaff } from '@big-cms/shared/adminAuth'
 import { BRAND } from '@big-cms/shared/brand'
 import { PLACEHOLDER } from '@big-cms/shared/placeholderAssets'
+import { adminUrl } from '@big-cms/shared/appUrls'
+
+// Resolved once at module scope: it comes from an environment variable, so it
+// cannot change between renders, and calling it per click would read the same
+// value every time.
+//
+// null means no admin app is configured to link to. The staff shortcut then
+// does not appear at all, which is the correct behaviour rather than a
+// fallback — a button that 404s is worse than no button, and an operator who
+// wants the admin panel undiscoverable from the customer site gets that by
+// simply not setting NEXT_PUBLIC_ADMIN_URL.
+const ADMIN_HOME = adminUrl()
+
+function goStaffOrTables(router: { push: (href: string) => void }, isStaff: boolean) {
+  if (isStaff && ADMIN_HOME) { window.location.href = ADMIN_HOME; return }
+  router.push('/tables')
+}
 
 function HeroButton({
   label, color, onClick
@@ -221,7 +238,7 @@ export default function Hero() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', width: '100%', opacity: 0, transform: 'translateY(20px)' }}>
               <HeroButton label="Events"    color="#E43329" onClick={() => scrollTo('events-section')} />
-              <HeroButton label={isStaff ? 'CMS' : 'Reserve'} color="#32327C" onClick={() => router.push(isStaff ? '/admin' : '/tables')} />
+              <HeroButton label={isStaff && ADMIN_HOME ? 'CMS' : 'Reserve'} color="#32327C" onClick={() => goStaffOrTables(router, isStaff)} />
             </div>
           </>
         ) : (
@@ -235,7 +252,7 @@ export default function Hero() {
             </div>
             <div style={{ display: 'flex', gap: '1rem', opacity: 0, transform: 'translateY(20px)' }}>
               <HeroButton label="Events"            color="#E43329" onClick={() => scrollTo('events-section')} />
-              <HeroButton label={isStaff ? 'CMS' : 'Reserve a Spot'} color="#32327C" onClick={() => router.push(isStaff ? '/admin' : '/tables')} />
+              <HeroButton label={isStaff && ADMIN_HOME ? 'CMS' : 'Reserve a Spot'} color="#32327C" onClick={() => goStaffOrTables(router, isStaff)} />
             </div>
           </>
         )}

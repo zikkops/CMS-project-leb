@@ -2,6 +2,12 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { adminUrl } from '@big-cms/shared/appUrls'
+
+// Resolved once — it comes from an environment variable and cannot change
+// between renders. null means no admin app is configured, and the staff
+// shortcut is then simply not rendered.
+const ADMIN_HOME = adminUrl()
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { doc, onSnapshot } from 'firebase/firestore'
@@ -457,8 +463,8 @@ export default function Navbar() {
                 )
               )}
 
-              {isStaff ? (
-                <Link href="/admin"
+              {isStaff && ADMIN_HOME ? (
+                <Link href={ADMIN_HOME}
                   onMouseEnter={() => setBtnHovered(true)}
                   onMouseLeave={() => setBtnHovered(false)}
                   style={{
@@ -671,8 +677,8 @@ export default function Navbar() {
             )
           )}
 
-          {isStaff ? (
-            <Link href="/admin" onClick={() => setOpen(false)} style={{
+          {isStaff && ADMIN_HOME ? (
+            <Link href={ADMIN_HOME} onClick={() => setOpen(false)} style={{
               marginTop: '1rem', backgroundColor: 'var(--teal)', color: '#fff',
               padding: '0.9rem 3rem', borderRadius: '2px', fontSize: '0.85rem',
               letterSpacing: '0.15em', textTransform: 'uppercase', textDecoration: 'none', fontFamily: 'var(--font-inter)',

@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "exports": {
-    "./*": "./src/*.ts",
-    "./server/*": "./src/server/*.ts"
+    "./styles/*": "./src/styles/*",
+    "./components/*": "./src/components/*.tsx",
+    "./server/*": "./src/server/*.ts",
+    "./*": "./src/*.ts"
   }
 }

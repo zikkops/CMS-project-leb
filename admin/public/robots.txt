@@ -1,0 +1,15 @@
+# Demo / staging deployment — must never be indexed.
+#
+# The original site disallowed only /admin and /api. That is right for a real
+# storefront and wrong here: this deployment carries placeholder content and a
+# half-built CMS, and indexing it risks competing with a real customer's site
+# for their own brand terms.
+#
+# When this repo becomes a real tenant's deployment, narrow this back to the
+# two paths below the full disallow.
+User-agent: *
+Disallow: /
+
+# Real-deployment rules, kept for when the above is removed:
+# Disallow: /admin
+# Disallow: /api/

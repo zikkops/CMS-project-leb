@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
 import { Inter, Bree_Serif } from 'next/font/google'
-import './globals.css'
+import '@big-cms/shared/styles/globals.css'
 import { BRAND, isPlaceholderBrand } from '@big-cms/shared/brand'
-import { DemoBanner } from './components/DemoBanner'
+import { brandCssVars } from '@big-cms/shared/brandCss'
+import { DemoBanner } from '@big-cms/shared/components/DemoBanner'
 
 // next/font requires a static import per face — the family cannot come from a
 // runtime config value. So the FACES are a code change; which of them is used
@@ -58,31 +59,7 @@ export default function RootLayout({
           Write --brand-primary in anything new. The four legacy aliases are
           kept for compatibility, not as an example to follow.
         */}
-        <style dangerouslySetInnerHTML={{ __html: `
-:root {
-  --brand-primary:    ${BRAND.colors.primary};
-  --brand-secondary:  ${BRAND.colors.secondary};
-  --brand-tertiary:   ${BRAND.colors.tertiary};
-  --brand-deep:       ${BRAND.colors.deep};
-  --brand-danger:     ${BRAND.colors.danger};
-  --brand-background: ${BRAND.colors.background};
-  --brand-foreground: ${BRAND.colors.foreground};
-
-  /* Legacy aliases — see the note above. Do not add more. */
-  --teal:     var(--brand-primary);
-  --red:      var(--brand-danger);
-  --purple:   var(--brand-tertiary);
-  --navy:     var(--brand-deep);
-  --black:    var(--brand-background);
-  --offwhite: var(--brand-foreground);
-
-  --font-display: var(--font-brand-display);
-  --font-body:    var(--font-brand-body);
-  /* Legacy font aliases, same reasoning as the colours. */
-  --font-cinzel:  var(--font-brand-display);
-  --font-inter:   var(--font-brand-body);
-}
-        `.trim() }} />
+        <style dangerouslySetInnerHTML={{ __html: brandCssVars() }} />
       </head>
       <body>
         <DemoBanner />

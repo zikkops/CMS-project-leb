@@ -133,8 +133,7 @@ const walk = (dir) => {
     else if (/\.tsx?$/.test(p)) files.push(p)
   }
 }
-walk('apps')
-walk('packages')
+for (const app of ['web', 'admin', 'pos', 'shared']) walk(app)
 
 const WRITE = /\b(addDoc|setDoc|updateDoc|deleteDoc|writeBatch|runTransaction)\s*\(/
 

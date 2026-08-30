@@ -1,4 +1,4 @@
-// Assertions over the hostname routing in packages/shared/src/hosts.ts.
+// Assertions over the hostname routing in shared/src/hosts.ts.
 //
 // Same shape as verify-delivery-math.mjs and for the same reason: no test
 // runner in this repo yet, so this transpiles the real module with the
@@ -23,7 +23,7 @@ import { join } from 'node:path'
 // the edge and these have to be reasonable about without a request.
 const out = mkdtempSync(join(tmpdir(), 'hosts-verify-'))
 execSync(
-  `npx tsc packages/shared/src/hosts.ts --outDir ${out} --module esnext --target es2022 ` +
+  `npx tsc shared/src/hosts.ts --outDir ${out} --module esnext --target es2022 ` +
   `--skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' }
 )
