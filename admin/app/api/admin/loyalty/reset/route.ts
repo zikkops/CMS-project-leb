@@ -37,10 +37,10 @@ export const runtime = 'nodejs'
 // A completed reset writes to every customer with a balance, which on a large
 // tenant is more than the default.
 //
-// 60 is the Hobby-plan ceiling. It was 300 briefly, which FAILED THE BUILD —
-// Vercel validates maxDuration against the plan's limit at build time, not at
-// request time, so an over-limit value doesn't degrade gracefully, it stops
-// the whole deployment. Raise this only alongside the plan.
+// 60 was the Vercel Hobby ceiling, and going over it FAILED THE BUILD rather
+// than degrading — kept as a sane bound now that this runs on a Node server
+// where the export is advisory. The history is worth keeping: the number is
+// not arbitrary and it is not a limit anybody measured this job against.
 //
 // A timeout is survivable here in a way it wouldn't be for most jobs: the
 // reset is resumable by construction (it queries for accounts that still have
@@ -54,7 +54,12 @@ function summarise(r: Awaited<ReturnType<typeof runAnnualReset>>): string {
   return `Annual points reset ran for ${r.customersReset} customer${r.customersReset === 1 ? '' : 's'} — next reset ${r.nextResetDate}`
 }
 
-// ── GET: Vercel Cron ─────────────────────────────────────────────────────
+// ── GET: the scheduled run ───────────────────────────────────────────────
+//
+// Authenticated by CRON_SECRET rather than a user token, because a scheduler
+// has no user. POST below is the same job triggered by a signed-in admin.
+// See docs/scheduled-jobs.md for what is meant to be calling this, and why
+// nothing was for a while.
 export async function GET(request: Request): Promise<Response> {
   try {
     const secret = process.env.CRON_SECRET
@@ -75,7 +80,9 @@ export async function GET(request: Request): Promise<Response> {
     // every day saying "not due" would bury the one entry that matters.
     if (result.status !== 'not-due') {
       await logActivity(
-        { uid: 'vercel-cron', email: 'cron', role: null, branchIds: [], superadmin: false, isStaff: true },
+        // Not named for any particular host: this ran on Vercel, then
+        // nowhere, and now on whatever calls it.
+        { uid: 'scheduled-job', email: 'cron', role: null, branchIds: [], superadmin: false, isStaff: true },
         'update', 'Loyalty Reset Schedule', summarise(result),
       )
     }

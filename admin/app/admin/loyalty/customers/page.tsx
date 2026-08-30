@@ -240,6 +240,16 @@ export default function ManageCustomersPage() {
           {!loadingSettings && settings && (
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.8rem' }}>
               Currently scheduled for {formatResetDate(settings.nextResetDate)}.
+              {/* The reset runs from a daily scheduled job. If that job stops
+                  — as it did when the site moved off Vercel — nothing errors,
+                  nothing logs, and the date simply sits in the past for a
+                  year. This is the only place anybody would notice. */}
+              {settings.nextResetDate && settings.nextResetDate < new Date().toISOString().slice(0, 10) && (
+                <span style={{ color: 'var(--red)', display: 'block', marginTop: '0.4rem' }}>
+                  That date has passed and the reset has not run. The daily job
+                  is not reaching the server — see docs/scheduled-jobs.md.
+                </span>
+              )}
             </p>
           )}
         </div>
