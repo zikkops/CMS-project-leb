@@ -22,7 +22,8 @@ import { useEffect, useState } from 'react'
 import {
   collection, doc, onSnapshot, orderBy, query, where,
 } from 'firebase/firestore'
-import { db } from '@big-cms/shared/firebase'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth, db } from '@big-cms/shared/firebase'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import type { Check, Station } from '@big-cms/shared/checks'
 import { ACTIVE_TICKET_STATUSES, type Ticket } from '@big-cms/shared/tickets'
@@ -37,6 +38,28 @@ import { ACTIVE_TICKET_STATUSES, type Ticket } from '@big-cms/shared/tickets'
 // The commonest cause is the rules for a new collection not being deployed
 // yet, which produces exactly that: a working app, a correct query, and
 // silence. So the message names it.
+/**
+ * Whether Firebase has finished working out who is signed in.
+ *
+ * Every listener below waits for this. Without it they subscribe on the first
+ * render, before auth has resolved, and Firestore correctly refuses an
+ * anonymous read — which then surfaced as "the rules may not be live yet" to
+ * somebody whose only problem was that the page had not finished loading.
+ * Alarming, and wrong.
+ *
+ * onAuthStateChanged fires once with the restored user (or null), which is the
+ * only reliable "auth has settled" signal the SDK gives. Reading
+ * auth.currentUser directly does not work: it is null during that first tick
+ * whether or not anybody is signed in.
+ */
+function useAuthReady(): { ready: boolean; signedIn: boolean } {
+  const [state, setState] = useState({ ready: false, signedIn: false })
+  useEffect(() => onAuthStateChanged(auth, user => {
+    setState({ ready: true, signedIn: Boolean(user) })
+  }), [])
+  return state
+}
+
 function listenerMessage(err: unknown): string {
   const code = (err as { code?: string })?.code ?? ''
   if (code === 'permission-denied') {
@@ -58,8 +81,12 @@ export function useOpenChecks(branch: string): {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  const { ready, signedIn } = useAuthReady()
+
   useEffect(() => {
-    if (!branch) { setLoading(false); return }
+    if (!branch || !ready) return
+    // Signed out is not an error, it is a redirect already in flight.
+    if (!signedIn) { setLoading(false); return }
     const q = query(
       collection(db, 'checks'),
       where('branch', '==', branch),
@@ -79,7 +106,7 @@ export function useOpenChecks(branch: string): {
         setLoading(false)
       },
     )
-  }, [branch])
+  }, [branch, ready, signedIn])
 
   return { checks, loading, error }
 }
@@ -92,8 +119,11 @@ export function useCheck(checkId: string): {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  const { ready, signedIn } = useAuthReady()
+
   useEffect(() => {
-    if (!checkId) { setLoading(false); return }
+    if (!checkId || !ready) return
+    if (!signedIn) { setLoading(false); return }
     return onSnapshot(doc(db, 'checks', checkId),
       snap => {
         setCheck(snap.exists() ? ({ id: snap.id, ...snap.data() } as Check) : null)
@@ -106,7 +136,7 @@ export function useCheck(checkId: string): {
         setLoading(false)
       },
     )
-  }, [checkId])
+  }, [checkId, ready, signedIn])
 
   return { check, loading, error }
 }
@@ -119,8 +149,11 @@ export function useStationTickets(branch: string, station: Station): {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  const { ready, signedIn } = useAuthReady()
+
   useEffect(() => {
-    if (!branch) { setLoading(false); return }
+    if (!branch || !ready) return
+    if (!signedIn) { setLoading(false); return }
     const q = query(
       collection(db, 'kitchenTickets'),
       where('branch', '==', branch),
@@ -140,7 +173,7 @@ export function useStationTickets(branch: string, station: Station): {
         setLoading(false)
       },
     )
-  }, [branch, station])
+  }, [branch, station, ready, signedIn])
 
   return { tickets, loading, error }
 }
@@ -174,12 +207,14 @@ export interface PosMenu {
  * category would be a network round trip between every tap.
  */
 export function usePosMenu(): PosMenu {
+  const { ready } = useAuthReady()
   const [items, setItems] = useState<PosMenuItem[]>([])
   const [categories, setCategories] = useState<PosMenu['categories']>([])
   const [groups, setGroups] = useState<PosMenu['groups']>({})
   const [loaded, setLoaded] = useState({ items: false, cats: false, groups: false })
 
   useEffect(() => {
+    if (!ready) return
     const unsubs = [
       onSnapshot(collection(db, 'menuCategories'), snap => {
         setCategories(snap.docs.map(d => ({
@@ -216,7 +251,7 @@ export function usePosMenu(): PosMenu {
       }, () => setLoaded(l => ({ ...l, groups: true }))),
     ]
     return () => unsubs.forEach(u => u())
-  }, [])
+  }, [ready])
 
   // Joined here rather than stored on the item: the category is what decides
   // the station, and denormalising it onto every item would mean rewriting
