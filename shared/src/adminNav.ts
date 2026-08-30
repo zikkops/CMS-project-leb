@@ -32,6 +32,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
     items: [
       { label: 'Manage Products',       href: '/admin/products',             access: SECTION_ACCESS.products },
       { label: 'Manage Menu',        href: '/admin/menu',              access: SECTION_ACCESS.menu },
+      { label: 'Item Options',       href: '/admin/menu/modifiers',    access: SECTION_ACCESS.menu },
       { label: 'Manage Events',      href: '/admin/events',            access: SECTION_ACCESS.events },
       { label: 'Event Reservations', href: '/admin/events/reservations', access: SECTION_ACCESS.events },
     ],
