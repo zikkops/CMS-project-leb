@@ -1,0 +1,29 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@big-cms/shared/server/*": [
+        "../shared/src/server/*"
+      ],
+      "@big-cms/shared/*": [
+        "../shared/src/*"
+      ]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.mts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "../shared/src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

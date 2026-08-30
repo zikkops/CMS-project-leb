@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/wholesale/layout,_N_T_/wholesale/login/layout,_N_T_/wholesale/login/page,_N_T_/wholesale/login"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/wholesale/login/__PAGE__",
+    "/wholesale/login",
+    "/wholesale",
+    "/_index",
+    "/_head"
+  ]
+}

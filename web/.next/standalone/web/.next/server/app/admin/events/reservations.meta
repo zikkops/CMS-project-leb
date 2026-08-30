@@ -1,0 +1,17 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/admin/layout,_N_T_/admin/events/layout,_N_T_/admin/events/reservations/layout,_N_T_/admin/events/reservations/page,_N_T_/admin/events/reservations"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/admin/events/reservations/__PAGE__",
+    "/admin/events/reservations",
+    "/admin/events",
+    "/admin",
+    "/_index",
+    "/_head"
+  ]
+}

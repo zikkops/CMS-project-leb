@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/admin/layout,_N_T_/admin/end-of-day/layout,_N_T_/admin/end-of-day/page,_N_T_/admin/end-of-day"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/admin/end-of-day/__PAGE__",
+    "/admin/end-of-day",
+    "/admin",
+    "/_index",
+    "/_head"
+  ]
+}

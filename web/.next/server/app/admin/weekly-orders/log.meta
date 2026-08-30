@@ -1,0 +1,17 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/admin/layout,_N_T_/admin/weekly-orders/layout,_N_T_/admin/weekly-orders/log/layout,_N_T_/admin/weekly-orders/log/page,_N_T_/admin/weekly-orders/log"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/admin/weekly-orders/log/__PAGE__",
+    "/admin/weekly-orders/log",
+    "/admin/weekly-orders",
+    "/admin",
+    "/_index",
+    "/_head"
+  ]
+}

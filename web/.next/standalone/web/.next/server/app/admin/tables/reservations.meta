@@ -1,0 +1,17 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/admin/layout,_N_T_/admin/tables/layout,_N_T_/admin/tables/reservations/layout,_N_T_/admin/tables/reservations/page,_N_T_/admin/tables/reservations"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/admin/tables/reservations/__PAGE__",
+    "/admin/tables/reservations",
+    "/admin/tables",
+    "/admin",
+    "/_index",
+    "/_head"
+  ]
+}
