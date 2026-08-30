@@ -37,23 +37,18 @@ code. If you have only ever deployed HTML/PHP by dropping files into
 
 ---
 
-## Step 0 — Push the branch (nothing works before this)
+## Step 0 — Nothing, this is done
 
-**The split is not on GitHub yet.** `origin/main` is still the old
-single-app repo: one `app/` folder, `next.config.ts` at the root, `vercel.json`
-still present. The three-app layout lives only on the local `monorepo-split`
-branch, which is 46 commits ahead and has never been pushed.
+The three-app split is on `main`. Cloning the repo gives you `web/`, `admin/`,
+`pos/` and `shared/`, and Step 3 needs no branch step.
 
-Clone `main` onto the server today and there is no `admin/` and no `pos/` to
-build. So:
-
-```bash
-git push -u origin monorepo-split
-```
-
-Then either merge it to `main` and deploy `main`, or deploy the branch
-directly — Step 3 shows both. Merging is tidier; the branch is fine if you
-want to keep `main` matching what is live until this is proven.
+Worth knowing why this heading exists: `main` used to be the old single-app
+repo — one `app/` folder, `next.config.ts` at the root, `vercel.json` still in
+it — while the split lived only on an unpushed `monorepo-split` branch.
+Cloning `main` in that state gave you nothing to build, and the error you got
+was a confusing one, because everything *looked* like a normal repo. The
+`ls` check at the end of Step 3 catches it if you ever end up on an old
+clone.
 
 ---
 
@@ -140,11 +135,7 @@ cd big-cms-project
 Username: your GitHub username. Password: **paste the token**, not your
 password. It will not echo as you paste — that is normal, press Enter.
 
-If you pushed the branch rather than merging it:
-
-```bash
-git checkout monorepo-split
-```
+You land on `main`, which is what you want. No branch to check out.
 
 Confirm you got the right thing before going on:
 
@@ -153,8 +144,8 @@ ls
 ```
 
 You want to see `web  admin  pos  shared  env.mjs`. If you see `app` and
-`next.config.ts` at the top instead, you are on the old layout — go back to
-Step 0.
+`next.config.ts` at the top instead, you are looking at a clone made before
+the split landed — `git pull` it, or delete it and clone again.
 
 ---
 
