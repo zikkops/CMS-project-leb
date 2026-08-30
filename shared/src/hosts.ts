@@ -53,10 +53,9 @@ export function hostConfigFromEnv(env: Record<string, string | undefined>): Host
 /** Paths each surface owns. Anything unclaimed belongs to the customer site. */
 const OWNED: Record<Exclude<Surface, 'public'>, string[]> = {
   admin: ['/admin'],
-  // /admin/login rides along until the POS has a sign-in of its own: a waiter
-  // on the POS hostname still has to authenticate, and sending them to a
-  // hostname that 404s the login page would be a locked door with no handle.
-  pos: ['/pos', '/admin/login'],
+  // The POS has its own sign-in at /pos/login, so it needs nothing from the
+  // admin surface. That exception existed only while it did not.
+  pos: ['/pos'],
 }
 
 /**

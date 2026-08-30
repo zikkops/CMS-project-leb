@@ -20,7 +20,7 @@ const displayFont = Bree_Serif({
 })
 
 export const metadata: Metadata = {
-  title: `\${BRAND.name} — POS`,
+  title: `${BRAND.name} — POS`,
   // Neither the admin panel nor the POS belongs in a search index. proxy.ts
   // sets X-Robots-Tag as well; this is the copy a crawler sees without it.
   robots: { index: false, follow: false },

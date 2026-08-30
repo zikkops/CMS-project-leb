@@ -226,7 +226,26 @@ export function useIsStaff(): boolean {
 // file) so the server guard in app/lib/server/auth.ts evaluates access with
 // the exact same predicate this hook does.
 
-export function useRequireRole(allowed: Role[]) {
+/**
+ * @param allowed the SECTION_ACCESS array this page is gated on
+ * @param routes  where to send someone who cannot be here
+ *
+ * ── Why the routes are a parameter ─────────────────────────────────────────
+ * This hook shipped with '/admin/login' and '/admin' hardcoded, which was
+ * correct while there was one app. After the split the POS is its own
+ * deployment with no /admin/login in it at all, so an unauthenticated waiter
+ * opening /pos was redirected to a page that does not exist there and saw a
+ * 404 — with no clue that signing in was what they needed.
+ *
+ * Defaulted to the admin paths so all 44 admin pages keep working untouched;
+ * the POS passes its own.
+ */
+export function useRequireRole(
+  allowed: Role[],
+  routes: { login?: string; home?: string } = {},
+) {
+  const loginPath = routes.login ?? '/admin/login'
+  const homePath = routes.home ?? '/admin'
   const router = useRouter()
   const { user, role, branchIds, orderDepts, sectionGrants, sectionRevocations, superadmin, loading, provisioned } = useAdminUser()
   const { flags, loading: featuresLoading } = useFeatureFlags()
@@ -253,11 +272,11 @@ export function useRequireRole(allowed: Role[]) {
   useEffect(() => {
     if (loading) return
     if (!user) {
-      router.replace('/admin/login')
+      router.replace(loginPath)
       return
     }
     if (!provisioned) {
-      signOut(auth).then(() => router.replace('/admin/login'))
+      signOut(auth).then(() => router.replace(loginPath))
       return
     }
     // Feature before access: a module that is switched off is switched off for
@@ -265,9 +284,9 @@ export function useRequireRole(allowed: Role[]) {
     // are not allowed" — and it avoids telling someone they lack a permission
     // that would not help them anyway.
     if (!featureOn || !hasAccess) {
-      router.replace('/admin')
+      router.replace(homePath)
     }
-  }, [loading, user, hasAccess, featureOn, provisioned, router])
+  }, [loading, user, hasAccess, featureOn, provisioned, router, loginPath, homePath])
 
   const checking = loading || featuresLoading || !user || !provisioned || !hasAccess || !featureOn
   return { checking, role, branchIds, orderDepts, sectionGrants, sectionRevocations, superadmin, user }
