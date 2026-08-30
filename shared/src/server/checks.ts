@@ -383,6 +383,30 @@ export async function sendCheck(
       created.push({ id: ref.id, station, lines: lines.length })
     }
 
+    // ── Merchandise leaves the shelf ────────────────────────────────────
+    // The phase note's acceptance criterion: a merchandise line deducts from
+    // products, not menuItems. Here is where it happens.
+    //
+    // On SEND, not on close: the customer has the board game in their hands
+    // from that moment, and a shelf count taken before they pay would be
+    // wrong. Phase 04 adds payment on top of this and does not move it.
+    //
+    // FieldValue.increment rather than read-modify-write, so this needs no
+    // extra read inside the transaction and two tills selling the last copy
+    // at once cannot both read "1" and both write "0".
+    //
+    // Stock is allowed to go negative. A till must not refuse a sale because
+    // a count is stale — the customer is standing there holding the thing —
+    // and a negative figure is a visible discrepancy somebody can reconcile,
+    // which a silently blocked sale is not. Same stance the delivery maths
+    // already takes about over-counts.
+    for (const l of drafts) {
+      if (l.source !== 'product') continue
+      tx.update(db.doc(`products/${l.refId}`), {
+        [`stock.${check.branch}`]: FieldValue.increment(-l.quantity),
+      })
+    }
+
     // Every draft becomes sent, merchandise included: it has left the shelf
     // even though no pass ever saw it, and leaving it draft would block the
     // check from closing forever.
@@ -426,6 +450,14 @@ export async function voidLine(
     const tickets = wasSent
       ? await tx.get(db.collection(TICKETS).where('checkId', '==', checkId))
       : null
+
+    // A voided merchandise line goes back on the shelf — but only if it had
+    // been sent, because an unsent one never came off it.
+    if (wasSent && target.source === 'product') {
+      tx.update(db.doc(`products/${target.refId}`), {
+        [`stock.${check.branch}`]: FieldValue.increment(target.quantity),
+      })
+    }
 
     tx.update(db.doc(`${CHECKS}/${checkId}`), {
       lines: check.lines.map(l =>

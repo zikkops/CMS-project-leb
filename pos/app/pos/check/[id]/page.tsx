@@ -29,8 +29,9 @@ import {
   type ModifierGroup,
 } from '@big-cms/shared/modifiers'
 import {
-  useCheck, usePosMenu, addLines, sendCheck, voidLine, moveCheck, closeCheck, setStaffMeal,
-  type DraftLine, type PosMenuItem,
+  useCheck, usePosMenu, useRetailProducts,
+  addLines, sendCheck, voidLine, moveCheck, closeCheck, setStaffMeal,
+  type DraftLine, type PosMenuItem, type PosProduct,
 } from '../../../lib/usePos'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
@@ -150,7 +151,11 @@ function LineRow({ line, now, discount, onVoid }: {
   )
 }
 
-function DraftRow({ draft, onRemove }: { draft: DraftLine; onRemove: () => void }) {
+function DraftRow({ draft, onRemove, onNote }: {
+  draft: DraftLine
+  onRemove: () => void
+  onNote: () => void
+}) {
   return (
     <div style={{
       display: 'flex', gap: '0.6rem', alignItems: 'flex-start',
@@ -164,9 +169,21 @@ function DraftRow({ draft, onRemove }: { draft: DraftLine; onRemove: () => void 
         {draft.modifierLabel && (
           <p style={{ fontSize: '0.75rem', color: 'rgba(245,242,236,0.45)' }}>{draft.modifierLabel}</p>
         )}
+        {draft.note && (
+          <p style={{ fontSize: '0.75rem', color: '#C9962C', marginTop: '0.1rem', fontWeight: 600 }}>
+            {draft.note}
+          </p>
+        )}
         <p style={{ fontSize: '0.68rem', color: '#C9962C', marginTop: '0.25rem' }}>
-          {draft.seat !== null ? `Seat ${draft.seat} · ` : ''}On this phone — not sent
+          {draft.seat !== null ? `Seat ${draft.seat} · ` : ''}
+          {draft.course !== null ? `Course ${draft.course} · ` : ''}
+          On this phone — not sent
         </p>
+        <button onClick={onNote} style={{
+          background: 'none', border: 'none', padding: '0.25rem 0', cursor: 'pointer',
+          color: 'rgba(245,242,236,0.4)', fontSize: '0.68rem',
+          fontFamily: 'var(--font-inter)', letterSpacing: '0.08em', textTransform: 'uppercase',
+        }}>{draft.note ? 'Edit note' : '+ Note'}</button>
       </div>
       <div style={{ textAlign: 'right' }}>
         <p style={{ fontSize: '0.85rem', color: 'var(--offwhite)' }}>
@@ -291,12 +308,17 @@ export default function CheckPage() {
   const checkId = String(params?.id ?? '')
 
   const { check, error: liveError } = useCheck(checkId)
+  const { products } = useRetailProducts(check?.branch ?? '')
   const now = useNow()
   const menu = usePosMenu()
 
   const [drafts, setDrafts] = useState<DraftLine[]>([])
   const [picking, setPicking] = useState(false)
+  // 'retail' is a tab, not a category. Merchandise has no menu category and
+  // never will — it is a different catalogue with a different stock model,
+  // which is the entire point of it being on the same check.
   const [category, setCategory] = useState<string>('')
+  const [course, setCourse] = useState<number | null>(null)
   const [modifierFor, setModifierFor] = useState<PosMenuItem | null>(null)
   const [seat, setSeat] = useState<number | null>(null)
   const [busy, setBusy] = useState('')
@@ -323,9 +345,19 @@ export default function CheckPage() {
     setDrafts(d => [...d, {
       source: 'menu', refId: item.id, name: item.name, unitPrice: item.price,
       quantity: 1, modifierOptionIds: optionIds, modifierLabel: label,
-      seat, course: null, note: '',
+      seat, course, note: '',
     }])
     setModifierFor(null)
+  }
+
+  function addProduct(p: PosProduct) {
+    setDrafts(d => [...d, {
+      // Merchandise: no modifiers, no course — it is not cooked and does not
+      // arrive with anything. The server refuses modifiers on it too.
+      source: 'product', refId: p.id, name: p.name, unitPrice: p.price,
+      quantity: 1, modifierOptionIds: [], modifierLabel: '',
+      seat, course: null, note: '',
+    }])
   }
 
   function pick(item: PosMenuItem) {
@@ -462,8 +494,20 @@ export default function CheckPage() {
             onVoid={l.status === 'void' ? null : () => handleVoid(l.id)} />
         ))}
         {drafts.map((d, i) => (
-          <DraftRow key={i} draft={d}
-            onRemove={() => setDrafts(list => list.filter((_, n) => n !== i))} />
+          <DraftRow
+            key={i}
+            draft={d}
+            onRemove={() => setDrafts(list => list.filter((_, n) => n !== i))}
+            onNote={() => {
+              // A prompt rather than a sheet: this is the rare path, and an
+              // allergy typed on a moving floor wants the fewest taps between
+              // thinking it and it being on the ticket.
+              const next = window.prompt('Note for the kitchen', d.note)
+              if (next === null) return
+              setDrafts(list => list.map((x, n) =>
+                n === i ? { ...x, note: next.trim().slice(0, 200) } : x))
+            }}
+          />
         ))}
 
         <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
@@ -546,6 +590,27 @@ export default function CheckPage() {
               ))}
             </div>
 
+            {/* Course paces the kitchen: starters fire, mains wait. Sticky
+                like seat, and off by default because most orders have one
+                course and nobody should have to say so. */}
+            <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.9rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.62rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', marginRight: '0.2rem' }}>Course</span>
+              <button onClick={() => setCourse(null)} style={{
+                ...tap, minHeight: '40px', padding: '0 0.8rem',
+                backgroundColor: course === null ? 'rgba(255,255,255,0.08)' : 'transparent',
+                border: `1px solid ${course === null ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.12)'}`,
+                color: 'var(--offwhite)', fontSize: '0.75rem',
+              }}>Any</button>
+              {[1, 2, 3].map(c => (
+                <button key={c} onClick={() => setCourse(c)} style={{
+                  ...tap, minHeight: '40px', padding: '0 0.8rem',
+                  backgroundColor: course === c ? 'rgba(255,255,255,0.08)' : 'transparent',
+                  border: `1px solid ${course === c ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.12)'}`,
+                  color: 'var(--offwhite)', fontSize: '0.75rem',
+                }}>{c}</button>
+              ))}
+            </div>
+
             <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.9rem', overflowX: 'auto', paddingBottom: '0.3rem' }}>
               {categories.map(c => (
                 <button key={c.id} onClick={() => setCategory(c.id)} style={{
@@ -555,8 +620,45 @@ export default function CheckPage() {
                   color: 'var(--offwhite)', fontSize: '0.78rem',
                 }}>{c.name}</button>
               ))}
+              {/* The differentiator, one tab along from the coffee. */}
+              <button onClick={() => setCategory('retail')} style={{
+                ...tap, minHeight: '40px', padding: '0 0.9rem', whiteSpace: 'nowrap',
+                backgroundColor: activeCategory === 'retail' ? 'rgba(201,150,44,0.15)' : 'transparent',
+                border: `1px solid ${activeCategory === 'retail' ? '#C9962C' : 'rgba(255,255,255,0.1)'}`,
+                color: 'var(--offwhite)', fontSize: '0.78rem',
+              }}>Retail</button>
             </div>
 
+            {activeCategory === 'retail' ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                {products.map(p => (
+                  <button key={p.id} onClick={() => addProduct(p)} style={{
+                    ...tap, minHeight: '64px', padding: '0.6rem 0.7rem', textAlign: 'left',
+                    backgroundColor: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.1)', color: 'var(--offwhite)',
+                    display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0.2rem',
+                  }}>
+                    <span style={{ fontSize: '0.82rem' }}>{p.name}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--teal)' }}>
+                      {money(p.price)}{p.onSale && <span style={{ color: '#C9962C' }}> on sale</span>}
+                    </span>
+                    {/* Shown, never enforced. A till must not refuse a sale
+                        because a count is stale — the customer is holding the
+                        thing. Negative is a discrepancy to reconcile, not a
+                        reason to turn somebody away. */}
+                    <span style={{
+                      fontSize: '0.65rem',
+                      color: p.stock > 0 ? 'rgba(245,242,236,0.3)' : 'var(--red)',
+                    }}>{p.stock} in stock</span>
+                  </button>
+                ))}
+                {products.length === 0 && (
+                  <p style={{ color: 'rgba(245,242,236,0.3)', fontSize: '0.82rem', gridColumn: '1 / -1' }}>
+                    Nothing in the retail catalogue yet.
+                  </p>
+                )}
+              </div>
+            ) : (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
               {shown.map(i => (
                 <button key={i.id} onClick={() => pick(i)} style={{
@@ -575,6 +677,7 @@ export default function CheckPage() {
                 </p>
               )}
             </div>
+            )}
           </div>
         </div>
       )}

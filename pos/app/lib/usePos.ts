@@ -27,6 +27,7 @@ import { auth, db } from '@big-cms/shared/firebase'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import type { Check, Station } from '@big-cms/shared/checks'
 import { ACTIVE_TICKET_STATUSES, type Ticket } from '@big-cms/shared/tickets'
+import { effectivePrice, saleIsActive } from '@big-cms/shared/productPricing'
 
 // ── Listener failures are surfaced, not swallowed ─────────────────────────
 // These used to end in `() => setLoading(false)`, which turned a
@@ -269,6 +270,65 @@ export function usePosMenu(): PosMenu {
     groups,
     loading: !(loaded.items && loaded.cats && loaded.groups),
   }
+}
+
+// ── Merchandise ───────────────────────────────────────────────────────────
+
+export interface PosProduct {
+  id: string
+  name: string
+  /** Sale price when one is running — what the shelf says. */
+  price: number
+  onSale: boolean
+  /** At this branch. May be negative if a count is behind. */
+  stock: number
+}
+
+/**
+ * The retail catalogue, priced and stocked for one branch.
+ *
+ * The differentiator: a cappuccino and a board game on one check. This is the
+ * half the POS needs — the other half is source: 'product' on the line, which
+ * tells the server to take it off product stock rather than treat it as food.
+ *
+ * effectivePrice, not price: a product on sale rings up at the sale price, and
+ * a till showing more than the shelf is the kind of thing a customer notices
+ * at the counter.
+ */
+export function useRetailProducts(branch: string): { products: PosProduct[]; loading: boolean } {
+  const [products, setProducts] = useState<PosProduct[]>([])
+  const [loading, setLoading] = useState(true)
+  const { ready } = useAuthReady()
+
+  useEffect(() => {
+    if (!ready) return
+    return onSnapshot(collection(db, 'products'),
+      snap => {
+        setProducts(snap.docs.map(d => {
+          const data = d.data()
+          const priced = {
+            price: Number(data.price ?? 0),
+            salePrice: data.salePrice == null ? null : Number(data.salePrice),
+            saleEndsAt: data.saleEndsAt == null ? null : String(data.saleEndsAt),
+          }
+          const stock = data.stock && typeof data.stock === 'object'
+            ? Number((data.stock as Record<string, unknown>)[branch] ?? 0)
+            : 0
+          return {
+            id: d.id,
+            name: String(data.name ?? ''),
+            price: effectivePrice(priced),
+            onSale: saleIsActive(priced),
+            stock: Number.isFinite(stock) ? stock : 0,
+          }
+        }).sort((a, b) => a.name.localeCompare(b.name)))
+        setLoading(false)
+      },
+      err => { console.error('[useRetailProducts] listener failed:', err); setLoading(false) },
+    )
+  }, [ready, branch])
+
+  return { products, loading }
 }
 
 // ── Writes — all through the route, none direct ───────────────────────────
