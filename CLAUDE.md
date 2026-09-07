@@ -176,9 +176,14 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
     step that needs it, and its unmatched list is an audit, not a migration
     report.
 - **02 (fix the app, unify constants):** the constants half is largely done here
-  by the fork. The other half is three loyalty-economy bugs in the **Onboard App**
-  (React Native), not this repo, and they are actively producing wrong points and
-  wrong money.
+  by the fork. **Nothing else in 02 belongs to this repo.**
+
+  The other half is three loyalty-economy bugs in the Onboard App (React
+  Native), which is a **separate project in a separate repo** that happens to
+  share a phase number because BIG CMS was forked from it. Do not offer to
+  work on it here, do not ask for access to it, and do not list it as what
+  comes next — it is somebody's work, but it is not this repo's. The phase
+  numbering is shared history, not a shared backlog.
 - **03 (POS v1): built, not piloted.** The whole acceptance chain runs — a
   waiter opens a table, builds a check with modifiers, sends it; the right
   station sees the right ticket and can bump it; a merchandise line draws from
@@ -217,6 +222,8 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
   at all, and `pos`/`kds` are feature flags like everything else.
   Multi-tenancy and billing are untouched.
 
-The claims-based rules rewrite from the 00 gate is **done and deployed**. The
-remaining P0 — the mobile app's admin screens have no role gates at all —
-lives in the Onboard App repo, not this one.
+The claims-based rules rewrite from the 00 gate is **done and deployed**, so
+this repo has no open P0. The one the audit still lists — the mobile app's
+admin screens have no role gates — is in the Onboard App, which is a different
+project. Same note as 02 above: not this repo's work, and not this repo's
+next task.
