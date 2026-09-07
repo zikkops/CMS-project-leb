@@ -83,8 +83,15 @@ export const ADMIN_NAV: AdminNavSection[] = [
     items: [
       { label: 'Order Reports',      href: '/admin/weekly-orders',           access: SECTION_ACCESS.weeklyOrders },
       { label: 'End of Week Order',  href: '/admin/weekly-orders/submit',    access: SECTION_ACCESS.weeklyOrdersSubmit },
-      { label: 'Inventory Management', href: '/admin/supplies',              access: SECTION_ACCESS.products },
+      // SECTION_ACCESS.supplies, not .products. The two diverged in Aug 2026
+      // when supplies moved off the products gate so the kitchen crew who do
+      // the counting could reach it; this line was missed, so they had access
+      // to the page and no link to it, while retail saw a link that bounced
+      // them. The dashboard card has always used .supplies — these two lists
+      // are meant to agree.
+      { label: 'Inventory Management', href: '/admin/supplies',              access: SECTION_ACCESS.supplies },
       { label: 'Receive a Delivery', href: '/admin/supplies/receiving',      access: SECTION_ACCESS.deliveries },
+      { label: 'Food Cost Report',   href: '/admin/supplies/receiving/report', access: SECTION_ACCESS.deliveriesReport },
       { label: 'Daily Inventory Count', href: '/admin/supplies/daily',       access: SECTION_ACCESS.dailyInventory },
       { label: 'Daily Inventory History', href: '/admin/supplies/daily/history', access: SECTION_ACCESS.dailyInventoryHistory },
       { label: 'Manage Providers',   href: '/admin/weekly-orders/providers', access: ['admin'] as Role[] },

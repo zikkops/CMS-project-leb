@@ -10,7 +10,7 @@
 // route. firestore.rules denies client writes to `deliveries` outright.
 
 import {
-  collection, doc, getDoc, getDocs, query, where, orderBy, limit,
+  collection, doc, getDoc, getDocs, query, where, orderBy, limit, Timestamp,
 } from 'firebase/firestore'
 import { db, auth } from './firebase'
 import type { Delivery } from './deliveryMath'
@@ -34,6 +34,39 @@ export async function listDeliveries(
   const q = branch === 'all'
     ? query(col, orderBy('deliveredAt', 'desc'), limit(limitCount))
     : query(col, where('branch', '==', branch), orderBy('deliveredAt', 'desc'), limit(limitCount))
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }) as Delivery)
+}
+
+// Deliveries across a date range, for a report rather than a browse.
+//
+// listDeliveries() above takes a row limit, which is the right shape for "show
+// me the recent ones" and the wrong one for "what did last week cost". A limit
+// truncates a period silently and the total simply comes out low, with nothing
+// on screen to say so — the same failure mode as the inventory history's
+// 1000-row ceiling. Bound by time instead, and the answer is either complete
+// or it is an error.
+//
+// No new index needed: `deliveries` already carries branch ASC + deliveredAt
+// DESC, and a range filter on the same field the query orders by rides on it.
+//
+// `to` should be the END of its day (23:59:59.999). Passing a bare midnight
+// Date silently excludes everything received that day, which looks like a
+// quiet week rather than a bug.
+export async function listDeliveriesBetween(
+  branch: string | 'all',
+  from: Date,
+  to: Date,
+): Promise<Delivery[]> {
+  const col = collection(db, 'deliveries')
+  const range = [
+    where('deliveredAt', '>=', Timestamp.fromDate(from)),
+    where('deliveredAt', '<=', Timestamp.fromDate(to)),
+    orderBy('deliveredAt', 'desc'),
+  ]
+  const q = branch === 'all'
+    ? query(col, ...range)
+    : query(col, where('branch', '==', branch), ...range)
   const snap = await getDocs(q)
   return snap.docs.map(d => ({ id: d.id, ...d.data() }) as Delivery)
 }

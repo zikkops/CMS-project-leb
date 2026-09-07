@@ -46,11 +46,16 @@ The productization work from the product plan (§4) starts here:
 *"Everything hardcoded becomes configuration. Fine for one café, fatal for two.
 The missing settings page IS the productization work."*
 
+> **Paths updated Sep 2026.** This page was written before the repo split into
+> three apps. The configuration surface moved from `app/lib/**` to
+> `shared/src/**`; everything below about *why* it is configuration is unchanged.
+
 | File | Owns |
 |---|---|
-| `app/lib/brand.ts` | Name, tagline, palette, fonts, contact, currency, VAT, branches, departments |
-| `app/lib/features.ts` | Module registry, dependency graph, defaults |
-| `app/lib/branches.ts` | Reads its lists from `brand.ts` — no longer a hardcoded array |
+| `shared/src/brand.ts` | Name, tagline, palette, fonts, contact, currency, VAT, branches, departments |
+| `shared/src/features.ts` | Module registry, dependency graph, defaults |
+| `shared/src/branches.ts` | Reads its lists from `brand.ts` — no longer a hardcoded array |
+| `shared/src/brandCss.ts` | The CSS variables every app's root layout injects |
 | `.env.example` | Every knob, with the safety notes attached |
 
 **The rule: never inline a brand name, colour, currency, rate or branch
@@ -68,23 +73,30 @@ Roughly fifty components reference `var(--teal)`, `var(--red)`, `var(--purple)`
 and `var(--navy)` in inline style objects. Renaming them all would be a
 thousand-line diff with no behavioural change and a real chance of missing one.
 
-So `app/layout.tsx` injects the semantic variables (`--brand-primary` and
-friends) from config, and the four legacy names alias onto them. Existing code
-keeps working; **new code uses the semantic names.** The aliases are
-compatibility, not an example to follow.
+So `shared/src/brandCss.ts` builds the semantic variables (`--brand-primary`
+and friends) from config, each app's root layout injects that one string, and
+the four legacy names alias onto them. Existing code keeps working; **new code
+uses the semantic names.** The aliases are compatibility, not an example to
+follow.
+
+One string rather than a copy per app on purpose: three copies is three chances
+for the customer site and the admin panel to render a different shade of the
+same brand, and the drift would be invisible until somebody put two screenshots
+side by side.
 
 ### Fonts are the exception
 
 `next/font` subsets and self-hosts faces at build time, so the family cannot
-come from a runtime value. Changing typography is a two-line edit in
-`app/layout.tsx`. Which face is display vs body, and everything around them, is
-configuration. That line is deliberate.
+come from a runtime value. Changing typography is a two-line edit in each app's
+`app/layout.tsx` — three files since the split, and they have to agree. Which
+face is display vs body, and everything around them, is configuration. That line
+is deliberate.
 
 ---
 
 ## Feature flags
 
-`app/lib/features.ts` holds the registry and the dependency graph — those live
+`shared/src/features.ts` holds the registry and the dependency graph — those live
 in code because they're properties of the build. `loyaltyEvents` cannot work
 without `events` no matter what a database says, and a browser must not be able
 to edit that relationship.
@@ -118,11 +130,14 @@ on a role instead.
 
 ```bash
 npm install
-cp .env.example .env.local     # fill in — new Firebase project, see rule 1
-npx tsc --noEmit -p .
-npm run build
-npm run dev
+cp .env.example .env.local     # ONE file, at the repo root — see rule 1
+npm run check:env              # says which variables are still missing
+npm run build                  # all three apps
+npm run dev                    # web :3000 · dev:admin :3001 · dev:pos :3002
 ```
+
+There is no tsconfig at the repo root any more, so `npx tsc --noEmit -p .` no
+longer works. Type-check one app: `npx tsc --noEmit -p admin`.
 
 Then, against the new Firebase project:
 
@@ -148,7 +163,8 @@ The fork moved the *configuration surface*. It did not rewrite every page.
   particular still names Onboard, Lebanon and the three original branches
 - Menu category images shipped as files rather than CMS content
 - Seed data assumptions in the loyalty level titles
-- `docs/` still describing the original deployment
+- `docs/` describing the original deployment in places — `docs/deploying.md`
+  is current (Hostinger, three subdomains); older pages may not be
 
 Work top-down by severity. High-severity hits are the ones a visitor or a
 prospective customer would actually see.

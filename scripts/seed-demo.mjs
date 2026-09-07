@@ -539,6 +539,76 @@ set(`weeklyOrderReports/demo-order-${week.startStr}-Kitchen`, {
   submittedAt: FieldValue.serverTimestamp(),
 }, `weekly order · ${BRANCHES[0]} Kitchen · ${week.label}`)
 
+// ── End-of-day reports ─────────────────────────────────────────────────────
+// Seven days of till takings for the flagship branch.
+//
+// Without these the Food Cost Report shows cost of goods correctly and food
+// cost % as a dash — which looks like a bug and is not one. Receiving gives
+// the report its cost side; nothing was giving it a sales side.
+//
+// Cash is counted in whole notes and the system figures are set to exactly
+// what those notes come to, so every seeded day reconciles to zero. A seeded
+// discrepancy would send whoever opens the summary hunting for an arithmetic
+// bug that isn't there.
+const EOD_RATE = Number(process.env.NEXT_PUBLIC_EXCHANGE_RATE ?? 90000)
+
+const LBP_NOTE_BASE = { 100000: 4, 50000: 6, 20000: 10, 10000: 12, 5000: 10, 1000: 20 }
+const USD_NOTE_BASE = { 100: 1, 50: 2, 20: 4, 10: 5, 5: 6, 1: 10 }
+
+// A week's shape, oldest first. Uneven on purpose: a flat seven days makes a
+// food cost percentage look steadier than any real one is, and the whole
+// point of the report is spotting the week that moved.
+const EOD_BUSY = [0.8, 0.7, 0.9, 1.0, 1.4, 1.6, 1.1]
+
+function eodDateStr(daysAgo) {
+  const d = new Date()
+  d.setDate(d.getDate() - daysAgo)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function scaleNotes(base, busy) {
+  const out = {}
+  for (const [denom, count] of Object.entries(base)) {
+    out[denom] = Math.max(1, Math.round(count * busy))
+  }
+  return out
+}
+
+function notesTotal(notes) {
+  return Object.entries(notes).reduce((sum, [denom, count]) => sum + Number(denom) * count, 0)
+}
+
+EOD_BUSY.forEach((busy, i) => {
+  // i = 0 is the oldest of the seven; the last entry is today, so the report's
+  // default range (the last seven days) covers exactly these.
+  const date = eodDateStr(EOD_BUSY.length - 1 - i)
+  const cashLbp = scaleNotes(LBP_NOTE_BASE, busy)
+  const cashUsd = scaleNotes(USD_NOTE_BASE, busy)
+
+  set(`endOfDayReports/${BRANCHES[0]}_${date}`, {
+    branch: BRANCHES[0],
+    date,
+    // Stored per report, never read from settings at display time — the whole
+    // reason a past week does not re-value when the rate moves.
+    exchangeRate: EOD_RATE,
+    cashLbp,
+    cashUsd,
+    // The till's own figures. Set to the counted cash so the day ties out.
+    systemLbp: notesTotal(cashLbp),
+    systemUsd: notesTotal(cashUsd),
+    tipsUsd: Math.round(18 * busy),
+    expenses: [],
+    income: [],
+    attendance: [],
+    notes: 'Demo end-of-day — seeded so the Food Cost Report has sales to divide into.',
+    submittedBy: 'seed-script',
+    submittedByEmail: 'seed@example.com',
+    submittedAt: FieldValue.serverTimestamp(),
+    updatedAt: null,
+    updatedBy: '',
+  }, `end of day · ${BRANCHES[0]} · ${date}`)
+})
+
 MENU.forEach(([catId, catName, section, items], ci) => {
   set(`menuCategories/cat-${catId}`, {
     name: catName, section, sortOrder: ci,
@@ -813,7 +883,10 @@ if (APPLY) {
     '  3. Open Receive a Delivery, pick that order, and confirm the lines pre-fill\n' +
     '     with quantities and costs. That is the Phase 01 chain working end to end.\n' +
     '  4. Run a Daily Inventory Count and check the stock reconciles against what\n' +
-    '     you received.'
+    '     you received.\n' +
+    '  5. Open the Food Cost Report for the last seven days. Cost of goods comes\n' +
+    '     from step 3; the sales it divides into are the seeded end-of-day\n' +
+    '     reports. A dash instead of a percentage means no sales were found.'
   )
 } else {
   console.log('\nNothing was written. Re-run with --apply.')

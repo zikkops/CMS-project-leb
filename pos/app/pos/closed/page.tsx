@@ -187,6 +187,27 @@ function ClosedRow({ check, isMobile, onRefund }: {
             </p>
           ))}
 
+          {/* Reprinting is safe and often asked for at the counter, so unlike
+              the refund below it needs no ceremony — but it still lives behind
+              the expand, so the two are not adjacent under a scrolling thumb.
+              A check with no receipt number cannot produce one; the page says
+              so, but not offering the link is clearer than a dead end. */}
+          {check.receiptNumber && (
+            <a
+              href={`/pos/check/${check.id}/receipt`}
+              style={{
+                display: 'block', width: '100%', minHeight: '44px', marginTop: '0.9rem',
+                boxSizing: 'border-box', lineHeight: '28px',
+                padding: '0.5rem 1rem', textAlign: 'center', textDecoration: 'none',
+                borderRadius: '4px',
+                backgroundColor: 'rgba(0,160,152,0.08)',
+                border: '1px solid rgba(0,160,152,0.35)', color: 'var(--teal)',
+                fontFamily: 'var(--font-inter)', fontSize: '0.78rem',
+                letterSpacing: '0.08em', textTransform: 'uppercase',
+              }}
+            >Receipt</a>
+          )}
+
           {/* Behind the expand, like every other destructive action in this
               app — a Refund button on a collapsed row would sit under the
               thumb of anybody scrolling the list. */}

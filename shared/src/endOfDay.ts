@@ -210,6 +210,55 @@ export async function listEndOfDayReports(branch: string | 'all', limitCount = 9
   return snap.docs.map(d => ({ id: d.id, ...d.data() }) as EndOfDayReport)
 }
 
+// Reports across a date range, for the same reason listDeliveriesBetween()
+// exists: a row limit truncates a period silently, and a food cost % computed
+// from truncated sales is wrong in the flattering direction — the cost side is
+// complete while the sales side is short, so the ratio looks worse than it is.
+//
+// `date` is a 'YYYY-MM-DD' string, so a string range IS a date range. No new
+// index: branch ASC + date DESC already exists.
+export async function listEndOfDayReportsBetween(
+  branch: string | 'all',
+  from: string,
+  to: string,
+): Promise<EndOfDayReport[]> {
+  const col = collection(db, 'endOfDayReports')
+  const range = [
+    where('date', '>=', from),
+    where('date', '<=', to),
+    orderBy('date', 'desc'),
+  ]
+  const q = branch === 'all'
+    ? query(col, ...range)
+    : query(col, where('branch', '==', branch), ...range)
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }) as EndOfDayReport)
+}
+
+/**
+ * What a day actually rang up, in USD.
+ *
+ * The till reports two figures — systemUsd and systemLbp — because customers
+ * pay in both currencies. Neither one alone is the day's sales, which is why
+ * nothing could compute food cost % before: there was no single sales number
+ * to divide into.
+ *
+ * Converted at the REPORT'S OWN rate, never the configured one, for exactly
+ * the reason computeTotals() takes a required rate. A past period must not
+ * re-value when somebody edits the exchange rate in settings — a food cost %
+ * that moves on its own is worse than no food cost % at all.
+ */
+export function netSalesUsd(
+  report: Pick<EndOfDayReport, 'systemUsd' | 'systemLbp' | 'exchangeRate'>,
+): number {
+  const usd = Number(report.systemUsd) || 0
+  const lbp = Number(report.systemLbp) || 0
+  // A report with no rate can only contribute its USD half. Returning NaN or
+  // dividing by zero here would poison the whole period's total.
+  if (!report.exchangeRate) return usd
+  return usd + lbp / report.exchangeRate
+}
+
 export async function updateEodTips(branch: string, date: string, tipsUsd: number): Promise<void> {
   const res = await authedFetch('/api/admin/end-of-day', 'PATCH', {
     action: 'tips', branch, date, tipsUsd,

@@ -34,6 +34,8 @@ copies it.
 npx tsc --noEmit -p pos      # or web, or admin — whichever you touched
 npm run build                # all three
 npm run verify:checks        # if you touched money, stock or tickets
+npm run verify:receipt       # if you touched what a customer is handed
+npm run verify:delivery-math # if you touched receiving or costing
 npm run audit:writes         # must stay at 0
 ```
 
@@ -155,10 +157,24 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
     `appSettings/business` locked to the server, `appSettings/features`
     world-readable, and the dead `appSettings/loyaltyReset` any-staff-write
     exception removed. Verified behaviourally, not just by reading the file.
-- **01 (stock receiving): built, and now testable.** `npm run seed:demo`
-  writes a submitted weekly order, so the order → receive → count chain can
-  finally be exercised end to end. That chain working is the phase's
-  acceptance criterion.
+- **01 (stock receiving): closed, 7 Sep 2026.** The chain was run end to end
+  against the demo project, in a browser, not inferred from these notes:
+  `npm run seed:demo -- --apply` → open the seeded Main/Kitchen order in
+  Receive a Delivery → post → stock moved → Food Cost Report read 35.0% on
+  $1,027.14 of goods against $2,930.83 of till sales → the order showed
+  "All 18 lines received".
+  - The seed now also writes seven end-of-day reports. Without them the food
+    cost report has no sales side to divide into and shows a dash, which looks
+    like a bug and is not one.
+  - `/admin/supplies/receiving/report` is the food cost report;
+    `/admin/weekly-orders` carries the fulfilment bar.
+  - **VAT was set to 12% in Business Settings and is now 11%.** The delivery
+    posted before the change keeps its 12% — every delivery and end-of-day
+    report stores the rate it was written with, which is the whole reason
+    changing that setting is safe.
+  - Never run against the real café's data. `npm run link:supplies` is the
+    step that needs it, and its unmatched list is an audit, not a migration
+    report.
 - **02 (fix the app, unify constants):** the constants half is largely done here
   by the fork. The other half is three loyalty-economy bugs in the **Onboard App**
   (React Native), not this repo, and they are actively producing wrong points and
@@ -177,10 +193,15 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
   the staff use their own phones.
 
   Two things outstanding, neither of them code:
-  - **Printing.** Needs the printer make and model. The plan's "server sends
-    ESC/POS to a LAN printer" does not work from a cloud host — it is Epson
-    ePOS-Print from the browser over the café wifi, or Star CloudPRNT with the
-    printer polling out. Which one depends entirely on the hardware.
+  - **Printing — the transport only.** The *document* is built:
+    `shared/src/receipt.ts` produces the receipt as rows, `receiptToText()`
+    lays it out at 32 or 42 columns, and `/pos/check/[id]/receipt` prints it
+    from a browser to any ordinary printer, which is enough to pilot with.
+    What still needs the make and model is how those bytes reach a thermal
+    device. The plan's "server sends ESC/POS to a LAN printer" does not work
+    from a cloud host — it is Epson ePOS-Print from the browser over the café
+    wifi, or Star CloudPRNT with the printer polling out, and whichever it is
+    consumes `receiptToText()` rather than laying the receipt out again.
   - **The pilot.** One section of one branch, the old till still taking
     payment. That constraint is what makes v1 safe to ship badly.
 

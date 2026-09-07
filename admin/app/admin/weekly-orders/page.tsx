@@ -11,6 +11,9 @@ import {
   updateReportItemQty, deleteWeeklyReport, toggleWhatsappSent,
   type WeeklyOrderReport, type WeeklyOrderReportItem, type OrderProvider, type Department,
 } from '@big-cms/shared/weeklyOrders'
+import {
+  listDeliveriesForOrder, fulfilmentByTemplateId, type Delivery,
+} from '@big-cms/shared/deliveries'
 import { BRANCHES, STOCKED_BRANCHES, emptyStock, PRIMARY_BRANCH } from '@big-cms/shared/branches'
 
 // Configuration, not a constant — see app/admin/supplies/page.tsx for what
@@ -117,6 +120,31 @@ function fmtDate(ts: { seconds: number } | null): string {
   })
 }
 
+// What actually arrived against one ordered line.
+//
+// Rendered only once at least one delivery exists for the order. Before that,
+// "nothing received" on every line would read as a problem rather than as a
+// week that simply has not been delivered yet.
+function ReceivedTag({ ordered, received, unit }: {
+  ordered: number; received: number; unit: string
+}) {
+  // Ordered quantities can be fractional (0.5 kg, 1.5 liter), so an exact
+  // equality test would call a complete line short.
+  const complete = received + 1e-9 >= ordered
+  const color = received <= 0 ? 'rgba(245,242,236,0.28)'
+    : complete ? 'var(--teal)'
+    : '#C9962C'
+  const label = received <= 0 ? 'nothing received'
+    : complete ? `${received} ${unit} received`
+    : `${received} of ${ordered} ${unit}`
+  return (
+    <span style={{
+      marginLeft: '0.7rem', fontSize: '0.72rem', color,
+      fontFamily: 'var(--font-inter)', whiteSpace: 'nowrap',
+    }}>{label}</span>
+  )
+}
+
 function ReportCard({
   report,
   providers,
@@ -143,6 +171,43 @@ function ReportCard({
   const [saving,     setSaving]    = useState(false)
   const [deleting,   setDeleting]  = useState(false)
   const [sentMap,    setSentMap]   = useState<Record<string, boolean>>(report.whatsappSent ?? {})
+
+  // Deliveries booked against this order. null = not looked up yet.
+  //
+  // Fetched when the card OPENS, not on mount: this page renders every order
+  // for the branch, and a query per card on first paint would be dozens of
+  // reads for cards nobody expanded.
+  const [deliveries, setDeliveries] = useState<Delivery[] | null>(null)
+
+  useEffect(() => {
+    if (!open || deliveries !== null) return
+    let cancelled = false
+    listDeliveriesForOrder(report.id)
+      .then(d => { if (!cancelled) setDeliveries(d) })
+      // An empty array on failure, so a refused read shows "no deliveries yet"
+      // rather than leaving the card in a permanent loading state.
+      .catch(() => { if (!cancelled) setDeliveries([]) })
+    return () => { cancelled = true }
+  }, [open, deliveries, report.id])
+
+  const received = useMemo(
+    () => (deliveries ? fulfilmentByTemplateId(deliveries) : {}),
+    [deliveries],
+  )
+
+  // Suppliers split shipments, so this is a sum across every delivery booked
+  // against the order — never a delivered / not-delivered flag.
+  const fulfilment = useMemo(() => {
+    if (!deliveries || deliveries.length === 0) return null
+    let full = 0, partial = 0
+    for (const item of items) {
+      const got = received[item.templateId] ?? 0
+      if (got <= 0) continue
+      if (got + 1e-9 >= item.quantity) full++
+      else partial++
+    }
+    return { full, partial, total: items.length, deliveryCount: deliveries.length }
+  }, [deliveries, received, items])
 
   // Track Escape so onBlur doesn't also save
   const skipBlurRef = useRef(false)
@@ -327,6 +392,22 @@ function ReportCard({
               </span>
             )}
 
+            {fulfilment && (
+              <span style={{
+                fontFamily: 'var(--font-inter)', fontSize: '0.75rem', fontWeight: 600,
+                color: fulfilment.full === fulfilment.total ? 'var(--teal)' : '#C9962C',
+                letterSpacing: '0.03em',
+              }}>
+                {fulfilment.full === fulfilment.total
+                  ? `✓ All ${fulfilment.total} lines received`
+                  : `${fulfilment.full} of ${fulfilment.total} lines received in full`}
+                <span style={{ color: 'rgba(245,242,236,0.3)', fontWeight: 400 }}>
+                  {' · '}{fulfilment.deliveryCount}{' '}
+                  {fulfilment.deliveryCount === 1 ? 'delivery' : 'deliveries'}
+                </span>
+              </span>
+            )}
+
             {canEdit && (
               <button
                 onClick={e => { e.stopPropagation(); handleDelete() }}
@@ -345,6 +426,20 @@ function ReportCard({
               </button>
             )}
           </div>
+
+          {/* Fulfilment bar — teal for lines received in full, amber for short */}
+          {fulfilment && (
+            <div style={{ display: 'flex', height: '3px', background: 'rgba(255,255,255,0.05)' }}>
+              <div style={{
+                width: `${(fulfilment.full / fulfilment.total) * 100}%`,
+                backgroundColor: 'var(--teal)',
+              }} />
+              <div style={{
+                width: `${(fulfilment.partial / fulfilment.total) * 100}%`,
+                backgroundColor: '#C9962C',
+              }} />
+            </div>
+          )}
 
           {/* Items */}
           <div style={{ padding: '1.25rem' }}>
@@ -493,6 +588,13 @@ function ReportCard({
                                       {item.name}
                                       {ar && (
                                         <span dir="rtl" style={{ color: '#C9962C', marginRight: '0.6rem', marginLeft: '0.6rem' }}>{ar}</span>
+                                      )}
+                                      {fulfilment && (
+                                        <ReceivedTag
+                                          ordered={item.quantity}
+                                          received={received[item.templateId] ?? 0}
+                                          unit={UNIT_LABELS[item.unit]}
+                                        />
                                       )}
                                     </span>
 

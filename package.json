@@ -30,6 +30,7 @@
     "verify:features": "node scripts/verify-features.mjs",
     "verify:hosts": "node scripts/verify-hosts.mjs",
     "verify:checks": "node scripts/verify-checks.mjs",
+    "verify:receipt": "node scripts/verify-receipt.mjs",
     "cron:reset": "node scripts/cron-reset.mjs",
     "package": "node scripts/package-app.mjs"
   },

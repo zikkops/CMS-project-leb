@@ -19,7 +19,7 @@ import {
   faClipboard, faThumbsUp, faGift, faTag, faTrophy, faUserShield,
   faFile, faPaperPlane, faTruck, faList, faImage, faScroll, faHandshake, faStore,
   faClockRotateLeft, faChair, faThumbtack, faGear, faXmark, faMoneyBill,
-  faClipboardCheck,
+  faClipboardCheck, faChartPie,
   type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
 import { BRAND } from '@big-cms/shared/brand'
@@ -194,6 +194,8 @@ export default function AdminPage() {
       color: '#6A9E5A',
       cards: [
         { label: 'Inventory Management', icon: faClipboard, daily: true, desc: 'Track consumable stock levels across Kitchen, Bar, and Cleaning — color alerts when items run low', href: '/admin/supplies', access: SECTION_ACCESS.supplies },
+        { label: 'Receive a Delivery', icon: faTruck, daily: true, desc: 'Book in what actually arrived against a weekly order — quantities, rejects and what it cost', href: '/admin/supplies/receiving', access: SECTION_ACCESS.deliveries },
+        { label: 'Food Cost Report', icon: faChartPie, daily: false, desc: 'Cost of goods against till sales for a period — food cost %, by branch and department', href: '/admin/supplies/receiving/report', access: SECTION_ACCESS.deliveriesReport },
         { label: 'Daily Inventory Count', icon: faClipboardCheck, daily: true, desc: 'Count today\'s stock at your branch and submit — updates live inventory levels', href: '/admin/supplies/daily', access: SECTION_ACCESS.dailyInventory },
         { label: 'Daily Inventory History', icon: faClockRotateLeft, daily: true, desc: 'Review every submitted and in-progress count by branch and department', href: '/admin/supplies/daily/history', access: SECTION_ACCESS.dailyInventoryHistory },
       ],
