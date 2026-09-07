@@ -52,7 +52,7 @@ function ProductCard({ product }: { product: Product }) {
         display: 'flex',
         flexDirection: 'column',
         background: hovered ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)',
-        border: `1px solid ${hovered ? 'rgba(201,150,44,0.35)' : 'rgba(255,255,255,0.07)'}`,
+        border: `1px solid ${hovered ? 'rgba(var(--brand-secondary-rgb),0.35)' : 'rgba(255,255,255,0.07)'}`,
         borderRadius: '6px',
         overflow: 'hidden',
         transition: 'all 0.22s ease',
@@ -102,7 +102,7 @@ function ProductCard({ product }: { product: Product }) {
         {/* Stock badge */}
         <div style={{
           position: 'absolute', top: '0.6rem', left: '0.6rem',
-          background: inStock ? 'rgba(0,160,152,0.85)' : 'rgba(228,51,41,0.75)',
+          background: inStock ? 'rgba(var(--teal-rgb),0.85)' : 'rgba(var(--red-rgb),0.75)',
           color: '#fff',
           padding: '0.2rem 0.55rem',
           borderRadius: '3px',
@@ -136,19 +136,19 @@ function ProductCard({ product }: { product: Product }) {
 
         <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '0.5rem' }}>
           {product.players && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
               <FontAwesomeIcon icon={faUsers} style={{ width: '11px' }} />
               {product.players}
             </span>
           )}
           {product.duration && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
               <FontAwesomeIcon icon={faClock} style={{ width: '11px' }} />
               {product.duration}
             </span>
           )}
           {product.age && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
               <FontAwesomeIcon icon={faCakeCandles} style={{ width: '11px' }} />
               {product.age}+
             </span>
@@ -214,7 +214,7 @@ export default function RetailPage() {
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.5rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
               Products For Sale
             </h1>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(245,242,236,0.4)', lineHeight: 1.7 }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.4)', lineHeight: 1.7 }}>
               Take one home. Everything below is available for retail purchase at any {BRAND.name} branch.
             </p>
           </div>
@@ -225,7 +225,7 @@ export default function RetailPage() {
             <div style={{ position: 'relative', flex: isMobile ? undefined : '0 0 260px' }}>
               <FontAwesomeIcon icon={faSearch} style={{
                 position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)',
-                width: '13px', color: 'rgba(245,242,236,0.3)', pointerEvents: 'none',
+                width: '13px', color: 'rgba(var(--offwhite-rgb),0.3)', pointerEvents: 'none',
               }} />
               <input
                 type="search"
@@ -243,7 +243,7 @@ export default function RetailPage() {
               {search && (
                 <button onClick={() => setSearch('')} style={{
                   position: 'absolute', right: '0.7rem', top: '50%', transform: 'translateY(-50%)',
-                  background: 'none', border: 'none', color: 'rgba(245,242,236,0.35)',
+                  background: 'none', border: 'none', color: 'rgba(var(--offwhite-rgb),0.35)',
                   cursor: 'pointer', padding: 0, fontSize: '0.85rem',
                 }}>
                   <FontAwesomeIcon icon={faXmark} style={{ width: '13px' }} />
@@ -259,7 +259,7 @@ export default function RetailPage() {
                   fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase',
                   cursor: 'pointer', fontFamily: 'var(--font-inter)',
                   backgroundColor: category === cat ? 'var(--brand-secondary)' : 'rgba(255,255,255,0.06)',
-                  color: category === cat ? '#000' : 'rgba(245,242,236,0.5)',
+                  color: category === cat ? '#000' : 'rgba(var(--offwhite-rgb),0.5)',
                   transition: 'all 0.15s ease',
                 }}>{cat}</button>
               ))}
@@ -271,8 +271,8 @@ export default function RetailPage() {
               border: `1px solid ${stockOnly ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
               fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase',
               cursor: 'pointer', fontFamily: 'var(--font-inter)',
-              backgroundColor: stockOnly ? 'rgba(0,160,152,0.12)' : 'transparent',
-              color: stockOnly ? 'var(--teal)' : 'rgba(245,242,236,0.45)',
+              backgroundColor: stockOnly ? 'rgba(var(--teal-rgb),0.12)' : 'transparent',
+              color: stockOnly ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.45)',
               whiteSpace: 'nowrap',
               transition: 'all 0.15s ease',
             }}>In Stock Only</button>
@@ -280,7 +280,7 @@ export default function RetailPage() {
 
           {/* Results count */}
           {!loading && (
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.25)', marginBottom: '1.5rem', letterSpacing: '0.06em' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.25)', marginBottom: '1.5rem', letterSpacing: '0.06em' }}>
               {filtered.length} product{filtered.length !== 1 ? 's' : ''} available for purchase
             </p>
           )}
@@ -296,7 +296,7 @@ export default function RetailPage() {
             <div style={{
               border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px',
               padding: '4rem', textAlign: 'center',
-              color: 'rgba(245,242,236,0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem',
+              color: 'rgba(var(--offwhite-rgb),0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem',
             }}>
               {products.length === 0 ? 'No products are currently listed for retail sale.' : 'No products match your filters.'}
             </div>

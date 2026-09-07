@@ -82,7 +82,7 @@ export default function WholesaleLoginPage() {
             fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.5rem' : '1.8rem',
             color: 'var(--offwhite, var(--offwhite))', marginBottom: '0.4rem',
           }}>Wholesale</h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.35)' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
             Sign in to see trade pricing and place an order.
           </p>
         </div>
@@ -109,7 +109,7 @@ export default function WholesaleLoginPage() {
             type="submit" disabled={busy}
             style={{
               backgroundColor: busy ? 'rgba(255,255,255,0.08)' : 'var(--teal, var(--teal))',
-              color: busy ? 'rgba(245,242,236,0.3)' : '#000',
+              color: busy ? 'rgba(var(--offwhite-rgb),0.3)' : '#000',
               border: 'none', borderRadius: '3px', padding: '0.85rem',
               fontSize: '0.82rem', fontWeight: 700, letterSpacing: '0.1em',
               textTransform: 'uppercase', cursor: busy ? 'not-allowed' : 'pointer',
@@ -120,7 +120,7 @@ export default function WholesaleLoginPage() {
 
         <p style={{
           fontFamily: 'var(--font-inter)', fontSize: '0.75rem',
-          color: 'rgba(245,242,236,0.25)', textAlign: 'center', marginTop: '2rem', lineHeight: 1.7,
+          color: 'rgba(var(--offwhite-rgb),0.25)', textAlign: 'center', marginTop: '2rem', lineHeight: 1.7,
         }}>
           Wholesale accounts are set up by {BRAND.name}.<br />
           Contact us if you need access.

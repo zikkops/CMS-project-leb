@@ -178,7 +178,7 @@ export default function AdminUsersPage() {
     fontSize: '0.68rem',
     letterSpacing: '0.2em',
     textTransform: 'uppercase' as const,
-    color: 'rgba(245,242,236,0.35)',
+    color: 'rgba(var(--offwhite-rgb),0.35)',
     marginBottom: '0.5rem',
     fontFamily: 'var(--font-inter)',
   }
@@ -203,7 +203,7 @@ export default function AdminUsersPage() {
               fontSize: '0.7rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.3)',
+              color: 'rgba(var(--offwhite-rgb),0.3)',
               textDecoration: 'none',
               fontFamily: 'var(--font-inter)',
               marginBottom: '0.5rem',
@@ -230,7 +230,7 @@ export default function AdminUsersPage() {
         <p style={{
           fontFamily: 'var(--font-inter)',
           fontSize: '0.78rem',
-          color: 'rgba(245,242,236,0.3)',
+          color: 'rgba(var(--offwhite-rgb),0.3)',
           marginBottom: '2rem',
           lineHeight: 1.6,
         }}>
@@ -243,7 +243,7 @@ export default function AdminUsersPage() {
 
         {/* Table */}
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : isMobile ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
             {accounts.map(account => (
@@ -259,7 +259,7 @@ export default function AdminUsersPage() {
                 <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)', wordBreak: 'break-word' }}>
                   {account.email}
                   {account.id === user?.uid && (
-                    <span style={{ color: 'rgba(245,242,236,0.3)', marginLeft: '0.5rem' }}>(you)</span>
+                    <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)', marginLeft: '0.5rem' }}>(you)</span>
                   )}
                 </p>
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -286,7 +286,7 @@ export default function AdminUsersPage() {
                     width: 'fit-content',
                   }}>{ROLE_LABELS[account.role] ?? account.role}</span>
                 </div>
-                <p style={{ fontSize: '0.75rem', color: 'rgba(245,242,236,0.4)', fontFamily: 'var(--font-inter)' }}>
+                <p style={{ fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)', fontFamily: 'var(--font-inter)' }}>
                   Branches: {branchSummary(account)}
                 </p>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -297,7 +297,7 @@ export default function AdminUsersPage() {
                       flex: 1,
                       background: 'transparent',
                       border: '1px solid rgba(255,255,255,0.1)',
-                      color: canEdit(account) ? 'rgba(245,242,236,0.6)' : 'rgba(245,242,236,0.2)',
+                      color: canEdit(account) ? 'rgba(var(--offwhite-rgb),0.6)' : 'rgba(var(--offwhite-rgb),0.2)',
                       padding: '0.6rem 0.8rem',
                       borderRadius: '2px',
                       fontSize: '0.72rem',
@@ -310,8 +310,8 @@ export default function AdminUsersPage() {
                     style={{
                       flex: 1,
                       background: 'transparent',
-                      border: '1px solid rgba(228,51,41,0.3)',
-                      color: account.id === user?.uid || !canRevoke(account) ? 'rgba(228,51,41,0.25)' : 'var(--red)',
+                      border: '1px solid rgba(var(--red-rgb),0.3)',
+                      color: account.id === user?.uid || !canRevoke(account) ? 'rgba(var(--red-rgb),0.25)' : 'var(--red)',
                       padding: '0.6rem 0.8rem',
                       borderRadius: '2px',
                       fontSize: '0.72rem',
@@ -339,7 +339,7 @@ export default function AdminUsersPage() {
                       fontSize: '0.65rem',
                       letterSpacing: '0.2em',
                       textTransform: 'uppercase',
-                      color: 'rgba(245,242,236,0.3)',
+                      color: 'rgba(var(--offwhite-rgb),0.3)',
                       fontFamily: 'var(--font-inter)',
                       fontWeight: 400,
                     }}>{h}</th>
@@ -352,7 +352,7 @@ export default function AdminUsersPage() {
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>
                       {account.email}
                       {account.id === user?.uid && (
-                        <span style={{ color: 'rgba(245,242,236,0.3)', marginLeft: '0.5rem' }}>(you)</span>
+                        <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)', marginLeft: '0.5rem' }}>(you)</span>
                       )}
                     </td>
                     <td style={{ padding: '1rem 1.2rem' }}>
@@ -393,7 +393,7 @@ export default function AdminUsersPage() {
                             fontSize: '0.7rem',
                             padding: '0.25rem 0.7rem',
                             borderRadius: '2px',
-                            backgroundColor: 'rgba(228,51,41,0.1)',
+                            backgroundColor: 'rgba(var(--red-rgb),0.1)',
                             color: 'var(--red)',
                             fontFamily: 'var(--font-inter)',
                             letterSpacing: '0.05em',
@@ -401,7 +401,7 @@ export default function AdminUsersPage() {
                         )}
                       </div>
                     </td>
-                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.5)' }}>
+                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
                       {branchSummary(account)}
                     </td>
                     <td style={{ padding: '1rem 1.2rem' }}>
@@ -412,7 +412,7 @@ export default function AdminUsersPage() {
                           style={{
                             background: 'transparent',
                             border: '1px solid rgba(255,255,255,0.1)',
-                            color: canEdit(account) ? 'rgba(245,242,236,0.6)' : 'rgba(245,242,236,0.2)',
+                            color: canEdit(account) ? 'rgba(var(--offwhite-rgb),0.6)' : 'rgba(var(--offwhite-rgb),0.2)',
                             padding: '0.4rem 0.8rem',
                             borderRadius: '2px',
                             fontSize: '0.7rem',
@@ -424,8 +424,8 @@ export default function AdminUsersPage() {
                           disabled={account.id === user?.uid || !canRevoke(account)}
                           style={{
                             background: 'transparent',
-                            border: '1px solid rgba(228,51,41,0.3)',
-                            color: account.id === user?.uid || !canRevoke(account) ? 'rgba(228,51,41,0.25)' : 'var(--red)',
+                            border: '1px solid rgba(var(--red-rgb),0.3)',
+                            color: account.id === user?.uid || !canRevoke(account) ? 'rgba(var(--red-rgb),0.25)' : 'var(--red)',
                             padding: '0.4rem 0.8rem',
                             borderRadius: '2px',
                             fontSize: '0.7rem',
@@ -474,7 +474,7 @@ export default function AdminUsersPage() {
               </h2>
               <button onClick={() => setOpen(false)} style={{
                 background: 'transparent', border: 'none',
-                color: 'rgba(245,242,236,0.4)', fontSize: '1.2rem', cursor: 'pointer',
+                color: 'rgba(var(--offwhite-rgb),0.4)', fontSize: '1.2rem', cursor: 'pointer',
               }}>✕</button>
             </div>
 
@@ -482,7 +482,7 @@ export default function AdminUsersPage() {
               <div>
                 <label style={labelStyle}>Email</label>
                 {editing ? (
-                  <p style={{ ...inputStyle, color: 'rgba(245,242,236,0.5)' }}>{form.email}</p>
+                  <p style={{ ...inputStyle, color: 'rgba(var(--offwhite-rgb),0.5)' }}>{form.email}</p>
                 ) : (
                   <input type="email" value={form.email} required
                     onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
@@ -507,7 +507,7 @@ export default function AdminUsersPage() {
                         position: 'absolute', right: '0.6rem', top: '50%',
                         transform: 'translateY(-50%)',
                         background: 'none', border: 'none', cursor: 'pointer',
-                        color: 'rgba(245,242,236,0.35)', fontSize: '1rem', lineHeight: 1,
+                        color: 'rgba(var(--offwhite-rgb),0.35)', fontSize: '1rem', lineHeight: 1,
                         padding: '0.2rem',
                       }}
                       title={showPassword ? 'Hide password' : 'Show password'}
@@ -530,7 +530,7 @@ export default function AdminUsersPage() {
                         alignItems: 'center',
                         backgroundColor: form.role === r ? `${ROLE_COLORS[r]}15` : 'transparent',
                         border: `1px solid ${form.role === r ? ROLE_COLORS[r] : 'rgba(255,255,255,0.1)'}`,
-                        color: form.role === r ? ROLE_COLORS[r] : 'rgba(245,242,236,0.5)',
+                        color: form.role === r ? ROLE_COLORS[r] : 'rgba(var(--offwhite-rgb),0.5)',
                         padding: '0.6rem 1rem',
                         borderRadius: '2px',
                         fontSize: '0.82rem',
@@ -556,9 +556,9 @@ export default function AdminUsersPage() {
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
-                          backgroundColor: checked ? 'rgba(0,160,152,0.12)' : 'transparent',
+                          backgroundColor: checked ? 'rgba(var(--teal-rgb),0.12)' : 'transparent',
                           border: `1px solid ${checked ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
-                          color: checked ? 'var(--teal)' : 'rgba(245,242,236,0.5)',
+                          color: checked ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.5)',
                           padding: '0.6rem 1rem',
                           borderRadius: '2px',
                           fontSize: '0.82rem',
@@ -581,7 +581,7 @@ export default function AdminUsersPage() {
                     )
                   })}
                 </div>
-                <p style={{ fontSize: '0.72rem', color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', marginTop: '0.5rem' }}>
+                <p style={{ fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', marginTop: '0.5rem' }}>
                   Assigns this account to one or more branches. Used for branch-scoped access (EOD, weekly orders).
                 </p>
               </div>
@@ -592,7 +592,7 @@ export default function AdminUsersPage() {
                 return (
                   <div>
                     <label style={{ ...labelStyle, marginBottom: '0.4rem' }}>Section Access</label>
-                    <p style={{ fontSize: '0.72rem', color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', marginBottom: '0.8rem', lineHeight: 1.5 }}>
+                    <p style={{ fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', marginBottom: '0.8rem', lineHeight: 1.5 }}>
                       Click any section to cycle its access state. Sections the role normally has can be revoked; sections it doesn&apos;t have can be explicitly granted.
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -626,18 +626,18 @@ export default function AdminUsersPage() {
                           })
                         }
 
-                        const bg    = state === 'revoked'  ? 'rgba(228,51,41,0.08)'
+                        const bg    = state === 'revoked'  ? 'rgba(var(--red-rgb),0.08)'
                                     : state === 'granted'  ? 'rgba(149,102,210,0.12)'
                                     : state === 'via-role' ? 'rgba(255,255,255,0.02)'
                                     : 'transparent'
-                        const border = state === 'revoked'  ? '1px solid rgba(228,51,41,0.4)'
+                        const border = state === 'revoked'  ? '1px solid rgba(var(--red-rgb),0.4)'
                                      : state === 'granted'  ? '1px solid var(--purple)'
                                      : state === 'via-role' ? '1px solid rgba(255,255,255,0.07)'
                                      : '1px solid rgba(255,255,255,0.06)'
                         const color  = state === 'revoked'  ? 'var(--red)'
                                      : state === 'granted'  ? 'var(--purple)'
-                                     : state === 'via-role' ? 'rgba(245,242,236,0.45)'
-                                     : 'rgba(245,242,236,0.2)'
+                                     : state === 'via-role' ? 'rgba(var(--offwhite-rgb),0.45)'
+                                     : 'rgba(var(--offwhite-rgb),0.2)'
                         const badge  = state === 'revoked'  ? '✕ revoked'
                                      : state === 'granted'  ? '+ granted'
                                      : state === 'via-role' ? 'via role'
@@ -674,7 +674,7 @@ export default function AdminUsersPage() {
                 <button type="button" onClick={() => setOpen(false)} style={{
                   flex: 1, background: 'transparent',
                   border: '1px solid rgba(255,255,255,0.1)',
-                  color: 'rgba(245,242,236,0.5)', padding: '0.8rem',
+                  color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.8rem',
                   borderRadius: '2px', fontSize: '0.75rem',
                   cursor: 'pointer', fontFamily: 'var(--font-inter)',
                 }}>Cancel</button>

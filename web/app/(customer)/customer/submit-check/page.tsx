@@ -40,7 +40,7 @@ const labelStyle = {
   fontSize: '0.68rem',
   letterSpacing: '0.2em',
   textTransform: 'uppercase' as const,
-  color: 'rgba(245,242,236,0.35)',
+  color: 'rgba(var(--offwhite-rgb),0.35)',
   marginBottom: '0.5rem',
   fontFamily: 'var(--font-inter)',
 }
@@ -212,7 +212,7 @@ export default function SubmitCheckPage() {
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.4rem' : '1.7rem', color: 'var(--offwhite)', marginBottom: '0.8rem' }}>
             Verify your email first
           </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.5)', lineHeight: 1.7, marginBottom: '2rem' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.5)', lineHeight: 1.7, marginBottom: '2rem' }}>
             Submitting a check earns real points, so we need to confirm it's really you first.
             Check your inbox for the verification email, then head to your profile to confirm it.
           </p>
@@ -234,7 +234,7 @@ export default function SubmitCheckPage() {
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.6rem' : '2rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
             Submission received!
           </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.5)', marginBottom: '2rem' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginBottom: '2rem' }}>
             Your points will be added once a manager approves your submission.
           </p>
 
@@ -258,7 +258,7 @@ export default function SubmitCheckPage() {
               ['Coins Pending', `+${result.pointsAmount} Points`],
             ].map(([label, value]) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)' }}>{label}</span>
+                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>{label}</span>
                 <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)', textAlign: 'right' }}>{value}</span>
               </div>
             ))}
@@ -272,7 +272,7 @@ export default function SubmitCheckPage() {
                 position: 'relative',
                 overflow: 'hidden',
                 width: '100%',
-                backgroundColor: submitAnotherHovered ? 'rgba(106,106,183,0.15)' : 'var(--purple)',
+                backgroundColor: submitAnotherHovered ? 'rgba(var(--purple-rgb),0.15)' : 'var(--purple)',
                 color: '#fff',
                 border: '1px solid var(--purple)',
                 padding: '0.9rem',
@@ -331,7 +331,7 @@ export default function SubmitCheckPage() {
             fontSize: '0.7rem',
             letterSpacing: '0.2em',
             textTransform: 'uppercase',
-            color: backHovered ? 'var(--offwhite)' : 'rgba(245,242,236,0.3)',
+            color: backHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.3)',
             textDecoration: 'none',
             fontFamily: 'var(--font-inter)',
             marginBottom: '0.5rem',
@@ -342,7 +342,7 @@ export default function SubmitCheckPage() {
         <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.6rem' : '2rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
           Submit a Check
         </h1>
-        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.4)', marginBottom: '2rem' }}>
+        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginBottom: '2rem' }}>
           Earn points for your food or drink purchase — a branch manager will review and approve it.
         </p>
 
@@ -438,7 +438,7 @@ export default function SubmitCheckPage() {
                 width: '100%',
                 background: splitToggleHovered ? 'rgba(255,255,255,0.04)' : 'transparent',
                 border: `1px solid ${splitToggleHovered ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)'}`,
-                color: splitToggleHovered ? 'var(--offwhite)' : 'rgba(245,242,236,0.7)',
+                color: splitToggleHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.7)',
                 padding: '0.8rem 1rem',
                 borderRadius: '4px',
                 fontSize: '0.8rem',
@@ -479,8 +479,8 @@ export default function SubmitCheckPage() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.5rem',
-                        backgroundColor: 'rgba(106,106,183,0.12)',
-                        border: '1px solid rgba(106,106,183,0.25)',
+                        backgroundColor: 'rgba(var(--purple-rgb),0.12)',
+                        border: '1px solid rgba(var(--purple-rgb),0.25)',
                         borderRadius: '20px',
                         padding: '0.3rem 0.5rem 0.3rem 0.3rem',
                       }}>
@@ -495,7 +495,7 @@ export default function SubmitCheckPage() {
                           {f.avatarUrl ? (
                             <img src={f.avatarUrl} alt={f.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           ) : (
-                            <span style={{ fontSize: '0.6rem', color: 'rgba(245,242,236,0.5)', fontFamily: 'var(--font-cinzel)' }}>
+                            <span style={{ fontSize: '0.6rem', color: 'rgba(var(--offwhite-rgb),0.5)', fontFamily: 'var(--font-cinzel)' }}>
                               {f.displayName.charAt(0).toUpperCase()}
                             </span>
                           )}
@@ -506,7 +506,7 @@ export default function SubmitCheckPage() {
                           onMouseLeave={() => setHoveredBtn(null)}
                           style={{
                             background: 'transparent', border: 'none',
-                            color: hoveredBtn === `removechip-${f.uid}` ? 'var(--red)' : 'rgba(228,51,41,0.7)',
+                            color: hoveredBtn === `removechip-${f.uid}` ? 'var(--red)' : 'rgba(var(--red-rgb),0.7)',
                             cursor: 'pointer', fontSize: '0.85rem', padding: '0 0.2rem', lineHeight: 1,
                             transform: hoveredBtn === `removechip-${f.uid}` ? 'scale(1.2)' : 'scale(1)',
                             transition: 'all 0.2s ease',
@@ -523,7 +523,7 @@ export default function SubmitCheckPage() {
                   if (quickAddFriends.length === 0) return null
                   return (
                     <div>
-                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)', marginBottom: '0.5rem' }}>
+                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginBottom: '0.5rem' }}>
                         Quick add a friend
                       </p>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -538,8 +538,8 @@ export default function SubmitCheckPage() {
                               display: 'flex',
                               alignItems: 'center',
                               gap: '0.5rem',
-                              backgroundColor: hoveredBtn === `quickadd-${f.uid}` ? 'rgba(106,106,183,0.15)' : 'rgba(255,255,255,0.04)',
-                              border: `1px solid ${hoveredBtn === `quickadd-${f.uid}` ? 'rgba(106,106,183,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                              backgroundColor: hoveredBtn === `quickadd-${f.uid}` ? 'rgba(var(--purple-rgb),0.15)' : 'rgba(255,255,255,0.04)',
+                              border: `1px solid ${hoveredBtn === `quickadd-${f.uid}` ? 'rgba(var(--purple-rgb),0.5)' : 'rgba(255,255,255,0.1)'}`,
                               borderRadius: '20px',
                               padding: '0.3rem 0.8rem 0.3rem 0.3rem',
                               cursor: 'pointer',
@@ -557,7 +557,7 @@ export default function SubmitCheckPage() {
                               {f.avatarUrl ? (
                                 <img src={f.avatarUrl} alt={f.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               ) : (
-                                <span style={{ fontSize: '0.6rem', color: 'rgba(245,242,236,0.5)', fontFamily: 'var(--font-cinzel)' }}>
+                                <span style={{ fontSize: '0.6rem', color: 'rgba(var(--offwhite-rgb),0.5)', fontFamily: 'var(--font-cinzel)' }}>
                                   {f.displayName.charAt(0).toUpperCase()}
                                 </span>
                               )}
@@ -571,7 +571,7 @@ export default function SubmitCheckPage() {
                 })()}
 
                 {addedFriends.length >= MAX_FRIENDS ? (
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.4)' }}>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                     Maximum of {MAX_FRIENDS} friends added (10 people total).
                   </p>
                 ) : (
@@ -584,7 +584,7 @@ export default function SubmitCheckPage() {
                       style={inputStyle}
                     />
                     {loadingDirectory && (
-                      <p style={{ fontSize: '0.75rem', color: 'rgba(245,242,236,0.4)', fontFamily: 'var(--font-inter)', marginTop: '0.4rem' }}>
+                      <p style={{ fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)', fontFamily: 'var(--font-inter)', marginTop: '0.4rem' }}>
                         Loading members…
                       </p>
                     )}
@@ -629,21 +629,21 @@ export default function SubmitCheckPage() {
                               {u.avatarUrl ? (
                                 <img src={u.avatarUrl} alt={u.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               ) : (
-                                <span style={{ fontSize: '0.7rem', color: 'rgba(245,242,236,0.5)', fontFamily: 'var(--font-cinzel)' }}>
+                                <span style={{ fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.5)', fontFamily: 'var(--font-cinzel)' }}>
                                   {u.displayName.charAt(0).toUpperCase()}
                                 </span>
                               )}
                             </div>
                             <div style={{ minWidth: 0 }}>
                               <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'var(--offwhite)' }}>{u.displayName}</p>
-                              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)' }}>{u.email}</p>
+                              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>{u.email}</p>
                             </div>
                           </button>
                         ))}
                       </div>
                     )}
                     {friendSearch.trim() && !loadingDirectory && searchResults.length === 0 && (
-                      <p style={{ fontSize: '0.75rem', color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', marginTop: '0.5rem' }}>
+                      <p style={{ fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', marginTop: '0.5rem' }}>
                         No matching members found.
                       </p>
                     )}
@@ -663,7 +663,7 @@ export default function SubmitCheckPage() {
               onMouseLeave={() => setSubmitHovered(false)}
               style={{
                 width: '100%',
-                backgroundColor: canSubmit && submitHovered ? 'rgba(106,106,183,0.8)' : 'var(--purple)',
+                backgroundColor: canSubmit && submitHovered ? 'rgba(var(--purple-rgb),0.8)' : 'var(--purple)',
                 color: '#fff',
                 border: 'none',
                 padding: '1rem',
@@ -674,7 +674,7 @@ export default function SubmitCheckPage() {
                 fontFamily: 'var(--font-inter)',
                 cursor: canSubmit ? 'pointer' : 'not-allowed',
                 opacity: canSubmit ? 1 : 0.5,
-                boxShadow: canSubmit && submitHovered ? '0 8px 20px rgba(106,106,183,0.4)' : 'none',
+                boxShadow: canSubmit && submitHovered ? '0 8px 20px rgba(var(--purple-rgb),0.4)' : 'none',
                 transition: 'all 0.2s ease',
               }}>
               {submitting ? 'Submitting…' : 'Submit Check'}

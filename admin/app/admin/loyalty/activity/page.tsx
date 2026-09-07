@@ -68,9 +68,9 @@ function Details({ log }: { log: LogEntry }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
         {log.changes.map(c => (
           <div key={c.field} style={rowStyle}>
-            <span style={{ color: 'rgba(245,242,236,0.4)' }}>{c.field}:</span>{' '}
-            <span style={{ color: 'rgba(228,51,41,0.7)' }}>{formatValue(c.before)}</span>
-            <span style={{ color: 'rgba(245,242,236,0.3)' }}> → </span>
+            <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)' }}>{c.field}:</span>{' '}
+            <span style={{ color: 'rgba(var(--red-rgb),0.7)' }}>{formatValue(c.before)}</span>
+            <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)' }}> → </span>
             <span style={{ color: 'var(--teal)' }}>{formatValue(c.after)}</span>
           </div>
         ))}
@@ -84,15 +84,15 @@ function Details({ log }: { log: LogEntry }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
         {entries.map(([k, v]) => (
           <div key={k} style={rowStyle}>
-            <span style={{ color: 'rgba(245,242,236,0.4)' }}>{k}:</span>{' '}
-            <span style={{ color: 'rgba(245,242,236,0.6)' }}>{formatValue(v)}</span>
+            <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)' }}>{k}:</span>{' '}
+            <span style={{ color: 'rgba(var(--offwhite-rgb),0.6)' }}>{formatValue(v)}</span>
           </div>
         ))}
       </div>
     )
   }
 
-  return <span style={{ color: 'rgba(245,242,236,0.2)' }}>—</span>
+  return <span style={{ color: 'rgba(var(--offwhite-rgb),0.2)' }}>—</span>
 }
 
 export default function LoyaltyActivityPage() {
@@ -158,7 +158,7 @@ export default function LoyaltyActivityPage() {
             fontSize: '0.7rem',
             letterSpacing: '0.2em',
             textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)',
+            color: 'rgba(var(--offwhite-rgb),0.3)',
             textDecoration: 'none',
             fontFamily: 'var(--font-inter)',
             marginBottom: '0.5rem',
@@ -172,7 +172,7 @@ export default function LoyaltyActivityPage() {
         <p style={{
           fontFamily: 'var(--font-inter)',
           fontSize: '0.78rem',
-          color: 'rgba(245,242,236,0.3)',
+          color: 'rgba(var(--offwhite-rgb),0.3)',
           marginBottom: '1.5rem',
           lineHeight: 1.6,
         }}>
@@ -191,7 +191,7 @@ export default function LoyaltyActivityPage() {
               <button key={s} onClick={() => setSectionFilter(s)} style={{
                 backgroundColor: sectionFilter === s ? (s === 'all' ? 'var(--offwhite)' : SECTION_COLORS[s]) : 'transparent',
                 border: `1px solid ${sectionFilter === s ? 'transparent' : 'rgba(255,255,255,0.1)'}`,
-                color: sectionFilter === s ? '#0a0a0a' : 'rgba(245,242,236,0.5)',
+                color: sectionFilter === s ? '#0a0a0a' : 'rgba(var(--offwhite-rgb),0.5)',
                 padding: '0.5rem 1rem',
                 borderRadius: '2px',
                 fontSize: '0.72rem',
@@ -209,7 +209,7 @@ export default function LoyaltyActivityPage() {
               <button key={a} onClick={() => setActionFilter(a)} style={{
                 backgroundColor: actionFilter === a ? (a === 'all' ? 'var(--offwhite)' : ACTION_COLORS[a]) : 'transparent',
                 border: `1px solid ${actionFilter === a ? 'transparent' : 'rgba(255,255,255,0.1)'}`,
-                color: actionFilter === a ? '#0a0a0a' : 'rgba(245,242,236,0.5)',
+                color: actionFilter === a ? '#0a0a0a' : 'rgba(var(--offwhite-rgb),0.5)',
                 padding: '0.5rem 1rem',
                 borderRadius: '2px',
                 fontSize: '0.72rem',
@@ -232,14 +232,14 @@ export default function LoyaltyActivityPage() {
 
         {/* Table */}
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : filtered.length === 0 ? (
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)',
             borderRadius: '4px',
             padding: '4rem',
             textAlign: 'center',
-            color: 'rgba(245,242,236,0.2)',
+            color: 'rgba(var(--offwhite-rgb),0.2)',
             fontFamily: 'var(--font-inter)',
           }}>No loyalty activity matches these filters.</div>
         ) : isMobile ? (
@@ -265,7 +265,7 @@ export default function LoyaltyActivityPage() {
                     letterSpacing: '0.05em',
                     whiteSpace: 'nowrap',
                   }}>{ACTION_LABELS[log.action] ?? log.action}</span>
-                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)', whiteSpace: 'nowrap' }}>
                     {log.createdAt?.toDate().toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' }) ?? '—'}
                   </span>
                 </div>
@@ -273,13 +273,13 @@ export default function LoyaltyActivityPage() {
                   fontSize: '0.65rem',
                   letterSpacing: '0.1em',
                   textTransform: 'uppercase',
-                  color: SECTION_COLORS[log.section] ?? 'rgba(245,242,236,0.4)',
+                  color: SECTION_COLORS[log.section] ?? 'rgba(var(--offwhite-rgb),0.4)',
                   fontFamily: 'var(--font-inter)',
                 }}>{log.section}</span>
                 <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--offwhite)' }}>
                   {log.label}
                 </p>
-                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.4)' }}>
+                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                   {log.userEmail}
                 </p>
                 <div style={{ paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
@@ -305,7 +305,7 @@ export default function LoyaltyActivityPage() {
                       fontSize: '0.65rem',
                       letterSpacing: '0.2em',
                       textTransform: 'uppercase',
-                      color: 'rgba(245,242,236,0.3)',
+                      color: 'rgba(var(--offwhite-rgb),0.3)',
                       fontFamily: 'var(--font-inter)',
                       fontWeight: 400,
                     }}>{h}</th>
@@ -315,7 +315,7 @@ export default function LoyaltyActivityPage() {
               <tbody>
                 {filtered.map(log => (
                   <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.5)', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.5)', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
                       {log.createdAt?.toDate().toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' }) ?? '—'}
                     </td>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)', verticalAlign: 'top' }}>
@@ -333,10 +333,10 @@ export default function LoyaltyActivityPage() {
                         whiteSpace: 'nowrap',
                       }}>{ACTION_LABELS[log.action] ?? log.action}</span>
                     </td>
-                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: SECTION_COLORS[log.section] ?? 'rgba(245,242,236,0.5)', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: SECTION_COLORS[log.section] ?? 'rgba(var(--offwhite-rgb),0.5)', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                       {log.section}
                     </td>
-                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.5)', verticalAlign: 'top' }}>
+                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)', verticalAlign: 'top' }}>
                       {log.label}
                     </td>
                     <td style={{ padding: '1rem 1.2rem', verticalAlign: 'top' }}>

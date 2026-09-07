@@ -50,7 +50,7 @@ const selStyle: React.CSSProperties = { ...inp, backgroundColor: '#1a1a1a', curs
 
 const labelStyle: React.CSSProperties = {
   display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em',
-  textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)',
+  textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)',
   marginBottom: '0.4rem', fontFamily: 'var(--font-inter)',
 }
 
@@ -84,7 +84,7 @@ function Stat({ label, value, sub, color }: {
     }}>
       <p style={{
         fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.12em',
-        textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)', marginBottom: '0.5rem',
+        textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.5rem',
       }}>{label}</p>
       <p style={{
         fontFamily: 'var(--font-inter)', fontSize: '1.5rem', fontWeight: 600,
@@ -93,7 +93,7 @@ function Stat({ label, value, sub, color }: {
       {sub && (
         <p style={{
           fontFamily: 'var(--font-inter)', fontSize: '0.7rem',
-          color: 'rgba(245,242,236,0.3)', marginTop: '0.4rem',
+          color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.4rem',
         }}>{sub}</p>
       )}
     </div>
@@ -101,7 +101,7 @@ function Stat({ label, value, sub, color }: {
 }
 
 function Note({ tone, children }: { tone: 'warn' | 'info'; children: React.ReactNode }) {
-  const color = tone === 'warn' ? 'var(--brand-secondary)' : 'rgba(245,242,236,0.35)'
+  const color = tone === 'warn' ? 'var(--brand-secondary)' : 'rgba(var(--offwhite-rgb),0.35)'
   return (
     <p style={{
       fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color,
@@ -219,13 +219,13 @@ export default function FoodCostReportPage() {
         <div style={{ marginBottom: '2rem' }}>
           <a href="/admin/supplies/receiving" style={{
             fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
             display: 'block', marginBottom: '0.5rem', fontFamily: 'var(--font-inter)',
           }}>← Receive a Delivery</a>
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.6rem', color: 'var(--offwhite)', marginBottom: '0.2rem' }}>
             Food Cost Report
           </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
             What stock cost, against what the till rang up
           </p>
         </div>
@@ -269,7 +269,7 @@ export default function FoodCostReportPage() {
         )}
 
         {loading && (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', textAlign: 'center', padding: '2rem 0' }}>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', textAlign: 'center', padding: '2rem 0' }}>
             Loading…
           </p>
         )}
@@ -291,7 +291,7 @@ export default function FoodCostReportPage() {
                   : 'Cost of goods ÷ sales'
               }
               color={
-                stats.fcp === null ? 'rgba(245,242,236,0.3)'
+                stats.fcp === null ? 'rgba(var(--offwhite-rgb),0.3)'
                   : stats.fcp <= 0.35 ? 'var(--teal)'
                   : stats.fcp <= 0.45 ? 'var(--brand-secondary)'
                   : 'var(--red)'
@@ -355,7 +355,7 @@ export default function FoodCostReportPage() {
               }}>
                 <span style={{
                   fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.12em',
-                  textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)',
+                  textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)',
                 }}>Cost by department</span>
               </div>
               {stats.byDept.map(row => (
@@ -364,7 +364,7 @@ export default function FoodCostReportPage() {
                   padding: '0.75rem 1.25rem',
                   borderBottom: '1px solid rgba(255,255,255,0.05)',
                 }}>
-                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.6)' }}>
+                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.6)' }}>
                     {row.dept}
                   </span>
                   <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.9rem', fontWeight: 600, color: 'var(--offwhite)' }}>
@@ -380,7 +380,7 @@ export default function FoodCostReportPage() {
             <div style={{
               border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
               padding: '2.5rem', textAlign: 'center',
-              color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
+              color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
             }}>
               No deliveries received in this range.
             </div>
@@ -398,7 +398,7 @@ export default function FoodCostReportPage() {
                         textAlign: h === 'Invoice total' || h === 'USD' ? 'right' : 'left',
                         padding: '0.6rem 0.75rem',
                         fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase',
-                        color: 'rgba(245,242,236,0.35)', fontWeight: 400,
+                        color: 'rgba(var(--offwhite-rgb),0.35)', fontWeight: 400,
                         borderBottom: '1px solid rgba(255,255,255,0.1)',
                       }}>{h}</th>
                     ))}
@@ -414,7 +414,7 @@ export default function FoodCostReportPage() {
                       ? grand
                       : (d.rateUsed ? grand / d.rateUsed : null)
                     const dim = d.status === 'draft'
-                    const cellColor = dim ? 'rgba(245,242,236,0.3)' : 'rgba(245,242,236,0.75)'
+                    const cellColor = dim ? 'rgba(var(--offwhite-rgb),0.3)' : 'rgba(var(--offwhite-rgb),0.75)'
                     const cell: React.CSSProperties = {
                       padding: '0.65rem 0.75rem',
                       borderBottom: '1px solid rgba(255,255,255,0.05)',
@@ -430,11 +430,11 @@ export default function FoodCostReportPage() {
                               order behind it, orderReportId null) and putting
                               that word in the supplier column made every
                               no-supplier delivery look unplanned. */}
-                          {d.providerName || <span style={{ color: 'rgba(245,242,236,0.25)' }}>No supplier</span>}
+                          {d.providerName || <span style={{ color: 'rgba(var(--offwhite-rgb),0.25)' }}>No supplier</span>}
                           {d.orderReportId === null && (
                             <span style={{
                               marginLeft: '0.45rem', fontSize: '0.68rem',
-                              color: 'rgba(245,242,236,0.3)',
+                              color: 'rgba(var(--offwhite-rgb),0.3)',
                             }}>unplanned</span>
                           )}
                         </td>
@@ -444,11 +444,11 @@ export default function FoodCostReportPage() {
                           ...cell,
                           color: d.status === 'received' ? 'var(--teal)'
                             : d.status === 'disputed' ? 'var(--red)'
-                            : 'rgba(245,242,236,0.3)',
+                            : 'rgba(var(--offwhite-rgb),0.3)',
                         }}>{d.status}</td>
                         <td style={{ ...cell, textAlign: 'right' }}>
                           {grand.toLocaleString('en-US', { maximumFractionDigits: 2 })}{' '}
-                          <span style={{ color: 'rgba(245,242,236,0.3)', fontSize: '0.72rem' }}>
+                          <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontSize: '0.72rem' }}>
                             {CURRENCY_LABELS[d.currency]}
                           </span>
                         </td>
@@ -467,7 +467,7 @@ export default function FoodCostReportPage() {
 
           <p style={{
             fontFamily: 'var(--font-inter)', fontSize: '0.7rem',
-            color: 'rgba(245,242,236,0.22)', marginTop: '1.5rem', lineHeight: 1.6,
+            color: 'rgba(var(--offwhite-rgb),0.22)', marginTop: '1.5rem', lineHeight: 1.6,
           }}>
             Every figure is converted at the rate stored on its own document — each
             delivery&rsquo;s rate at receipt, each report&rsquo;s rate at close — so this

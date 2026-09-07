@@ -30,24 +30,24 @@ export default function WeeklyOrderLogPage() {
 
         <a href="/admin/weekly-orders" style={{
           fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-          color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+          color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
           display: 'block', marginBottom: '0.5rem',
         }}>← Weekly Orders</a>
 
         <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', color: 'var(--offwhite)', marginBottom: '0.25rem' }}>
           Weekly Orders Log
         </h1>
-        <p style={{ fontSize: '0.8rem', color: 'rgba(245,242,236,0.3)', marginBottom: '2rem' }}>
+        <p style={{ fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '2rem' }}>
           Edits and deletions made by admins and managers · most recent first
         </p>
 
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)' }}>Loading…</p>
         ) : logs.length === 0 ? (
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
-            color: 'rgba(245,242,236,0.25)', fontSize: '0.85rem',
+            color: 'rgba(var(--offwhite-rgb),0.25)', fontSize: '0.85rem',
           }}>
             No log entries yet.
           </div>
@@ -69,8 +69,8 @@ export default function WeeklyOrderLogPage() {
                   display: 'inline-block',
                   backgroundColor: entry.action === 'delete_report'
                     ? 'rgba(220,50,50,0.15)'
-                    : 'rgba(0,160,152,0.12)',
-                  border: `1px solid ${entry.action === 'delete_report' ? 'rgba(220,50,50,0.35)' : 'rgba(0,160,152,0.3)'}`,
+                    : 'rgba(var(--teal-rgb),0.12)',
+                  border: `1px solid ${entry.action === 'delete_report' ? 'rgba(220,50,50,0.35)' : 'rgba(var(--teal-rgb),0.3)'}`,
                   color: entry.action === 'delete_report' ? 'rgba(220,100,100,0.9)' : 'var(--teal)',
                   borderRadius: '2px', padding: '0.2rem 0.6rem',
                   fontSize: '0.66rem', letterSpacing: '0.1em', fontWeight: 600,
@@ -89,25 +89,25 @@ export default function WeeklyOrderLogPage() {
                       {' → '}
                       <span style={{ color: 'var(--teal)', fontWeight: 600 }}>{entry.newQty}</span>
                       {' '}
-                      <span style={{ color: 'rgba(245,242,236,0.4)', fontSize: '0.82rem' }}>
+                      <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)', fontSize: '0.82rem' }}>
                         {entry.unit ? UNIT_LABELS[entry.unit as keyof typeof UNIT_LABELS] ?? entry.unit : ''}
                       </span>
                     </p>
                   ) : (
                     <p style={{ fontSize: '0.88rem', color: 'var(--offwhite)', marginBottom: '0.2rem' }}>
                       Deleted report{' '}
-                      <span style={{ color: 'rgba(245,242,236,0.5)' }}>({entry.deletedCount ?? 0} items)</span>
+                      <span style={{ color: 'rgba(var(--offwhite-rgb),0.5)' }}>({entry.deletedCount ?? 0} items)</span>
                     </p>
                   )}
 
                   <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.73rem', color: 'rgba(245,242,236,0.35)' }}>
+                    <span style={{ fontSize: '0.73rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
                       {entry.branch} · {entry.weekLabel}
                     </span>
-                    <span style={{ fontSize: '0.73rem', color: 'rgba(245,242,236,0.3)' }}>
+                    <span style={{ fontSize: '0.73rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
                       {entry.staffEmail}
                     </span>
-                    <span style={{ fontSize: '0.73rem', color: 'rgba(245,242,236,0.22)' }}>
+                    <span style={{ fontSize: '0.73rem', color: 'rgba(var(--offwhite-rgb),0.22)' }}>
                       {fmtTs(entry.createdAt)}
                     </span>
                   </div>

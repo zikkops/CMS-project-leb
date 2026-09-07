@@ -81,7 +81,7 @@ function EventCard({ ev, dimmed = false, isMobile, hoveredEventId, onHover, onSe
       }}
     >
     <div style={{
-      border: `1px solid ${hovered ? 'rgba(106,106,183,0.6)' : dimmed ? 'rgba(255,255,255,0.04)' : 'rgba(106,106,183,0.2)'}`,
+      border: `1px solid ${hovered ? 'rgba(var(--purple-rgb),0.6)' : dimmed ? 'rgba(255,255,255,0.04)' : 'rgba(var(--purple-rgb),0.2)'}`,
       borderRadius: '4px',
       overflow: 'hidden',
       display: 'flex',
@@ -111,7 +111,7 @@ function EventCard({ ev, dimmed = false, isMobile, hoveredEventId, onHover, onSe
                 position: 'absolute',
                 top: '0.8rem', right: '0.8rem',
                 backgroundColor: 'rgba(0,0,0,0.7)',
-                color: 'rgba(245,242,236,0.5)',
+                color: 'rgba(var(--offwhite-rgb),0.5)',
                 padding: '0.25rem 0.7rem',
                 borderRadius: '2px',
                 fontSize: '0.65rem',
@@ -132,14 +132,14 @@ function EventCard({ ev, dimmed = false, isMobile, hoveredEventId, onHover, onSe
             <span style={{
               fontFamily: 'var(--font-cinzel)',
               fontSize: isMobile ? '1.8rem' : '3rem',
-              color: dimmed ? 'rgba(255,255,255,0.08)' : 'rgba(106,106,183,0.4)',
+              color: dimmed ? 'rgba(255,255,255,0.08)' : 'rgba(var(--purple-rgb),0.4)',
             }}>{d.getDate()}</span>
             {dimmed && (
               <div style={{
                 position: 'absolute',
                 top: '0.8rem', right: '0.8rem',
                 backgroundColor: 'rgba(0,0,0,0.7)',
-                color: 'rgba(245,242,236,0.5)',
+                color: 'rgba(var(--offwhite-rgb),0.5)',
                 padding: '0.25rem 0.7rem',
                 borderRadius: '2px',
                 fontSize: '0.65rem',
@@ -169,7 +169,7 @@ function EventCard({ ev, dimmed = false, isMobile, hoveredEventId, onHover, onSe
             <p style={{
               fontFamily: 'var(--font-inter)',
               fontSize: '0.62rem',
-              color: 'rgba(245,242,236,0.35)',
+              color: 'rgba(var(--offwhite-rgb),0.35)',
               textTransform: 'uppercase',
               letterSpacing: '0.1em',
               marginTop: '0.2rem',
@@ -181,8 +181,8 @@ function EventCard({ ev, dimmed = false, isMobile, hoveredEventId, onHover, onSe
             fontSize: isMobile ? '0.6rem' : '0.65rem',
             padding: isMobile ? '0.2rem 0.5rem' : '0.25rem 0.7rem',
             borderRadius: '2px',
-            backgroundColor: dimmed ? 'rgba(255,255,255,0.05)' : 'rgba(106,106,183,0.15)',
-            color: dimmed ? 'rgba(245,242,236,0.3)' : 'var(--purple)',
+            backgroundColor: dimmed ? 'rgba(255,255,255,0.05)' : 'rgba(var(--purple-rgb),0.15)',
+            color: dimmed ? 'rgba(var(--offwhite-rgb),0.3)' : 'var(--purple)',
             fontFamily: 'var(--font-inter)',
             letterSpacing: '0.08em',
             textTransform: 'uppercase',
@@ -200,7 +200,7 @@ function EventCard({ ev, dimmed = false, isMobile, hoveredEventId, onHover, onSe
           <p style={{
             fontFamily: 'var(--font-inter)',
             fontSize: '0.78rem',
-            color: 'rgba(245,242,236,0.4)',
+            color: 'rgba(var(--offwhite-rgb),0.4)',
             lineHeight: 1.6,
             marginBottom: '0.8rem',
           }}>{truncate(ev.description, 10)}</p>
@@ -210,7 +210,7 @@ function EventCard({ ev, dimmed = false, isMobile, hoveredEventId, onHover, onSe
           display: 'flex',
           gap: '0.6rem',
           fontSize: isMobile ? '0.66rem' : '0.72rem',
-          color: 'rgba(245,242,236,0.4)',
+          color: 'rgba(var(--offwhite-rgb),0.4)',
           fontFamily: 'var(--font-inter)',
           marginBottom: '0.4rem',
           flexWrap: 'wrap',
@@ -225,13 +225,13 @@ function EventCard({ ev, dimmed = false, isMobile, hoveredEventId, onHover, onSe
           alignItems: 'center',
           fontSize: isMobile ? '0.66rem' : '0.72rem',
           fontFamily: 'var(--font-inter)',
-          color: 'rgba(245,242,236,0.4)',
+          color: 'rgba(var(--offwhite-rgb),0.4)',
           marginTop: 'auto',
           paddingTop: isMobile ? '0.6rem' : '0.8rem',
           borderTop: '1px solid rgba(255,255,255,0.05)',
         }}>
           <span>👥 {ev.minPlayers}–{ev.maxPlayers} players</span>
-          <span style={{ color: dimmed ? 'rgba(245,242,236,0.3)' : 'var(--teal)' }}>
+          <span style={{ color: dimmed ? 'rgba(var(--offwhite-rgb),0.3)' : 'var(--teal)' }}>
             {ev.price === 0 ? 'Free' : `$${ev.price}/person`}
           </span>
         </div>
@@ -242,7 +242,7 @@ function EventCard({ ev, dimmed = false, isMobile, hoveredEventId, onHover, onSe
             width: '100%',
             textAlign: 'center',
             background: 'transparent',
-            border: `1px solid ${hovered ? 'var(--purple)' : 'rgba(106,106,183,0.3)'}`,
+            border: `1px solid ${hovered ? 'var(--purple)' : 'rgba(var(--purple-rgb),0.3)'}`,
             color: hovered ? 'var(--purple)' : 'var(--offwhite)',
             padding: '0.6rem',
             borderRadius: '2px',
@@ -355,9 +355,9 @@ export default function EventsPage() {
                   onMouseEnter={() => setHoveredFilter(b)}
                   onMouseLeave={() => setHoveredFilter(null)}
                   style={{
-                    backgroundColor: active ? 'var(--purple)' : hov ? 'rgba(106,106,183,0.15)' : 'transparent',
+                    backgroundColor: active ? 'var(--purple)' : hov ? 'rgba(var(--purple-rgb),0.15)' : 'transparent',
                     border: `1px solid ${active || hov ? 'var(--purple)' : 'rgba(255,255,255,0.1)'}`,
-                    color: active ? '#fff' : hov ? 'var(--offwhite)' : 'rgba(245,242,236,0.5)',
+                    color: active ? '#fff' : hov ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.5)',
                     padding: '0.4rem 1.2rem',
                     borderRadius: '50px',
                     fontSize: '0.75rem',
@@ -377,7 +377,7 @@ export default function EventsPage() {
               gap: isMobile ? '1.25rem' : '1.5rem',
             }}>
               {[0, 1, 2].map(i => (
-                <div key={i} style={{ border: '1px solid rgba(106,106,183,0.2)', borderRadius: '4px', overflow: 'hidden' }}>
+                <div key={i} style={{ border: '1px solid rgba(var(--purple-rgb),0.2)', borderRadius: '4px', overflow: 'hidden' }}>
                   <Skeleton height="160px" borderRadius="0" />
                   <div style={{ padding: '1.5rem' }}>
                     <Skeleton width="40%" height="1.8rem" style={{ marginBottom: '0.8rem' }} />
@@ -411,7 +411,7 @@ export default function EventsPage() {
                   marginBottom: '2.5rem',
                 }} />
                 {filteredUpcoming.length === 0 ? (
-                  <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>
+                  <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>
                     No upcoming events. Check back soon!
                   </p>
                 ) : (
@@ -434,14 +434,14 @@ export default function EventsPage() {
                     fontSize: '0.7rem',
                     letterSpacing: '0.3em',
                     textTransform: 'uppercase',
-                    color: 'rgba(245,242,236,0.3)',
+                    color: 'rgba(var(--offwhite-rgb),0.3)',
                     marginBottom: '1rem',
                     fontFamily: 'var(--font-inter)',
                   }}>Past Events</p>
                   <h2 style={{
                     fontFamily: 'var(--font-cinzel)',
                     fontSize: isMobile ? '1.5rem' : '2rem',
-                    color: 'rgba(245,242,236,0.4)',
+                    color: 'rgba(var(--offwhite-rgb),0.4)',
                     marginBottom: '1.5rem',
                   }}>Completed</h2>
                   <div style={{
@@ -485,7 +485,7 @@ export default function EventsPage() {
             onClick={e => e.stopPropagation()}
             style={{
               backgroundColor: '#111',
-              border: '1px solid rgba(106,106,183,0.3)',
+              border: '1px solid rgba(var(--purple-rgb),0.3)',
               borderRadius: '8px',
               width: '100%',
               maxWidth: '1100px',
@@ -520,7 +520,7 @@ export default function EventsPage() {
                   <span style={{
                     fontFamily: 'var(--font-cinzel)',
                     fontSize: '5rem',
-                    color: 'rgba(106,106,183,0.3)',
+                    color: 'rgba(var(--purple-rgb),0.3)',
                   }}>{new Date(selected.date).getDate()}</span>
                 </div>
               )}
@@ -561,7 +561,7 @@ export default function EventsPage() {
                   float: 'right',
                   background: 'transparent',
                   border: 'none',
-                  color: closeHovered ? 'var(--offwhite)' : 'rgba(245,242,236,0.4)',
+                  color: closeHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.4)',
                   fontSize: '1.2rem',
                   cursor: 'pointer',
                   marginBottom: '1rem',
@@ -576,7 +576,7 @@ export default function EventsPage() {
                 fontSize: '0.65rem',
                 padding: '0.25rem 0.8rem',
                 borderRadius: '2px',
-                backgroundColor: 'rgba(106,106,183,0.15)',
+                backgroundColor: 'rgba(var(--purple-rgb),0.15)',
                 color: 'var(--purple)',
                 fontFamily: 'var(--font-inter)',
                 letterSpacing: '0.1em',
@@ -596,7 +596,7 @@ export default function EventsPage() {
               <p style={{
                 fontFamily: 'var(--font-inter)',
                 fontSize: '0.88rem',
-                color: 'rgba(245,242,236,0.55)',
+                color: 'rgba(var(--offwhite-rgb),0.55)',
                 lineHeight: 1.8,
                 marginBottom: '1.5rem',
               }}>{selected.description}</p>
@@ -631,7 +631,7 @@ export default function EventsPage() {
                       fontSize: '0.62rem',
                       letterSpacing: '0.15em',
                       textTransform: 'uppercase',
-                      color: 'rgba(245,242,236,0.3)',
+                      color: 'rgba(var(--offwhite-rgb),0.3)',
                       marginBottom: '0.3rem',
                     }}>{label}</p>
                     <p style={{
@@ -658,7 +658,7 @@ export default function EventsPage() {
                     display: 'block',
                     width: '100%',
                     textAlign: 'center',
-                    backgroundColor: reserveHovered ? 'rgba(106,106,183,0.15)' : 'var(--purple)',
+                    backgroundColor: reserveHovered ? 'rgba(var(--purple-rgb),0.15)' : 'var(--purple)',
                     color: '#fff',
                     border: '1px solid var(--purple)',
                     padding: '0.9rem',
@@ -693,7 +693,7 @@ export default function EventsPage() {
                       textAlign: 'center',
                       backgroundColor: registerHovered ? 'rgba(255,255,255,0.06)' : 'transparent',
                       border: `1px solid ${registerHovered ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)'}`,
-                      color: registerHovered ? 'var(--offwhite)' : 'rgba(245,242,236,0.7)',
+                      color: registerHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.7)',
                       padding: '0.9rem',
                       borderRadius: '2px',
                       fontSize: '0.78rem',

@@ -58,10 +58,10 @@ function SuppliesStatus() {
   if (supplies.length === 0) return null
 
   return (
-    <div style={{ marginBottom: '2rem', border: `1px solid ${alerts.length > 0 ? 'rgba(228,51,41,0.3)' : 'rgba(0,160,152,0.2)'}`, borderRadius: '6px', overflow: 'hidden' }}>
+    <div style={{ marginBottom: '2rem', border: `1px solid ${alerts.length > 0 ? 'rgba(var(--red-rgb),0.3)' : 'rgba(var(--teal-rgb),0.2)'}`, borderRadius: '6px', overflow: 'hidden' }}>
       <button
         onClick={() => setOpen(o => !o)}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: alerts.length > 0 ? 'rgba(228,51,41,0.06)' : 'rgba(0,160,152,0.06)', border: 'none', color: 'var(--offwhite)', cursor: 'pointer', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: alerts.length > 0 ? 'rgba(var(--red-rgb),0.06)' : 'rgba(var(--teal-rgb),0.06)', border: 'none', color: 'var(--offwhite)', cursor: 'pointer', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <span style={{ color: alerts.length > 0 ? 'var(--red)' : 'var(--teal)' }}>●</span>
@@ -80,25 +80,25 @@ function SuppliesStatus() {
             const lowBranches = SUPPLY_BRANCHES.filter(b => (s.quantity[b] ?? 0) < s.threshold)
             const out = lowBranches.some(b => (s.quantity[b] ?? 0) <= 0)
             return (
-              <div key={s.id} style={{ background: out ? 'rgba(228,51,41,0.12)' : 'rgba(201,150,44,0.1)', border: `1px solid ${out ? 'rgba(228,51,41,0.35)' : 'rgba(201,150,44,0.3)'}`, borderRadius: '4px', padding: '0.3rem 0.7rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div key={s.id} style={{ background: out ? 'rgba(var(--red-rgb),0.12)' : 'rgba(var(--brand-secondary-rgb),0.1)', border: `1px solid ${out ? 'rgba(var(--red-rgb),0.35)' : 'rgba(var(--brand-secondary-rgb),0.3)'}`, borderRadius: '4px', padding: '0.3rem 0.7rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontSize: '0.78rem', color: 'var(--offwhite)' }}>{s.name}</span>
                 <span style={{ fontSize: '0.65rem', color: out ? 'var(--red)' : 'var(--brand-secondary)', fontWeight: 600 }}>
                   {lowBranches.map(b => `${b} ${s.quantity[b]}`).join(' · ')}
                 </span>
-                <span style={{ fontSize: '0.62rem', color: 'rgba(245,242,236,0.3)' }}>/ min {s.threshold}</span>
+                <span style={{ fontSize: '0.62rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>/ min {s.threshold}</span>
               </div>
             )
           })}
           {ok.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
               {ok.map(s => (
-                <span key={s.id} style={{ background: 'rgba(0,160,152,0.07)', border: '1px solid rgba(0,160,152,0.18)', borderRadius: '4px', padding: '0.3rem 0.6rem', fontSize: '0.72rem', color: 'rgba(245,242,236,0.5)' }}>
+                <span key={s.id} style={{ background: 'rgba(var(--teal-rgb),0.07)', border: '1px solid rgba(var(--teal-rgb),0.18)', borderRadius: '4px', padding: '0.3rem 0.6rem', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
                   {s.name}
                 </span>
               ))}
             </div>
           )}
-          <a href="/admin/supplies" style={{ marginLeft: 'auto', fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)', textDecoration: 'none', alignSelf: 'center', whiteSpace: 'nowrap', letterSpacing: '0.06em' }}>
+          <a href="/admin/supplies" style={{ marginLeft: 'auto', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none', alignSelf: 'center', whiteSpace: 'nowrap', letterSpacing: '0.06em' }}>
             Manage supplies →
           </a>
         </div>
@@ -127,7 +127,7 @@ function ReceivedTag({ ordered, received, unit }: {
   // Ordered quantities can be fractional (0.5 kg, 1.5 liter), so an exact
   // equality test would call a complete line short.
   const complete = received + 1e-9 >= ordered
-  const color = received <= 0 ? 'rgba(245,242,236,0.28)'
+  const color = received <= 0 ? 'rgba(var(--offwhite-rgb),0.28)'
     : complete ? 'var(--teal)'
     : 'var(--brand-secondary)'
   const label = received <= 0 ? 'nothing received'
@@ -305,7 +305,7 @@ function ReportCard({
         cursor: 'pointer',
       }} onClick={() => { cancelEdit(); setOpen(o => !o) }}>
         <span style={{
-          backgroundColor: 'rgba(0,160,152,0.12)', border: '1px solid rgba(0,160,152,0.3)',
+          backgroundColor: 'rgba(var(--teal-rgb),0.12)', border: '1px solid rgba(var(--teal-rgb),0.3)',
           color: 'var(--teal)', borderRadius: '2px', padding: '0.2rem 0.6rem',
           fontSize: '0.72rem', letterSpacing: '0.1em', fontFamily: 'var(--font-inter)', fontWeight: 600, flexShrink: 0,
         }}>
@@ -329,7 +329,7 @@ function ReportCard({
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.9rem', color: 'var(--offwhite)', fontWeight: 600, marginBottom: '0.1rem' }}>
             {report.weekLabel}
           </p>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.73rem', color: 'rgba(245,242,236,0.35)' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.73rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
             {report.submittedByEmail} · {fmtDate(report.submittedAt)}
           </p>
         </div>
@@ -345,17 +345,17 @@ function ReportCard({
               ✓ Done
             </span>
           ) : (
-            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.35)', flexShrink: 0 }}>
+            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.35)', flexShrink: 0 }}>
               {pendingCount} pending
             </span>
           )
         ) : (
-          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.3)', flexShrink: 0 }}>
+          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.3)', flexShrink: 0 }}>
             {items.length} item{items.length !== 1 ? 's' : ''}
           </span>
         )}
 
-        <span style={{ color: 'rgba(245,242,236,0.25)', fontSize: '1.1rem', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }}>›</span>
+        <span style={{ color: 'rgba(var(--offwhite-rgb),0.25)', fontSize: '1.1rem', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }}>›</span>
       </div>
 
       {/* Expanded body */}
@@ -370,7 +370,7 @@ function ReportCard({
           }}>
             <button onClick={copyAll} style={{
               backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
-              color: copied ? 'var(--teal)' : 'rgba(245,242,236,0.7)',
+              color: copied ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.7)',
               padding: '0.45rem 1rem', borderRadius: '2px', fontSize: '0.72rem',
               letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
               fontFamily: 'var(--font-inter)',
@@ -381,7 +381,7 @@ function ReportCard({
             {totalProvCt > 0 && (
               <span style={{
                 fontFamily: 'var(--font-inter)', fontSize: '0.75rem', fontWeight: 600,
-                color: allDone ? '#25D366' : 'rgba(245,242,236,0.4)',
+                color: allDone ? '#25D366' : 'rgba(var(--offwhite-rgb),0.4)',
                 letterSpacing: '0.03em',
               }}>
                 {allDone ? '✓ All providers sent' : `${pendingCount} of ${totalProvCt} pending`}
@@ -397,7 +397,7 @@ function ReportCard({
                 {fulfilment.full === fulfilment.total
                   ? `✓ All ${fulfilment.total} lines received`
                   : `${fulfilment.full} of ${fulfilment.total} lines received in full`}
-                <span style={{ color: 'rgba(245,242,236,0.3)', fontWeight: 400 }}>
+                <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontWeight: 400 }}>
                   {' · '}{fulfilment.deliveryCount}{' '}
                   {fulfilment.deliveryCount === 1 ? 'delivery' : 'deliveries'}
                 </span>
@@ -411,7 +411,7 @@ function ReportCard({
                 style={{
                   marginLeft: 'auto',
                   backgroundColor: 'rgba(220,50,50,0.08)', border: '1px solid rgba(220,50,50,0.25)',
-                  color: deleting ? 'rgba(245,242,236,0.25)' : 'rgba(220,90,90,0.9)',
+                  color: deleting ? 'rgba(var(--offwhite-rgb),0.25)' : 'rgba(220,90,90,0.9)',
                   padding: '0.45rem 1rem', borderRadius: '2px', fontSize: '0.72rem',
                   letterSpacing: '0.08em', textTransform: 'uppercase',
                   cursor: deleting ? 'not-allowed' : 'pointer',
@@ -442,7 +442,7 @@ function ReportCard({
             {canEdit && (
               <p style={{
                 fontFamily: 'var(--font-inter)', fontSize: '0.68rem',
-                color: 'rgba(245,242,236,0.22)', letterSpacing: '0.05em',
+                color: 'rgba(var(--offwhite-rgb),0.22)', letterSpacing: '0.05em',
                 marginBottom: '1rem',
               }}>
                 Click any quantity to edit · Enter to save · Esc to cancel
@@ -485,13 +485,13 @@ function ReportCard({
                         <div>
                           <span style={{
                             fontFamily: 'var(--font-inter)', fontSize: '0.83rem',
-                            color: provider ? 'var(--offwhite)' : 'rgba(245,242,236,0.3)',
+                            color: provider ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.3)',
                             fontWeight: provider ? 600 : 400,
                           }}>
                             {provider?.name ?? 'No Provider'}
                           </span>
                           {phone && (
-                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.4)', marginLeft: '0.6rem' }}>
+                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginLeft: '0.6rem' }}>
                               {phone}
                             </span>
                           )}
@@ -500,7 +500,7 @@ function ReportCard({
                         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
                           <button onClick={() => copyProvider(providerId)} style={{
                             backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-                            color: copiedProv === provKey ? 'var(--teal)' : 'rgba(245,242,236,0.4)',
+                            color: copiedProv === provKey ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.4)',
                             padding: '0.3rem 0.7rem', borderRadius: '2px', fontSize: '0.7rem',
                             cursor: 'pointer', fontFamily: 'var(--font-inter)',
                           }}>
@@ -531,7 +531,7 @@ function ReportCard({
                             style={{
                               backgroundColor: isSent ? 'rgba(37,211,102,0.22)' : 'rgba(255,255,255,0.04)',
                               border: `1px solid ${isSent ? 'rgba(37,211,102,0.6)' : 'rgba(255,255,255,0.12)'}`,
-                              color: isSent ? '#25D366' : 'rgba(245,242,236,0.3)',
+                              color: isSent ? '#25D366' : 'rgba(var(--offwhite-rgb),0.3)',
                               padding: '0.3rem 0.75rem', borderRadius: '2px', fontSize: '0.72rem',
                               cursor: 'pointer', fontFamily: 'var(--font-inter)',
                               fontWeight: isSent ? 700 : 400, letterSpacing: '0.04em',
@@ -554,7 +554,7 @@ function ReportCard({
                                   padding: '0.3rem 0.9rem',
                                   fontFamily: 'var(--font-inter)', fontSize: '0.67rem',
                                   letterSpacing: '0.1em', textTransform: 'uppercase',
-                                  color: category ? DEPT_COLOR[dept] : 'rgba(245,242,236,0.2)',
+                                  color: category ? DEPT_COLOR[dept] : 'rgba(var(--offwhite-rgb),0.2)',
                                   fontWeight: 600, marginTop: '0.2rem',
                                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                 }}>
@@ -573,11 +573,11 @@ function ReportCard({
                                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                     padding: '0.5rem 0.9rem',
                                     background: isEditing
-                                      ? 'rgba(0,160,152,0.06)'
+                                      ? 'rgba(var(--teal-rgb),0.06)'
                                       : 'rgba(255,255,255,0.025)',
                                     borderRadius: '2px',
                                     border: isEditing
-                                      ? '1px solid rgba(0,160,152,0.25)'
+                                      ? '1px solid rgba(var(--teal-rgb),0.25)'
                                       : '1px solid transparent',
                                   }}>
                                     <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>
@@ -612,7 +612,7 @@ function ReportCard({
                                             style={{
                                               width: '75px',
                                               backgroundColor: '#1a1a1a',
-                                              border: '1px solid rgba(0,160,152,0.6)',
+                                              border: '1px solid rgba(var(--teal-rgb),0.6)',
                                               color: 'var(--offwhite)',
                                               padding: '0.3rem 0.5rem',
                                               borderRadius: '2px',
@@ -622,7 +622,7 @@ function ReportCard({
                                               fontFamily: 'var(--font-inter)',
                                             }}
                                           />
-                                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.4)', minWidth: '30px' }}>
+                                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)', minWidth: '30px' }}>
                                             {UNIT_LABELS[item.unit]}
                                           </span>
                                         </div>
@@ -664,8 +664,8 @@ function ReportCard({
 
             {report.notes && (
               <div style={{ marginTop: '0.5rem', padding: '0.7rem 0.9rem', background: 'rgba(255,255,255,0.03)', borderRadius: '2px', borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
-                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.3)', marginBottom: '0.2rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Notes</p>
-                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.7)' }}>{report.notes}</p>
+                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '0.2rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Notes</p>
+                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.7)' }}>{report.notes}</p>
               </div>
             )}
           </div>
@@ -738,7 +738,7 @@ export default function WeeklyOrdersPage() {
         <div style={{ marginBottom: '2rem' }}>
           <a href="/admin" style={{
             fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
             marginBottom: '0.5rem', display: 'block', fontFamily: 'var(--font-inter)',
           }}>← Dashboard</a>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
@@ -746,7 +746,7 @@ export default function WeeklyOrdersPage() {
               <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)', marginBottom: '0.25rem' }}>
                 Weekly Order Reports
               </h1>
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.3)' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
                 End-of-week stock and supply orders — copy or WhatsApp directly to your suppliers
               </p>
             </div>
@@ -760,13 +760,13 @@ export default function WeeklyOrdersPage() {
                 <>
                   <a href="/admin/weekly-orders/template" style={{
                     backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-                    color: 'rgba(245,242,236,0.5)', textDecoration: 'none',
+                    color: 'rgba(var(--offwhite-rgb),0.5)', textDecoration: 'none',
                     padding: '0.65rem 1.2rem', borderRadius: '2px', fontSize: '0.72rem',
                     letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
                   }}>Edit Template</a>
                   <a href="/admin/weekly-orders/access" style={{
                     backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-                    color: 'rgba(245,242,236,0.4)', textDecoration: 'none',
+                    color: 'rgba(var(--offwhite-rgb),0.4)', textDecoration: 'none',
                     padding: '0.65rem 1.2rem', borderRadius: '2px', fontSize: '0.72rem',
                     letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
                   }}>Dept Access</a>
@@ -775,7 +775,7 @@ export default function WeeklyOrdersPage() {
               {canEdit && (
                 <a href="/admin/weekly-orders/log" style={{
                   backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-                  color: 'rgba(245,242,236,0.4)', textDecoration: 'none',
+                  color: 'rgba(var(--offwhite-rgb),0.4)', textDecoration: 'none',
                   padding: '0.65rem 1.2rem', borderRadius: '2px', fontSize: '0.72rem',
                   letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
                 }}>View Log</a>
@@ -798,13 +798,13 @@ export default function WeeklyOrdersPage() {
                     return true
                   }).length
                 : reports.filter(r => r.department === d && (branchFilter === 'all' || r.branch === branchFilter)).length
-              const color = d === 'all' ? 'rgba(245,242,236,0.5)' : DEPT_COLOR[d]
+              const color = d === 'all' ? 'rgba(var(--offwhite-rgb),0.5)' : DEPT_COLOR[d]
               const active = deptFilter === d
               return (
                 <button key={d} onClick={() => setDeptFilter(d)} style={{
                   backgroundColor: active ? (d === 'all' ? 'rgba(255,255,255,0.08)' : `${color}18`) : 'transparent',
                   border: `1px solid ${active ? (d === 'all' ? 'rgba(255,255,255,0.2)' : color) : 'rgba(255,255,255,0.08)'}`,
-                  color: active ? (d === 'all' ? 'var(--offwhite)' : color) : 'rgba(245,242,236,0.35)',
+                  color: active ? (d === 'all' ? 'var(--offwhite)' : color) : 'rgba(var(--offwhite-rgb),0.35)',
                   padding: '0.4rem 0.9rem', borderRadius: '2px', fontSize: '0.7rem',
                   letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer',
                   fontFamily: 'var(--font-inter)', display: 'flex', alignItems: 'center', gap: '0.35rem',
@@ -825,7 +825,7 @@ export default function WeeklyOrdersPage() {
             <button key={b} onClick={() => setBranchFilter(b)} style={{
               backgroundColor: branchFilter === b ? 'rgba(255,255,255,0.08)' : 'transparent',
               border: `1px solid ${branchFilter === b ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)'}`,
-              color: branchFilter === b ? 'var(--offwhite)' : 'rgba(245,242,236,0.4)',
+              color: branchFilter === b ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.4)',
               padding: '0.4rem 0.9rem', borderRadius: '2px', fontSize: '0.7rem',
               letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer',
               fontFamily: 'var(--font-inter)',
@@ -837,12 +837,12 @@ export default function WeeklyOrdersPage() {
 
         {/* List */}
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : visible.length === 0 ? (
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
-            color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
+            color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
             {deptFilter !== 'all'
               ? `No ${deptFilter} reports${branchFilter !== 'all' ? ` for ${branchFilter}` : ''} yet.`

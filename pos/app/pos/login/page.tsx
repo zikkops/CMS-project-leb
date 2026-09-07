@@ -102,7 +102,7 @@ export default function PosLoginPage() {
             type="submit" disabled={busy}
             style={{
               marginTop: '0.4rem', minHeight: '52px',
-              backgroundColor: busy ? 'rgba(0,160,152,0.35)' : 'var(--teal)',
+              backgroundColor: busy ? 'rgba(var(--teal-rgb),0.35)' : 'var(--teal)',
               color: '#fff', border: 'none', borderRadius: '4px',
               fontSize: '0.85rem', letterSpacing: '0.14em', textTransform: 'uppercase',
               fontFamily: 'var(--font-inter)', cursor: busy ? 'default' : 'pointer',

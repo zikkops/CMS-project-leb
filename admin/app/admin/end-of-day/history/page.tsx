@@ -43,13 +43,13 @@ export default function EndOfDayHistoryPage() {
         <div style={{ marginBottom: '2rem' }}>
           <a href="/admin/end-of-day" style={{
             fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
             display: 'block', marginBottom: '0.5rem', fontFamily: 'var(--font-inter)',
           }}>← Submit Report</a>
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', color: 'var(--offwhite)', marginBottom: '0.2rem' }}>
             EOD History
           </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
             Past end-of-day reports
           </p>
         </div>
@@ -65,7 +65,7 @@ export default function EndOfDayHistoryPage() {
                 borderRadius: '2px', border: 'none', cursor: 'pointer',
                 fontSize: '0.75rem', fontFamily: 'var(--font-inter)',
                 backgroundColor: branch === b ? 'var(--brand-secondary)' : 'rgba(255,255,255,0.05)',
-                color: branch === b ? '#000' : 'rgba(245,242,236,0.5)',
+                color: branch === b ? '#000' : 'rgba(var(--offwhite-rgb),0.5)',
                 fontWeight: branch === b ? 600 : 400,
               }}
             >
@@ -75,14 +75,14 @@ export default function EndOfDayHistoryPage() {
         </div>
 
         {loading && (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         )}
 
         {!loading && reports.length === 0 && (
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
-            color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
+            color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
             No reports yet for this branch.{' '}
             <a href="/admin/end-of-day" style={{ color: 'var(--brand-secondary)' }}>Submit the first one →</a>
@@ -114,22 +114,22 @@ export default function EndOfDayHistoryPage() {
                     <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)', fontWeight: 500 }}>
                       {r.date}
                     </span>
-                    <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.5)' }}>
+                    <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
                       {r.branch}
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: '1.5rem' }}>
                     <div>
-                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', marginBottom: '0.2rem' }}>Diff LBP</p>
+                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '0.2rem' }}>Diff LBP</p>
                       <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: diffLbpColor, fontWeight: 600 }}>{formatLbp(t.differenceLbp)}</p>
                     </div>
                     <div>
-                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', marginBottom: '0.2rem' }}>Diff USD</p>
+                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '0.2rem' }}>Diff USD</p>
                       <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: diffUsdColor, fontWeight: 600 }}>{formatUsd(t.differenceUsd)}</p>
                     </div>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.35)' }}>
+                    <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
                       {r.submittedByEmail}
                     </span>
                     <a
@@ -157,7 +157,7 @@ export default function EndOfDayHistoryPage() {
               padding: '0.5rem 1rem',
               fontFamily: 'var(--font-inter)', fontSize: '0.62rem',
               letterSpacing: '0.1em', textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.3)',
+              color: 'rgba(var(--offwhite-rgb),0.3)',
             }}>
               <span>Date</span>
               <span>Branch</span>
@@ -192,7 +192,7 @@ export default function EndOfDayHistoryPage() {
                   <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)', fontWeight: 500 }}>
                     {r.date}
                   </span>
-                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.5)' }}>
+                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
                     {r.branch}
                   </span>
                   <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: diffLbpColor, fontWeight: 600 }}>
@@ -201,7 +201,7 @@ export default function EndOfDayHistoryPage() {
                   <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: diffUsdColor, fontWeight: 600 }}>
                     {formatUsd(t.differenceUsd)}
                   </span>
-                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.35)' }}>
+                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
                     {r.submittedByEmail}
                   </span>
                   <a

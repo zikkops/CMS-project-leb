@@ -42,7 +42,7 @@ interface MenuItemRow {
 const label: React.CSSProperties = {
   display: 'block', fontFamily: 'var(--font-inter)', fontSize: '0.64rem',
   letterSpacing: '0.14em', textTransform: 'uppercase',
-  color: 'rgba(245,242,236,0.35)', marginBottom: '0.35rem',
+  color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.35rem',
 }
 const inp: React.CSSProperties = {
   background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)',
@@ -100,9 +100,9 @@ function GroupEditor({
 
   return (
     <div style={{
-      border: '1px solid rgba(0,160,152,0.35)', borderRadius: '5px',
+      border: '1px solid rgba(var(--teal-rgb),0.35)', borderRadius: '5px',
       padding: isMobile ? '1rem' : '1.25rem', marginBottom: '1rem',
-      background: 'rgba(0,160,152,0.04)',
+      background: 'rgba(var(--teal-rgb),0.04)',
     }}>
       <label style={label}>Group name</label>
       <input value={name} onChange={e => setName(e.target.value)}
@@ -122,12 +122,12 @@ function GroupEditor({
       </div>
       <p style={{
         fontFamily: 'var(--font-inter)', fontSize: '0.7rem',
-        color: 'rgba(245,242,236,0.3)', marginTop: '0.4rem', lineHeight: 1.6,
+        color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.4rem', lineHeight: 1.6,
       }}>
         {/* Spelled out because "min 0 max 1" is not how anybody thinks about a
             menu. 0 and 1 is an optional extra; 1 and 1 is a required choice. */}
         Minimum 0 makes it optional. Minimum 1 makes the waiter choose before
-        the item can be added. The POS will show: <strong style={{ color: 'rgba(245,242,236,0.5)' }}>
+        the item can be added. The POS will show: <strong style={{ color: 'rgba(var(--offwhite-rgb),0.5)' }}>
           {selectionLabel({ minSelections: minN || 0, maxSelections: maxN || 1 })}
         </strong>
       </p>
@@ -143,7 +143,7 @@ function GroupEditor({
               style={{ ...inp, flex: 2 }}
             />
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <span style={{ color: 'rgba(245,242,236,0.35)', fontSize: '0.85rem' }}>+$</span>
+              <span style={{ color: 'rgba(var(--offwhite-rgb),0.35)', fontSize: '0.85rem' }}>+$</span>
               <input
                 value={o.priceDelta}
                 onChange={e => setOptions(list => list.map((x, n) =>
@@ -158,7 +158,7 @@ function GroupEditor({
               style={{
                 ...btn, padding: '0 0.7rem', background: 'none',
                 border: '1px solid rgba(255,255,255,0.1)',
-                color: options.length === 1 ? 'rgba(245,242,236,0.15)' : 'var(--red)',
+                color: options.length === 1 ? 'rgba(var(--offwhite-rgb),0.15)' : 'var(--red)',
                 cursor: options.length === 1 ? 'default' : 'pointer',
               }}
             >✕</button>
@@ -171,7 +171,7 @@ function GroupEditor({
         disabled={options.length >= MODIFIER_LIMITS.optionsPerGroup}
         style={{
           ...btn, marginTop: '0.6rem', background: 'none',
-          border: '1px dashed rgba(255,255,255,0.18)', color: 'rgba(245,242,236,0.5)',
+          border: '1px dashed rgba(255,255,255,0.18)', color: 'rgba(var(--offwhite-rgb),0.5)',
         }}
       >+ Add option</button>
 
@@ -185,7 +185,7 @@ function GroupEditor({
       <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.1rem' }}>
         <button onClick={onCancel} style={{
           ...btn, flex: 1, background: 'transparent',
-          border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(245,242,236,0.6)',
+          border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(var(--offwhite-rgb),0.6)',
         }}>Cancel</button>
         <button
           disabled={Boolean(problem) || saving}
@@ -202,7 +202,7 @@ function GroupEditor({
           })}
           style={{
             ...btn, flex: 2, border: 'none', color: '#fff',
-            backgroundColor: problem || saving ? 'rgba(0,160,152,0.25)' : 'var(--teal)',
+            backgroundColor: problem || saving ? 'rgba(var(--teal-rgb),0.25)' : 'var(--teal)',
             cursor: problem || saving ? 'default' : 'pointer',
             letterSpacing: '0.1em', textTransform: 'uppercase',
           }}
@@ -237,9 +237,9 @@ function AttachPanel({
               onClick={() => onToggle(i, !on)}
               style={{
                 ...btn, minHeight: '36px', padding: '0 0.75rem', fontSize: '0.75rem',
-                backgroundColor: on ? 'rgba(0,160,152,0.18)' : 'transparent',
+                backgroundColor: on ? 'rgba(var(--teal-rgb),0.18)' : 'transparent',
                 border: `1px solid ${on ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
-                color: on ? 'var(--offwhite)' : 'rgba(245,242,236,0.45)',
+                color: on ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.45)',
               }}
             >{on ? '✓ ' : ''}{i.name}</button>
           )
@@ -247,7 +247,7 @@ function AttachPanel({
         {items.length === 0 && (
           <p style={{
             fontFamily: 'var(--font-inter)', fontSize: '0.78rem',
-            color: 'rgba(245,242,236,0.3)',
+            color: 'rgba(var(--offwhite-rgb),0.3)',
           }}>No menu items yet — add some under Manage Menu first.</p>
         )}
       </div>
@@ -339,7 +339,7 @@ export default function ModifiersPage() {
     <div style={{ maxWidth: '760px' }}>
       <Link href="/admin/menu" style={{
         fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.16em',
-        textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)',
+        textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)',
         textDecoration: 'none', display: 'block', marginBottom: '0.6rem',
       }}>← Manage Menu</Link>
 
@@ -349,7 +349,7 @@ export default function ModifiersPage() {
       }}>Item options</h1>
       <p style={{
         fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
-        color: 'rgba(245,242,236,0.4)', lineHeight: 1.7, marginBottom: '1.75rem', maxWidth: '56ch',
+        color: 'rgba(var(--offwhite-rgb),0.4)', lineHeight: 1.7, marginBottom: '1.75rem', maxWidth: '56ch',
       }}>
         The choices a waiter is asked for when they add an item at the till —
         size, milk, extras. Define a group once and attach it to as many items
@@ -359,7 +359,7 @@ export default function ModifiersPage() {
       {error && (
         <p style={{
           color: 'var(--red)', fontFamily: 'var(--font-inter)', fontSize: '0.82rem',
-          background: 'rgba(228,51,41,0.08)', border: '1px solid rgba(228,51,41,0.25)',
+          background: 'rgba(var(--red-rgb),0.08)', border: '1px solid rgba(var(--red-rgb),0.25)',
           borderRadius: '3px', padding: '0.7rem 0.9rem', marginBottom: '1rem', lineHeight: 1.6,
         }}>{error}</p>
       )}
@@ -390,14 +390,14 @@ export default function ModifiersPage() {
                   }}>{g.name}</p>
                   <p style={{
                     fontFamily: 'var(--font-inter)', fontSize: '0.75rem',
-                    color: 'rgba(245,242,236,0.4)', marginTop: '0.2rem',
+                    color: 'rgba(var(--offwhite-rgb),0.4)', marginTop: '0.2rem',
                   }}>
                     {selectionLabel(g)} · {g.options.map((o: ModifierOption) =>
                       o.priceDelta > 0 ? `${o.name} +$${o.priceDelta}` : o.name).join(', ')}
                   </p>
                   <p style={{
                     fontFamily: 'var(--font-inter)', fontSize: '0.7rem',
-                    color: 'rgba(245,242,236,0.28)', marginTop: '0.25rem',
+                    color: 'rgba(var(--offwhite-rgb),0.28)', marginTop: '0.25rem',
                   }}>
                     On {items.filter(i => i.modifierGroupIds.includes(g.id)).length} item(s)
                   </p>
@@ -405,15 +405,15 @@ export default function ModifiersPage() {
                 <div style={{ display: 'flex', gap: '0.4rem' }}>
                   <button onClick={() => setExpanded(expanded === g.id ? null : g.id)} style={{
                     ...btn, background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(245,242,236,0.6)',
+                    border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(var(--offwhite-rgb),0.6)',
                   }}>{expanded === g.id ? 'Done' : 'Attach'}</button>
                   <button onClick={() => setEditing(g)} style={{
                     ...btn, background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(245,242,236,0.6)',
+                    border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(var(--offwhite-rgb),0.6)',
                   }}>Edit</button>
                   <button onClick={() => remove(g)} style={{
                     ...btn, background: 'transparent',
-                    border: '1px solid rgba(228,51,41,0.3)', color: 'var(--red)',
+                    border: '1px solid rgba(var(--red-rgb),0.3)', color: 'var(--red)',
                   }}>Delete</button>
                 </div>
               </div>
@@ -430,7 +430,7 @@ export default function ModifiersPage() {
       {groups.length === 0 && editing !== 'new' && (
         <p style={{
           fontFamily: 'var(--font-inter)', fontSize: '0.88rem',
-          color: 'rgba(245,242,236,0.3)', lineHeight: 1.7, padding: '1.5rem 0',
+          color: 'rgba(var(--offwhite-rgb),0.3)', lineHeight: 1.7, padding: '1.5rem 0',
         }}>
           No option groups yet. A café usually starts with one for size and one
           for milk.

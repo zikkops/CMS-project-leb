@@ -146,27 +146,27 @@ export default function TodaySchedulePage() {
         <div style={{ marginBottom: '2rem' }}>
           <a href="/admin" style={{
             fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)', textDecoration: 'none', fontFamily: 'var(--font-inter)',
+            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none', fontFamily: 'var(--font-inter)',
             marginBottom: '0.5rem', display: 'block',
           }}>← Back to Dashboard</a>
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)' }}>
             Today&apos;s Schedule
           </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.4rem' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.4rem' }}>
             {todayLabel}{!loading && ` · ${entries.length} reservation${entries.length !== 1 ? 's' : ''}`}
           </p>
         </div>
 
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : entries.length === 0 ? (
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
             padding: isMobile ? '3rem 1.5rem' : '4rem', textAlign: 'center',
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem',
           }}>
-            <FontAwesomeIcon icon={faCalendarDay} style={{ width: '32px', color: 'rgba(245,242,236,0.15)' }} />
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.3)' }}>
+            <FontAwesomeIcon icon={faCalendarDay} style={{ width: '32px', color: 'rgba(var(--offwhite-rgb),0.15)' }} />
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
               No approved reservations for today
             </p>
           </div>
@@ -190,7 +190,7 @@ export default function TodaySchedulePage() {
                     </span>
                     <span style={{
                       fontFamily: 'var(--font-inter)', fontSize: '0.72rem',
-                      color: 'rgba(245,242,236,0.45)',
+                      color: 'rgba(var(--offwhite-rgb),0.45)',
                     }}>
                       {entry.data.branch}
                     </span>
@@ -201,7 +201,7 @@ export default function TodaySchedulePage() {
                     <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.05rem', color: 'var(--offwhite)' }}>
                       Table{(entry.data as TableReservation).tableNumbers.length > 1 ? 's' : ''}{' '}
                       {(entry.data as TableReservation).tableNumbers.join(', ')}
-                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.4)', marginLeft: '0.75rem' }}>
+                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginLeft: '0.75rem' }}>
                         {fmtTime((entry.data as TableReservation).startAt)} – {fmtTime((entry.data as TableReservation).endAt)}
                       </span>
                     </p>
@@ -209,7 +209,7 @@ export default function TodaySchedulePage() {
                   {entry.type === 'event' && (
                     <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.05rem', color: 'var(--offwhite)' }}>
                       {(entry.data as EventReservation).eventTitle}
-                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.4)', marginLeft: '0.75rem' }}>
+                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginLeft: '0.75rem' }}>
                         {fmtEventTime((entry.data as EventReservation).eventTimeStart)}
                         {(entry.data as EventReservation).eventTimeEnd
                           ? ` – ${fmtEventTime((entry.data as EventReservation).eventTimeEnd!)}`
@@ -222,7 +222,7 @@ export default function TodaySchedulePage() {
                   {entry.type === 'table' && (
                     <>
                       <div style={rowStyle}>
-                        <span style={{ color: 'rgba(245,242,236,0.4)' }}>Contact</span>
+                        <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)' }}>Contact</span>
                         <span style={{ color: 'var(--offwhite)', textAlign: 'right' }}>
                           {(entry.data as TableReservation).contactName}
                           {(entry.data as TableReservation).contactPhone
@@ -231,7 +231,7 @@ export default function TodaySchedulePage() {
                         </span>
                       </div>
                       <div style={rowStyle}>
-                        <span style={{ color: 'rgba(245,242,236,0.4)' }}>Party size</span>
+                        <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)' }}>Party size</span>
                         <span style={{ color: 'var(--offwhite)', textAlign: 'right' }}>
                           {(entry.data as TableReservation).partySize} {(entry.data as TableReservation).partySize === 1 ? 'person' : 'people'}
                         </span>
@@ -248,11 +248,11 @@ export default function TodaySchedulePage() {
                   {entry.type === 'event' && (
                     <>
                       <div style={rowStyle}>
-                        <span style={{ color: 'rgba(245,242,236,0.4)' }}>Booked by</span>
+                        <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)' }}>Booked by</span>
                         <span style={{ color: 'var(--offwhite)', textAlign: 'right' }}>{(entry.data as EventReservation).userName}</span>
                       </div>
                       <div style={rowStyle}>
-                        <span style={{ color: 'rgba(245,242,236,0.4)' }}>Party size</span>
+                        <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)' }}>Party size</span>
                         <span style={{ color: 'var(--offwhite)', textAlign: 'right' }}>
                           {(entry.data as EventReservation).partySize} {(entry.data as EventReservation).partySize === 1 ? 'person' : 'people'}
                         </span>
@@ -268,7 +268,7 @@ export default function TodaySchedulePage() {
                           {(entry.data as EventReservation).participantPhones.map(phone => (
                             <span key={phone} style={{
                               fontSize: '0.72rem', padding: '0.25rem 0.7rem', borderRadius: '2px',
-                              backgroundColor: 'rgba(255,255,255,0.05)', color: 'rgba(245,242,236,0.6)', fontFamily: 'var(--font-inter)',
+                              backgroundColor: 'rgba(255,255,255,0.05)', color: 'rgba(var(--offwhite-rgb),0.6)', fontFamily: 'var(--font-inter)',
                             }}>📞 {phone}</span>
                           ))}
                         </div>

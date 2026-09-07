@@ -58,8 +58,8 @@ export default function AttendeeSearch({
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
-              backgroundColor: 'rgba(106,106,183,0.12)',
-              border: '1px solid rgba(106,106,183,0.25)',
+              backgroundColor: 'rgba(var(--purple-rgb),0.12)',
+              border: '1px solid rgba(var(--purple-rgb),0.25)',
               borderRadius: '20px',
               padding: '0.3rem 0.5rem 0.3rem 0.3rem',
             }}>
@@ -70,14 +70,14 @@ export default function AttendeeSearch({
                 {u.avatarUrl ? (
                   <img src={u.avatarUrl} alt={u.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <span style={{ fontSize: '0.6rem', color: 'rgba(245,242,236,0.5)', fontFamily: 'var(--font-cinzel)' }}>
+                  <span style={{ fontSize: '0.6rem', color: 'rgba(var(--offwhite-rgb),0.5)', fontFamily: 'var(--font-cinzel)' }}>
                     {u.displayName.charAt(0).toUpperCase()}
                   </span>
                 )}
               </span>
               <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'var(--offwhite)' }}>{u.displayName}</span>
               <button type="button" onClick={() => onRemove(u.uid)} style={{
-                background: 'transparent', border: 'none', color: 'rgba(228,51,41,0.7)',
+                background: 'transparent', border: 'none', color: 'rgba(var(--red-rgb),0.7)',
                 cursor: 'pointer', fontSize: '0.85rem', padding: '0 0.2rem', lineHeight: 1,
               }}>✕</button>
             </div>
@@ -93,13 +93,13 @@ export default function AttendeeSearch({
         style={inputStyle}
       />
       {loading && (
-        <p style={{ fontSize: '0.75rem', color: 'rgba(245,242,236,0.4)', fontFamily: 'var(--font-inter)', marginTop: '0.4rem' }}>
+        <p style={{ fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)', fontFamily: 'var(--font-inter)', marginTop: '0.4rem' }}>
           Loading members…
         </p>
       )}
       {search.trim() && !loading && (
         results.length === 0 ? (
-          <p style={{ fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', marginTop: '0.6rem' }}>
+          <p style={{ fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', marginTop: '0.6rem' }}>
             No matching members found.
           </p>
         ) : (
@@ -136,14 +136,14 @@ export default function AttendeeSearch({
                   {u.avatarUrl ? (
                     <img src={u.avatarUrl} alt={u.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
-                    <span style={{ fontSize: '0.7rem', color: 'rgba(245,242,236,0.5)', fontFamily: 'var(--font-cinzel)' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.5)', fontFamily: 'var(--font-cinzel)' }}>
                       {u.displayName.charAt(0).toUpperCase()}
                     </span>
                   )}
                 </span>
                 <span style={{ minWidth: 0 }}>
                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'var(--offwhite)' }}>{u.displayName}</p>
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)' }}>{u.email}</p>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>{u.email}</p>
                 </span>
               </button>
             ))}

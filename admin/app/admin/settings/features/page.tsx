@@ -74,13 +74,13 @@ function FeatureRow({
       <div style={{ minWidth: 0 }}>
         <p style={{
           fontFamily: 'var(--font-inter)', fontSize: '0.88rem', fontWeight: 500,
-          color: effective ? 'var(--offwhite)' : 'rgba(245,242,236,0.35)',
+          color: effective ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.35)',
         }}>
           {def.label}
           {locked && (
             <span style={{
               marginLeft: '0.55rem', fontSize: '0.58rem', letterSpacing: '0.1em',
-              textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)',
+              textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)',
               border: '1px solid rgba(255,255,255,0.12)', borderRadius: '3px', padding: '0.1rem 0.35rem',
             }}>Core</span>
           )}
@@ -92,12 +92,12 @@ function FeatureRow({
           </p>
         )}
         {!held && effective && dependents.length > 0 && (
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.28)', marginTop: '0.2rem' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.28)', marginTop: '0.2rem' }}>
             Switching off also stops {dependents.join(', ')}
           </p>
         )}
         {locked && (
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.28)', marginTop: '0.2rem' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.28)', marginTop: '0.2rem' }}>
             Always on — there must be no state that locks a superadmin out.
           </p>
         )}
@@ -112,7 +112,7 @@ function FeatureRow({
         style={{
           flexShrink: 0, width: '44px', height: '24px', borderRadius: '12px',
           border: `1px solid ${effective ? 'var(--teal)' : 'rgba(255,255,255,0.12)'}`,
-          background: effective ? 'rgba(0,160,152,0.25)' : 'transparent',
+          background: effective ? 'rgba(var(--teal-rgb),0.25)' : 'transparent',
           cursor: locked ? 'not-allowed' : 'pointer',
           opacity: locked ? 0.35 : 1,
           padding: 0, position: 'relative', transition: 'background 0.18s ease, border-color 0.18s ease',
@@ -121,7 +121,7 @@ function FeatureRow({
         <span style={{
           position: 'absolute', top: '3px', left: effective ? '23px' : '3px',
           width: '16px', height: '16px', borderRadius: '50%',
-          background: effective ? 'var(--teal)' : 'rgba(245,242,236,0.35)',
+          background: effective ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.35)',
           transition: 'left 0.18s ease, background 0.18s ease',
         }} />
       </button>
@@ -189,7 +189,7 @@ export default function FeatureSwitchboardPage() {
   if (!superadmin) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-        <p style={{ color: 'rgba(245,242,236,0.4)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem', textAlign: 'center', maxWidth: '38ch', lineHeight: 1.7 }}>
+        <p style={{ color: 'rgba(var(--offwhite-rgb),0.4)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem', textAlign: 'center', maxWidth: '38ch', lineHeight: 1.7 }}>
           Switching modules on and off is superadmin-only.
         </p>
       </div>
@@ -202,7 +202,7 @@ export default function FeatureSwitchboardPage() {
 
         <Link href="/admin/settings" style={{
           fontFamily: 'var(--font-inter)', fontSize: '0.66rem', letterSpacing: '0.2em',
-          textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+          textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
           display: 'block', marginBottom: '0.6rem',
         }}>← Business Settings</Link>
 
@@ -211,7 +211,7 @@ export default function FeatureSwitchboardPage() {
           color: 'var(--offwhite)', marginBottom: '0.6rem',
         }}>Modules</h1>
         <p style={{
-          fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.4)',
+          fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.4)',
           lineHeight: 1.7, marginBottom: '2rem', maxWidth: '56ch',
         }}>
           Switch off what this installation doesn&apos;t use. A module that is off
@@ -221,9 +221,9 @@ export default function FeatureSwitchboardPage() {
         </p>
 
         <p style={{
-          fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.3)',
+          fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)',
           lineHeight: 1.7, marginBottom: '2.5rem', maxWidth: '56ch',
-          borderLeft: '2px solid rgba(201,150,44,0.4)', paddingLeft: '0.8rem',
+          borderLeft: '2px solid rgba(var(--brand-secondary-rgb),0.4)', paddingLeft: '0.8rem',
         }}>
           These are business switches, not permissions. Someone determined can
           still reach a switched-off page by typing its address — what stops
@@ -267,7 +267,7 @@ export default function FeatureSwitchboardPage() {
           disabled={saving || loading || !dirty}
           style={{
             background: dirty ? 'var(--teal)' : 'rgba(255,255,255,0.05)',
-            color: dirty ? '#000' : 'rgba(245,242,236,0.3)',
+            color: dirty ? '#000' : 'rgba(var(--offwhite-rgb),0.3)',
             border: 'none', borderRadius: '4px', padding: '0.75rem 1.75rem',
             fontFamily: 'var(--font-inter)', fontSize: '0.8rem', fontWeight: 700,
             letterSpacing: '0.06em', cursor: saving || !dirty ? 'default' : 'pointer',

@@ -63,7 +63,7 @@ const inp: React.CSSProperties = {
 
 const labelStyle: React.CSSProperties = {
   display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em',
-  textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)',
+  textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)',
   marginBottom: '0.4rem', fontFamily: 'var(--font-inter)',
 }
 
@@ -122,11 +122,11 @@ function LineRow({
 
   // Quiet by default, loud only when something needs attention. The whole
   // point is that a receiver's eye lands on the exceptions.
-  const accent = short ? 'var(--red)' : priceUp ? 'var(--brand-secondary)' : 'rgba(0,160,152,0.2)'
+  const accent = short ? 'var(--red)' : priceUp ? 'var(--brand-secondary)' : 'rgba(var(--teal-rgb),0.2)'
 
   return (
     <div style={{
-      background: touched ? 'rgba(201,150,44,0.04)' : 'rgba(255,255,255,0.02)',
+      background: touched ? 'rgba(var(--brand-secondary-rgb),0.04)' : 'rgba(255,255,255,0.02)',
       border: `1px solid ${touched ? accent : 'rgba(255,255,255,0.07)'}`,
       borderRadius: '6px', padding: '0.8rem 0.9rem',
       display: 'flex', flexDirection: 'column', gap: '0.6rem',
@@ -137,7 +137,7 @@ function LineRow({
             {line.name}
           </p>
           {line.nameAr && (
-            <p dir="rtl" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(201,150,44,0.8)', marginTop: '0.1rem' }}>
+            <p dir="rtl" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--brand-secondary-rgb),0.8)', marginTop: '0.1rem' }}>
               {line.nameAr}
             </p>
           )}
@@ -145,7 +145,7 @@ function LineRow({
         {line.qtyOrdered > 0 && (
           <span style={{
             fontFamily: 'var(--font-inter)', fontSize: '0.62rem', letterSpacing: '0.06em',
-            color: 'rgba(245,242,236,0.3)', whiteSpace: 'nowrap',
+            color: 'rgba(var(--offwhite-rgb),0.3)', whiteSpace: 'nowrap',
           }}>
             ordered {line.qtyOrdered} {line.unit}
           </span>
@@ -183,7 +183,7 @@ function LineRow({
           {usdEquivalent !== null && (
             <p style={{
               fontFamily: 'var(--font-inter)', fontSize: '0.62rem', textAlign: 'center',
-              color: 'rgba(245,242,236,0.3)', marginTop: '0.25rem',
+              color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.25rem',
             }}>
               ≈ ${usdEquivalent.toFixed(2)}
             </p>
@@ -194,7 +194,7 @@ function LineRow({
           display: 'flex', flexDirection: isMobile ? 'row' : 'column',
           alignItems: isMobile ? 'center' : 'flex-end', gap: '0.5rem',
         }}>
-          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.55)', fontWeight: 600 }}>
+          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.55)', fontWeight: 600 }}>
             {fmt(round2(line.qtyReceived * line.unitCost), currency)}
           </span>
           {/* Seeded from the item, overridable here: the same product arrives
@@ -205,9 +205,9 @@ function LineRow({
             onClick={() => onChange(index, { vatable: line.vatable === false })}
             title={line.vatable === false ? 'No VAT on this line' : 'VAT applies to this line'}
             style={{
-              background: line.vatable === false ? 'transparent' : 'rgba(0,160,152,0.1)',
-              border: `1px solid ${line.vatable === false ? 'rgba(255,255,255,0.1)' : 'rgba(0,160,152,0.35)'}`,
-              color: line.vatable === false ? 'rgba(245,242,236,0.3)' : 'var(--teal)',
+              background: line.vatable === false ? 'transparent' : 'rgba(var(--teal-rgb),0.1)',
+              border: `1px solid ${line.vatable === false ? 'rgba(255,255,255,0.1)' : 'rgba(var(--teal-rgb),0.35)'}`,
+              color: line.vatable === false ? 'rgba(var(--offwhite-rgb),0.3)' : 'var(--teal)',
               borderRadius: '3px', padding: '0.2rem 0.45rem', cursor: 'pointer',
               fontFamily: 'var(--font-inter)', fontSize: '0.6rem', letterSpacing: '0.06em',
               fontWeight: 700, whiteSpace: 'nowrap',
@@ -239,7 +239,7 @@ function LineRow({
           onClick={() => setShowReject(true)}
           style={{
             background: 'none', border: 'none', padding: 0, textAlign: 'left',
-            color: 'rgba(245,242,236,0.28)', fontFamily: 'var(--font-inter)',
+            color: 'rgba(var(--offwhite-rgb),0.28)', fontFamily: 'var(--font-inter)',
             fontSize: '0.68rem', cursor: 'pointer',
           }}
         >+ reject damaged / expired</button>
@@ -576,7 +576,7 @@ function ReceivingInner() {
   if (branchOptions.length === 0) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-        <p style={{ color: 'rgba(245,242,236,0.4)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem', textAlign: 'center' }}>
+        <p style={{ color: 'rgba(var(--offwhite-rgb),0.4)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem', textAlign: 'center' }}>
           No branch assigned for receiving.
         </p>
       </div>
@@ -593,13 +593,13 @@ function ReceivingInner() {
         <div style={{ marginBottom: '1.75rem' }}>
           <a href="/admin/supplies" style={{
             fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
             marginBottom: '0.5rem', display: 'block', fontFamily: 'var(--font-inter)',
           }}>← Inventory Management</a>
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', color: 'var(--offwhite)', marginBottom: '0.2rem' }}>
             Receive a Delivery
           </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.3)' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
             Pick the weekly order this delivery is against — everything comes pre-filled as ordered.
             Only change the lines that were short, damaged, or priced differently.
           </p>
@@ -628,11 +628,11 @@ function ReceivingInner() {
         </div>
 
         {!branch || !department ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
             Select a branch and department to begin.
           </p>
         ) : loadingRefs ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>Loading…</p>
         ) : (
           <>
             {/* Source order */}
@@ -648,7 +648,7 @@ function ReceivingInner() {
 
             {unlinkedCount > 0 && (
               <div style={{
-                background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.22)',
+                background: 'rgba(var(--brand-secondary-rgb),0.08)', border: '1px solid rgba(var(--brand-secondary-rgb),0.22)',
                 borderRadius: '4px', padding: '0.85rem 1.1rem', marginBottom: '1.25rem',
                 fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--brand-secondary)', lineHeight: 1.5,
               }}>
@@ -674,7 +674,7 @@ function ReceivingInner() {
                   })}
                 </select>
                 {hiddenCount > 0 && (
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.62rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.3rem' }}>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.62rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.3rem' }}>
                     Showing only this supplier&apos;s lines. Receive the rest when their van arrives.
                   </p>
                 )}
@@ -689,9 +689,9 @@ function ReceivingInner() {
                   {(['USD', 'LBP'] as Currency[]).map(c => (
                     <button key={c} onClick={() => changeCurrency(c)} style={{
                       flex: 1,
-                      background: currency === c ? 'rgba(0,160,152,0.15)' : 'transparent',
+                      background: currency === c ? 'rgba(var(--teal-rgb),0.15)' : 'transparent',
                       border: `1px solid ${currency === c ? 'var(--teal)' : 'rgba(255,255,255,0.09)'}`,
-                      color: currency === c ? 'var(--teal)' : 'rgba(245,242,236,0.35)',
+                      color: currency === c ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.35)',
                       borderRadius: '4px', padding: '0.5rem', fontSize: '0.78rem',
                       fontWeight: currency === c ? 600 : 400, cursor: 'pointer',
                       fontFamily: 'var(--font-inter)',
@@ -712,7 +712,7 @@ function ReceivingInner() {
                   value={rateUsed} onChange={e => setRateUsed(e.target.value)}
                   style={{ ...inp, width: isMobile ? '100%' : '220px' }}
                 />
-                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.28)', marginTop: '0.35rem' }}>
+                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.28)', marginTop: '0.35rem' }}>
                   Saved with this delivery so its totals never change if the rate moves.
                 </p>
               </div>
@@ -720,7 +720,7 @@ function ReceivingInner() {
 
             {lines.length === 0 ? (
               <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '2.5rem 1.5rem', textAlign: 'center', marginBottom: '1.5rem' }}>
-                <p style={{ color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                <p style={{ color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem', marginBottom: '1rem' }}>
                   {orderId ? 'No stocked items on this order.' : 'Pick a weekly order above, or add items for an unplanned delivery.'}
                 </p>
                 <select
@@ -741,10 +741,10 @@ function ReceivingInner() {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem',
                 }}>
-                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)' }}>
+                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                     {visible.length} line{visible.length === 1 ? '' : 's'}
                     {hiddenCount > 0 && (
-                      <span style={{ color: 'rgba(245,242,236,0.28)' }}>
+                      <span style={{ color: 'rgba(var(--offwhite-rgb),0.28)' }}>
                         {' '}· {hiddenCount} on this order from another supplier
                       </span>
                     )}
@@ -753,7 +753,7 @@ function ReceivingInner() {
                     )}
                   </span>
                   <button onClick={confirmAllAsOrdered} style={{
-                    background: 'rgba(0,160,152,0.12)', border: '1px solid var(--teal)',
+                    background: 'rgba(var(--teal-rgb),0.12)', border: '1px solid var(--teal)',
                     color: 'var(--teal)', padding: '0.55rem 1.25rem', borderRadius: '4px',
                     fontSize: '0.74rem', letterSpacing: '0.06em', fontWeight: 600,
                     cursor: 'pointer', fontFamily: 'var(--font-inter)',
@@ -802,7 +802,7 @@ function ReceivingInner() {
                       : [['Of which taxable', totals.taxableSubtotal] as [string, number]]),
                     [`VAT (${(vatRate * 100).toFixed(2).replace(/.?0+$/, '')}%)`, totals.vat],
                   ].map(([label, value]) => (
-                    <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', color: 'rgba(245,242,236,0.45)' }}>
+                    <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>
                       <span>{label}</span><span>{fmt(value as number, currency)}</span>
                     </div>
                   ))}
@@ -825,7 +825,7 @@ function ReceivingInner() {
             {err && <p style={{ color: 'var(--red)', fontSize: '0.82rem', marginBottom: '1rem', fontFamily: 'var(--font-inter)' }}>{err}</p>}
             {warning && (
               <div style={{
-                background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.22)',
+                background: 'rgba(var(--brand-secondary-rgb),0.08)', border: '1px solid rgba(var(--brand-secondary-rgb),0.22)',
                 borderRadius: '4px', padding: '0.85rem 1.1rem', marginBottom: '1rem',
                 fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--brand-secondary)', lineHeight: 1.5,
               }}>{warning}</div>
@@ -838,7 +838,7 @@ function ReceivingInner() {
                 disabled={!ready || saving}
                 style={{
                   background: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
-                  color: 'rgba(245,242,236,0.6)', padding: '0.75rem 1.5rem', borderRadius: '2px',
+                  color: 'rgba(var(--offwhite-rgb),0.6)', padding: '0.75rem 1.5rem', borderRadius: '2px',
                   fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase',
                   cursor: ready && !saving ? 'pointer' : 'not-allowed',
                   fontFamily: 'var(--font-inter)', opacity: saving ? 0.6 : 1,
@@ -851,7 +851,7 @@ function ReceivingInner() {
                 title={!ready ? 'Add at least one line first' : undefined}
                 style={{
                   background: ready ? deptColor : 'rgba(255,255,255,0.08)',
-                  color: ready ? '#000' : 'rgba(245,242,236,0.3)', border: 'none',
+                  color: ready ? '#000' : 'rgba(var(--offwhite-rgb),0.3)', border: 'none',
                   padding: '0.75rem 2rem', borderRadius: '2px',
                   fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700,
                   cursor: ready && !saving ? 'pointer' : 'not-allowed',
@@ -862,7 +862,7 @@ function ReceivingInner() {
               {/* A draft moves nothing. Said plainly, because a receiver
                   walking away mid-entry at a back door is the normal case,
                   not the edge case. */}
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.28)' }}>
+              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.28)' }}>
                 A draft moves no stock. Receiving does, and can&apos;t be edited afterwards.
               </span>
             </div>

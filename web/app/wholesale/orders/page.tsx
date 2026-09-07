@@ -64,7 +64,7 @@ export default function WholesaleOrdersPage() {
       <main style={{ minHeight: '100vh', backgroundColor: 'var(--black)', paddingTop: '5rem' }}>
         <div style={{ maxWidth: '860px', margin: '0 auto', padding: isMobile ? '2rem 1.25rem 4rem' : '3rem 2rem 6rem' }}>
 
-          <Link href="/wholesale" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', textDecoration: 'none', display: 'block', marginBottom: '0.6rem' }}>
+          <Link href="/wholesale" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none', display: 'block', marginBottom: '0.6rem' }}>
             ← Catalogue
           </Link>
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.6rem' : '2rem', color: 'var(--offwhite)', marginBottom: '2rem' }}>
@@ -72,9 +72,9 @@ export default function WholesaleOrdersPage() {
           </h1>
 
           {loading ? (
-            <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+            <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
           ) : orders.length === 0 ? (
-            <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem' }}>
+            <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem' }}>
               No orders yet.
             </div>
           ) : (
@@ -90,9 +90,9 @@ export default function WholesaleOrdersPage() {
                       <div>
                         <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'var(--offwhite)' }}>
                           {o.id.slice(0, 8).toUpperCase()}
-                          <span style={{ color: 'rgba(245,242,236,0.3)', marginLeft: '0.6rem', fontSize: '0.78rem' }}>{fmt(o.createdAt)}</span>
+                          <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)', marginLeft: '0.6rem', fontSize: '0.78rem' }}>{fmt(o.createdAt)}</span>
                         </p>
-                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.35)' }}>
+                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
                           {o.items.length} title{o.items.length !== 1 ? 's' : ''} · {o.itemCount} unit{o.itemCount !== 1 ? 's' : ''}
                         </p>
                       </div>
@@ -100,7 +100,7 @@ export default function WholesaleOrdersPage() {
                         <span style={{
                           fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.1em',
                           textTransform: 'uppercase', fontWeight: 700,
-                          color: STATUS_COLOR[o.status] ?? 'rgba(245,242,236,0.4)',
+                          color: STATUS_COLOR[o.status] ?? 'rgba(var(--offwhite-rgb),0.4)',
                         }}>{o.status}</span>
                         <span style={{ fontFamily: 'var(--font-inter)', fontSize: '1rem', fontWeight: 700, color: '#9B9BD6' }}>
                           ${o.totalUsd.toFixed(2)}
@@ -116,12 +116,12 @@ export default function WholesaleOrdersPage() {
                               fontFamily: 'var(--font-inter)', fontSize: '0.68rem',
                               letterSpacing: '0.06em', textTransform: 'uppercase',
                               color: 'var(--teal)', textDecoration: 'none',
-                              border: '1px solid rgba(0,160,152,0.35)', borderRadius: '3px',
+                              border: '1px solid rgba(var(--teal-rgb),0.35)', borderRadius: '3px',
                               padding: '0.3rem 0.7rem', whiteSpace: 'nowrap',
                             }}
                           >Invoice</a>
                         )}
-                        <span style={{ color: 'rgba(245,242,236,0.25)' }}>{open ? '▾' : '▸'}</span>
+                        <span style={{ color: 'rgba(var(--offwhite-rgb),0.25)' }}>{open ? '▾' : '▸'}</span>
                       </div>
                     </div>
 
@@ -132,7 +132,7 @@ export default function WholesaleOrdersPage() {
                             {o.items.map(i => (
                               <tr key={i.productId} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                                 <td style={{ padding: '0.45rem 0', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'var(--offwhite)' }}>{i.name}</td>
-                                <td style={{ padding: '0.45rem 0', textAlign: 'right', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.45)' }}>
+                                <td style={{ padding: '0.45rem 0', textAlign: 'right', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>
                                   {i.quantity} × ${i.unitPrice.toFixed(2)}
                                 </td>
                                 <td style={{ padding: '0.45rem 0 0.45rem 1rem', textAlign: 'right', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', fontWeight: 600, color: 'var(--offwhite)' }}>
@@ -143,7 +143,7 @@ export default function WholesaleOrdersPage() {
                           </tbody>
                         </table>
                         {o.invoiceNumber && (
-                          <p style={{ marginTop: '0.9rem', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.45)' }}>
+                          <p style={{ marginTop: '0.9rem', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>
                             Invoice{' '}
                             <span style={{ color: 'var(--offwhite)' }}>{o.invoiceNumber}</span>
                             {o.invoiceUrl && (
@@ -157,7 +157,7 @@ export default function WholesaleOrdersPage() {
                           </p>
                         )}
                         {o.notes && (
-                          <p style={{ marginTop: '0.9rem', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)' }}>
+                          <p style={{ marginTop: '0.9rem', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                             Notes: {o.notes}
                           </p>
                         )}

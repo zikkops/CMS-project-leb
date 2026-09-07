@@ -61,7 +61,7 @@ function ProductCard({ product }: { product: Product }) {
         display: 'flex',
         flexDirection: 'column',
         background: hovered ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)',
-        border: `1px solid ${hovered ? 'rgba(201,150,44,0.4)' : 'rgba(255,255,255,0.07)'}`,
+        border: `1px solid ${hovered ? 'rgba(var(--brand-secondary-rgb),0.4)' : 'rgba(255,255,255,0.07)'}`,
         borderRadius: '6px',
         overflow: 'hidden',
         transition: 'all 0.22s ease',
@@ -106,7 +106,7 @@ function ProductCard({ product }: { product: Product }) {
         {/* Branch stock badge */}
         <div style={{
           position: 'absolute', top: '0.6rem', left: '0.6rem',
-          background: inStock ? 'rgba(0,160,152,0.85)' : 'rgba(228,51,41,0.75)',
+          background: inStock ? 'rgba(var(--teal-rgb),0.85)' : 'rgba(var(--red-rgb),0.75)',
           color: '#fff',
           padding: '0.2rem 0.55rem',
           borderRadius: '3px',
@@ -137,19 +137,19 @@ function ProductCard({ product }: { product: Product }) {
 
         <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '0.4rem' }}>
           {product.players && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
               <FontAwesomeIcon icon={faUsers} style={{ width: '11px' }} />
               {product.players}
             </span>
           )}
           {product.duration && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
               <FontAwesomeIcon icon={faClock} style={{ width: '11px' }} />
               {product.duration}
             </span>
           )}
           {product.age && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
               <FontAwesomeIcon icon={faCakeCandles} style={{ width: '11px' }} />
               {product.age}+
             </span>
@@ -231,7 +231,7 @@ export default function BranchCataloguePage() {
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.6rem' : '2.1rem', color: 'var(--offwhite)', marginBottom: '0.8rem' }}>
               No such branch
             </h1>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.9rem', color: 'rgba(245,242,236,0.4)', lineHeight: 1.7, marginBottom: '2rem' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.9rem', color: 'rgba(var(--offwhite-rgb),0.4)', lineHeight: 1.7, marginBottom: '2rem' }}>
               {requested ? <>There is no branch called &ldquo;{requested}&rdquo;.</> : 'No branch was named.'}
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', justifyContent: 'center' }}>
@@ -264,7 +264,7 @@ export default function BranchCataloguePage() {
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.5rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
               {BRANCH} Catalogue
             </h1>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(245,242,236,0.4)', lineHeight: 1.7 }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.4)', lineHeight: 1.7 }}>
               Everything available at the {BRANCH} branch.
             </p>
           </div>
@@ -273,7 +273,7 @@ export default function BranchCataloguePage() {
           <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.75rem', marginBottom: '2rem', alignItems: isMobile ? 'stretch' : 'center' }}>
             {/* Search */}
             <div style={{ position: 'relative', flex: isMobile ? undefined : '0 0 260px' }}>
-              <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', width: '13px', color: 'rgba(245,242,236,0.3)', pointerEvents: 'none' }} />
+              <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', width: '13px', color: 'rgba(var(--offwhite-rgb),0.3)', pointerEvents: 'none' }} />
               <input
                 type="search"
                 placeholder="Search products…"
@@ -282,7 +282,7 @@ export default function BranchCataloguePage() {
                 style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--offwhite)', padding: '0.7rem 1rem 0.7rem 2.4rem', borderRadius: '4px', fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)', boxSizing: 'border-box' }}
               />
               {search && (
-                <button onClick={() => setSearch('')} style={{ position: 'absolute', right: '0.7rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(245,242,236,0.35)', cursor: 'pointer', padding: 0 }}>
+                <button onClick={() => setSearch('')} style={{ position: 'absolute', right: '0.7rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(var(--offwhite-rgb),0.35)', cursor: 'pointer', padding: 0 }}>
                   <FontAwesomeIcon icon={faXmark} style={{ width: '13px' }} />
                 </button>
               )}
@@ -300,14 +300,14 @@ export default function BranchCataloguePage() {
             </select>
 
             {/* In-stock toggle */}
-            <button onClick={() => setStockOnly(s => !s)} style={{ padding: '0.4rem 0.85rem', borderRadius: '20px', border: `1px solid ${stockOnly ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`, fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'var(--font-inter)', backgroundColor: stockOnly ? 'rgba(0,160,152,0.12)' : 'transparent', color: stockOnly ? 'var(--teal)' : 'rgba(245,242,236,0.45)', whiteSpace: 'nowrap', transition: 'all 0.15s ease' }}>
+            <button onClick={() => setStockOnly(s => !s)} style={{ padding: '0.4rem 0.85rem', borderRadius: '20px', border: `1px solid ${stockOnly ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`, fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'var(--font-inter)', backgroundColor: stockOnly ? 'rgba(var(--teal-rgb),0.12)' : 'transparent', color: stockOnly ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.45)', whiteSpace: 'nowrap', transition: 'all 0.15s ease' }}>
               In Stock Only
             </button>
           </div>
 
           {/* Results count */}
           {!loading && (
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.25)', marginBottom: '1.5rem', letterSpacing: '0.06em' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.25)', marginBottom: '1.5rem', letterSpacing: '0.06em' }}>
               {filtered.length} item{filtered.length !== 1 ? 's' : ''} at {BRANCH}
             </p>
           )}
@@ -320,7 +320,7 @@ export default function BranchCataloguePage() {
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(245,242,236,0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem' }}>
+            <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem' }}>
               {products.length === 0 ? `Nothing recorded for the ${BRANCH} branch yet.` : 'Nothing matches your filters.'}
             </div>
           ) : (

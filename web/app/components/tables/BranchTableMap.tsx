@@ -42,8 +42,8 @@ export default function BranchTableMap({ imageUrl, imageWidth, imageHeight, tabl
               left: `${leftPct}%`, top: `${topPct}%`,
               width: `${widthPct}%`, height: `${heightPct}%`,
               transform: `translate(-50%, -50%) rotate(${table.rotation}deg)`,
-              backgroundColor: selected ? 'var(--teal)' : clickable ? 'rgba(0,160,152,0.4)' : 'rgba(20,20,20,0.35)',
-              border: `2px solid ${selected ? 'var(--teal)' : clickable ? 'rgba(0,160,152,0.6)' : 'rgba(20,20,20,0.55)'}`,
+              backgroundColor: selected ? 'var(--teal)' : clickable ? 'rgba(var(--teal-rgb),0.4)' : 'rgba(20,20,20,0.35)',
+              border: `2px solid ${selected ? 'var(--teal)' : clickable ? 'rgba(var(--teal-rgb),0.6)' : 'rgba(20,20,20,0.55)'}`,
               ...shapeStyle(table.shape),
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: clickable ? 'pointer' : 'not-allowed',
@@ -63,7 +63,7 @@ export default function BranchTableMap({ imageUrl, imageWidth, imageHeight, tabl
           top: `${pixelRectToPercent(hovered, imageWidth, imageHeight).topPct}%`,
           transform: 'translate(-50%, calc(-100% - 14px))',
           backgroundColor: '#0d0d0d',
-          border: '1px solid rgba(0,160,152,0.4)',
+          border: '1px solid rgba(var(--teal-rgb),0.4)',
           borderRadius: '4px',
           padding: '0.5rem 0.8rem',
           whiteSpace: 'nowrap',
@@ -74,7 +74,7 @@ export default function BranchTableMap({ imageUrl, imageWidth, imageHeight, tabl
           <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.78rem', color: 'var(--offwhite)' }}>
             Table {hovered.number} · seats {capacityLabel(hovered)}
           </p>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.5)', marginTop: '0.15rem' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginTop: '0.15rem' }}>
             {TABLE_TYPE_LABELS[hovered.tableType]}
           </p>
         </div>

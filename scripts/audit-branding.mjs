@@ -85,6 +85,16 @@ const PATTERNS = [
     severity: 'medium',
   },
   {
+    label: 'Original palette as rgba() channels',
+    // The form the hex pattern above cannot see, and the one that hid roughly
+    // fifteen hundred frozen colours: a translucent colour written as literal
+    // channels. `rgba(var(--offwhite-rgb), 0.45)` is the configured form —
+    // brandCss.ts emits a triplet per brand colour for exactly this.
+    re: /rgba\(\s*(?:245\s*,\s*242\s*,\s*236|0\s*,\s*160\s*,\s*152|228\s*,\s*51\s*,\s*41|201\s*,\s*150\s*,\s*44|106\s*,\s*106\s*,\s*183)\s*,/,
+    why: 'Use rgba(var(--offwhite-rgb), a) and friends; brandCss.ts emits the triplets.',
+    severity: 'medium',
+  },
+  {
     label: 'Original font families',
     re: /\b(Cinzel|Bree_Serif|Bree Serif)\b/,
     why: 'Fonts load in app/layout.tsx only — a face elsewhere is a leftover.',

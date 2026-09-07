@@ -33,7 +33,7 @@ function useIsMobile(breakpoint = 768) {
 const labelStyle: React.CSSProperties = {
   display: 'block', fontFamily: 'var(--font-inter)', fontSize: '0.66rem',
   letterSpacing: '0.14em', textTransform: 'uppercase',
-  color: 'rgba(245,242,236,0.35)', marginBottom: '0.4rem',
+  color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.4rem',
 }
 
 const inp: React.CSSProperties = {
@@ -73,12 +73,12 @@ function RateField({
         />
         <span style={{
           fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
-          color: 'rgba(245,242,236,0.45)', whiteSpace: 'nowrap',
+          color: 'rgba(var(--offwhite-rgb),0.45)', whiteSpace: 'nowrap',
         }}>{suffix}</span>
       </div>
       <p style={{
         fontFamily: 'var(--font-inter)', fontSize: '0.68rem',
-        color: 'rgba(245,242,236,0.3)', marginTop: '0.35rem', lineHeight: 1.6, maxWidth: '46ch',
+        color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.35rem', lineHeight: 1.6, maxWidth: '46ch',
       }}>{hint}</p>
     </div>
   )
@@ -121,12 +121,12 @@ function PrefixField({
         />
         <span style={{
           fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
-          color: 'rgba(245,242,236,0.45)', whiteSpace: 'nowrap',
+          color: 'rgba(var(--offwhite-rgb),0.45)', whiteSpace: 'nowrap',
         }}>{example}</span>
       </div>
       <p style={{
         fontFamily: 'var(--font-inter)', fontSize: '0.68rem',
-        color: locked ? 'rgba(201,150,44,0.75)' : 'rgba(245,242,236,0.3)',
+        color: locked ? 'rgba(var(--brand-secondary-rgb),0.75)' : 'rgba(var(--offwhite-rgb),0.3)',
         marginTop: '0.35rem', lineHeight: 1.6, maxWidth: '46ch',
       }}>
         {locked
@@ -225,7 +225,7 @@ export default function BusinessSettingsPage() {
   if (!superadmin) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-        <p style={{ color: 'rgba(245,242,236,0.4)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem', textAlign: 'center', maxWidth: '38ch', lineHeight: 1.7 }}>
+        <p style={{ color: 'rgba(var(--offwhite-rgb),0.4)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem', textAlign: 'center', maxWidth: '38ch', lineHeight: 1.7 }}>
           These settings decide what customers are charged and what staff are
           paid, so they are superadmin-only. Ask a superadmin to make the change.
         </p>
@@ -246,7 +246,7 @@ export default function BusinessSettingsPage() {
           color: 'var(--offwhite)', marginBottom: '0.6rem',
         }}>Business Settings</h1>
         <p style={{
-          fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.4)',
+          fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.4)',
           lineHeight: 1.7, marginBottom: '2.5rem', maxWidth: '54ch',
         }}>
           These took a redeploy to change. They take effect the moment you save
@@ -307,7 +307,7 @@ export default function BusinessSettingsPage() {
           disabled={saving || loading || !dirty}
           style={{
             background: dirty ? 'var(--teal)' : 'rgba(255,255,255,0.05)',
-            color: dirty ? '#000' : 'rgba(245,242,236,0.3)',
+            color: dirty ? '#000' : 'rgba(var(--offwhite-rgb),0.3)',
             border: 'none', borderRadius: '4px', padding: '0.75rem 1.75rem',
             fontFamily: 'var(--font-inter)', fontSize: '0.8rem', fontWeight: 700,
             letterSpacing: '0.06em', cursor: saving || !dirty ? 'default' : 'pointer',
@@ -316,7 +316,7 @@ export default function BusinessSettingsPage() {
         >{saving ? 'Saving…' : dirty ? 'Save changes' : 'No changes'}</button>
 
         <p style={{
-          fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.25)',
+          fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.25)',
           marginTop: '2.5rem', lineHeight: 1.7, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1.25rem',
         }}>
           Every change is recorded in the activity log with the old and new

@@ -99,7 +99,7 @@ function ClosedRow({ check, isMobile, onRefund }: {
         <span style={{
           fontFamily: 'var(--font-cinzel)', fontSize: '1.3rem',
           minWidth: '2.2rem', textAlign: 'center',
-          color: refunded ? 'rgba(228,51,41,0.7)' : 'var(--offwhite)',
+          color: refunded ? 'rgba(var(--red-rgb),0.7)' : 'var(--offwhite)',
         }}>{check.tableNumber}</span>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -107,7 +107,7 @@ function ClosedRow({ check, isMobile, onRefund }: {
             {/* The receipt number first: it is what somebody is holding when
                 they come to ask about a check. */}
             {check.receiptNumber && (
-              <span style={{ color: 'rgba(245,242,236,0.55)', fontFamily: 'monospace', fontSize: '0.78rem' }}>
+              <span style={{ color: 'rgba(var(--offwhite-rgb),0.55)', fontFamily: 'monospace', fontSize: '0.78rem' }}>
                 {check.receiptNumber}{' · '}
               </span>
             )}
@@ -122,10 +122,10 @@ function ClosedRow({ check, isMobile, onRefund }: {
               <span style={{ color: 'var(--teal)' }}> · staff meal</span>
             )}
             {voided.length > 0 && (
-              <span style={{ color: 'rgba(228,51,41,0.7)' }}> · {voided.length} voided</span>
+              <span style={{ color: 'rgba(var(--red-rgb),0.7)' }}> · {voided.length} voided</span>
             )}
           </p>
-          <p style={{ fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)', marginTop: '0.15rem' }}>
+          <p style={{ fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)', marginTop: '0.15rem' }}>
             closed {timeOf(check)} · {check.guestCount} {check.guestCount === 1 ? 'guest' : 'guests'}
           </p>
         </div>
@@ -133,11 +133,11 @@ function ClosedRow({ check, isMobile, onRefund }: {
         <div style={{ textAlign: 'right' }}>
           <p style={{
             fontSize: '0.95rem', fontWeight: 600,
-            color: refunded ? 'rgba(245,242,236,0.35)' : 'var(--teal)',
+            color: refunded ? 'rgba(var(--offwhite-rgb),0.35)' : 'var(--teal)',
             textDecoration: refunded ? 'line-through' : 'none',
           }}>{money(totals.net)}</p>
           {totals.discount > 0 && (
-            <p style={{ fontSize: '0.65rem', color: 'rgba(245,242,236,0.35)' }}>
+            <p style={{ fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
               was {money(totals.gross)}
             </p>
           )}
@@ -150,7 +150,7 @@ function ClosedRow({ check, isMobile, onRefund }: {
         }}>
           <p style={{
             fontFamily: 'var(--font-inter)', fontSize: '0.7rem',
-            color: 'rgba(245,242,236,0.35)', paddingTop: '0.7rem', lineHeight: 1.7,
+            color: 'rgba(var(--offwhite-rgb),0.35)', paddingTop: '0.7rem', lineHeight: 1.7,
           }}>
             Closed {stampOf(meta.closedAt?.seconds)}
             {meta.closedByEmail ? ` by ${meta.closedByEmail}` : ''}
@@ -170,19 +170,19 @@ function ClosedRow({ check, isMobile, onRefund }: {
           {check.lines.map(l => (
             <p key={l.id} style={{
               fontFamily: 'var(--font-inter)', fontSize: '0.8rem',
-              color: l.status === 'void' ? 'rgba(228,51,41,0.6)' : 'rgba(245,242,236,0.7)',
+              color: l.status === 'void' ? 'rgba(var(--red-rgb),0.6)' : 'rgba(var(--offwhite-rgb),0.7)',
               textDecoration: l.status === 'void' ? 'line-through' : 'none',
               paddingTop: '0.5rem',
             }}>
               {l.quantity}× {l.name}
               {l.modifiers.length > 0 && (
-                <span style={{ color: 'rgba(245,242,236,0.4)' }}>
+                <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                   {' '}({l.modifiers.map(m => m.optionName).join(', ')})
                 </span>
               )}
               {l.note && <span style={{ color: 'var(--brand-secondary)' }}> — {l.note}</span>}
               {l.status === 'void' && l.voidReason && (
-                <span style={{ color: 'rgba(228,51,41,0.5)' }}> — {l.voidReason}</span>
+                <span style={{ color: 'rgba(var(--red-rgb),0.5)' }}> — {l.voidReason}</span>
               )}
             </p>
           ))}
@@ -200,8 +200,8 @@ function ClosedRow({ check, isMobile, onRefund }: {
                 boxSizing: 'border-box', lineHeight: '28px',
                 padding: '0.5rem 1rem', textAlign: 'center', textDecoration: 'none',
                 borderRadius: '4px',
-                backgroundColor: 'rgba(0,160,152,0.08)',
-                border: '1px solid rgba(0,160,152,0.35)', color: 'var(--teal)',
+                backgroundColor: 'rgba(var(--teal-rgb),0.08)',
+                border: '1px solid rgba(var(--teal-rgb),0.35)', color: 'var(--teal)',
                 fontFamily: 'var(--font-inter)', fontSize: '0.78rem',
                 letterSpacing: '0.08em', textTransform: 'uppercase',
               }}
@@ -215,8 +215,8 @@ function ClosedRow({ check, isMobile, onRefund }: {
             <button onClick={onRefund} style={{
               width: '100%', minHeight: '44px', marginTop: '0.9rem',
               borderRadius: '4px', cursor: 'pointer',
-              backgroundColor: 'rgba(228,51,41,0.08)',
-              border: '1px solid rgba(228,51,41,0.35)', color: 'var(--red)',
+              backgroundColor: 'rgba(var(--red-rgb),0.08)',
+              border: '1px solid rgba(var(--red-rgb),0.35)', color: 'var(--red)',
               fontFamily: 'var(--font-inter)', fontSize: '0.78rem',
               letterSpacing: '0.08em', textTransform: 'uppercase',
             }}>Refund this check</button>
@@ -266,7 +266,7 @@ export default function ClosedChecksPage() {
       <div style={{ maxWidth: '640px', margin: '0 auto' }}>
         <button onClick={() => router.push('/pos')} style={{
           background: 'none', border: 'none', padding: '0.3rem 0', cursor: 'pointer',
-          color: 'rgba(245,242,236,0.35)', fontSize: '0.7rem', letterSpacing: '0.14em',
+          color: 'rgba(var(--offwhite-rgb),0.35)', fontSize: '0.7rem', letterSpacing: '0.14em',
           textTransform: 'uppercase', fontFamily: 'var(--font-inter)', marginBottom: '0.6rem',
         }}>← Floor</button>
 
@@ -275,7 +275,7 @@ export default function ClosedChecksPage() {
           color: 'var(--offwhite)', marginBottom: '0.4rem',
         }}>Closed checks</h1>
         <p style={{
-          fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)',
+          fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)',
           lineHeight: 1.6, marginBottom: '1.5rem', maxWidth: '52ch',
         }}>
           Receipts for what was ordered and sent, newest first. Tap one to see
@@ -288,7 +288,7 @@ export default function ClosedChecksPage() {
         {failed && (
           <p style={{
             color: 'var(--red)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6,
-            background: 'rgba(228,51,41,0.08)', border: '1px solid rgba(228,51,41,0.25)',
+            background: 'rgba(var(--red-rgb),0.08)', border: '1px solid rgba(var(--red-rgb),0.25)',
             borderRadius: '3px', padding: '0.7rem 0.9rem',
           }}>{failed}</p>
         )}
@@ -296,14 +296,14 @@ export default function ClosedChecksPage() {
         {error && (
           <p style={{
             color: 'var(--brand-secondary)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6,
-            background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.25)',
+            background: 'rgba(var(--brand-secondary-rgb),0.08)', border: '1px solid rgba(var(--brand-secondary-rgb),0.25)',
             borderRadius: '3px', padding: '0.7rem 0.9rem',
           }}>{error}</p>
         )}
 
         {days.length === 0 ? (
           <p style={{
-            color: 'rgba(245,242,236,0.3)', fontSize: '0.9rem',
+            color: 'rgba(var(--offwhite-rgb),0.3)', fontSize: '0.9rem',
             padding: '2.5rem 0', textAlign: 'center',
           }}>Nothing closed yet.</p>
         ) : days.map(([day, list]) => {
@@ -318,7 +318,7 @@ export default function ClosedChecksPage() {
                   fontSize: '0.64rem', letterSpacing: '0.16em', textTransform: 'uppercase',
                   color: 'var(--teal)',
                 }}>{day}</p>
-                <p style={{ fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)' }}>
+                <p style={{ fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                   {list.length} {list.length === 1 ? 'check' : 'checks'} · {money(dayNet)}
                 </p>
               </div>

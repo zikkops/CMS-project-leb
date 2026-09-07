@@ -32,9 +32,9 @@ function Row({ label, value, color, sub }: { label: string; value: string; color
       padding: '0.85rem 1.25rem',
       borderBottom: '1px solid rgba(255,255,255,0.05)',
     }}>
-      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.45)', letterSpacing: '0.04em' }}>
+      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.45)', letterSpacing: '0.04em' }}>
         {label}
-        {sub && <span style={{ display: 'block', fontSize: '0.68rem', color: 'rgba(245,242,236,0.25)', marginTop: '0.2rem' }}>{sub}</span>}
+        {sub && <span style={{ display: 'block', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.25)', marginTop: '0.2rem' }}>{sub}</span>}
       </span>
       <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.95rem', fontWeight: 600, color: color ?? 'var(--offwhite)', textAlign: 'right' }}>
         {value}
@@ -129,13 +129,13 @@ function EndOfDaySummaryInner() {
         <div style={{ marginBottom: '2rem' }}>
           <a href="/admin/end-of-day/history" style={{
             fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
             display: 'block', marginBottom: '0.5rem', fontFamily: 'var(--font-inter)',
           }}>← EOD History</a>
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.6rem', color: 'var(--offwhite)', marginBottom: '0.2rem' }}>
             Daily Summary
           </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
             End-of-day totals for screenshotting
           </p>
         </div>
@@ -145,7 +145,7 @@ function EndOfDaySummaryInner() {
           <div>
             <label style={{
               display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em',
-              textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)',
+              textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)',
               marginBottom: '0.4rem', fontFamily: 'var(--font-inter)',
             }}>Branch</label>
             {branchOptions.length === 1 ? (
@@ -160,7 +160,7 @@ function EndOfDaySummaryInner() {
           <div>
             <label style={{
               display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em',
-              textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)',
+              textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)',
               marginBottom: '0.4rem', fontFamily: 'var(--font-inter)',
             }}>Date</label>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inp} />
@@ -168,7 +168,7 @@ function EndOfDaySummaryInner() {
         </div>
 
         {loading && (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', textAlign: 'center', padding: '2rem 0' }}>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', textAlign: 'center', padding: '2rem 0' }}>
             Loading…
           </p>
         )}
@@ -177,7 +177,7 @@ function EndOfDaySummaryInner() {
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
             padding: '2.5rem', textAlign: 'center',
-            color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
+            color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
             No report submitted for {branch} on {date}.
           </div>
@@ -194,7 +194,7 @@ function EndOfDaySummaryInner() {
             }}>Tips (USD)</label>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1 }}>
-                <span style={{ color: 'rgba(245,242,236,0.4)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem', flexShrink: 0 }}>$</span>
+                <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem', flexShrink: 0 }}>$</span>
                 <input
                   type="number" min="0" step="0.01"
                   value={tips}
@@ -237,8 +237,8 @@ function EndOfDaySummaryInner() {
           }}>
             {/* Card header */}
             <div style={{
-              background: 'rgba(201,150,44,0.08)',
-              borderBottom: '1px solid rgba(201,150,44,0.2)',
+              background: 'rgba(var(--brand-secondary-rgb),0.08)',
+              borderBottom: '1px solid rgba(var(--brand-secondary-rgb),0.2)',
               padding: '1rem 1.25rem',
             }}>
               <p style={{
@@ -248,7 +248,7 @@ function EndOfDaySummaryInner() {
               }}>
                 {BRAND.name} — Daily Summary
               </p>
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.4)' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                 {report.branch} · {report.date}
               </p>
             </div>
@@ -281,7 +281,7 @@ function EndOfDaySummaryInner() {
               borderTop: '1px solid rgba(255,255,255,0.08)',
             }}>
               <div style={{ padding: '0.6rem 1.25rem 0.2rem' }}>
-                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)' }}>
+                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
                   Difference vs POS
                 </span>
               </div>
@@ -303,10 +303,10 @@ function EndOfDaySummaryInner() {
               borderTop: '1px solid rgba(255,255,255,0.05)',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', color: 'rgba(245,242,236,0.2)' }}>
+              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.2)' }}>
                 Submitted by {report.submittedByEmail}
               </span>
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', color: 'rgba(245,242,236,0.2)' }}>
+              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.2)' }}>
                 Rate: {formatLbp(report.exchangeRate)} LBP = $1
               </span>
             </div>

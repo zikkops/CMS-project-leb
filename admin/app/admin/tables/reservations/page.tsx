@@ -122,7 +122,7 @@ export default function TableReservationsPage() {
     fontSize: '0.82rem',
   }
 
-  const fieldLabelStyle = { color: 'rgba(245,242,236,0.4)' }
+  const fieldLabelStyle = { color: 'rgba(var(--offwhite-rgb),0.4)' }
   const fieldValueStyle = { color: 'var(--offwhite)', textAlign: 'right' as const }
 
   return (
@@ -140,13 +140,13 @@ export default function TableReservationsPage() {
           <div>
             <a href="/admin" style={{
               fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.3)', textDecoration: 'none', fontFamily: 'var(--font-inter)',
+              color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none', fontFamily: 'var(--font-inter)',
               marginBottom: '0.5rem', display: 'block',
             }}>← Back to Dashboard</a>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)' }}>
               Table Reservations
             </h1>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.4rem' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.4rem' }}>
               {!isManagerBranchScoped
                 ? (adminBranchFilter === 'all' ? 'All branches' : adminBranchFilter)
                 : branchIds.length === 0
@@ -195,7 +195,7 @@ export default function TableReservationsPage() {
             <button key={t} onClick={() => { setTab(t); setProcessedIds(new Set()) }} style={{
               background: tab === t ? 'var(--teal)' : 'transparent',
               border: `1px solid ${tab === t ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
-              color: tab === t ? '#fff' : 'rgba(245,242,236,0.5)',
+              color: tab === t ? '#fff' : 'rgba(var(--offwhite-rgb),0.5)',
               padding: '0.55rem 1.2rem',
               borderRadius: '2px',
               fontSize: '0.75rem',
@@ -211,7 +211,7 @@ export default function TableReservationsPage() {
 
         {isManagerBranchScoped && branchIds.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(228,51,41,0.3)', borderRadius: '4px',
+            border: '1px dashed rgba(var(--red-rgb),0.3)', borderRadius: '4px',
             padding: isMobile ? '2rem 1.25rem' : '3rem', textAlign: 'center',
           }}>
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--red)' }}>
@@ -219,15 +219,15 @@ export default function TableReservationsPage() {
             </p>
           </div>
         ) : loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : visible.length === 0 ? (
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
             padding: isMobile ? '3rem 1.5rem' : '4rem', textAlign: 'center',
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem',
           }}>
-            <FontAwesomeIcon icon={faInbox} style={{ width: '32px', color: 'rgba(245,242,236,0.15)' }} />
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.3)' }}>
+            <FontAwesomeIcon icon={faInbox} style={{ width: '32px', color: 'rgba(var(--offwhite-rgb),0.15)' }} />
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
               No pending table reservations
             </p>
           </div>
@@ -248,7 +248,7 @@ export default function TableReservationsPage() {
                       <FontAwesomeIcon icon={faChair} style={{ width: '13px' }} />
                       Table{r.tableNumbers.length > 1 ? 's' : ''} {r.tableNumbers.join(', ')}
                     </span>
-                    <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.3)', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)', whiteSpace: 'nowrap' }}>
                       {formatDateTime(r.startAt)}
                     </span>
                   </div>
@@ -270,13 +270,13 @@ export default function TableReservationsPage() {
                             {p.avatarUrl ? (
                               <img src={p.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
-                              <span style={{ fontSize: '0.6rem', color: 'rgba(245,242,236,0.5)' }}>{p.displayName.charAt(0).toUpperCase()}</span>
+                              <span style={{ fontSize: '0.6rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>{p.displayName.charAt(0).toUpperCase()}</span>
                             )}
                           </span>
                           {p.displayName}
                         </>
                       ) : (
-                        <span style={{ color: 'rgba(245,242,236,0.35)' }}>{r.contactName} (guest)</span>
+                        <span style={{ color: 'rgba(var(--offwhite-rgb),0.35)' }}>{r.contactName} (guest)</span>
                       )}
                     </span>
                   </div>
@@ -300,7 +300,7 @@ export default function TableReservationsPage() {
                         placeholder="Reason for rejection (optional)…"
                         autoFocus
                         style={{
-                          width: '100%', backgroundColor: '#1a1a1a', border: '1px solid rgba(228,51,41,0.3)',
+                          width: '100%', backgroundColor: '#1a1a1a', border: '1px solid rgba(var(--red-rgb),0.3)',
                           color: 'var(--offwhite)', padding: '0.7rem 0.9rem', borderRadius: '2px', fontSize: '0.82rem',
                           outline: 'none', fontFamily: 'var(--font-inter)',
                         }}
@@ -319,7 +319,7 @@ export default function TableReservationsPage() {
                         <button
                           onClick={() => { setRejectingId(null); setRejectReason('') }}
                           style={{
-                            background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(245,242,236,0.5)',
+                            background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
                             padding: '0.7rem 1.2rem', borderRadius: '2px', fontSize: '0.72rem', letterSpacing: '0.06em',
                             textTransform: 'uppercase', fontFamily: 'var(--font-inter)', cursor: 'pointer',
                           }}
@@ -361,7 +361,7 @@ export default function TableReservationsPage() {
                             onClick={() => { setRejectingId(r.id); setRejectReason('') }}
                             disabled={isBusy}
                             style={{
-                              flex: isMobile ? 1 : 'initial', background: 'transparent', border: '1px solid rgba(228,51,41,0.3)',
+                              flex: isMobile ? 1 : 'initial', background: 'transparent', border: '1px solid rgba(var(--red-rgb),0.3)',
                               color: 'var(--red)', padding: '0.8rem 1.5rem', borderRadius: '2px', fontSize: '0.75rem',
                               letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
                               cursor: isBusy ? 'not-allowed' : 'pointer', opacity: isBusy ? 0.6 : 1,

@@ -170,7 +170,7 @@ export default function About() {
           }} />
 
           <p style={{
-            color: 'rgba(245,242,236,0.55)',
+            color: 'rgba(var(--offwhite-rgb),0.55)',
             lineHeight: 1.9,
             marginBottom: '2.5rem',
             fontFamily: 'var(--font-inter)',
@@ -191,7 +191,7 @@ export default function About() {
               position: 'relative',
               overflow: 'hidden',
               display: 'inline-block',
-              backgroundColor: storyHovered ? 'rgba(0,160,152,0.15)' : 'var(--teal)',
+              backgroundColor: storyHovered ? 'rgba(var(--teal-rgb),0.15)' : 'var(--teal)',
               color: '#fff',
               padding: '0.85rem 2.5rem',
               borderRadius: '2px',
@@ -245,7 +245,7 @@ export default function About() {
               fontSize: '0.68rem',
               letterSpacing: '0.15em',
               textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.4)',
+              color: 'rgba(var(--offwhite-rgb),0.4)',
               marginTop: '0.5rem',
               fontFamily: 'var(--font-inter)',
             }}>{label}</div>

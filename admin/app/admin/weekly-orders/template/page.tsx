@@ -30,13 +30,13 @@ const btnPrimary: React.CSSProperties = {
 
 const btnGhost: React.CSSProperties = {
   backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-  color: 'rgba(245,242,236,0.5)', padding: '0.5rem 0.9rem', borderRadius: '2px',
+  color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.5rem 0.9rem', borderRadius: '2px',
   fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase',
   cursor: 'pointer', fontFamily: 'var(--font-inter)',
 }
 
 const btnDanger: React.CSSProperties = {
-  backgroundColor: 'transparent', border: '1px solid rgba(228,51,41,0.3)',
+  backgroundColor: 'transparent', border: '1px solid rgba(var(--red-rgb),0.3)',
   color: 'var(--red)', padding: '0.35rem 0.65rem', borderRadius: '2px',
   fontSize: '0.7rem', cursor: 'pointer', fontFamily: 'var(--font-inter)',
 }
@@ -77,23 +77,23 @@ function AddItemForm({ providers, onSave }: {
       background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)',
       borderRadius: '4px', padding: '1.1rem 1.4rem', marginBottom: '2rem',
     }}>
-      <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.5)', marginBottom: '0.9rem', letterSpacing: '0.12em' }}>ADD ITEM</p>
+      <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginBottom: '0.9rem', letterSpacing: '0.12em' }}>ADD ITEM</p>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'auto 1.5fr 2fr auto auto', gap: '0.65rem', alignItems: 'end' }}>
 
         <div>
-          <label style={{ display: 'block', fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)' }}>Section</label>
+          <label style={{ display: 'block', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)' }}>Section</label>
           <select value={department} onChange={e => setDepartment(e.target.value as Department)} style={{ ...inp, cursor: 'pointer' }}>
             {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)' }}>Item Name</label>
+          <label style={{ display: 'block', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)' }}>Item Name</label>
           <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Coffee Beans" style={{ ...inp, width: '100%' }} />
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)' }}>Provider</label>
+          <label style={{ display: 'block', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)' }}>Provider</label>
           <select value={providerId} onChange={e => setProviderId(e.target.value)} style={{ ...inp, width: '100%', cursor: 'pointer' }}>
             <option value="">— No provider —</option>
             {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -101,7 +101,7 @@ function AddItemForm({ providers, onSave }: {
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)' }}>Unit</label>
+          <label style={{ display: 'block', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)' }}>Unit</label>
           <select value={unit} onChange={e => setUnit(e.target.value as OrderUnit)} style={{ ...inp, cursor: 'pointer' }}>
             {UNITS.map(u => <option key={u} value={u}>{UNIT_LABELS[u]}</option>)}
           </select>
@@ -179,7 +179,7 @@ function ItemRow({ item, providers, onUpdated, onDeleted }: {
           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
             <input value={nameAr} onChange={e => setNameAr(e.target.value)} placeholder="عربي" dir="rtl" style={{ ...inp, flex: 1, textAlign: 'right' }} />
             <button onClick={autoTranslate} disabled={translating} title="Auto-translate" style={{
-              background: 'rgba(201,150,44,0.12)', border: '1px solid rgba(201,150,44,0.3)',
+              background: 'rgba(var(--brand-secondary-rgb),0.12)', border: '1px solid rgba(var(--brand-secondary-rgb),0.3)',
               color: 'var(--brand-secondary)', padding: '0.35rem 0.5rem', borderRadius: '2px', fontSize: '0.72rem', cursor: 'pointer',
             }}>{translating ? '…' : '🌐'}</button>
           </div>
@@ -203,15 +203,15 @@ function ItemRow({ item, providers, onUpdated, onDeleted }: {
           const provCats = providers.find(p => p.id === providerId)?.categories ?? []
           if (!providerId || provCats.length === 0) return (
             <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', minWidth: '60px' }}>Category</span>
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.2)' }}>
+              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', minWidth: '60px' }}>Category</span>
+              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.2)' }}>
                 {!providerId ? 'Select a provider to assign a category' : 'No categories — add them in Manage Providers'}
               </span>
             </div>
           )
           return (
             <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', minWidth: '60px' }}>Category</span>
+              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', minWidth: '60px' }}>Category</span>
               <select
                 value={category}
                 onChange={e => setCategory(e.target.value)}
@@ -226,19 +226,19 @@ function ItemRow({ item, providers, onUpdated, onDeleted }: {
 
         {/* Row 3: Pack size */}
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', marginBottom: '0.6rem', flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', minWidth: '60px' }}>Pack size</span>
+          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', minWidth: '60px' }}>Pack size</span>
           <input
             type="number" min="1" value={packSize} onChange={e => setPackSize(e.target.value)}
             placeholder="e.g. 4"
             style={{ ...inp, width: '90px', textAlign: 'center' }}
           />
-          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)' }}>{UNIT_LABELS[unit]} contains</span>
+          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>{UNIT_LABELS[unit]} contains</span>
           <input
             value={packUnit} onChange={e => setPackUnit(e.target.value)}
             placeholder="e.g. bottles / pieces"
             style={{ ...inp, width: isMobile ? '100%' : '180px' }}
           />
-          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.2)' }}>each (optional)</span>
+          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.2)' }}>each (optional)</span>
         </div>
 
         <div style={{ display: 'flex', gap: '0.4rem' }}>
@@ -269,19 +269,19 @@ function ItemRow({ item, providers, onUpdated, onDeleted }: {
       <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'var(--offwhite)', fontWeight: 500 }}>
         {item.name}
         {isMobile && (
-          <span style={{ display: 'block', fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.4)', marginTop: '0.15rem' }}>
+          <span style={{ display: 'block', fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginTop: '0.15rem' }}>
             {packLabel(item.unit, item.packSize, item.packUnit)}
-            {item.nameAr && <span dir="rtl" style={{ marginLeft: '0.5rem', color: 'rgba(201,150,44,0.9)' }}>{item.nameAr}</span>}
+            {item.nameAr && <span dir="rtl" style={{ marginLeft: '0.5rem', color: 'rgba(var(--brand-secondary-rgb),0.9)' }}>{item.nameAr}</span>}
           </span>
         )}
       </span>
       {!isMobile && (
-        <span dir="rtl" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: item.nameAr ? 'rgba(201,150,44,0.9)' : 'rgba(245,242,236,0.2)', textAlign: 'right' }}>
+        <span dir="rtl" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: item.nameAr ? 'rgba(var(--brand-secondary-rgb),0.9)' : 'rgba(var(--offwhite-rgb),0.2)', textAlign: 'right' }}>
           {item.nameAr || '—'}
         </span>
       )}
       {!isMobile && (
-        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.4)', whiteSpace: 'nowrap' }}>
+        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.4)', whiteSpace: 'nowrap' }}>
           {packLabel(item.unit, item.packSize, item.packUnit)}
         </span>
       )}
@@ -395,7 +395,7 @@ export default function OrderTemplatePage() {
         <div style={{ marginBottom: '2rem' }}>
           <a href="/admin/weekly-orders" style={{
             fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
             marginBottom: '0.5rem', display: 'block', fontFamily: 'var(--font-inter)',
           }}>← Weekly Orders</a>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
@@ -403,14 +403,14 @@ export default function OrderTemplatePage() {
               <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)', marginBottom: '0.25rem' }}>
                 Order Item Template
               </h1>
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.3)' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
                 Set items, sections (Kitchen/Bar), providers, Arabic names, and pack sizes.
               </p>
             </div>
             <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
               {items.filter(i => !i.nameAr).length > 0 && (
                 <button onClick={translateAll} disabled={transAll} style={{
-                  backgroundColor: 'rgba(201,150,44,0.12)', border: '1px solid rgba(201,150,44,0.3)',
+                  backgroundColor: 'rgba(var(--brand-secondary-rgb),0.12)', border: '1px solid rgba(var(--brand-secondary-rgb),0.3)',
                   color: 'var(--brand-secondary)', padding: '0.6rem 1.1rem', borderRadius: '2px',
                   fontSize: '0.73rem', letterSpacing: '0.08em', textTransform: 'uppercase',
                   cursor: transAll ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-inter)',
@@ -420,7 +420,7 @@ export default function OrderTemplatePage() {
               )}
               <a href="/admin/weekly-orders/providers" style={{
                 backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.12)',
-                color: 'rgba(245,242,236,0.5)', textDecoration: 'none',
+                color: 'rgba(var(--offwhite-rgb),0.5)', textDecoration: 'none',
                 padding: '0.6rem 1.1rem', borderRadius: '2px', fontSize: '0.73rem',
                 letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
               }}>Manage Providers</a>
@@ -447,7 +447,7 @@ export default function OrderTemplatePage() {
             <span style={{
               position: 'absolute', left: '0.75rem', top: '50%',
               transform: 'translateY(-50%)',
-              color: 'rgba(245,242,236,0.3)', fontSize: '0.85rem', pointerEvents: 'none',
+              color: 'rgba(var(--offwhite-rgb),0.3)', fontSize: '0.85rem', pointerEvents: 'none',
             }}>⌕</span>
             {searchQuery && (
               <button
@@ -456,7 +456,7 @@ export default function OrderTemplatePage() {
                   position: 'absolute', right: '0.75rem', top: '50%',
                   transform: 'translateY(-50%)',
                   background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'rgba(245,242,236,0.35)', fontSize: '0.85rem', padding: 0,
+                  color: 'rgba(var(--offwhite-rgb),0.35)', fontSize: '0.85rem', padding: 0,
                 }}
               >✕</button>
             )}
@@ -464,14 +464,14 @@ export default function OrderTemplatePage() {
         )}
 
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : items.length === 0 ? (
-          <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center', color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
+          <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
             No items yet — add your first one above.
           </div>
         ) : searchQuery.trim() ? (
           searchResults.length === 0 ? (
-            <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center', color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
+            <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
               No items match &ldquo;{searchQuery.trim()}&rdquo;.
             </div>
           ) : (
@@ -480,13 +480,13 @@ export default function OrderTemplatePage() {
               borderRadius: '4px', overflow: 'hidden',
             }}>
               <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
-                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                   {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
                 </span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr auto' : '2fr 1.4fr auto auto', gap: '0.6rem', padding: '0.4rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                 {(isMobile ? ['English Name', ''] : ['English Name', 'Arabic / عربي', 'Unit / Pack', '']).map((h, i) => (
-                  <span key={i} style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.25)' }}>{h}</span>
+                  <span key={i} style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.25)' }}>{h}</span>
                 ))}
               </div>
               {searchResults.map(item => (
@@ -523,11 +523,11 @@ export default function OrderTemplatePage() {
                       fontFamily: 'var(--font-cinzel)', fontSize: '1rem',
                       color: DEPT_COLOR[dept], letterSpacing: '0.15em',
                     }}>{dept.toUpperCase()}</p>
-                    <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.25)' }}>
+                    <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.25)' }}>
                       {totalItems} item{totalItems !== 1 ? 's' : ''}
                     </span>
                     <span style={{
-                      marginLeft: 'auto', color: 'rgba(245,242,236,0.25)', fontSize: '1rem',
+                      marginLeft: 'auto', color: 'rgba(var(--offwhite-rgb),0.25)', fontSize: '1rem',
                       transform: isDeptCollapsed ? 'rotate(-90deg)' : 'rotate(90deg)',
                       transition: 'transform 0.15s', lineHeight: 1,
                     }}>›</span>
@@ -535,7 +535,7 @@ export default function OrderTemplatePage() {
 
                   {!isDeptCollapsed && (
                     provGroups.length === 0 ? (
-                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.2)', padding: '0 0.25rem' }}>
+                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.2)', padding: '0 0.25rem' }}>
                         No items in this section yet.
                       </p>
                     ) : (
@@ -567,16 +567,16 @@ export default function OrderTemplatePage() {
                               >
                                 <span style={{
                                   fontFamily: 'var(--font-inter)', fontSize: '0.8rem',
-                                  color: provider ? 'var(--offwhite)' : 'rgba(245,242,236,0.3)',
+                                  color: provider ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.3)',
                                   fontWeight: provider ? 600 : 400,
                                 }}>
                                   {provider?.name ?? 'No Provider'}
                                 </span>
-                                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.25)' }}>
+                                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.25)' }}>
                                   {pItems.length} item{pItems.length !== 1 ? 's' : ''}
                                 </span>
                                 <span style={{
-                                  marginLeft: 'auto', color: 'rgba(245,242,236,0.2)', fontSize: '0.9rem',
+                                  marginLeft: 'auto', color: 'rgba(var(--offwhite-rgb),0.2)', fontSize: '0.9rem',
                                   transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(90deg)',
                                   transition: 'transform 0.15s', lineHeight: 1,
                                 }}>›</span>
@@ -591,7 +591,7 @@ export default function OrderTemplatePage() {
                                     {/* Column headers */}
                                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.4fr auto auto', gap: '0.6rem', padding: '0.4rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                                       {['English Name', 'Arabic / عربي', 'Unit / Pack', ''].map((h, i) => (
-                                        <span key={i} style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.25)' }}>{h}</span>
+                                        <span key={i} style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.25)' }}>{h}</span>
                                       ))}
                                     </div>
 
@@ -619,7 +619,7 @@ export default function OrderTemplatePage() {
                                               <span style={{
                                                 fontFamily: 'var(--font-inter)', fontSize: '0.7rem',
                                                 letterSpacing: '0.1em', textTransform: 'uppercase',
-                                                color: category ? DEPT_COLOR[dept] : 'rgba(245,242,236,0.25)',
+                                                color: category ? DEPT_COLOR[dept] : 'rgba(var(--offwhite-rgb),0.25)',
                                                 fontWeight: 600,
                                               }}>
                                                 {category ?? 'Uncategorized'}
@@ -635,11 +635,11 @@ export default function OrderTemplatePage() {
                                                   }}>{ar}</span>
                                                 ) : null
                                               })()}
-                                              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', color: 'rgba(245,242,236,0.2)' }}>
+                                              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.2)' }}>
                                                 {cItems.length}
                                               </span>
                                               <span style={{
-                                                marginLeft: 'auto', color: 'rgba(245,242,236,0.2)', fontSize: '0.8rem',
+                                                marginLeft: 'auto', color: 'rgba(var(--offwhite-rgb),0.2)', fontSize: '0.8rem',
                                                 transform: isCatCollapsed ? 'rotate(-90deg)' : 'rotate(90deg)',
                                                 transition: 'transform 0.15s', lineHeight: 1,
                                               }}>›</span>
@@ -666,7 +666,7 @@ export default function OrderTemplatePage() {
           </div>
         )}
 
-        <p style={{ marginTop: '1.5rem', fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.2)' }}>
+        <p style={{ marginTop: '1.5rem', fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.2)' }}>
           {items.length} item{items.length !== 1 ? 's' : ''} total
         </p>
       </div>

@@ -51,7 +51,7 @@ export default function DailyInventoryDayPage() {
 
         <Link href="/admin/supplies/daily/history" style={{
           fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-          color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+          color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
           display: 'block', marginBottom: '0.5rem', fontFamily: 'var(--font-inter)',
         }}>← Calendar</Link>
 
@@ -61,20 +61,20 @@ export default function DailyInventoryDayPage() {
           </h1>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <a href={`/admin/supplies/daily/history/${shiftDate(date, -1)}`} style={{
-              background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(245,242,236,0.5)',
+              background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
               borderRadius: '4px', padding: '0.4rem 0.8rem', fontSize: '0.75rem', textDecoration: 'none', fontFamily: 'var(--font-inter)',
             }}>‹ Prev day</a>
             <a href={`/admin/supplies/daily/history/${shiftDate(date, 1)}`} style={{
-              background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(245,242,236,0.5)',
+              background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
               borderRadius: '4px', padding: '0.4rem 0.8rem', fontSize: '0.75rem', textDecoration: 'none', fontFamily: 'var(--font-inter)',
             }}>Next day ›</a>
           </div>
         </div>
 
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>Loading…</p>
         ) : reports.length === 0 ? (
-          <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center', color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
+          <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
             No inventory counts started or submitted for this day.
           </div>
         ) : (
@@ -106,13 +106,13 @@ export default function DailyInventoryDayPage() {
                       }}>{r.status === 'submitted' ? 'Submitted' : 'Draft'}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.35)' }}>{r.submittedByEmail}</span>
+                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>{r.submittedByEmail}</span>
                       {r.status === 'submitted' && (
-                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: discrepancies > 0 ? 'var(--brand-secondary)' : 'rgba(245,242,236,0.3)' }}>
+                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: discrepancies > 0 ? 'var(--brand-secondary)' : 'rgba(var(--offwhite-rgb),0.3)' }}>
                           {discrepancies > 0 ? `${discrepancies} changed` : 'matched'}
                         </span>
                       )}
-                      <span style={{ color: 'rgba(245,242,236,0.25)' }}>{expanded ? '▾' : '▸'}</span>
+                      <span style={{ color: 'rgba(var(--offwhite-rgb),0.25)' }}>{expanded ? '▾' : '▸'}</span>
                     </div>
                   </div>
 
@@ -132,7 +132,7 @@ export default function DailyInventoryDayPage() {
                                 <th key={h} style={{
                                   padding: '0.5rem 0.85rem', textAlign: h === 'Item' ? 'left' : 'right',
                                   fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase',
-                                  color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)',
+                                  color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)',
                                 }}>{h}</th>
                               ))}
                             </tr>
@@ -144,16 +144,16 @@ export default function DailyInventoryDayPage() {
                                 <tr key={i.supplyId} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                                   <td style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)' }}>
                                     {i.name}
-                                    {i.nameAr && <span dir="rtl" style={{ display: 'block', fontSize: '0.7rem', color: 'rgba(201,150,44,0.75)', marginTop: '0.1rem' }}>{i.nameAr}</span>}
+                                    {i.nameAr && <span dir="rtl" style={{ display: 'block', fontSize: '0.7rem', color: 'rgba(var(--brand-secondary-rgb),0.75)', marginTop: '0.1rem' }}>{i.nameAr}</span>}
                                   </td>
-                                  <td style={{ padding: '0.5rem 0.85rem', fontSize: '0.75rem', color: 'rgba(245,242,236,0.4)', fontFamily: 'var(--font-inter)', textAlign: 'right' }}>{i.unit}</td>
-                                  <td style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', color: 'rgba(245,242,236,0.5)', fontFamily: 'var(--font-inter)', textAlign: 'right' }}>{i.previousQty}</td>
-                                  <td style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', fontWeight: 600, color: i.countedQty == null ? 'rgba(245,242,236,0.2)' : 'var(--offwhite)', fontFamily: 'var(--font-inter)', textAlign: 'right' }}>
+                                  <td style={{ padding: '0.5rem 0.85rem', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)', fontFamily: 'var(--font-inter)', textAlign: 'right' }}>{i.unit}</td>
+                                  <td style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.5)', fontFamily: 'var(--font-inter)', textAlign: 'right' }}>{i.previousQty}</td>
+                                  <td style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', fontWeight: 600, color: i.countedQty == null ? 'rgba(var(--offwhite-rgb),0.2)' : 'var(--offwhite)', fontFamily: 'var(--font-inter)', textAlign: 'right' }}>
                                     {i.countedQty == null ? '—' : i.countedQty}
                                   </td>
                                   <td style={{
                                     padding: '0.5rem 0.85rem', fontSize: '0.78rem', fontWeight: 700, fontFamily: 'var(--font-inter)', textAlign: 'right',
-                                    color: delta == null || delta === 0 ? 'rgba(245,242,236,0.25)' : delta < 0 ? 'var(--red)' : 'var(--teal)',
+                                    color: delta == null || delta === 0 ? 'rgba(var(--offwhite-rgb),0.25)' : delta < 0 ? 'var(--red)' : 'var(--teal)',
                                   }}>
                                     {delta == null ? '—' : `${delta > 0 ? '+' : ''}${delta}`}
                                   </td>

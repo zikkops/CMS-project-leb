@@ -40,7 +40,7 @@ const labelStyle: React.CSSProperties = {
   fontSize: '0.68rem',
   letterSpacing: '0.12em',
   textTransform: 'uppercase',
-  color: 'rgba(245,242,236,0.35)',
+  color: 'rgba(var(--offwhite-rgb),0.35)',
   marginBottom: '0.4rem',
   fontFamily: 'var(--font-inter)',
 }
@@ -254,13 +254,13 @@ function EndOfDayInner() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '0.5rem' }}>
             <a href="/admin/end-of-day/history" style={{
               fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+              color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
               fontFamily: 'var(--font-inter)',
             }}>← EOD History</a>
             {(role === 'admin' || role === 'manager') && (
               <a href="/admin/end-of-day/log" style={{
                 fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-                color: 'rgba(245,242,236,0.2)', textDecoration: 'none',
+                color: 'rgba(var(--offwhite-rgb),0.2)', textDecoration: 'none',
                 fontFamily: 'var(--font-inter)',
               }}>View Log</a>
             )}
@@ -268,7 +268,7 @@ function EndOfDayInner() {
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', color: 'var(--offwhite)', marginBottom: '0.2rem' }}>
             End of Day Report
           </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
             {existingId ? 'Editing saved report' : 'New report'} · Submitting as {user?.email}
           </p>
         </div>
@@ -295,7 +295,7 @@ function EndOfDayInner() {
           </div>
 
           {loading && (
-            <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', marginBottom: '2rem' }}>
+            <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', marginBottom: '2rem' }}>
               Loading…
             </p>
           )}
@@ -315,8 +315,8 @@ function EndOfDayInner() {
             }}>
               <SumCell label="Counted LBP"    value={formatLbp(totals.totalCashLbp)} color="var(--teal)" />
               <SumCell label="Counted USD"    value={formatUsd(totals.totalCashUsd)} color="var(--teal)" />
-              <SumCell label="Grand Total LBP" value={formatLbp(totals.grandTotalLbp)} color="rgba(245,242,236,0.7)" />
-              <SumCell label="Grand Total USD" value={formatUsd(totals.grandTotalUsd)} color="rgba(245,242,236,0.7)" />
+              <SumCell label="Grand Total LBP" value={formatLbp(totals.grandTotalLbp)} color="rgba(var(--offwhite-rgb),0.7)" />
+              <SumCell label="Grand Total USD" value={formatUsd(totals.grandTotalUsd)} color="rgba(var(--offwhite-rgb),0.7)" />
               <SumCell label="Difference LBP"  value={formatLbp(totals.differenceLbp)} color={diffLbpColor} />
               <SumCell label="Difference USD"  value={formatUsd(totals.differenceUsd)} color={diffUsdColor} />
             </div>
@@ -337,7 +337,7 @@ function EndOfDayInner() {
                         padding: '0.65rem 1rem',
                         borderTop: i > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none',
                       }}>
-                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.7)' }}>
+                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.7)' }}>
                           {denom.toLocaleString()}
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -348,7 +348,7 @@ function EndOfDayInner() {
                             placeholder="0"
                             style={{ ...numInp, width: '80px' }}
                           />
-                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.3)', minWidth: '28px' }}>pcs</span>
+                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)', minWidth: '28px' }}>pcs</span>
                         </div>
                       </div>
                     ))}
@@ -357,7 +357,7 @@ function EndOfDayInner() {
                       borderTop: '1px solid rgba(255,255,255,0.08)',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     }}>
-                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)', letterSpacing: '0.05em' }}>TOTAL</span>
+                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)', letterSpacing: '0.05em' }}>TOTAL</span>
                       <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'var(--teal)', fontWeight: 600 }}>
                         {totals.totalCashLbp.toLocaleString()}
                       </span>
@@ -376,7 +376,7 @@ function EndOfDayInner() {
                         padding: '0.65rem 1rem',
                         borderTop: i > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none',
                       }}>
-                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.7)' }}>
+                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.7)' }}>
                           ${denom}
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -387,7 +387,7 @@ function EndOfDayInner() {
                             placeholder="0"
                             style={{ ...numInp, width: '80px' }}
                           />
-                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.3)', minWidth: '28px' }}>pcs</span>
+                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)', minWidth: '28px' }}>pcs</span>
                         </div>
                       </div>
                     ))}
@@ -396,7 +396,7 @@ function EndOfDayInner() {
                       borderTop: '1px solid rgba(255,255,255,0.08)',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     }}>
-                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)', letterSpacing: '0.05em' }}>TOTAL</span>
+                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)', letterSpacing: '0.05em' }}>TOTAL</span>
                       <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'var(--brand-secondary)', fontWeight: 600 }}>
                         ${totals.totalCashUsd.toLocaleString()}
                       </span>
@@ -415,14 +415,14 @@ function EndOfDayInner() {
                 display: 'flex', justifyContent: 'space-around', gap: '1rem', flexWrap: 'wrap',
               }}>
                 <div style={{ textAlign: 'center' }}>
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)', marginBottom: '0.3rem' }}>Grand Total LBP</p>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.3rem' }}>Grand Total LBP</p>
                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: '1rem', color: 'var(--offwhite)', fontWeight: 600 }}>{formatLbp(totals.grandTotalLbp)}</p>
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)', marginBottom: '0.3rem' }}>Grand Total USD</p>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.3rem' }}>Grand Total USD</p>
                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: '1rem', color: 'var(--offwhite)', fontWeight: 600 }}>{formatUsd(totals.grandTotalUsd)}</p>
                 </div>
-                <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'rgba(245,242,236,0.2)', fontFamily: 'var(--font-inter)', alignSelf: 'center' }}>
+                <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.2)', fontFamily: 'var(--font-inter)', alignSelf: 'center' }}>
                   Rate: {exchangeRate.toLocaleString('en-US')} {BRAND.locale.secondaryCurrency} = 1 {BRAND.locale.currency}
                 </div>
               </div>
@@ -446,7 +446,7 @@ function EndOfDayInner() {
                   />
                 </div>
                 <div style={{ paddingBottom: '0.6rem' }}>
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.3)', marginBottom: '0.25rem', letterSpacing: '0.05em' }}>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '0.25rem', letterSpacing: '0.05em' }}>
                     Auto-converted
                   </p>
                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: '1rem', color: 'var(--purple)', fontWeight: 600 }}>
@@ -498,7 +498,7 @@ function EndOfDayInner() {
                 <div style={{ flex: '0 0 220px' }}>
                   <label style={labelStyle}>Tips collected (USD)</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span style={{ color: 'rgba(245,242,236,0.5)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem', flexShrink: 0 }}>$</span>
+                    <span style={{ color: 'rgba(var(--offwhite-rgb),0.5)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem', flexShrink: 0 }}>$</span>
                     <input
                       type="number" min="0" step="0.01"
                       value={tipsUsd}
@@ -510,7 +510,7 @@ function EndOfDayInner() {
                 </div>
                 {Number(tipsUsd) > 0 && (
                   <div style={{ paddingBottom: '0.6rem' }}>
-                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.35)', marginBottom: '0.2rem', letterSpacing: '0.05em' }}>
+                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.2rem', letterSpacing: '0.05em' }}>
                       After 11% deduction
                     </p>
                     <p style={{ fontFamily: 'var(--font-inter)', fontSize: '1rem', color: 'var(--brand-secondary)', fontWeight: 600 }}>
@@ -519,7 +519,7 @@ function EndOfDayInner() {
                   </div>
                 )}
               </div>
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.2)', marginTop: '0.5rem' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.2)', marginTop: '0.5rem' }}>
                 Used in the tips calculator to distribute among staff by shift
               </p>
             </div>
@@ -537,17 +537,17 @@ function EndOfDayInner() {
                 <DiffBlock label="Difference LBP" value={formatLbp(totals.differenceLbp)} color={diffLbpColor} />
                 <DiffBlock label="Difference USD"  value={formatUsd(totals.differenceUsd)}  color={diffUsdColor} />
               </div>
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.25)', marginTop: '0.85rem' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.25)', marginTop: '0.85rem' }}>
                 Difference = Grand Total + Expenses − Income − System
               </p>
             </div>
 
             {/* ── Attendance ───────────────────────────────────────────────── */}
             <div style={{ marginBottom: '2.5rem' }}>
-              <SectionTitle label="ATTENDANCE" color="rgba(245,242,236,0.6)" />
+              <SectionTitle label="ATTENDANCE" color="rgba(var(--offwhite-rgb),0.6)" />
 
               {attendance.length === 0 && (
-                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.25)', marginBottom: '1rem' }}>
+                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.25)', marginBottom: '1rem' }}>
                   No staff roster set.{' '}
                   <a href="/admin/end-of-day/staff" style={{ color: 'var(--teal)', textDecoration: 'none' }}>Set up the roster →</a>
                 </p>
@@ -583,7 +583,7 @@ function EndOfDayInner() {
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <span style={{
                             fontFamily: 'var(--font-inter)', fontSize: '0.88rem',
-                            color: present ? 'var(--offwhite)' : 'rgba(245,242,236,0.35)',
+                            color: present ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.35)',
                             transition: 'color 0.15s',
                           }}>
                             {entry.name}
@@ -591,8 +591,8 @@ function EndOfDayInner() {
                           {entry.isGuest && (
                             <span style={{
                               fontSize: '0.6rem', letterSpacing: '0.08em',
-                              background: 'rgba(201,150,44,0.15)', color: 'var(--brand-secondary)',
-                              border: '1px solid rgba(201,150,44,0.3)',
+                              background: 'rgba(var(--brand-secondary-rgb),0.15)', color: 'var(--brand-secondary)',
+                              border: '1px solid rgba(var(--brand-secondary-rgb),0.3)',
                               borderRadius: '3px', padding: '0.15rem 0.4rem',
                               fontFamily: 'var(--font-inter)', textTransform: 'uppercase',
                             }}>Guest</span>
@@ -610,7 +610,7 @@ function EndOfDayInner() {
                                 borderRadius: '2px', border: 'none', cursor: 'pointer',
                                 fontSize: '0.72rem', fontFamily: 'var(--font-inter)', fontWeight: 600,
                                 backgroundColor: entry.shift === s ? 'var(--teal)' : 'rgba(255,255,255,0.06)',
-                                color: entry.shift === s ? '#fff' : 'rgba(245,242,236,0.4)',
+                                color: entry.shift === s ? '#fff' : 'rgba(var(--offwhite-rgb),0.4)',
                               }}
                             >
                               {SHIFT_LABELS[s]}
@@ -623,7 +623,7 @@ function EndOfDayInner() {
                           <button
                             type="button"
                             onClick={() => removeAttendee(idx)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(245,242,236,0.25)', fontSize: '1rem', padding: '0.2rem 0.4rem', flexShrink: 0 }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(var(--offwhite-rgb),0.25)', fontSize: '1rem', padding: '0.2rem 0.4rem', flexShrink: 0 }}
                           >×</button>
                         ) : <span style={{ width: 24, flexShrink: 0 }} />}
                       </div>
@@ -634,7 +634,7 @@ function EndOfDayInner() {
 
               {/* Add guest — search existing accounts or type a name */}
               <div>
-                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', marginBottom: '0.5rem' }}>
+                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '0.5rem' }}>
                   Add guest / cross-branch staff
                 </p>
                 <StaffSearchCombobox
@@ -697,7 +697,7 @@ function EndOfDayInner() {
                 {saving ? 'Saving…' : existingId ? 'Update Report' : 'Save Report'}
               </button>
               <a href="/admin/end-of-day/history" style={{
-                fontSize: '0.75rem', color: 'rgba(245,242,236,0.35)',
+                fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.35)',
                 textDecoration: 'none', fontFamily: 'var(--font-inter)',
               }}>View all reports →</a>
             </div>
@@ -756,7 +756,7 @@ function StaffSearchCombobox({
       ? 'Loading staff accounts…'
       : `${staffList.length} staff account${staffList.length !== 1 ? 's' : ''} · type to search`
 
-  const hintColor = staffListErr ? 'var(--red)' : 'rgba(245,242,236,0.25)'
+  const hintColor = staffListErr ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.25)'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
@@ -786,7 +786,7 @@ function StaffSearchCombobox({
             overflow: 'hidden',
           }}>
             {matches.length === 0 ? (
-              <p style={{ padding: '0.65rem 1rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.3)' }}>
+              <p style={{ padding: '0.65rem 1rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
                 No matching accounts found
               </p>
             ) : matches.map(s => (
@@ -808,7 +808,7 @@ function StaffSearchCombobox({
                 </span>
                 <span style={{
                   fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.08em',
-                  color: 'rgba(245,242,236,0.35)', textTransform: 'uppercase', flexShrink: 0,
+                  color: 'rgba(var(--offwhite-rgb),0.35)', textTransform: 'uppercase', flexShrink: 0,
                 }}>
                   {s.role ? (ROLE_LABELS as Record<string, string>)[s.role] ?? s.role : ''}
                   {s.branchIds.length > 0 ? ` · ${s.branchIds.join(', ')}` : ''}
@@ -834,7 +834,7 @@ function StaffSearchCombobox({
           style={{
             backgroundColor: 'rgba(255,255,255,0.06)',
             border: '1px solid rgba(255,255,255,0.1)',
-            color: 'rgba(245,242,236,0.5)',
+            color: 'rgba(var(--offwhite-rgb),0.5)',
             padding: '0.6rem 0.9rem',
             borderRadius: '2px', fontSize: '0.75rem',
             cursor: 'pointer', fontFamily: 'var(--font-inter)',
@@ -851,7 +851,7 @@ function StaffSearchCombobox({
 function SumCell({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div>
-      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', marginBottom: '0.25rem' }}>{label}</p>
+      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '0.25rem' }}>{label}</p>
       <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.95rem', fontWeight: 600, color }}>{value}</p>
     </div>
   )
@@ -866,7 +866,7 @@ function DiffBlock({ label, value, color }: { label: string; value: string; colo
       borderRadius: '4px',
       padding: '1rem',
     }}>
-      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.4)', marginBottom: '0.4rem' }}>{label}</p>
+      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.4)', marginBottom: '0.4rem' }}>{label}</p>
       <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem', color, fontWeight: 700 }}>{value}</p>
     </div>
   )
@@ -882,14 +882,14 @@ function HintBox({ hints, color }: { hints: string[]; color: string }) {
       borderLeft: `3px solid ${color}50`,
       borderRadius: '2px',
     }}>
-      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', marginBottom: '0.45rem' }}>
+      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '0.45rem' }}>
         What to include
       </p>
       <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
         {hints.map((h, i) => (
           <li key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: color, flexShrink: 0, marginTop: '0.35em' }} />
-            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.45)' }}>{h}</span>
+            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>{h}</span>
           </li>
         ))}
       </ul>
@@ -944,7 +944,7 @@ function LineItemList({
               />
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', width: isMobile ? '100%' : '110px', flex: isMobile ? 1 : 'initial' }}>
-                  <span style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>$</span>
+                  <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>$</span>
                   <input
                     type="number" min="0" step="0.01"
                     placeholder="0.00"
@@ -955,7 +955,7 @@ function LineItemList({
                 </div>
                 <button
                   type="button" onClick={() => removeLine(idx)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(245,242,236,0.25)', fontSize: '1rem', padding: '0.2rem 0.4rem', flexShrink: 0 }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(var(--offwhite-rgb),0.25)', fontSize: '1rem', padding: '0.2rem 0.4rem', flexShrink: 0 }}
                 >×</button>
               </div>
             </div>
@@ -965,7 +965,7 @@ function LineItemList({
             borderTop: '1px solid rgba(255,255,255,0.08)',
             display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', alignItems: 'center',
           }}>
-            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)', letterSpacing: '0.05em' }}>TOTAL USD</span>
+            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)', letterSpacing: '0.05em' }}>TOTAL USD</span>
             <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.9rem', color, fontWeight: 600 }}>{formatUsd(totalUsd)}</span>
           </div>
         </div>

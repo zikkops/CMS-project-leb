@@ -24,7 +24,7 @@ const labelStyle = {
   fontSize: '0.68rem',
   letterSpacing: '0.2em',
   textTransform: 'uppercase' as const,
-  color: 'rgba(245,242,236,0.35)',
+  color: 'rgba(var(--offwhite-rgb),0.35)',
   marginBottom: '0.5rem',
   fontFamily: 'var(--font-inter)',
 }
@@ -160,13 +160,13 @@ export default function EventReservationModal({ event, onClose }: {
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--purple)', marginTop: '0.3rem' }}>
               {event.title} · 📍 {event.branch}
             </p>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.76rem', color: 'rgba(245,242,236,0.4)', marginTop: '0.2rem' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.76rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginTop: '0.2rem' }}>
               {event.date} · {event.timeStart}–{event.timeEnd}
             </p>
           </div>
           <button onClick={onClose} style={{
             background: 'transparent', border: 'none',
-            color: 'rgba(245,242,236,0.4)', fontSize: '1.2rem', cursor: 'pointer',
+            color: 'rgba(var(--offwhite-rgb),0.4)', fontSize: '1.2rem', cursor: 'pointer',
           }}>✕</button>
         </div>
 
@@ -176,7 +176,7 @@ export default function EventReservationModal({ event, onClose }: {
               <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color: 'var(--offwhite)', marginBottom: '0.8rem' }}>
                 Request submitted!
               </p>
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.55)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.55)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
                 Your spot is requested — a manager will confirm it shortly. You can check the status anytime from your profile.
               </p>
               <button onClick={onClose} style={{
@@ -187,7 +187,7 @@ export default function EventReservationModal({ event, onClose }: {
             </div>
           ) : userLoading ? null : !user ? (
             <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.55)', marginBottom: '1.25rem' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.55)', marginBottom: '1.25rem' }}>
                 Sign in to reserve a spot for this event.
               </p>
               <Link href="/customer/login" style={{
@@ -198,13 +198,13 @@ export default function EventReservationModal({ event, onClose }: {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                 This event needs {event.minPlayers === event.maxPlayers ? `exactly ${event.minPlayers}` : `${event.minPlayers}–${event.maxPlayers}`} players per team.
               </p>
 
               <div>
                 <label style={{ ...labelStyle, marginBottom: '0.4rem' }}>Who's Coming? ({partySize})</label>
-                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.35)', marginBottom: '0.8rem' }}>
+                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.8rem' }}>
                   Friends or members you add will get an invite to accept on their profile — phone numbers don't need one.
                 </p>
 
@@ -213,13 +213,13 @@ export default function EventReservationModal({ event, onClose }: {
                     {participants.map(p => (
                       <span key={p.uid} style={{
                         display: 'flex', alignItems: 'center', gap: '0.4rem',
-                        backgroundColor: 'rgba(106,106,183,0.12)', border: '1px solid rgba(106,106,183,0.25)',
+                        backgroundColor: 'rgba(var(--purple-rgb),0.12)', border: '1px solid rgba(var(--purple-rgb),0.25)',
                         borderRadius: '20px', padding: '0.3rem 0.4rem 0.3rem 0.8rem', fontSize: '0.78rem',
                         color: 'var(--offwhite)', fontFamily: 'var(--font-inter)',
                       }}>
                         {p.name}
                         <button type="button" onClick={() => removeParticipant(p.uid)} style={{
-                          background: 'transparent', border: 'none', color: 'rgba(228,51,41,0.7)',
+                          background: 'transparent', border: 'none', color: 'rgba(var(--red-rgb),0.7)',
                           cursor: 'pointer', fontSize: '0.85rem', padding: '0 0.3rem', lineHeight: 1,
                         }}>✕</button>
                       </span>
@@ -233,7 +233,7 @@ export default function EventReservationModal({ event, onClose }: {
                       }}>
                         📞 {phone}
                         <button type="button" onClick={() => removePhone(phone)} style={{
-                          background: 'transparent', border: 'none', color: 'rgba(228,51,41,0.7)',
+                          background: 'transparent', border: 'none', color: 'rgba(var(--red-rgb),0.7)',
                           cursor: 'pointer', fontSize: '0.85rem', padding: '0 0.3rem', lineHeight: 1,
                         }}>✕</button>
                       </span>
@@ -243,7 +243,7 @@ export default function EventReservationModal({ event, onClose }: {
 
                 {friends.length > 0 && (
                   <div style={{ marginBottom: '0.8rem' }}>
-                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.4)', marginBottom: '0.5rem' }}>
+                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginBottom: '0.5rem' }}>
                       Quick add a friend
                     </p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -297,7 +297,7 @@ export default function EventReservationModal({ event, onClose }: {
                   />
                   <button type="button" onClick={addPhone} style={{
                     backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
-                    color: 'rgba(245,242,236,0.7)', padding: '0 1rem', borderRadius: '4px',
+                    color: 'rgba(var(--offwhite-rgb),0.7)', padding: '0 1rem', borderRadius: '4px',
                     fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'var(--font-inter)',
                   }}>Add</button>
                 </div>

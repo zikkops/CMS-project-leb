@@ -48,7 +48,7 @@ function BackToShopLink({ withIcon }: { withIcon?: boolean }) {
         display: 'inline-flex',
         alignItems: 'center',
         gap: '0.5rem',
-        color: hovered ? 'var(--teal)' : (withIcon ? 'rgba(245,242,236,0.4)' : 'var(--teal)'),
+        color: hovered ? 'var(--teal)' : (withIcon ? 'rgba(var(--offwhite-rgb),0.4)' : 'var(--teal)'),
         textDecoration: 'none',
         fontFamily: 'var(--font-inter)',
         fontSize: withIcon ? '0.78rem' : '0.85rem',
@@ -86,7 +86,7 @@ function EnquiryCta() {
         display: 'block',
         width: '100%',
         textAlign: 'center',
-        backgroundColor: hovered ? 'rgba(106,106,183,0.15)' : 'var(--purple)',
+        backgroundColor: hovered ? 'rgba(var(--purple-rgb),0.15)' : 'var(--purple)',
         color: '#fff',
         padding: '1rem',
         border: '1px solid var(--purple)',
@@ -221,7 +221,7 @@ export default function ProductPage() {
                   position: 'absolute',
                   top: '1.2rem',
                   left: '1.2rem',
-                  backgroundColor: 'rgba(228,51,41,0.9)',
+                  backgroundColor: 'rgba(var(--red-rgb),0.9)',
                   color: '#fff',
                   padding: '0.4rem 1rem',
                   borderRadius: '2px',
@@ -274,7 +274,7 @@ export default function ProductPage() {
                   fontSize: '0.7rem',
                   letterSpacing: '0.12em',
                   textTransform: 'uppercase',
-                  color: 'rgba(245,242,236,0.3)',
+                  color: 'rgba(var(--offwhite-rgb),0.3)',
                   marginBottom: '1.2rem',
                 }}>{product.sku}</p>
               )}
@@ -290,7 +290,7 @@ export default function ProductPage() {
               <p style={{
                 fontFamily: 'var(--font-inter)',
                 fontSize: '0.95rem',
-                color: 'rgba(245,242,236,0.6)',
+                color: 'rgba(var(--offwhite-rgb),0.6)',
                 lineHeight: 1.8,
                 marginBottom: '2rem',
               }}>{product.description}</p>
@@ -303,8 +303,8 @@ export default function ProductPage() {
                   gap: '0.8rem',
                   marginBottom: '2rem',
                   padding: isMobile ? '1rem 1.2rem' : '1.2rem 1.5rem',
-                  background: 'rgba(106,106,183,0.08)',
-                  border: '1px solid rgba(106,106,183,0.2)',
+                  background: 'rgba(var(--purple-rgb),0.08)',
+                  border: '1px solid rgba(var(--purple-rgb),0.2)',
                   borderRadius: '4px',
                 }}>
                   <span style={{
@@ -315,7 +315,7 @@ export default function ProductPage() {
                   <span style={{
                     fontFamily: 'var(--font-inter)',
                     fontSize: '0.75rem',
-                    color: 'rgba(245,242,236,0.3)',
+                    color: 'rgba(var(--offwhite-rgb),0.3)',
                     letterSpacing: '0.1em',
                     textTransform: 'uppercase',
                   }}>per unit</span>
@@ -336,8 +336,8 @@ export default function ProductPage() {
                 gap: '0.8rem',
                 marginBottom: '2rem',
                 padding: '1rem 1.2rem',
-                background: outOfStock ? 'rgba(228,51,41,0.08)' : 'rgba(0,160,152,0.08)',
-                border: `1px solid ${outOfStock ? 'rgba(228,51,41,0.2)' : 'rgba(0,160,152,0.2)'}`,
+                background: outOfStock ? 'rgba(var(--red-rgb),0.08)' : 'rgba(var(--teal-rgb),0.08)',
+                border: `1px solid ${outOfStock ? 'rgba(var(--red-rgb),0.2)' : 'rgba(var(--teal-rgb),0.2)'}`,
                 borderRadius: '4px',
               }}>
                 <div style={{
@@ -362,7 +362,7 @@ export default function ProductPage() {
                 <button disabled style={{
                   width: '100%',
                   backgroundColor: 'rgba(255,255,255,0.05)',
-                  color: 'rgba(245,242,236,0.25)',
+                  color: 'rgba(var(--offwhite-rgb),0.25)',
                   padding: '1rem',
                   border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: '2px',

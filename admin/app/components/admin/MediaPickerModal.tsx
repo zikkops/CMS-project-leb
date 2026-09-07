@@ -75,7 +75,7 @@ export default function MediaPickerModal({
           <button onClick={onClose} style={{
             background: 'transparent',
             border: '1px solid rgba(255,255,255,0.1)',
-            color: 'rgba(245,242,236,0.5)',
+            color: 'rgba(var(--offwhite-rgb),0.5)',
             padding: '0.4rem 1rem',
             borderRadius: '2px',
             fontSize: '0.72rem',
@@ -88,7 +88,7 @@ export default function MediaPickerModal({
 
         <div style={{ padding: isMobile ? '1.25rem' : '1.75rem', overflowY: 'auto' }}>
           {loading ? (
-            <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>Loading…</p>
+            <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>Loading…</p>
           ) : (
             <MediaLibraryGrid
               items={items}

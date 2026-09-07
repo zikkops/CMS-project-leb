@@ -21,7 +21,7 @@ const selStyle: React.CSSProperties = { ...inp, backgroundColor: '#1a1a1a', curs
 
 const labelStyle: React.CSSProperties = {
   display: 'block', fontSize: '0.68rem', letterSpacing: '0.12em',
-  textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)',
+  textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)',
   marginBottom: '0.4rem', fontFamily: 'var(--font-inter)',
 }
 
@@ -124,13 +124,13 @@ export default function EndOfDayStaffPage() {
         <div style={{ marginBottom: '2rem' }}>
           <a href="/admin/end-of-day" style={{
             fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
             display: 'block', marginBottom: '0.5rem', fontFamily: 'var(--font-inter)',
           }}>← End of Day</a>
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', color: 'var(--offwhite)', marginBottom: '0.2rem' }}>
             Staff Roster
           </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
             Configure the default staff list per branch for EOD attendance
           </p>
         </div>
@@ -149,7 +149,7 @@ export default function EndOfDayStaffPage() {
         </div>
 
         {loading && (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         )}
 
         {!loading && branch && (<>
@@ -174,17 +174,17 @@ export default function EndOfDayStaffPage() {
                   <div style={{ display: 'flex', gap: '0.25rem' }}>
                     <button type="button" onClick={() => moveName(idx, -1)} disabled={idx === 0} style={{
                       background: 'none', border: 'none', cursor: idx === 0 ? 'default' : 'pointer',
-                      color: idx === 0 ? 'rgba(245,242,236,0.1)' : 'rgba(245,242,236,0.35)',
+                      color: idx === 0 ? 'rgba(var(--offwhite-rgb),0.1)' : 'rgba(var(--offwhite-rgb),0.35)',
                       fontSize: '0.85rem', padding: '0.15rem 0.4rem',
                     }}>↑</button>
                     <button type="button" onClick={() => moveName(idx, 1)} disabled={idx === staff.length - 1} style={{
                       background: 'none', border: 'none', cursor: idx === staff.length - 1 ? 'default' : 'pointer',
-                      color: idx === staff.length - 1 ? 'rgba(245,242,236,0.1)' : 'rgba(245,242,236,0.35)',
+                      color: idx === staff.length - 1 ? 'rgba(var(--offwhite-rgb),0.1)' : 'rgba(var(--offwhite-rgb),0.35)',
                       fontSize: '0.85rem', padding: '0.15rem 0.4rem',
                     }}>↓</button>
                     <button type="button" onClick={() => removeName(idx)} style={{
                       background: 'none', border: 'none', cursor: 'pointer',
-                      color: 'rgba(245,242,236,0.25)', fontSize: '1rem', padding: '0.15rem 0.4rem',
+                      color: 'rgba(var(--offwhite-rgb),0.25)', fontSize: '1rem', padding: '0.15rem 0.4rem',
                     }}>×</button>
                   </div>
                 </div>
@@ -196,7 +196,7 @@ export default function EndOfDayStaffPage() {
             <div style={{
               border: '1px dashed rgba(255,255,255,0.07)', borderRadius: '4px',
               padding: '2rem', textAlign: 'center',
-              color: 'rgba(245,242,236,0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
+              color: 'rgba(var(--offwhite-rgb),0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
               marginBottom: '1.5rem',
             }}>
               No staff added yet.
@@ -225,7 +225,7 @@ export default function EndOfDayStaffPage() {
               />
               <p style={{
                 fontFamily: 'var(--font-inter)', fontSize: '0.68rem', marginTop: '0.3rem',
-                color: staffListErr ? 'var(--red)' : 'rgba(245,242,236,0.25)',
+                color: staffListErr ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.25)',
               }}>{accountHint}</p>
 
               {/* Search results */}
@@ -237,7 +237,7 @@ export default function EndOfDayStaffPage() {
                   borderRadius: '4px', overflow: 'hidden',
                 }}>
                   {searchMatches.length === 0 ? (
-                    <p style={{ padding: '0.65rem 1rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.3)' }}>
+                    <p style={{ padding: '0.65rem 1rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
                       No matching accounts
                     </p>
                   ) : searchMatches.map(s => (
@@ -264,13 +264,13 @@ export default function EndOfDayStaffPage() {
                         <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)', marginBottom: '0.1rem' }}>
                           {s.email}
                         </p>
-                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.35)' }}>
+                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
                           {s.role ? (ROLE_LABELS as Record<string, string>)[s.role] ?? s.role : ''}
                           {s.branchIds.length > 0 ? ` · ${s.branchIds.join(', ')}` : ''}
                         </p>
                       </div>
                       <span style={{
-                        fontSize: '0.68rem', color: 'rgba(245,242,236,0.35)',
+                        fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.35)',
                         fontFamily: 'var(--font-inter)', flexShrink: 0,
                       }}>select →</span>
                     </button>
@@ -296,7 +296,7 @@ export default function EndOfDayStaffPage() {
                   style={{
                     backgroundColor: newName.trim() ? 'var(--brand-secondary)' : 'rgba(255,255,255,0.06)',
                     border: 'none',
-                    color: newName.trim() ? '#000' : 'rgba(245,242,236,0.4)',
+                    color: newName.trim() ? '#000' : 'rgba(var(--offwhite-rgb),0.4)',
                     padding: '0.6rem 1.1rem',
                     borderRadius: '2px', fontSize: '0.78rem', fontWeight: 600,
                     cursor: newName.trim() ? 'pointer' : 'default',
@@ -305,7 +305,7 @@ export default function EndOfDayStaffPage() {
                   }}
                 >+ Add to Roster</button>
               </div>
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.2)', marginTop: '0.3rem' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.2)', marginTop: '0.3rem' }}>
                 Select an account above to pre-fill, or type any name directly
               </p>
             </div>

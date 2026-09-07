@@ -38,7 +38,7 @@ const labelStyle = {
   fontSize: '0.68rem',
   letterSpacing: '0.2em',
   textTransform: 'uppercase' as const,
-  color: 'rgba(245,242,236,0.35)',
+  color: 'rgba(var(--offwhite-rgb),0.35)',
   marginBottom: '0.5rem',
   fontFamily: 'var(--font-inter)',
 }
@@ -104,13 +104,13 @@ export default function TierPerksPage() {
           <div>
             <a href="/admin" style={{
               fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.3)', textDecoration: 'none', fontFamily: 'var(--font-inter)',
+              color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none', fontFamily: 'var(--font-inter)',
               marginBottom: '0.5rem', display: 'block',
             }}>← Back to Dashboard</a>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)' }}>
               Tier Perks
             </h1>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.4rem' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.4rem' }}>
               Shown publicly on the Loyalty page, under each tier
             </p>
           </div>
@@ -123,13 +123,13 @@ export default function TierPerksPage() {
         </div>
 
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : perks.length === 0 ? (
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
           }}>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.3)' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
               No perks yet.
             </p>
           </div>
@@ -158,16 +158,16 @@ export default function TierPerksPage() {
                       fontFamily: 'var(--font-inter)', letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap',
                     }}>{tier}</span>
                   </div>
-                  <p style={{ flex: 1, fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.7)' }}>
+                  <p style={{ flex: 1, fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.7)' }}>
                     {p.perk}
                   </p>
                   <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                     <button onClick={() => openEdit(p)} style={{
-                      background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(245,242,236,0.5)',
+                      background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
                       padding: '0.4rem 0.8rem', borderRadius: '2px', fontSize: '0.7rem', cursor: 'pointer', fontFamily: 'var(--font-inter)',
                     }}>Edit</button>
                     <button onClick={() => handleDelete(p)} style={{
-                      background: 'transparent', border: '1px solid rgba(228,51,41,0.3)', color: 'var(--red)',
+                      background: 'transparent', border: '1px solid rgba(var(--red-rgb),0.3)', color: 'var(--red)',
                       padding: '0.4rem 0.8rem', borderRadius: '2px', fontSize: '0.7rem', cursor: 'pointer', fontFamily: 'var(--font-inter)',
                     }}>Delete</button>
                   </div>
@@ -196,7 +196,7 @@ export default function TierPerksPage() {
                 {editing ? 'Edit Perk' : 'Add New Perk'}
               </h2>
               <button onClick={() => setOpen(false)} style={{
-                background: 'transparent', border: 'none', color: 'rgba(245,242,236,0.4)', fontSize: '1.2rem', cursor: 'pointer',
+                background: 'transparent', border: 'none', color: 'rgba(var(--offwhite-rgb),0.4)', fontSize: '1.2rem', cursor: 'pointer',
               }}>✕</button>
             </div>
 
@@ -208,7 +208,7 @@ export default function TierPerksPage() {
                   style={inputStyle}>
                   {TIER_LABELS.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
-                <p style={{ marginTop: '0.5rem', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.35)' }}>
+                <p style={{ marginTop: '0.5rem', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
                   Customers see this once they reach {form.tier}.
                 </p>
               </div>
@@ -223,7 +223,7 @@ export default function TierPerksPage() {
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                 <button type="button" onClick={() => setOpen(false)} style={{
                   flex: 1, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-                  color: 'rgba(245,242,236,0.5)', padding: '0.8rem', borderRadius: '2px', fontSize: '0.75rem',
+                  color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.8rem', borderRadius: '2px', fontSize: '0.75rem',
                   cursor: 'pointer', fontFamily: 'var(--font-inter)',
                 }}>Cancel</button>
                 <button type="submit" disabled={saving || !canSave} style={{

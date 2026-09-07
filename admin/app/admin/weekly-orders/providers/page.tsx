@@ -23,13 +23,13 @@ const btnPrimary: React.CSSProperties = {
 
 const btnGhost: React.CSSProperties = {
   backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-  color: 'rgba(245,242,236,0.5)', padding: '0.55rem 1rem', borderRadius: '2px',
+  color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.55rem 1rem', borderRadius: '2px',
   fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase',
   cursor: 'pointer', fontFamily: 'var(--font-inter)',
 }
 
 const btnDanger: React.CSSProperties = {
-  backgroundColor: 'transparent', border: '1px solid rgba(228,51,41,0.3)',
+  backgroundColor: 'transparent', border: '1px solid rgba(var(--red-rgb),0.3)',
   color: 'var(--red)', padding: '0.45rem 0.8rem', borderRadius: '2px',
   fontSize: '0.72rem', cursor: 'pointer', fontFamily: 'var(--font-inter)',
 }
@@ -64,11 +64,11 @@ function AddProviderForm({ onSave }: { onSave: (p: Omit<OrderProvider, 'id' | 'c
       background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)',
       borderRadius: '4px', padding: '1.4rem 1.6rem', marginBottom: '2rem',
     }}>
-      <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.5)', marginBottom: '1rem', letterSpacing: '0.12em' }}>ADD PROVIDER</p>
+      <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginBottom: '1rem', letterSpacing: '0.12em' }}>ADD PROVIDER</p>
 
       {/* Name */}
       <div style={{ marginBottom: '1rem' }}>
-        <label style={{ display: 'block', fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)' }}>
+        <label style={{ display: 'block', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)' }}>
           Provider Name *
         </label>
         <input
@@ -81,13 +81,13 @@ function AddProviderForm({ onSave }: { onSave: (p: Omit<OrderProvider, 'id' | 'c
 
       {/* Phone per branch */}
       <div style={{ marginBottom: '1rem' }}>
-        <label style={{ display: 'block', fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.5rem', fontFamily: 'var(--font-inter)' }}>
+        <label style={{ display: 'block', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.5rem', fontFamily: 'var(--font-inter)' }}>
           Phone Numbers (per branch)
         </label>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {BRANCHES.map(branch => (
             <div key={branch}>
-              <label style={{ display: 'block', fontSize: '0.65rem', color: 'rgba(245,242,236,0.25)', marginBottom: '0.25rem', fontFamily: 'var(--font-inter)' }}>
+              <label style={{ display: 'block', fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.25)', marginBottom: '0.25rem', fontFamily: 'var(--font-inter)' }}>
                 {branch}
               </label>
               <input
@@ -103,7 +103,7 @@ function AddProviderForm({ onSave }: { onSave: (p: Omit<OrderProvider, 'id' | 'c
 
       {/* Notes */}
       <div style={{ marginBottom: '1rem' }}>
-        <label style={{ display: 'block', fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)' }}>
+        <label style={{ display: 'block', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)' }}>
           Notes (optional)
         </label>
         <input
@@ -124,7 +124,7 @@ function AddProviderForm({ onSave }: { onSave: (p: Omit<OrderProvider, 'id' | 'c
 }
 
 const labelStyle: React.CSSProperties = {
-  display: 'block', fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)',
+  display: 'block', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)',
   letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.3rem',
   fontFamily: 'var(--font-inter)',
 }
@@ -236,7 +236,7 @@ function ProviderCard({
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               {BRANCHES.map(branch => (
                 <div key={branch}>
-                  <label style={{ display: 'block', fontSize: '0.65rem', color: 'rgba(245,242,236,0.25)', marginBottom: '0.25rem', fontFamily: 'var(--font-inter)' }}>{branch}</label>
+                  <label style={{ display: 'block', fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.25)', marginBottom: '0.25rem', fontFamily: 'var(--font-inter)' }}>{branch}</label>
                   <input
                     value={phones[branch] ?? ''}
                     onChange={e => setPhone(branch, e.target.value)}
@@ -265,14 +265,14 @@ function ProviderCard({
                     onClick={() => removeCategory(cat)}
                     style={{
                       background: 'none', border: 'none', cursor: 'pointer',
-                      color: 'rgba(245,242,236,0.4)', fontSize: '0.85rem', lineHeight: 1,
+                      color: 'rgba(var(--offwhite-rgb),0.4)', fontSize: '0.85rem', lineHeight: 1,
                       padding: '0 0.1rem',
                     }}
                   >×</button>
                 </span>
               ))}
               {categories.length === 0 && (
-                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.2)' }}>
+                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.2)' }}>
                   No categories yet
                 </span>
               )}
@@ -290,7 +290,7 @@ function ProviderCard({
                 onClick={addCategory}
                 style={{
                   backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
-                  color: 'rgba(245,242,236,0.6)', padding: '0.55rem 0.9rem', borderRadius: '2px',
+                  color: 'rgba(var(--offwhite-rgb),0.6)', padding: '0.55rem 0.9rem', borderRadius: '2px',
                   fontSize: '0.72rem', cursor: 'pointer', fontFamily: 'var(--font-inter)',
                 }}
               >+ Add</button>
@@ -305,7 +305,7 @@ function ProviderCard({
                       type="button"
                       onClick={translateAllCats}
                       style={{
-                        background: 'rgba(201,150,44,0.1)', border: '1px solid rgba(201,150,44,0.3)',
+                        background: 'rgba(var(--brand-secondary-rgb),0.1)', border: '1px solid rgba(var(--brand-secondary-rgb),0.3)',
                         color: 'var(--brand-secondary)', padding: '0.2rem 0.55rem', borderRadius: '2px',
                         fontSize: '0.65rem', cursor: 'pointer', fontFamily: 'var(--font-inter)',
                         letterSpacing: '0.06em',
@@ -313,13 +313,13 @@ function ProviderCard({
                     >🌐 Translate All</button>
                   )}
                   {translatingCats.size > 0 && (
-                    <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.3)' }}>Translating…</span>
+                    <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>Translating…</span>
                   )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                   {categories.map(cat => (
                     <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.45)', width: '160px', flexShrink: 0 }}>{cat}</span>
+                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.45)', width: '160px', flexShrink: 0 }}>{cat}</span>
                       <input
                         value={translatingCats.has(cat) ? '' : (catTranslations[cat] ?? '')}
                         onChange={e => setCatTranslations(prev => ({ ...prev, [cat]: e.target.value }))}
@@ -356,7 +356,7 @@ function ProviderCard({
                 {provider.name}
               </p>
               {provider.notes && (
-                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.35)' }}>
+                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
                   {provider.notes}
                 </p>
               )}
@@ -377,13 +377,13 @@ function ProviderCard({
                 return (
                   <span key={cat} style={{
                     display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-                    backgroundColor: 'rgba(0,160,152,0.08)', border: '1px solid rgba(0,160,152,0.2)',
+                    backgroundColor: 'rgba(var(--teal-rgb),0.08)', border: '1px solid rgba(var(--teal-rgb),0.2)',
                     borderRadius: '2px', padding: '0.2rem 0.55rem',
                     fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'var(--teal)',
                     letterSpacing: '0.03em',
                   }}>
                     {cat}
-                    {ar && <span style={{ color: 'rgba(0,160,152,0.7)', borderLeft: '1px solid rgba(0,160,152,0.25)', paddingLeft: '0.4rem' }} dir="rtl">{ar}</span>}
+                    {ar && <span style={{ color: 'rgba(var(--teal-rgb),0.7)', borderLeft: '1px solid rgba(var(--teal-rgb),0.25)', paddingLeft: '0.4rem' }} dir="rtl">{ar}</span>}
                   </span>
                 )
               })}
@@ -397,12 +397,12 @@ function ProviderCard({
                 const phone = provider.phones?.[branch]
                 return (
                   <div key={branch} style={{
-                    background: phone ? 'rgba(0,160,152,0.08)' : 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${phone ? 'rgba(0,160,152,0.25)' : 'rgba(255,255,255,0.06)'}`,
+                    background: phone ? 'rgba(var(--teal-rgb),0.08)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${phone ? 'rgba(var(--teal-rgb),0.25)' : 'rgba(255,255,255,0.06)'}`,
                     borderRadius: '3px', padding: '0.5rem 0.9rem', minWidth: '140px',
                   }}>
-                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', color: 'rgba(245,242,236,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{branch}</p>
-                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.9rem', fontWeight: 600, color: phone ? 'var(--teal)' : 'rgba(245,242,236,0.18)' }}>
+                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{branch}</p>
+                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.9rem', fontWeight: 600, color: phone ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.18)' }}>
                       {phone || 'No number set'}
                     </p>
                   </div>
@@ -452,13 +452,13 @@ export default function ProvidersPage() {
         <div style={{ marginBottom: '2rem' }}>
           <a href="/admin/weekly-orders" style={{
             fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
             marginBottom: '0.5rem', display: 'block', fontFamily: 'var(--font-inter)',
           }}>← Weekly Orders</a>
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)', marginBottom: '0.25rem' }}>
             Providers
           </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.3)' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
             Manage supplier contacts. Each provider can have a different phone number per branch.
           </p>
         </div>
@@ -466,12 +466,12 @@ export default function ProvidersPage() {
         <AddProviderForm onSave={handleAdd} />
 
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : providers.length === 0 ? (
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
-            color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
+            color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
             No providers yet — add your first one above.
           </div>
@@ -488,7 +488,7 @@ export default function ProvidersPage() {
           </div>
         )}
 
-        <p style={{ marginTop: '1.5rem', fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.2)' }}>
+        <p style={{ marginTop: '1.5rem', fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.2)' }}>
           {providers.length} provider{providers.length !== 1 ? 's' : ''}
         </p>
       </div>

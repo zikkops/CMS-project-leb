@@ -177,7 +177,7 @@ function DailyInventoryInner() {
   if (branchOptions.length === 0) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-        <p style={{ color: 'rgba(245,242,236,0.4)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem', textAlign: 'center' }}>
+        <p style={{ color: 'rgba(var(--offwhite-rgb),0.4)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem', textAlign: 'center' }}>
           No branch assigned for inventory counts.
         </p>
       </div>
@@ -192,13 +192,13 @@ function DailyInventoryInner() {
         <div style={{ marginBottom: '1.75rem' }}>
           <a href="/admin/supplies" style={{
             fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
             marginBottom: '0.5rem', display: 'block', fontFamily: 'var(--font-inter)',
           }}>← Inventory Management</a>
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', color: 'var(--offwhite)', marginBottom: '0.2rem' }}>
             Daily Inventory Count
           </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.3)' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
             Kitchen, Bar, and Cleaning are counted separately — pick a department below, count what&apos;s actually on the shelf, and submit.
           </p>
         </div>
@@ -206,7 +206,7 @@ function DailyInventoryInner() {
         {/* Branch + Date */}
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)', marginBottom: '0.4rem', fontFamily: 'var(--font-inter)' }}>Branch</label>
+            <label style={{ display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.4rem', fontFamily: 'var(--font-inter)' }}>Branch</label>
             {branchOptions.length === 1 ? (
               <div style={{ ...inp, display: 'inline-block', color: branchColor(branch), fontWeight: 600 }}>{branch}</div>
             ) : (
@@ -217,20 +217,20 @@ function DailyInventoryInner() {
             )}
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)', marginBottom: '0.4rem', fontFamily: 'var(--font-inter)' }}>Date</label>
+            <label style={{ display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.4rem', fontFamily: 'var(--font-inter)' }}>Date</label>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...inp, width: '100%' }} />
           </div>
         </div>
 
         {/* Department tabs */}
         <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{ display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)', marginBottom: '0.5rem', fontFamily: 'var(--font-inter)' }}>Department</label>
+          <label style={{ display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.5rem', fontFamily: 'var(--font-inter)' }}>Department</label>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             {departmentOptions.map(d => (
               <button key={d} onClick={() => setDepartment(d)} style={{
                 background: department === d ? `${supplyCategoryColor(d)}18` : 'transparent',
                 border: `1px solid ${department === d ? supplyCategoryColor(d) : 'rgba(255,255,255,0.09)'}`,
-                color: department === d ? supplyCategoryColor(d) : 'rgba(245,242,236,0.35)',
+                color: department === d ? supplyCategoryColor(d) : 'rgba(var(--offwhite-rgb),0.35)',
                 borderRadius: '6px', padding: '0.5rem 1.25rem',
                 fontSize: '0.78rem', fontWeight: department === d ? 600 : 400,
                 letterSpacing: '0.06em', cursor: 'pointer', fontFamily: 'var(--font-inter)',
@@ -240,17 +240,17 @@ function DailyInventoryInner() {
         </div>
 
         {!branch || !department ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
             Select a branch and department to begin.
           </p>
         ) : loading || loadingSupplies ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>Loading…</p>
         ) : (
           <>
             {/* Status banner */}
             {report?.status === 'submitted' && saved !== 'draft' && (
               <div style={{
-                background: 'rgba(0,160,152,0.08)', border: '1px solid rgba(0,160,152,0.25)',
+                background: 'rgba(var(--teal-rgb),0.08)', border: '1px solid rgba(var(--teal-rgb),0.25)',
                 borderRadius: '4px', padding: '0.85rem 1.1rem', marginBottom: '1.25rem',
                 fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--teal)',
               }}>
@@ -259,7 +259,7 @@ function DailyInventoryInner() {
             )}
             {report?.status === 'draft' && report.items.some(i => i.countedQty != null) && (
               <div style={{
-                background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.22)',
+                background: 'rgba(var(--brand-secondary-rgb),0.08)', border: '1px solid rgba(var(--brand-secondary-rgb),0.22)',
                 borderRadius: '4px', padding: '0.85rem 1.1rem', marginBottom: '1.25rem',
                 fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--brand-secondary)',
               }}>
@@ -283,14 +283,14 @@ function DailyInventoryInner() {
                   height: '100%', background: allCounted ? 'var(--teal)' : supplyCategoryColor(department), transition: 'width 0.2s',
                 }} />
               </div>
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)', whiteSpace: 'nowrap' }}>
+              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)', whiteSpace: 'nowrap' }}>
                 {countedCount} / {items.length} counted
               </span>
             </div>
 
             {/* Items */}
             {visibleItems.length === 0 ? (
-              <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center', color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
+              <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
                 {search ? 'No items match your search.' : `No ${department} items yet — add them from the Inventory Management page first.`}
               </div>
             ) : (
@@ -302,22 +302,22 @@ function DailyInventoryInner() {
                   const delta = counted ? Number(val) - prev : 0
                   return (
                     <div key={s.id} style={{
-                      background: counted ? 'rgba(0,160,152,0.04)' : 'rgba(255,255,255,0.02)',
-                      border: `1px solid ${counted ? 'rgba(0,160,152,0.2)' : 'rgba(255,255,255,0.07)'}`,
+                      background: counted ? 'rgba(var(--teal-rgb),0.04)' : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${counted ? 'rgba(var(--teal-rgb),0.2)' : 'rgba(255,255,255,0.07)'}`,
                       borderRadius: '6px', padding: '0.8rem 0.9rem',
                       display: 'flex', flexDirection: 'column', gap: '0.5rem',
                     }}>
                       <div>
                         <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.82rem', color: 'var(--offwhite)', lineHeight: 1.3 }}>{s.name}</p>
                         {s.nameAr && (
-                          <p dir="rtl" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(201,150,44,0.8)', marginTop: '0.1rem' }}>{s.nameAr}</p>
+                          <p dir="rtl" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--brand-secondary-rgb),0.8)', marginTop: '0.1rem' }}>{s.nameAr}</p>
                         )}
                       </div>
                       {isMobile ? (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                           <div>
-                            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.62rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', marginBottom: '0.15rem' }}>Last count</p>
-                            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.9rem', color: 'rgba(245,242,236,0.5)', fontWeight: 600 }}>
+                            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.62rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '0.15rem' }}>Last count</p>
+                            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.9rem', color: 'rgba(var(--offwhite-rgb),0.5)', fontWeight: 600 }}>
                               {prev} <span style={{ fontSize: '0.68rem', fontWeight: 400 }}>{s.unit}</span>
                             </p>
                           </div>
@@ -330,7 +330,7 @@ function DailyInventoryInner() {
                                 placeholder="Count"
                                 style={{ ...inp, width: '90px', textAlign: 'center', fontWeight: 600, color: counted ? 'var(--teal)' : 'var(--offwhite)' }}
                               />
-                              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.35)' }}>{s.unit}</span>
+                              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>{s.unit}</span>
                             </div>
                             {counted && delta !== 0 && (
                               <span style={{
@@ -344,7 +344,7 @@ function DailyInventoryInner() {
                         </div>
                       ) : (
                         <>
-                          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)' }}>
+                          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
                             Last count: {prev} {s.unit}
                           </p>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -355,7 +355,7 @@ function DailyInventoryInner() {
                               placeholder="Count"
                               style={{ ...inp, width: '90px', textAlign: 'center', fontWeight: 600, color: counted ? 'var(--teal)' : 'var(--offwhite)' }}
                             />
-                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.35)' }}>{s.unit}</span>
+                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>{s.unit}</span>
                             {counted && delta !== 0 && (
                               <span style={{
                                 marginLeft: 'auto', fontFamily: 'var(--font-inter)', fontSize: '0.68rem', fontWeight: 700,
@@ -384,7 +384,7 @@ function DailyInventoryInner() {
                 disabled={saving || submitting || items.length === 0}
                 style={{
                   background: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
-                  color: 'rgba(245,242,236,0.6)', padding: '0.75rem 1.5rem', borderRadius: '2px',
+                  color: 'rgba(var(--offwhite-rgb),0.6)', padding: '0.75rem 1.5rem', borderRadius: '2px',
                   fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase',
                   cursor: saving || submitting ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-inter)',
                   opacity: saving ? 0.6 : 1,
@@ -397,7 +397,7 @@ function DailyInventoryInner() {
                 title={!allCounted ? 'Every item needs a count before submitting' : undefined}
                 style={{
                   background: allCounted ? supplyCategoryColor(department) : 'rgba(255,255,255,0.08)',
-                  color: allCounted ? '#000' : 'rgba(245,242,236,0.3)', border: 'none', padding: '0.75rem 2rem', borderRadius: '2px',
+                  color: allCounted ? '#000' : 'rgba(var(--offwhite-rgb),0.3)', border: 'none', padding: '0.75rem 2rem', borderRadius: '2px',
                   fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700,
                   cursor: allCounted && !saving && !submitting ? 'pointer' : 'not-allowed',
                   fontFamily: 'var(--font-inter)', opacity: submitting ? 0.6 : 1,
@@ -405,7 +405,7 @@ function DailyInventoryInner() {
               >{submitting ? 'Submitting…' : `Submit ${department} Inventory`}</button>
 
               {!allCounted && items.length > 0 && (
-                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.3)' }}>
+                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
                   {items.length - countedCount} item{items.length - countedCount !== 1 ? 's' : ''} left to count
                 </span>
               )}
@@ -420,7 +420,7 @@ function DailyInventoryInner() {
                     style={{
                       background: 'none', border: 'none', cursor: 'pointer', padding: 0,
                       fontFamily: 'var(--font-inter)', fontSize: '0.72rem', letterSpacing: '0.1em',
-                      textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)',
+                      textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)',
                     }}
                   >{showHistory ? '▾' : '▸'} Recent Submissions — {branch}</button>
                   <a href="/admin/supplies/daily/history" style={{
@@ -432,9 +432,9 @@ function DailyInventoryInner() {
                 {showHistory && (
                   <div style={{ marginTop: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {historyLoading ? (
-                      <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.8rem' }}>Loading…</p>
+                      <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.8rem' }}>Loading…</p>
                     ) : history.filter(h => h.department === department).length === 0 ? (
-                      <p style={{ color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.8rem' }}>No {department} submissions yet for this branch.</p>
+                      <p style={{ color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.8rem' }}>No {department} submissions yet for this branch.</p>
                     ) : history.filter(h => h.department === department).map(h => {
                       const discrepancies = h.items.filter(i => i.countedQty != null && i.countedQty !== i.previousQty).length
                       return (
@@ -445,12 +445,12 @@ function DailyInventoryInner() {
                         }}>
                           <div>
                             <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'var(--offwhite)', fontWeight: 500 }}>{h.date}</span>
-                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.3)', marginLeft: '0.6rem' }}>
+                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginLeft: '0.6rem' }}>
                               {h.status === 'submitted' ? `by ${h.submittedByEmail}` : 'draft — not submitted'}
                             </span>
                           </div>
                           {h.status === 'submitted' && (
-                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: discrepancies > 0 ? 'var(--brand-secondary)' : 'rgba(245,242,236,0.3)' }}>
+                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: discrepancies > 0 ? 'var(--brand-secondary)' : 'rgba(var(--offwhite-rgb),0.3)' }}>
                               {discrepancies > 0 ? `${discrepancies} item${discrepancies !== 1 ? 's' : ''} changed` : 'matched expected'}
                             </span>
                           )}

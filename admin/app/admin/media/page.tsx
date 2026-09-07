@@ -78,7 +78,7 @@ export default function MediaLibraryPage() {
               fontSize: '0.7rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.3)',
+              color: 'rgba(var(--offwhite-rgb),0.3)',
               textDecoration: 'none',
               fontFamily: 'var(--font-inter)',
               marginBottom: '0.5rem',
@@ -90,7 +90,7 @@ export default function MediaLibraryPage() {
             <p style={{
               fontFamily: 'var(--font-inter)',
               fontSize: '0.78rem',
-              color: 'rgba(245,242,236,0.3)',
+              color: 'rgba(var(--offwhite-rgb),0.3)',
               marginTop: '0.5rem',
             }}>
               {items.length} image{items.length === 1 ? '' : 's'} loaded{hasMore ? ' — more available' : ''}
@@ -99,7 +99,7 @@ export default function MediaLibraryPage() {
           <button onClick={handleSync} disabled={syncing} style={{
             backgroundColor: 'transparent',
             border: '1px solid rgba(255,255,255,0.1)',
-            color: 'rgba(245,242,236,0.6)',
+            color: 'rgba(var(--offwhite-rgb),0.6)',
             padding: '0.7rem 1.5rem',
             borderRadius: '2px',
             fontSize: '0.75rem',
@@ -120,17 +120,17 @@ export default function MediaLibraryPage() {
         <p style={{
           fontFamily: 'var(--font-inter)',
           fontSize: '0.78rem',
-          color: 'rgba(245,242,236,0.3)',
+          color: 'rgba(var(--offwhite-rgb),0.3)',
           marginBottom: '2rem',
           lineHeight: 1.6,
         }}>
           Every image uploaded through Products, Menu, or Events shows up here automatically.
-          Images marked <strong style={{ color: 'rgba(245,242,236,0.6)' }}>Legacy</strong> were uploaded before this library existed
+          Images marked <strong style={{ color: 'rgba(var(--offwhite-rgb),0.6)' }}>Legacy</strong> were uploaded before this library existed
           (or backfilled by Sync) — deleting them only removes the entry from this list, since the original delete link wasn&apos;t kept.
         </p>
 
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : (
           <>
             <MediaLibraryGrid
@@ -150,7 +150,7 @@ export default function MediaLibraryPage() {
                   style={{
                     backgroundColor: 'transparent',
                     border: '1px solid rgba(255,255,255,0.1)',
-                    color: loadingMore ? 'rgba(245,242,236,0.3)' : 'rgba(245,242,236,0.6)',
+                    color: loadingMore ? 'rgba(var(--offwhite-rgb),0.3)' : 'rgba(var(--offwhite-rgb),0.6)',
                     padding: '0.8rem 2.5rem',
                     borderRadius: '2px',
                     fontSize: '0.75rem',

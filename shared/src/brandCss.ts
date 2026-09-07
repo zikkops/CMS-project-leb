@@ -22,6 +22,30 @@
 
 import { BRAND } from './brand'
 
+/**
+ * A colour as "r, g, b", for the translucent case.
+ *
+ * `rgba(var(--offwhite), 0.45)` does not work: a variable holding "#EDEBE7" is
+ * a colour, not the three channel values rgba() wants. That is why roughly
+ * fifteen hundred translucent colours across this codebase were written as
+ * literal `rgba(245,242,236,0.45)` — the old café's off-white, frozen, in the
+ * one form the brand variables could not express. Configuring a new palette
+ * changed the solid colours and left every faded label, every divider and
+ * every placeholder exactly as the original café had them.
+ *
+ * The triplet is the missing piece: `rgba(var(--offwhite-rgb), 0.45)`.
+ *
+ * envColor() in brand.ts guarantees a six-digit hex reaches this, so the
+ * regex cannot fail in practice — the fallback is there because a variable
+ * holding a malformed triplet would invalidate every rgba() using it, and an
+ * invalid property is dropped rather than reported.
+ */
+function rgbTriplet(hex: string): string {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim())
+  if (!m) return '128, 128, 128'
+  return `${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}`
+}
+
 export function brandCssVars(): string {
   return `
 :root {
@@ -33,6 +57,16 @@ export function brandCssVars(): string {
   --brand-background: ${BRAND.colors.background};
   --brand-foreground: ${BRAND.colors.foreground};
 
+  /* Channel triplets, for rgba(). See rgbTriplet() above for why these have
+     to exist separately rather than being derived from the values above. */
+  --brand-primary-rgb:    ${rgbTriplet(BRAND.colors.primary)};
+  --brand-secondary-rgb:  ${rgbTriplet(BRAND.colors.secondary)};
+  --brand-tertiary-rgb:   ${rgbTriplet(BRAND.colors.tertiary)};
+  --brand-deep-rgb:       ${rgbTriplet(BRAND.colors.deep)};
+  --brand-danger-rgb:     ${rgbTriplet(BRAND.colors.danger)};
+  --brand-background-rgb: ${rgbTriplet(BRAND.colors.background)};
+  --brand-foreground-rgb: ${rgbTriplet(BRAND.colors.foreground)};
+
   /* Legacy aliases — see the note above. Do not add more. */
   --teal:     var(--brand-primary);
   --red:      var(--brand-danger);
@@ -40,6 +74,11 @@ export function brandCssVars(): string {
   --navy:     var(--brand-deep);
   --black:    var(--brand-background);
   --offwhite: var(--brand-foreground);
+
+  --teal-rgb:     var(--brand-primary-rgb);
+  --red-rgb:      var(--brand-danger-rgb);
+  --purple-rgb:   var(--brand-tertiary-rgb);
+  --offwhite-rgb: var(--brand-foreground-rgb);
 
   --font-display: var(--font-brand-display);
   --font-body:    var(--font-brand-body);

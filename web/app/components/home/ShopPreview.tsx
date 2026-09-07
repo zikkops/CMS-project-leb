@@ -113,7 +113,7 @@ export default function ShopPreview() {
                   onMouseLeave={() => setHoveredId(null)}
                   style={{
                     background: 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${hovered && !outOfStock ? 'rgba(106,106,183,0.4)' : 'rgba(255,255,255,0.06)'}`,
+                    border: `1px solid ${hovered && !outOfStock ? 'rgba(var(--purple-rgb),0.4)' : 'rgba(255,255,255,0.06)'}`,
                     borderRadius: '4px',
                     overflow: 'hidden',
                     display: 'flex',
@@ -134,7 +134,7 @@ export default function ShopPreview() {
                       zIndex: 2,
                     }}>
                       <span style={{
-                        backgroundColor: 'rgba(228,51,41,0.9)',
+                        backgroundColor: 'rgba(var(--red-rgb),0.9)',
                         color: '#fff',
                         padding: '0.3rem 1rem',
                         fontSize: '0.65rem',
@@ -189,7 +189,7 @@ export default function ShopPreview() {
                       <p style={{
                         fontFamily: 'var(--font-inter)',
                         fontSize: '0.78rem',
-                        color: 'rgba(245,242,236,0.45)',
+                        color: 'rgba(var(--offwhite-rgb),0.45)',
                         lineHeight: 1.6,
                       }}>{truncate(description, 10)}</p>
                     )}
@@ -228,7 +228,7 @@ export default function ShopPreview() {
                         fontSize: isMobile ? '0.65rem' : '0.72rem',
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
-                        color: hovered && !outOfStock ? 'var(--purple)' : 'rgba(245,242,236,0.35)',
+                        color: hovered && !outOfStock ? 'var(--purple)' : 'rgba(var(--offwhite-rgb),0.35)',
                         transition: 'color 0.2s',
                       }}>
                         Learn More →
@@ -244,8 +244,8 @@ export default function ShopPreview() {
               onMouseEnter={() => setLibraryHovered(true)}
               onMouseLeave={() => setLibraryHovered(false)}
               style={{
-                background: libraryHovered ? 'rgba(106,106,183,0.16)' : 'rgba(106,106,183,0.08)',
-                border: `1px solid ${libraryHovered ? 'rgba(106,106,183,0.6)' : 'rgba(106,106,183,0.25)'}`,
+                background: libraryHovered ? 'rgba(var(--purple-rgb),0.16)' : 'rgba(var(--purple-rgb),0.08)',
+                border: `1px solid ${libraryHovered ? 'rgba(var(--purple-rgb),0.6)' : 'rgba(var(--purple-rgb),0.25)'}`,
                 borderRadius: '4px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -256,14 +256,14 @@ export default function ShopPreview() {
                 padding: isMobile ? '1.25rem' : '2rem',
                 minHeight: isMobile ? '180px' : '360px',
                 transform: libraryHovered ? 'translateY(-4px)' : 'none',
-                boxShadow: libraryHovered ? '0 12px 24px rgba(106,106,183,0.2)' : 'none',
+                boxShadow: libraryHovered ? '0 12px 24px rgba(var(--purple-rgb),0.2)' : 'none',
                 transition: 'all 0.3s ease',
               }}>
               <div style={{
                 width: isMobile ? '40px' : '60px',
                 height: isMobile ? '40px' : '60px',
                 borderRadius: '50%',
-                border: `1px solid ${libraryHovered ? 'var(--purple)' : 'rgba(106,106,183,0.4)'}`,
+                border: `1px solid ${libraryHovered ? 'var(--purple)' : 'rgba(var(--purple-rgb),0.4)'}`,
                 backgroundColor: libraryHovered ? 'var(--purple)' : 'transparent',
                 display: 'flex',
                 alignItems: 'center',
@@ -283,7 +283,7 @@ export default function ShopPreview() {
                 <p style={{
                   fontFamily: 'var(--font-inter)',
                   fontSize: '0.75rem',
-                  color: 'rgba(245,242,236,0.35)',
+                  color: 'rgba(var(--offwhite-rgb),0.35)',
                   textAlign: 'center',
                   lineHeight: 1.6,
                 }}>

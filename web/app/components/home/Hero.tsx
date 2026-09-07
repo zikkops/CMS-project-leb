@@ -166,7 +166,7 @@ export default function Hero() {
           position: 'absolute', inset: 0, pointerEvents: 'none',
           background: `
             radial-gradient(ellipse at 30% 60%, rgba(50,50,124,0.3) 0%, transparent 60%),
-            radial-gradient(ellipse at 70% 30%, rgba(0,160,152,0.15) 0%, transparent 50%)
+            radial-gradient(ellipse at 70% 30%, rgba(var(--teal-rgb),0.15) 0%, transparent 50%)
           `,
         }} />
       </div>
@@ -209,7 +209,7 @@ export default function Hero() {
         fontSize: isMobile ? '0.85rem' : '1rem',
         fontWeight: 300,
         letterSpacing: '0.05em',
-        color: 'rgba(245,242,236,0.6)',
+        color: 'rgba(var(--offwhite-rgb),0.6)',
         maxWidth: isMobile ? '300px' : '480px',
         lineHeight: 1.9,
         marginBottom: '2.5rem',
@@ -269,12 +269,12 @@ export default function Hero() {
         flexDirection: 'column',
         alignItems: 'center',
         gap: '0.5rem',
-        color: 'rgba(245,242,236,0.2)',
+        color: 'rgba(var(--offwhite-rgb),0.2)',
         fontSize: '0.6rem',
         letterSpacing: '0.2em',
         textTransform: 'uppercase',
       }}>
-        <div style={{ width: '1px', height: '35px', background: 'linear-gradient(to bottom, rgba(0,160,152,0.6), transparent)' }} />
+        <div style={{ width: '1px', height: '35px', background: 'linear-gradient(to bottom, rgba(var(--teal-rgb),0.6), transparent)' }} />
         Scroll
       </div>
     </section>

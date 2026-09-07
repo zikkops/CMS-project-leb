@@ -42,7 +42,7 @@ const labelStyle = {
   fontSize: '0.68rem',
   letterSpacing: '0.2em',
   textTransform: 'uppercase' as const,
-  color: 'rgba(245,242,236,0.35)',
+  color: 'rgba(var(--offwhite-rgb),0.35)',
   marginBottom: '0.5rem',
   fontFamily: 'var(--font-inter)',
 }
@@ -165,7 +165,7 @@ export default function ManageCustomersPage() {
   const actionBtnStyle = {
     background: 'transparent',
     border: '1px solid rgba(255,255,255,0.1)',
-    color: 'rgba(245,242,236,0.6)',
+    color: 'rgba(var(--offwhite-rgb),0.6)',
     padding: '0.4rem 0.8rem',
     borderRadius: '2px',
     fontSize: '0.7rem',
@@ -183,13 +183,13 @@ export default function ManageCustomersPage() {
           <div>
             <a href="/admin" style={{
               fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.3)', textDecoration: 'none', fontFamily: 'var(--font-inter)',
+              color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none', fontFamily: 'var(--font-inter)',
               marginBottom: '0.5rem', display: 'block',
             }}>← Back to Dashboard</a>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)' }}>
               Manage Customers
             </h1>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.4rem' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.4rem' }}>
               {customers.length} customer{customers.length === 1 ? '' : 's'}
             </p>
           </div>
@@ -213,7 +213,7 @@ export default function ManageCustomersPage() {
             fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase',
             color: 'var(--navy)', fontFamily: 'var(--font-inter)', marginBottom: '0.6rem',
           }}>Annual Points Reset</p>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.45)', lineHeight: 1.6, marginBottom: '1.2rem' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.45)', lineHeight: 1.6, marginBottom: '1.2rem' }}>
             On this date, every customer&apos;s balance and lifetime earned total both reset to 0,
             which returns everyone to the first tier. A scheduled job runs nightly and does it on
             the day — nobody has to be signed in — then moves this date a year forward.
@@ -238,7 +238,7 @@ export default function ManageCustomersPage() {
             )}
           </div>
           {!loadingSettings && settings && (
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.8rem' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.8rem' }}>
               Currently scheduled for {formatResetDate(settings.nextResetDate)}.
               {/* The reset runs from a daily scheduled job. If that job stops
                   — as it did when the site moved off Vercel — nothing errors,
@@ -265,13 +265,13 @@ export default function ManageCustomersPage() {
 
         {/* List */}
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : filtered.length === 0 ? (
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
           }}>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.3)' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
               {customers.length === 0 ? 'No customers yet.' : 'No matching customers.'}
             </p>
           </div>
@@ -298,7 +298,7 @@ export default function ManageCustomersPage() {
                       {customer.avatarUrl ? (
                         <img src={customer.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
-                        <span style={{ fontSize: '0.85rem', color: 'rgba(245,242,236,0.5)', fontFamily: 'var(--font-cinzel)' }}>
+                        <span style={{ fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.5)', fontFamily: 'var(--font-cinzel)' }}>
                           {customer.displayName.charAt(0).toUpperCase()}
                         </span>
                       )}
@@ -307,11 +307,11 @@ export default function ManageCustomersPage() {
                       <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'var(--offwhite)', wordBreak: 'break-word' }}>
                         {customer.displayName}
                       </p>
-                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.35)', wordBreak: 'break-word' }}>
+                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.35)', wordBreak: 'break-word' }}>
                         {customer.email || customer.username}
                       </p>
                       {(customer.firstName || customer.lastName || customer.phoneNumber) && (
-                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.3)', wordBreak: 'break-word' }}>
+                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.3)', wordBreak: 'break-word' }}>
                           {[customer.firstName, customer.lastName].filter(Boolean).join(' ')}
                           {customer.phoneNumber ? ` · ${customer.phoneNumber}` : ''}
                         </p>
@@ -322,15 +322,15 @@ export default function ManageCustomersPage() {
                   {/* Tier / earned / balance */}
                   <div style={{ display: 'flex', gap: '1.5rem', flexShrink: 0 }}>
                     <div>
-                      <p style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Tier</p>
+                      <p style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Tier</p>
                       <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: tierColor }}>{getTier(customer.pointsEarned).tier}</p>
                     </div>
                     <div>
-                      <p style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Earned</p>
+                      <p style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Earned</p>
                       <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--teal)' }}>{customer.pointsEarned.toLocaleString()}</p>
                     </div>
                     <div>
-                      <p style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Points</p>
+                      <p style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Points</p>
                       <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--purple)' }}>{customer.points.toLocaleString()}</p>
                     </div>
                   </div>
@@ -340,13 +340,13 @@ export default function ManageCustomersPage() {
                     <button onClick={() => openEdit(customer)} style={actionBtnStyle}>Edit Points</button>
                     <button onClick={() => handleResendPassword(customer)} disabled={!customer.email} style={{
                       ...actionBtnStyle,
-                      color: sentEmailId === customer.id ? 'var(--teal)' : 'rgba(245,242,236,0.6)',
+                      color: sentEmailId === customer.id ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.6)',
                       borderColor: sentEmailId === customer.id ? 'var(--teal)' : 'rgba(255,255,255,0.1)',
                       cursor: customer.email ? 'pointer' : 'not-allowed',
                       opacity: customer.email ? 1 : 0.4,
                     }}>{sentEmailId === customer.id ? '✓ Sent' : 'Reset Password'}</button>
                     <button onClick={() => handleDelete(customer)} style={{
-                      ...actionBtnStyle, border: '1px solid rgba(228,51,41,0.3)', color: 'var(--red)',
+                      ...actionBtnStyle, border: '1px solid rgba(var(--red-rgb),0.3)', color: 'var(--red)',
                     }}>Delete</button>
                   </div>
                 </div>
@@ -375,12 +375,12 @@ export default function ManageCustomersPage() {
                 Edit Points
               </h2>
               <button onClick={() => setEditing(null)} style={{
-                background: 'transparent', border: 'none', color: 'rgba(245,242,236,0.4)', fontSize: '1.2rem', cursor: 'pointer',
+                background: 'transparent', border: 'none', color: 'rgba(var(--offwhite-rgb),0.4)', fontSize: '1.2rem', cursor: 'pointer',
               }}>✕</button>
             </div>
 
             <div style={{ padding: isMobile ? '1.5rem' : '2rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.5)' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
                 {editing.displayName}
               </p>
 
@@ -405,7 +405,7 @@ export default function ManageCustomersPage() {
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                 <button type="button" onClick={() => setEditing(null)} style={{
                   flex: 1, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-                  color: 'rgba(245,242,236,0.5)', padding: '0.8rem', borderRadius: '2px', fontSize: '0.75rem',
+                  color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.8rem', borderRadius: '2px', fontSize: '0.75rem',
                   cursor: 'pointer', fontFamily: 'var(--font-inter)',
                 }}>Cancel</button>
                 <button type="button" onClick={handleSavePoints} disabled={saving} style={{

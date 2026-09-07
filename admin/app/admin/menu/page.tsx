@@ -104,7 +104,7 @@ function SortableItem({ item, onEdit, onDelete, isMobile }: {
         <p style={{
           fontFamily: 'var(--font-inter)',
           fontSize: '0.75rem',
-          color: 'rgba(245,242,236,0.4)',
+          color: 'rgba(var(--offwhite-rgb),0.4)',
         }}>{item.description}</p>
       </div>
 
@@ -113,7 +113,7 @@ function SortableItem({ item, onEdit, onDelete, isMobile }: {
           fontSize: '0.65rem',
           padding: '0.2rem 0.6rem',
           borderRadius: '2px',
-          backgroundColor: 'rgba(0,160,152,0.15)',
+          backgroundColor: 'rgba(var(--teal-rgb),0.15)',
           color: 'var(--teal)',
           fontFamily: 'var(--font-inter)',
         }}>{item.badge}</span>
@@ -131,7 +131,7 @@ function SortableItem({ item, onEdit, onDelete, isMobile }: {
         fontSize: '0.65rem',
         padding: '0.2rem 0.6rem',
         borderRadius: '2px',
-        backgroundColor: item.available ? 'rgba(0,160,152,0.15)' : 'rgba(228,51,41,0.15)',
+        backgroundColor: item.available ? 'rgba(var(--teal-rgb),0.15)' : 'rgba(var(--red-rgb),0.15)',
         color: item.available ? 'var(--teal)' : 'var(--red)',
         fontFamily: 'var(--font-inter)',
       }}>{item.available ? 'Available' : 'Hidden'}</span>
@@ -140,7 +140,7 @@ function SortableItem({ item, onEdit, onDelete, isMobile }: {
         <button onClick={() => onEdit(item)} style={{
           background: 'transparent',
           border: '1px solid rgba(255,255,255,0.1)',
-          color: 'rgba(245,242,236,0.5)',
+          color: 'rgba(var(--offwhite-rgb),0.5)',
           padding: '0.35rem 0.7rem',
           borderRadius: '2px',
           fontSize: '0.7rem',
@@ -149,7 +149,7 @@ function SortableItem({ item, onEdit, onDelete, isMobile }: {
         }}>Edit</button>
         <button onClick={() => onDelete(item.id)} style={{
           background: 'transparent',
-          border: '1px solid rgba(228,51,41,0.3)',
+          border: '1px solid rgba(var(--red-rgb),0.3)',
           color: 'var(--red)',
           padding: '0.35rem 0.7rem',
           borderRadius: '2px',
@@ -380,7 +380,7 @@ export default function AdminMenuPage() {
     fontSize: '0.68rem',
     letterSpacing: '0.2em',
     textTransform: 'uppercase' as const,
-    color: 'rgba(245,242,236,0.35)',
+    color: 'rgba(var(--offwhite-rgb),0.35)',
     marginBottom: '0.5rem',
     fontFamily: 'var(--font-inter)',
   }
@@ -405,7 +405,7 @@ export default function AdminMenuPage() {
               fontSize: '0.7rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.3)',
+              color: 'rgba(var(--offwhite-rgb),0.3)',
               textDecoration: 'none',
               fontFamily: 'var(--font-inter)',
               marginBottom: '0.5rem',
@@ -448,7 +448,7 @@ export default function AdminMenuPage() {
               background: 'transparent',
               border: 'none',
               borderBottom: `2px solid ${activeSection === s ? sectionColors[s] : 'transparent'}`,
-              color: activeSection === s ? 'var(--offwhite)' : 'rgba(245,242,236,0.4)',
+              color: activeSection === s ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.4)',
               padding: isMobile ? '0.7rem 1.2rem' : '0.85rem 2rem',
               fontSize: '0.78rem',
               letterSpacing: '0.15em',
@@ -480,7 +480,7 @@ export default function AdminMenuPage() {
                   padding: '1.5rem',
                   fontFamily: 'var(--font-inter)',
                   fontSize: '0.82rem',
-                  color: 'rgba(245,242,236,0.2)',
+                  color: 'rgba(var(--offwhite-rgb),0.2)',
                 }}>No categories yet</p>
               ) : sectionCategories.map(cat => (
                 <div key={cat.id} style={{
@@ -521,7 +521,7 @@ export default function AdminMenuPage() {
                     fontSize: '0.85rem',
                     color: activeCategory === cat.id
                       ? sectionColors[activeSection]
-                      : 'rgba(245,242,236,0.6)',
+                      : 'rgba(var(--offwhite-rgb),0.6)',
                     flex: 1,
                   }}>{cat.name}</span>
 
@@ -534,7 +534,7 @@ export default function AdminMenuPage() {
                   }} style={{
                     background: 'transparent',
                     border: 'none',
-                    color: 'rgba(245,242,236,0.3)',
+                    color: 'rgba(var(--offwhite-rgb),0.3)',
                     cursor: 'pointer',
                     fontSize: '0.7rem',
                     padding: '0.2rem 0.4rem',
@@ -543,7 +543,7 @@ export default function AdminMenuPage() {
                   <button onClick={e => { e.stopPropagation(); deleteCategory(cat.id) }} style={{
                     background: 'transparent',
                     border: 'none',
-                    color: 'rgba(228,51,41,0.4)',
+                    color: 'rgba(var(--red-rgb),0.4)',
                     cursor: 'pointer',
                     fontSize: '0.75rem',
                     padding: '0.2rem 0.4rem',
@@ -595,7 +595,7 @@ export default function AdminMenuPage() {
                   <button type="button" onClick={() => setPickerTarget('new')} style={{
                     background: 'transparent',
                     border: '1px solid rgba(255,255,255,0.1)',
-                    color: 'rgba(245,242,236,0.6)',
+                    color: 'rgba(var(--offwhite-rgb),0.6)',
                     padding: '0.5rem 0.8rem',
                     borderRadius: '2px',
                     fontSize: '0.68rem',
@@ -653,21 +653,21 @@ export default function AdminMenuPage() {
             }}>
               <p style={{ ...labelStyle, margin: 0 }}>
                 {categories.find(c => c.id === activeCategory)?.name ?? 'Select a category'}
-                <span style={{ color: 'rgba(245,242,236,0.2)', marginLeft: '0.5rem' }}>
+                <span style={{ color: 'rgba(var(--offwhite-rgb),0.2)', marginLeft: '0.5rem' }}>
                   ({activeCatItems.length} items) — drag to reorder
                 </span>
               </p>
             </div>
 
             {loading ? (
-              <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+              <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
             ) : !activeCategory ? (
               <div style={{
                 border: '1px dashed rgba(255,255,255,0.08)',
                 borderRadius: '4px',
                 padding: '3rem',
                 textAlign: 'center',
-                color: 'rgba(245,242,236,0.2)',
+                color: 'rgba(var(--offwhite-rgb),0.2)',
                 fontFamily: 'var(--font-inter)',
                 fontSize: '0.85rem',
               }}>Select or create a category on the left</div>
@@ -677,7 +677,7 @@ export default function AdminMenuPage() {
                 borderRadius: '4px',
                 padding: '3rem',
                 textAlign: 'center',
-                color: 'rgba(245,242,236,0.2)',
+                color: 'rgba(var(--offwhite-rgb),0.2)',
                 fontFamily: 'var(--font-inter)',
                 fontSize: '0.85rem',
               }}>No items yet — click + Add Item to get started</div>
@@ -733,7 +733,7 @@ export default function AdminMenuPage() {
               </h2>
               <button onClick={() => setEditingCat(null)} style={{
                 background: 'transparent', border: 'none',
-                color: 'rgba(245,242,236,0.4)', fontSize: '1.2rem', cursor: 'pointer',
+                color: 'rgba(var(--offwhite-rgb),0.4)', fontSize: '1.2rem', cursor: 'pointer',
               }}>✕</button>
             </div>
 
@@ -769,7 +769,7 @@ export default function AdminMenuPage() {
                   <button type="button" onClick={() => setPickerTarget('edit')} style={{
                     background: 'transparent',
                     border: '1px solid rgba(255,255,255,0.1)',
-                    color: 'rgba(245,242,236,0.6)',
+                    color: 'rgba(var(--offwhite-rgb),0.6)',
                     padding: '0.5rem 0.8rem',
                     borderRadius: '2px',
                     fontSize: '0.68rem',
@@ -799,7 +799,7 @@ export default function AdminMenuPage() {
                 <button type="button" onClick={() => setEditingCat(null)} style={{
                   flex: 1, background: 'transparent',
                   border: '1px solid rgba(255,255,255,0.1)',
-                  color: 'rgba(245,242,236,0.5)', padding: '0.8rem',
+                  color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.8rem',
                   borderRadius: '2px', fontSize: '0.75rem',
                   cursor: 'pointer', fontFamily: 'var(--font-inter)',
                 }}>Cancel</button>
@@ -849,7 +849,7 @@ export default function AdminMenuPage() {
               </h2>
               <button onClick={() => setOpen(false)} style={{
                 background: 'transparent', border: 'none',
-                color: 'rgba(245,242,236,0.4)', fontSize: '1.2rem', cursor: 'pointer',
+                color: 'rgba(var(--offwhite-rgb),0.4)', fontSize: '1.2rem', cursor: 'pointer',
               }}>✕</button>
             </div>
 
@@ -896,7 +896,7 @@ export default function AdminMenuPage() {
                         borderRadius: '2px',
                         border: `1px solid ${form.available === val ? sectionColors[activeSection] : 'rgba(255,255,255,0.1)'}`,
                         backgroundColor: form.available === val ? `${sectionColors[activeSection]}20` : 'transparent',
-                        color: form.available === val ? sectionColors[activeSection] : 'rgba(245,242,236,0.4)',
+                        color: form.available === val ? sectionColors[activeSection] : 'rgba(var(--offwhite-rgb),0.4)',
                         cursor: 'pointer',
                         fontFamily: 'var(--font-inter)',
                         fontSize: '0.78rem',
@@ -911,7 +911,7 @@ export default function AdminMenuPage() {
                 <button type="button" onClick={() => setOpen(false)} style={{
                   flex: 1, background: 'transparent',
                   border: '1px solid rgba(255,255,255,0.1)',
-                  color: 'rgba(245,242,236,0.5)', padding: '0.8rem',
+                  color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.8rem',
                   borderRadius: '2px', fontSize: '0.75rem',
                   cursor: 'pointer', fontFamily: 'var(--font-inter)',
                 }}>Cancel</button>

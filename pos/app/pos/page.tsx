@@ -51,7 +51,7 @@ function useNow(everyMs = 15_000) {
 const money = (n: number) => `$${n.toFixed(2)}`
 
 const URGENCY_COLOUR = {
-  fresh: 'rgba(245,242,236,0.45)',
+  fresh: 'rgba(var(--offwhite-rgb),0.45)',
   aging: '#C9962C',
   late: 'var(--red)',
 } as const
@@ -114,8 +114,8 @@ function CheckCard({
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: '0.15rem',
         width: '100%', cursor: 'pointer',
-        backgroundColor: level === 'late' ? 'rgba(228,51,41,0.1)' : 'rgba(0,160,152,0.08)',
-        border: `1px solid ${level === 'late' ? 'var(--red)' : 'rgba(0,160,152,0.4)'}`,
+        backgroundColor: level === 'late' ? 'rgba(var(--red-rgb),0.1)' : 'rgba(var(--teal-rgb),0.08)',
+        border: `1px solid ${level === 'late' ? 'var(--red)' : 'rgba(var(--teal-rgb),0.4)'}`,
         borderRadius: '6px', color: 'var(--offwhite)',
         fontFamily: 'var(--font-inter)', padding: '0.5rem',
         position: 'relative', overflow: 'hidden',
@@ -144,7 +144,7 @@ function CheckCard({
 
       <span style={{
         fontSize: '0.72rem', fontWeight: 600,
-        color: mins === null ? 'rgba(245,242,236,0.3)' : URGENCY_COLOUR[level],
+        color: mins === null ? 'rgba(var(--offwhite-rgb),0.3)' : URGENCY_COLOUR[level],
       }}>{mins === null ? 'not sent' : `${mins}m`}</span>
     </button>
   )
@@ -201,7 +201,7 @@ export default function FloorPage() {
             fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem',
             color: 'var(--offwhite)', marginBottom: '0.8rem',
           }}>{blocked === 'feature' ? 'Point of Sale is switched off' : 'You do not have till access'}</h1>
-          <p style={{ fontSize: '0.88rem', color: 'rgba(245,242,236,0.4)', lineHeight: 1.7 }}>
+          <p style={{ fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.4)', lineHeight: 1.7 }}>
             {blocked === 'feature'
               ? 'A superadmin can switch it on in the admin panel under Settings → Features. It needs the Menu module on as well.'
               : 'Ask a manager to grant you the Point of Sale section in the admin panel under Staff Accounts.'}
@@ -237,7 +237,7 @@ export default function FloorPage() {
             }}>Open tables</h1>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '0.8rem', color: 'rgba(245,242,236,0.4)' }}>
+            <p style={{ fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
               {open.length} open · {money(floorTotal)}
             </p>
             {/* The pass, for whoever is carrying the phone that is also the
@@ -245,12 +245,12 @@ export default function FloorPage() {
                 section lands on its own explanation, not a blank page. */}
             <a href="/pos/closed" style={{
               fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.35)', textDecoration: 'none',
+              color: 'rgba(var(--offwhite-rgb),0.35)', textDecoration: 'none',
               display: 'inline-block', marginTop: '0.35rem', marginRight: '0.8rem',
             }}>Closed →</a>
             <a href="/pos/kds" style={{
               fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.35)', textDecoration: 'none',
+              color: 'rgba(var(--offwhite-rgb),0.35)', textDecoration: 'none',
               display: 'inline-block', marginTop: '0.35rem',
             }}>Kitchen display →</a>
           </div>
@@ -259,7 +259,7 @@ export default function FloorPage() {
         {liveError && (
           <p style={{
             color: 'var(--brand-secondary)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6,
-            background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.25)',
+            background: 'rgba(var(--brand-secondary-rgb),0.08)', border: '1px solid rgba(var(--brand-secondary-rgb),0.25)',
             borderRadius: '3px', padding: '0.7rem 0.9rem',
           }}>{liveError}</p>
         )}
@@ -267,18 +267,18 @@ export default function FloorPage() {
         {error && !adding && (
           <p style={{
             color: 'var(--red)', fontSize: '0.82rem', marginBottom: '1rem',
-            background: 'rgba(228,51,41,0.08)', border: '1px solid rgba(228,51,41,0.25)',
+            background: 'rgba(var(--red-rgb),0.08)', border: '1px solid rgba(var(--red-rgb),0.25)',
             borderRadius: '3px', padding: '0.7rem 0.9rem',
           }}>{error}</p>
         )}
 
         {open.length === 0 ? (
           <p style={{
-            color: 'rgba(245,242,236,0.3)', fontSize: '0.9rem',
+            color: 'rgba(var(--offwhite-rgb),0.3)', fontSize: '0.9rem',
             lineHeight: 1.8, padding: '2.5rem 0', textAlign: 'center',
           }}>
             No tables open.<br />
-            Tap <strong style={{ color: 'rgba(245,242,236,0.5)' }}>Add table</strong> to start one.
+            Tap <strong style={{ color: 'rgba(var(--offwhite-rgb),0.5)' }}>Add table</strong> to start one.
           </p>
         ) : (
           <div style={{
@@ -340,7 +340,7 @@ export default function FloorPage() {
 
             <label style={{
               display: 'block', fontSize: '0.64rem', letterSpacing: '0.14em',
-              textTransform: 'uppercase', color: 'rgba(245,242,236,0.4)', marginBottom: '0.4rem',
+              textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.4)', marginBottom: '0.4rem',
             }}>Table number</label>
             <input
               value={tableNumber}
@@ -360,14 +360,14 @@ export default function FloorPage() {
 
             <label style={{
               display: 'block', fontSize: '0.64rem', letterSpacing: '0.14em',
-              textTransform: 'uppercase', color: 'rgba(245,242,236,0.4)',
+              textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.4)',
               margin: '1rem 0 0.4rem',
             }}>Guests</label>
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
               {[1, 2, 3, 4, 5, 6, 8].map(n => (
                 <button key={n} onClick={() => setGuests(String(n))} style={{
                   minHeight: '44px', minWidth: '44px', borderRadius: '4px', cursor: 'pointer',
-                  backgroundColor: guests === String(n) ? 'rgba(0,160,152,0.18)' : 'transparent',
+                  backgroundColor: guests === String(n) ? 'rgba(var(--teal-rgb),0.18)' : 'transparent',
                   border: `1px solid ${guests === String(n) ? 'var(--teal)' : 'rgba(255,255,255,0.12)'}`,
                   color: 'var(--offwhite)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
                 }}>{n}</button>
@@ -382,14 +382,14 @@ export default function FloorPage() {
               <button onClick={() => setAdding(false)} style={{
                 flex: 1, minHeight: '48px', borderRadius: '4px', cursor: 'pointer',
                 backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.14)',
-                color: 'rgba(245,242,236,0.6)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
+                color: 'rgba(var(--offwhite-rgb),0.6)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
               }}>Cancel</button>
               <button
                 disabled={busy || !tableNumber}
                 onClick={handleOpen}
                 style={{
                   flex: 2, minHeight: '48px', borderRadius: '4px', border: 'none',
-                  backgroundColor: busy || !tableNumber ? 'rgba(0,160,152,0.25)' : 'var(--teal)',
+                  backgroundColor: busy || !tableNumber ? 'rgba(var(--teal-rgb),0.25)' : 'var(--teal)',
                   color: '#fff', cursor: busy || !tableNumber ? 'default' : 'pointer',
                   fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
                   letterSpacing: '0.1em', textTransform: 'uppercase',

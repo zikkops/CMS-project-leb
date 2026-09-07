@@ -46,7 +46,7 @@ const labelStyle = {
   fontSize: '0.68rem',
   letterSpacing: '0.2em',
   textTransform: 'uppercase' as const,
-  color: 'rgba(245,242,236,0.35)',
+  color: 'rgba(var(--offwhite-rgb),0.35)',
   marginBottom: '0.5rem',
   fontFamily: 'var(--font-inter)',
 }
@@ -130,7 +130,7 @@ export default function LoyaltyEventsPage() {
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.6rem' : '2rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
             Event attendance submitted for manager approval
           </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.5)', marginBottom: '2rem' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginBottom: '2rem' }}>
             Attendees will receive their points once a manager approves it.
           </p>
 
@@ -146,19 +146,19 @@ export default function LoyaltyEventsPage() {
             marginBottom: '2rem',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)' }}>Branch</span>
+              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>Branch</span>
               <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>{resolveBranchName(result.branchId)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)' }}>Event Date</span>
+              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>Event Date</span>
               <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>{result.eventDate}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)' }}>Event</span>
+              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>Event</span>
               <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>{result.eventName}</span>
             </div>
             <div>
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)', marginBottom: '0.5rem' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginBottom: '0.5rem' }}>
                 Attendees ({result.attendeeNames.length})
               </p>
               <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>
@@ -196,7 +196,7 @@ export default function LoyaltyEventsPage() {
           fontSize: '0.7rem',
           letterSpacing: '0.2em',
           textTransform: 'uppercase',
-          color: 'rgba(245,242,236,0.3)',
+          color: 'rgba(var(--offwhite-rgb),0.3)',
           textDecoration: 'none',
           fontFamily: 'var(--font-inter)',
           marginBottom: '0.5rem',
@@ -206,7 +206,7 @@ export default function LoyaltyEventsPage() {
         <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.6rem' : '2rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
           Event Attendance
         </h1>
-        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.4)', marginBottom: '2rem' }}>
+        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginBottom: '2rem' }}>
           Log who attended an event to send them for manager approval.
         </p>
 

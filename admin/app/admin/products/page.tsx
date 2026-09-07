@@ -228,7 +228,7 @@ export default function AdminGamesPage() {
     fontSize: '0.68rem',
     letterSpacing: '0.2em',
     textTransform: 'uppercase' as const,
-    color: 'rgba(245,242,236,0.35)',
+    color: 'rgba(var(--offwhite-rgb),0.35)',
     marginBottom: '0.5rem',
     fontFamily: 'var(--font-inter)',
   }
@@ -253,7 +253,7 @@ export default function AdminGamesPage() {
               fontSize: '0.7rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.3)',
+              color: 'rgba(var(--offwhite-rgb),0.3)',
               textDecoration: 'none',
               fontFamily: 'var(--font-inter)',
               marginBottom: '0.5rem',
@@ -267,7 +267,7 @@ export default function AdminGamesPage() {
             <button onClick={() => exportGamesCSV(products, false)} style={{
               backgroundColor: 'transparent',
               border: '1px solid rgba(255,255,255,0.1)',
-              color: 'rgba(245,242,236,0.6)',
+              color: 'rgba(var(--offwhite-rgb),0.6)',
               padding: '0.7rem 1.2rem',
               borderRadius: '2px',
               fontSize: '0.72rem',
@@ -279,7 +279,7 @@ export default function AdminGamesPage() {
             <button onClick={() => exportGamesCSV(products, true)} style={{
               backgroundColor: 'transparent',
               border: '1px solid rgba(255,255,255,0.1)',
-              color: 'rgba(245,242,236,0.6)',
+              color: 'rgba(var(--offwhite-rgb),0.6)',
               padding: '0.7rem 1.2rem',
               borderRadius: '2px',
               fontSize: '0.72rem',
@@ -294,7 +294,7 @@ export default function AdminGamesPage() {
               justifyContent: 'center',
               backgroundColor: 'transparent',
               border: '1px solid rgba(255,255,255,0.1)',
-              color: 'rgba(245,242,236,0.6)',
+              color: 'rgba(var(--offwhite-rgb),0.6)',
               padding: '0.7rem 1.5rem',
               borderRadius: '2px',
               fontSize: '0.75rem',
@@ -324,7 +324,7 @@ export default function AdminGamesPage() {
           <button onClick={() => setShowCatManager(!showCatManager)} style={{
             background: 'transparent',
             border: '1px solid rgba(255,255,255,0.1)',
-            color: 'rgba(245,242,236,0.5)',
+            color: 'rgba(var(--offwhite-rgb),0.5)',
             padding: '0.6rem 1.2rem',
             borderRadius: '2px',
             fontSize: '0.72rem',
@@ -348,7 +348,7 @@ export default function AdminGamesPage() {
                 fontSize: '0.68rem',
                 letterSpacing: '0.2em',
                 textTransform: 'uppercase',
-                color: 'rgba(245,242,236,0.3)',
+                color: 'rgba(var(--offwhite-rgb),0.3)',
                 fontFamily: 'var(--font-inter)',
                 marginBottom: '1rem',
               }}>Product Categories</p>
@@ -359,8 +359,8 @@ export default function AdminGamesPage() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem',
-                    backgroundColor: 'rgba(106,106,183,0.1)',
-                    border: '1px solid rgba(106,106,183,0.2)',
+                    backgroundColor: 'rgba(var(--purple-rgb),0.1)',
+                    border: '1px solid rgba(var(--purple-rgb),0.2)',
                     borderRadius: '2px',
                     padding: '0.35rem 0.8rem',
                   }}>
@@ -373,7 +373,7 @@ export default function AdminGamesPage() {
                       <button onClick={() => deleteCategory(cat)} style={{
                         background: 'transparent',
                         border: 'none',
-                        color: 'rgba(228,51,41,0.6)',
+                        color: 'rgba(var(--red-rgb),0.6)',
                         cursor: 'pointer',
                         fontSize: '0.75rem',
                         padding: '0',
@@ -434,7 +434,7 @@ export default function AdminGamesPage() {
                 top: '50%',
                 transform: 'translateY(-50%)',
                 width: '15px',
-                color: 'rgba(245,242,236,0.35)',
+                color: 'rgba(var(--offwhite-rgb),0.35)',
                 pointerEvents: 'none',
               }} />
               <input
@@ -470,7 +470,7 @@ export default function AdminGamesPage() {
             <p style={{
               fontFamily: 'var(--font-inter)',
               fontSize: '0.78rem',
-              color: 'rgba(245,242,236,0.35)',
+              color: 'rgba(var(--offwhite-rgb),0.35)',
               whiteSpace: 'nowrap',
               display: 'flex',
               alignItems: 'center',
@@ -483,14 +483,14 @@ export default function AdminGamesPage() {
 
         {/* Table */}
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : filteredGames.length === 0 ? (
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)',
             borderRadius: '4px',
             padding: '3rem',
             textAlign: 'center',
-            color: 'rgba(245,242,236,0.2)',
+            color: 'rgba(var(--offwhite-rgb),0.2)',
             fontFamily: 'var(--font-inter)',
             fontSize: '0.85rem',
           }}>No products match these filters.</div>
@@ -517,11 +517,11 @@ export default function AdminGamesPage() {
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                     <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.95rem', color: 'var(--offwhite)' }}>{product.name}</p>
                     {product.sku && (
-                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', letterSpacing: '0.08em', color: 'rgba(201,150,44,0.85)' }}>
+                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', letterSpacing: '0.08em', color: 'rgba(var(--brand-secondary-rgb),0.85)' }}>
                         {product.sku}
                       </p>
                     )}
-                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.5)' }}>
+                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
                       {product.category} · {product.players}
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -532,7 +532,7 @@ export default function AdminGamesPage() {
                         fontSize: '0.68rem',
                         padding: '0.2rem 0.6rem',
                         borderRadius: '2px',
-                        backgroundColor: stock > 0 ? 'rgba(0,160,152,0.15)' : 'rgba(228,51,41,0.15)',
+                        backgroundColor: stock > 0 ? 'rgba(var(--teal-rgb),0.15)' : 'rgba(var(--red-rgb),0.15)',
                         color: stock > 0 ? 'var(--teal)' : 'var(--red)',
                         fontFamily: 'var(--font-inter)',
                       }}>
@@ -544,7 +544,7 @@ export default function AdminGamesPage() {
                         flex: 1,
                         background: 'transparent',
                         border: '1px solid rgba(255,255,255,0.1)',
-                        color: 'rgba(245,242,236,0.5)',
+                        color: 'rgba(var(--offwhite-rgb),0.5)',
                         padding: '0.5rem',
                         borderRadius: '2px',
                         fontSize: '0.72rem',
@@ -554,7 +554,7 @@ export default function AdminGamesPage() {
                       <button onClick={() => handleDelete(product.id)} style={{
                         flex: 1,
                         background: 'transparent',
-                        border: '1px solid rgba(228,51,41,0.3)',
+                        border: '1px solid rgba(var(--red-rgb),0.3)',
                         color: 'var(--red)',
                         padding: '0.5rem',
                         borderRadius: '2px',
@@ -585,7 +585,7 @@ export default function AdminGamesPage() {
                       fontSize: '0.65rem',
                       letterSpacing: '0.2em',
                       textTransform: 'uppercase',
-                      color: 'rgba(245,242,236,0.3)',
+                      color: 'rgba(var(--offwhite-rgb),0.3)',
                       fontFamily: 'var(--font-inter)',
                       fontWeight: 400,
                     }}>{h}</th>
@@ -606,17 +606,17 @@ export default function AdminGamesPage() {
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--offwhite)' }}>
                       {product.name}
                       {product.sku && (
-                        <span style={{ display: 'block', fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.08em', color: 'rgba(201,150,44,0.8)', marginTop: '0.15rem' }}>
+                        <span style={{ display: 'block', fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.08em', color: 'rgba(var(--brand-secondary-rgb),0.8)', marginTop: '0.15rem' }}>
                           {product.sku}
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.5)' }}>{product.category}</td>
-                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.5)' }}>{product.players}</td>
+                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>{product.category}</td>
+                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>{product.players}</td>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'var(--teal)' }}>
                       {product.price > 0 ? `$${product.price}` : '—'}
                     </td>
-                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.45)' }}>
+                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>
                       {product.wholesalePrice != null ? `$${product.wholesalePrice}` : '—'}
                     </td>
                     <td style={{ padding: '1rem 1.2rem' }}>
@@ -627,7 +627,7 @@ export default function AdminGamesPage() {
                             fontSize: '0.72rem',
                             padding: '0.25rem 0.7rem',
                             borderRadius: '2px',
-                            backgroundColor: stock > 0 ? 'rgba(0,160,152,0.15)' : 'rgba(228,51,41,0.15)',
+                            backgroundColor: stock > 0 ? 'rgba(var(--teal-rgb),0.15)' : 'rgba(var(--red-rgb),0.15)',
                             color: stock > 0 ? 'var(--teal)' : 'var(--red)',
                             fontFamily: 'var(--font-inter)',
                           }}>
@@ -641,7 +641,7 @@ export default function AdminGamesPage() {
                         <button onClick={() => openEdit(product)} style={{
                           background: 'transparent',
                           border: '1px solid rgba(255,255,255,0.1)',
-                          color: 'rgba(245,242,236,0.5)',
+                          color: 'rgba(var(--offwhite-rgb),0.5)',
                           padding: '0.4rem 0.8rem',
                           borderRadius: '2px',
                           fontSize: '0.7rem',
@@ -650,7 +650,7 @@ export default function AdminGamesPage() {
                         }}>Edit</button>
                         <button onClick={() => handleDelete(product.id)} style={{
                           background: 'transparent',
-                          border: '1px solid rgba(228,51,41,0.3)',
+                          border: '1px solid rgba(var(--red-rgb),0.3)',
                           color: 'var(--red)',
                           padding: '0.4rem 0.8rem',
                           borderRadius: '2px',
@@ -693,7 +693,7 @@ export default function AdminGamesPage() {
             <button onClick={() => setOpen(false)} style={{
               background: 'transparent',
               border: '1px solid rgba(255,255,255,0.1)',
-              color: 'rgba(245,242,236,0.5)',
+              color: 'rgba(var(--offwhite-rgb),0.5)',
               padding: '0.5rem 1.2rem',
               borderRadius: '2px',
               fontSize: '0.75rem',
@@ -839,7 +839,7 @@ export default function AdminGamesPage() {
                 />
                 <p style={{
                   fontFamily: 'var(--font-inter)', fontSize: '0.72rem',
-                  color: 'rgba(245,242,236,0.3)', marginTop: '0.4rem',
+                  color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.4rem',
                 }}>
                   Shown only to staff when recording a sale. Not visible to customers.
                 </p>
@@ -857,7 +857,7 @@ export default function AdminGamesPage() {
                     <div key={branch}>
                       <p style={{
                         fontSize: '0.7rem',
-                        color: 'rgba(245,242,236,0.4)',
+                        color: 'rgba(var(--offwhite-rgb),0.4)',
                         fontFamily: 'var(--font-inter)',
                         marginBottom: '0.4rem',
                       }}>{branch}</p>
@@ -869,7 +869,7 @@ export default function AdminGamesPage() {
                 </div>
                 <p style={{
                   fontSize: '0.72rem',
-                  color: 'rgba(245,242,236,0.3)',
+                  color: 'rgba(var(--offwhite-rgb),0.3)',
                   fontFamily: 'var(--font-inter)',
                   marginTop: '0.6rem',
                 }}>
@@ -907,7 +907,7 @@ export default function AdminGamesPage() {
                   <button type="button" onClick={() => setShowPicker(true)} style={{
                     background: 'transparent',
                     border: '1px solid rgba(255,255,255,0.1)',
-                    color: 'rgba(245,242,236,0.6)',
+                    color: 'rgba(var(--offwhite-rgb),0.6)',
                     padding: '0.6rem 1rem',
                     borderRadius: '2px',
                     fontSize: '0.72rem',
@@ -956,7 +956,7 @@ export default function AdminGamesPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'rgba(245,242,236,0.2)',
+                  color: 'rgba(var(--offwhite-rgb),0.2)',
                   fontFamily: 'var(--font-inter)',
                   fontSize: '0.82rem',
                 }}>
@@ -969,7 +969,7 @@ export default function AdminGamesPage() {
                   flex: 1,
                   background: 'transparent',
                   border: '1px solid rgba(255,255,255,0.1)',
-                  color: 'rgba(245,242,236,0.5)',
+                  color: 'rgba(var(--offwhite-rgb),0.5)',
                   padding: '0.9rem',
                   borderRadius: '2px',
                   fontSize: '0.75rem',

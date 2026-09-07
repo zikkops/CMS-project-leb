@@ -52,7 +52,7 @@ function useNow(everyMs = 10_000) {
 }
 
 const URGENCY = {
-  fresh: { border: 'rgba(0,160,152,0.45)', text: 'var(--teal)' },
+  fresh: { border: 'rgba(var(--teal-rgb),0.45)', text: 'var(--teal)' },
   aging: { border: 'var(--brand-secondary)', text: 'var(--brand-secondary)' },
   late: { border: 'var(--red)', text: 'var(--red)' },
 } as const
@@ -112,7 +112,7 @@ function TicketCard({
             }}>{ticket.station}</span>
           )}
           {ticket.round > 1 && (
-            <span style={{ fontSize: '0.7rem', color: 'rgba(245,242,236,0.4)', marginLeft: '0.4rem' }}>
+            <span style={{ fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginLeft: '0.4rem' }}>
               round {ticket.round}
             </span>
           )}
@@ -136,7 +136,7 @@ function TicketCard({
             {l.modifiers && (
               <p style={{
                 fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
-                color: 'rgba(245,242,236,0.55)', marginTop: '0.1rem',
+                color: 'rgba(var(--offwhite-rgb),0.55)', marginTop: '0.1rem',
               }}>{l.modifiers}</p>
             )}
             {l.note && (
@@ -148,7 +148,7 @@ function TicketCard({
             {l.seat !== null && (
               <p style={{
                 fontFamily: 'var(--font-inter)', fontSize: '0.7rem',
-                color: 'rgba(245,242,236,0.3)', marginTop: '0.1rem',
+                color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.1rem',
               }}>seat {l.seat}{l.course !== null ? ` · course ${l.course}` : ''}</p>
             )}
           </div>
@@ -160,7 +160,7 @@ function TicketCard({
         {voided.map(l => (
           <p key={l.lineId} style={{
             fontFamily: 'var(--font-inter)', fontSize: '0.95rem',
-            color: 'rgba(228,51,41,0.65)', textDecoration: 'line-through',
+            color: 'rgba(var(--red-rgb),0.65)', textDecoration: 'line-through',
             marginBottom: '0.4rem',
           }}>{l.quantity}× {l.name} — cancelled</p>
         ))}
@@ -176,7 +176,7 @@ function TicketCard({
             onClick={onBack}
             style={{
               minHeight: '58px', width: '78px', border: 'none', cursor: 'pointer',
-              backgroundColor: 'rgba(255,255,255,0.04)', color: 'rgba(245,242,236,0.45)',
+              backgroundColor: 'rgba(255,255,255,0.04)', color: 'rgba(var(--offwhite-rgb),0.45)',
               fontFamily: 'var(--font-inter)', fontSize: '0.75rem',
             }}
           >Back</button>
@@ -266,7 +266,7 @@ export default function KdsPage() {
             fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem',
             color: 'var(--offwhite)', marginBottom: '0.8rem',
           }}>{blocked === 'feature' ? 'Kitchen Display is switched off' : 'You do not have pass access'}</h1>
-          <p style={{ fontSize: '0.88rem', color: 'rgba(245,242,236,0.4)', lineHeight: 1.7 }}>
+          <p style={{ fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.4)', lineHeight: 1.7 }}>
             {blocked === 'feature'
               ? 'A superadmin can switch it on under Settings → Features. It needs Point of Sale on as well.'
               : 'Ask a manager to grant you the Kitchen Display section under Staff Accounts.'}
@@ -290,7 +290,7 @@ export default function KdsPage() {
             color: 'var(--offwhite)', marginBottom: '0.6rem',
           }}>Which pass is this screen?</h1>
           <p style={{
-            fontSize: '0.82rem', color: 'rgba(245,242,236,0.4)',
+            fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.4)',
             lineHeight: 1.7, marginBottom: '1.5rem',
           }}>Remembered on this device.</p>
           <div style={{ display: 'grid', gap: '0.6rem' }}>
@@ -323,13 +323,13 @@ export default function KdsPage() {
           color: 'var(--offwhite)',
         }}>{station}</h1>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem' }}>
-          <span style={{ fontSize: '0.85rem', color: 'rgba(245,242,236,0.4)' }}>
+          <span style={{ fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
             {tickets.length} on the pass
           </span>
           <button onClick={() => { setStation(null); try { localStorage.removeItem(STORAGE_KEY) } catch {} }}
             style={{
               background: 'none', border: 'none', padding: '0.3rem 0', cursor: 'pointer',
-              color: 'rgba(245,242,236,0.3)', fontSize: '0.68rem',
+              color: 'rgba(var(--offwhite-rgb),0.3)', fontSize: '0.68rem',
               letterSpacing: '0.12em', textTransform: 'uppercase',
               fontFamily: 'var(--font-inter)',
             }}>Change</button>
@@ -339,14 +339,14 @@ export default function KdsPage() {
       {(liveError || error) && (
         <p style={{
           color: 'var(--brand-secondary)', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: 1.6,
-          background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.25)',
+          background: 'rgba(var(--brand-secondary-rgb),0.08)', border: '1px solid rgba(var(--brand-secondary-rgb),0.25)',
           borderRadius: '3px', padding: '0.8rem 1rem',
         }}>{error || liveError}</p>
       )}
 
       {tickets.length === 0 ? (
         <p style={{
-          color: 'rgba(245,242,236,0.25)', fontSize: '1.1rem',
+          color: 'rgba(var(--offwhite-rgb),0.25)', fontSize: '1.1rem',
           textAlign: 'center', padding: '4rem 0',
         }}>Nothing on the pass.</p>
       ) : (

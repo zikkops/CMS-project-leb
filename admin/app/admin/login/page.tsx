@@ -63,7 +63,7 @@ export default function AdminLoginPage() {
           fontSize: '0.7rem',
           letterSpacing: '0.3em',
           textTransform: 'uppercase',
-          color: 'rgba(245,242,236,0.25)',
+          color: 'rgba(var(--offwhite-rgb),0.25)',
           marginBottom: '3rem',
           fontFamily: 'var(--font-inter)',
         }}>
@@ -78,7 +78,7 @@ export default function AdminLoginPage() {
               fontSize: '0.7rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.35)',
+              color: 'rgba(var(--offwhite-rgb),0.35)',
               marginBottom: '0.5rem',
               fontFamily: 'var(--font-inter)',
             }}>
@@ -109,7 +109,7 @@ export default function AdminLoginPage() {
               fontSize: '0.7rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.35)',
+              color: 'rgba(var(--offwhite-rgb),0.35)',
               marginBottom: '0.5rem',
               fontFamily: 'var(--font-inter)',
             }}>

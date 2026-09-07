@@ -153,7 +153,7 @@ export default function LoyaltyApprovalsPage() {
     fontSize: '0.82rem',
   }
 
-  const fieldLabelStyle = { color: 'rgba(245,242,236,0.4)' }
+  const fieldLabelStyle = { color: 'rgba(var(--offwhite-rgb),0.4)' }
   const fieldValueStyle = { color: 'var(--offwhite)', textAlign: 'right' as const }
 
   return (
@@ -174,7 +174,7 @@ export default function LoyaltyApprovalsPage() {
               fontSize: '0.7rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.3)',
+              color: 'rgba(var(--offwhite-rgb),0.3)',
               textDecoration: 'none',
               fontFamily: 'var(--font-inter)',
               marginBottom: '0.5rem',
@@ -183,7 +183,7 @@ export default function LoyaltyApprovalsPage() {
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)' }}>
               Loyalty Approvals
             </h1>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.4rem' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.4rem' }}>
               {role === 'admin'
                 ? (adminBranchFilter === 'all' ? 'All branches' : resolveBranchName(adminBranchFilter))
                 : branchIds.length === 0
@@ -241,7 +241,7 @@ export default function LoyaltyApprovalsPage() {
         {/* Manager with no branches assigned */}
         {role === 'manager' && branchIds.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(228,51,41,0.3)',
+            border: '1px dashed rgba(var(--red-rgb),0.3)',
             borderRadius: '4px',
             padding: isMobile ? '2rem 1.25rem' : '3rem',
             textAlign: 'center',
@@ -251,7 +251,7 @@ export default function LoyaltyApprovalsPage() {
             </p>
           </div>
         ) : loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : visible.length === 0 ? (
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)',
@@ -263,8 +263,8 @@ export default function LoyaltyApprovalsPage() {
             alignItems: 'center',
             gap: '1rem',
           }}>
-            <FontAwesomeIcon icon={faInbox} style={{ width: '32px', color: 'rgba(245,242,236,0.15)' }} />
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.3)' }}>
+            <FontAwesomeIcon icon={faInbox} style={{ width: '32px', color: 'rgba(var(--offwhite-rgb),0.15)' }} />
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
               No pending approvals for your branch
             </p>
           </div>
@@ -282,7 +282,7 @@ export default function LoyaltyApprovalsPage() {
                       <FontAwesomeIcon icon={info.icon} style={{ width: '13px' }} />
                       {info.label}
                     </span>
-                    <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.3)', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)', whiteSpace: 'nowrap' }}>
                       {formatDate(tx.createdAt)}
                     </span>
                   </div>
@@ -303,7 +303,7 @@ export default function LoyaltyApprovalsPage() {
                                   {p?.avatarUrl ? (
                                     <img src={p.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                   ) : (
-                                    <span style={{ fontSize: '0.6rem', color: 'rgba(245,242,236,0.5)' }}>{(p?.displayName ?? '?').charAt(0).toUpperCase()}</span>
+                                    <span style={{ fontSize: '0.6rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>{(p?.displayName ?? '?').charAt(0).toUpperCase()}</span>
                                   )}
                                 </span>
                                 {p?.displayName ?? '…'}
@@ -321,7 +321,7 @@ export default function LoyaltyApprovalsPage() {
                               fontSize: '0.62rem',
                               padding: '0.15rem 0.5rem',
                               borderRadius: '2px',
-                              backgroundColor: 'rgba(228,51,41,0.15)',
+                              backgroundColor: 'rgba(var(--red-rgb),0.15)',
                               color: 'var(--red)',
                               fontFamily: 'var(--font-inter)',
                               letterSpacing: '0.04em',
@@ -412,7 +412,7 @@ export default function LoyaltyApprovalsPage() {
                         style={{
                           width: '100%',
                           backgroundColor: '#1a1a1a',
-                          border: '1px solid rgba(228,51,41,0.3)',
+                          border: '1px solid rgba(var(--red-rgb),0.3)',
                           color: 'var(--offwhite)',
                           padding: '0.7rem 0.9rem',
                           borderRadius: '2px',
@@ -445,7 +445,7 @@ export default function LoyaltyApprovalsPage() {
                           style={{
                             background: 'transparent',
                             border: '1px solid rgba(255,255,255,0.1)',
-                            color: 'rgba(245,242,236,0.5)',
+                            color: 'rgba(var(--offwhite-rgb),0.5)',
                             padding: '0.7rem 1.2rem',
                             borderRadius: '2px',
                             fontSize: '0.72rem',
@@ -486,7 +486,7 @@ export default function LoyaltyApprovalsPage() {
                         style={{
                           flex: isMobile ? 1 : 'initial',
                           background: 'transparent',
-                          border: '1px solid rgba(228,51,41,0.3)',
+                          border: '1px solid rgba(var(--red-rgb),0.3)',
                           color: 'var(--red)',
                           padding: '0.8rem 1.5rem',
                           borderRadius: '2px',

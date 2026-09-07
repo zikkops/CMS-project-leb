@@ -133,7 +133,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         )}
         {isMobile ? (
           <button onClick={() => setMobileOpen(false)} aria-label="Close menu" style={{
-            background: 'transparent', border: 'none', color: 'rgba(245,242,236,0.5)',
+            background: 'transparent', border: 'none', color: 'rgba(var(--offwhite-rgb),0.5)',
             cursor: 'pointer', padding: '0.3rem', fontSize: '1rem',
           }}>
             <FontAwesomeIcon icon={faXmark} />
@@ -145,9 +145,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             onMouseLeave={() => setToggleHovered(false)}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             style={{
-              background: toggleHovered ? 'rgba(0,160,152,0.18)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${toggleHovered ? 'rgba(0,160,152,0.4)' : 'rgba(255,255,255,0.08)'}`,
-              color: toggleHovered ? 'var(--teal)' : 'rgba(245,242,236,0.55)',
+              background: toggleHovered ? 'rgba(var(--teal-rgb),0.18)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${toggleHovered ? 'rgba(var(--teal-rgb),0.4)' : 'rgba(255,255,255,0.08)'}`,
+              color: toggleHovered ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.55)',
               cursor: 'pointer', width: '26px', height: '26px',
               borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '0.7rem', flexShrink: 0,
@@ -193,7 +193,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                       padding: collapsed && !isMobile ? '0.5rem 0' : '0.55rem 0.6rem',
                       borderRadius: '3px',
                       backgroundColor: active ? 'rgba(255,255,255,0.06)' : hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
-                      color: active || hovered ? 'var(--offwhite)' : 'rgba(245,242,236,0.5)',
+                      color: active || hovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.5)',
                       borderLeft: active && (!collapsed || isMobile) ? `2px solid ${section.color}` : '2px solid transparent',
                       textDecoration: 'none',
                       fontFamily: 'var(--font-inter)',
@@ -208,7 +208,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                       <span style={{
                         width: '28px', height: '28px', borderRadius: '50%',
                         backgroundColor: active ? section.color : hovered ? `${section.color}55` : 'rgba(255,255,255,0.06)',
-                        color: active || hovered ? '#fff' : 'rgba(245,242,236,0.6)',
+                        color: active || hovered ? '#fff' : 'rgba(var(--offwhite-rgb),0.6)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: '0.7rem', fontFamily: 'var(--font-cinzel)', flexShrink: 0,
                         transform: hovered ? 'scale(1.14)' : 'scale(1)',
@@ -233,7 +233,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       }}>
         {(!collapsed || isMobile) && user && (
           <p style={{
-            fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)',
+            fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)',
             marginBottom: '0.6rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
             {user.email} · {role ? ROLE_LABELS[role] : ''}
@@ -248,9 +248,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             style={{
               flex: collapsed && !isMobile ? undefined : 1,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: `1px solid ${viewSiteHovered ? 'rgba(0,160,152,0.4)' : 'rgba(255,255,255,0.1)'}`,
-              color: viewSiteHovered ? 'var(--teal)' : 'rgba(245,242,236,0.5)',
-              backgroundColor: viewSiteHovered ? 'rgba(0,160,152,0.08)' : 'transparent',
+              border: `1px solid ${viewSiteHovered ? 'rgba(var(--teal-rgb),0.4)' : 'rgba(255,255,255,0.1)'}`,
+              color: viewSiteHovered ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.5)',
+              backgroundColor: viewSiteHovered ? 'rgba(var(--teal-rgb),0.08)' : 'transparent',
               padding: '0.5rem', borderRadius: '2px', fontSize: '0.68rem',
               letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'none',
               fontFamily: 'var(--font-inter)', transition: 'all 0.18s ease',
@@ -263,7 +263,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             style={{
               flex: collapsed && !isMobile ? undefined : 1,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
-              border: `1px solid ${signOutHovered ? 'rgba(228,51,41,0.6)' : 'rgba(228,51,41,0.25)'}`,
+              border: `1px solid ${signOutHovered ? 'rgba(var(--red-rgb),0.6)' : 'rgba(var(--red-rgb),0.25)'}`,
               color: signOutHovered ? '#fff' : 'var(--red)',
               backgroundColor: signOutHovered ? 'var(--red)' : 'transparent',
               padding: '0.5rem', borderRadius: '2px', fontSize: '0.68rem',

@@ -114,7 +114,7 @@ export default function Navbar() {
       letterSpacing: '0.05em',
       textTransform: 'uppercase' as const,
       fontFamily: 'var(--font-inter)',
-      color: active ? (danger ? 'var(--red)' : 'var(--teal)') : 'rgba(245,242,236,0.7)',
+      color: active ? (danger ? 'var(--red)' : 'var(--teal)') : 'rgba(var(--offwhite-rgb),0.7)',
       backgroundColor: active ? 'rgba(255,255,255,0.04)' : 'transparent',
       textDecoration: 'none',
       border: 'none',
@@ -198,7 +198,7 @@ export default function Navbar() {
                       onMouseEnter={() => setHoveredLink(href)}
                       onMouseLeave={() => setHoveredLink(null)}
                       style={{
-                        color: lit ? '#fff' : 'rgba(245,242,236,0.55)',
+                        color: lit ? '#fff' : 'rgba(var(--offwhite-rgb),0.55)',
                         textDecoration: 'none',
                         fontSize: '0.75rem',
                         letterSpacing: '0.15em',
@@ -234,8 +234,8 @@ export default function Navbar() {
                   <button aria-label="Notifications" style={{
                     position: 'relative',
                     background: 'transparent',
-                    border: '1px solid rgba(245,242,236,0.25)',
-                    color: 'rgba(245,242,236,0.8)',
+                    border: '1px solid rgba(var(--offwhite-rgb),0.25)',
+                    color: 'rgba(var(--offwhite-rgb),0.8)',
                     width: '38px', height: '38px',
                     borderRadius: '2px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -264,7 +264,7 @@ export default function Navbar() {
                       borderRadius: '2px', boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
                     }}>
                       {totalNotifCount === 0 ? (
-                        <p style={{ padding: '1rem', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)' }}>
+                        <p style={{ padding: '1rem', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                           No notifications
                         </p>
                       ) : (
@@ -281,7 +281,7 @@ export default function Navbar() {
                                   {req.fromAvatar ? (
                                     <img src={req.fromAvatar} alt="" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                                   ) : (
-                                    <span style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#1a1a1a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'rgba(245,242,236,0.5)', flexShrink: 0 }}>
+                                    <span style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#1a1a1a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.5)', flexShrink: 0 }}>
                                       {req.fromName.charAt(0).toUpperCase()}
                                     </span>
                                   )}
@@ -297,7 +297,7 @@ export default function Navbar() {
                                     cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1,
                                   }}>Accept</button>
                                   <button onClick={() => handleFriendDecline(req)} disabled={busy} style={{
-                                    flex: 1, background: 'transparent', color: 'var(--red)', border: '1px solid rgba(228,51,41,0.3)',
+                                    flex: 1, background: 'transparent', color: 'var(--red)', border: '1px solid rgba(var(--red-rgb),0.3)',
                                     padding: '0.4rem', borderRadius: '2px', fontSize: '0.68rem', letterSpacing: '0.04em',
                                     textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
                                     cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1,
@@ -318,7 +318,7 @@ export default function Navbar() {
                                 <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>
                                   {invite.reservationLabel}
                                 </p>
-                                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.45)', marginTop: '0.15rem', marginBottom: '0.6rem' }}>
+                                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.45)', marginTop: '0.15rem', marginBottom: '0.6rem' }}>
                                   {invite.reservationDate} · by {invite.inviterName}
                                 </p>
                                 <div style={{ display: 'flex', gap: '0.4rem' }}>
@@ -329,7 +329,7 @@ export default function Navbar() {
                                     cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1,
                                   }}>Accept</button>
                                   <button onClick={() => handleInviteDecline(invite)} disabled={busy} style={{
-                                    flex: 1, background: 'transparent', color: 'var(--red)', border: '1px solid rgba(228,51,41,0.3)',
+                                    flex: 1, background: 'transparent', color: 'var(--red)', border: '1px solid rgba(var(--red-rgb),0.3)',
                                     padding: '0.4rem', borderRadius: '2px', fontSize: '0.68rem', letterSpacing: '0.04em',
                                     textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
                                     cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1,
@@ -349,18 +349,18 @@ export default function Navbar() {
                                     {approved ? '✓ Approved' : '✕ Rejected'} · {RESERVATION_TYPE_LABELS[n.reservationType]}
                                   </p>
                                   <button onClick={() => handleDismissNotif(n)} title="Dismiss" style={{
-                                    background: 'transparent', border: 'none', color: 'rgba(245,242,236,0.3)',
+                                    background: 'transparent', border: 'none', color: 'rgba(var(--offwhite-rgb),0.3)',
                                     fontSize: '0.8rem', cursor: 'pointer', padding: '0 0 0 0.5rem', lineHeight: 1,
                                   }}>✕</button>
                                 </div>
                                 <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>
                                   {n.label}
                                 </p>
-                                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.45)', marginTop: '0.15rem' }}>
+                                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.45)', marginTop: '0.15rem' }}>
                                   {n.dateLabel}
                                 </p>
                                 {!approved && n.rejectionReason && (
-                                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(228,51,41,0.7)', marginTop: '0.2rem' }}>
+                                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--red-rgb),0.7)', marginTop: '0.2rem' }}>
                                     "{n.rejectionReason}"
                                   </p>
                                 )}
@@ -384,8 +384,8 @@ export default function Navbar() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.5rem',
-                      border: '1px solid rgba(245,242,236,0.25)',
-                      color: 'rgba(245,242,236,0.8)',
+                      border: '1px solid rgba(var(--offwhite-rgb),0.25)',
+                      color: 'rgba(var(--offwhite-rgb),0.8)',
                       padding: '0.58rem 1.2rem',
                       borderRadius: '2px',
                       fontSize: '0.75rem',
@@ -446,8 +446,8 @@ export default function Navbar() {
                     onMouseLeave={() => setAuthHovered(false)}
                     style={{
                       backgroundColor: 'transparent',
-                      border: `1px solid ${authHovered ? 'var(--teal)' : 'rgba(245,242,236,0.25)'}`,
-                      color: authHovered ? 'var(--teal)' : 'rgba(245,242,236,0.7)',
+                      border: `1px solid ${authHovered ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.25)'}`,
+                      color: authHovered ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.7)',
                       padding: '0.58rem 1.3rem',
                       borderRadius: '2px',
                       fontSize: '0.75rem',
@@ -469,7 +469,7 @@ export default function Navbar() {
                   onMouseLeave={() => setBtnHovered(false)}
                   style={{
                     position: 'relative', overflow: 'hidden',
-                    backgroundColor: btnHovered ? 'rgba(0,160,152,0.15)' : 'var(--teal)',
+                    backgroundColor: btnHovered ? 'rgba(var(--teal-rgb),0.15)' : 'var(--teal)',
                     color: '#fff', padding: '0.6rem 1.5rem', borderRadius: '2px',
                     fontSize: '0.75rem', letterSpacing: '0.12em', textTransform: 'uppercase',
                     textDecoration: 'none', fontFamily: 'var(--font-inter)',
@@ -607,7 +607,7 @@ export default function Navbar() {
                 {totalNotifCount > 0 && (
                   <Link href="/customer/profile" onClick={() => setOpen(false)} style={{
                     display: 'flex', alignItems: 'center', gap: '0.5rem',
-                    backgroundColor: 'rgba(228,51,41,0.12)', border: '1px solid rgba(228,51,41,0.3)',
+                    backgroundColor: 'rgba(var(--red-rgb),0.12)', border: '1px solid rgba(var(--red-rgb),0.3)',
                     color: 'var(--red)', padding: '0.5rem 1rem', borderRadius: '20px',
                     fontSize: '0.78rem', fontFamily: 'var(--font-inter)', textDecoration: 'none',
                   }}>
@@ -628,7 +628,7 @@ export default function Navbar() {
                   onClick={() => setOpen(false)}
                   style={{
                     background: 'transparent',
-                    border: '1px solid rgba(245,242,236,0.3)',
+                    border: '1px solid rgba(var(--offwhite-rgb),0.3)',
                     color: 'var(--offwhite)',
                     padding: '0.8rem 2.5rem',
                     borderRadius: '2px',
@@ -644,7 +644,7 @@ export default function Navbar() {
                   onClick={() => { setOpen(false); handleLogout() }}
                   style={{
                     background: 'transparent',
-                    border: '1px solid rgba(228,51,41,0.4)',
+                    border: '1px solid rgba(var(--red-rgb),0.4)',
                     color: 'var(--red)',
                     padding: '0.8rem 2.5rem',
                     borderRadius: '2px',
@@ -662,7 +662,7 @@ export default function Navbar() {
                 onClick={() => setOpen(false)}
                 style={{
                   background: 'transparent',
-                  border: '1px solid rgba(245,242,236,0.3)',
+                  border: '1px solid rgba(var(--offwhite-rgb),0.3)',
                   color: 'var(--offwhite)',
                   padding: '0.8rem 2.5rem',
                   borderRadius: '2px',
@@ -691,7 +691,7 @@ export default function Navbar() {
                 letterSpacing: '0.15em', textTransform: 'uppercase', textDecoration: 'none', fontFamily: 'var(--font-inter)',
               }}>Reserve a Table</Link>
               <Link href="/#branches-section" onClick={() => setOpen(false)} style={{
-                background: 'transparent', border: '1px solid rgba(0,160,152,0.4)', color: 'var(--teal)',
+                background: 'transparent', border: '1px solid rgba(var(--teal-rgb),0.4)', color: 'var(--teal)',
                 padding: '0.9rem 3rem', borderRadius: '2px', fontSize: '0.85rem',
                 letterSpacing: '0.15em', textTransform: 'uppercase', textDecoration: 'none', fontFamily: 'var(--font-inter)',
               }}>Contact Us</Link>

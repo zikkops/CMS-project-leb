@@ -45,7 +45,7 @@ function Highlighted({ text, query }: { text: string; query: string }) {
       {segments.map((seg, i) =>
         seg.match ? (
           <mark key={i} style={{
-            background: 'rgba(106,106,183,0.32)',
+            background: 'rgba(var(--purple-rgb),0.32)',
             color: 'var(--offwhite)',
             borderRadius: '2px',
             padding: '0 0.1em',
@@ -93,7 +93,7 @@ function FilterSection({
           gap: '0.5rem',
           background: 'transparent',
           border: 'none',
-          borderBottom: `1px solid ${hovered ? 'rgba(106,106,183,0.4)' : 'rgba(255,255,255,0.06)'}`,
+          borderBottom: `1px solid ${hovered ? 'rgba(var(--purple-rgb),0.4)' : 'rgba(255,255,255,0.06)'}`,
           padding: '0 0 0.8rem',
           marginBottom: collapsed ? '0' : '0.8rem',
           cursor: 'pointer',
@@ -106,7 +106,7 @@ function FilterSection({
           fontSize: '0.65rem',
           letterSpacing: '0.2em',
           textTransform: 'uppercase',
-          color: hovered ? 'rgba(245,242,236,0.6)' : 'rgba(245,242,236,0.3)',
+          color: hovered ? 'rgba(var(--offwhite-rgb),0.6)' : 'rgba(var(--offwhite-rgb),0.3)',
           fontFamily: 'var(--font-inter)',
           transition: 'color 0.2s ease',
         }}>
@@ -258,7 +258,7 @@ export default function ShopPage() {
             top: '50%',
             transform: 'translateY(-50%)',
             width: '13px',
-            color: 'rgba(245,242,236,0.3)',
+            color: 'rgba(var(--offwhite-rgb),0.3)',
             pointerEvents: 'none',
           }} />
           <input
@@ -293,10 +293,10 @@ export default function ShopPage() {
           scrollbarWidth: 'thin',
           padding: '0.6rem',
           borderRadius: '8px',
-          background: 'rgba(106,106,183,0.1)',
+          background: 'rgba(var(--purple-rgb),0.1)',
           backdropFilter: 'blur(10px)',
           WebkitBackdropFilter: 'blur(10px)',
-          border: '1px solid rgba(106,106,183,0.25)',
+          border: '1px solid rgba(var(--purple-rgb),0.25)',
         }}>
           {CATEGORIES.map(cat => {
             const active = filter === cat
@@ -310,8 +310,8 @@ export default function ShopPage() {
                   alignItems: 'center',
                   backgroundColor: 'transparent',
                   border: 'none',
-                  borderLeft: `2px solid ${active ? 'var(--purple)' : hov ? 'rgba(106,106,183,0.5)' : 'transparent'}`,
-                  color: active ? 'var(--offwhite)' : hov ? 'var(--offwhite)' : 'rgba(245,242,236,0.55)',
+                  borderLeft: `2px solid ${active ? 'var(--purple)' : hov ? 'rgba(var(--purple-rgb),0.5)' : 'transparent'}`,
+                  color: active ? 'var(--offwhite)' : hov ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.55)',
                   padding: '0.5rem 0.8rem',
                   fontSize: '0.82rem',
                   cursor: 'pointer',
@@ -319,7 +319,7 @@ export default function ShopPage() {
                   textAlign: 'left',
                   transition: 'all 0.2s',
                   borderRadius: '0 4px 4px 0',
-                  background: active ? 'rgba(106,106,183,0.25)' : hov ? 'rgba(106,106,183,0.12)' : 'transparent',
+                  background: active ? 'rgba(var(--purple-rgb),0.25)' : hov ? 'rgba(var(--purple-rgb),0.12)' : 'transparent',
                   flexShrink: 0,
                 }}>{cat}</button>
             )
@@ -354,7 +354,7 @@ export default function ShopPage() {
           justifyContent: 'space-between',
           marginTop: '0.4rem',
           fontSize: '0.68rem',
-          color: 'rgba(245,242,236,0.25)',
+          color: 'rgba(var(--offwhite-rgb),0.25)',
           fontFamily: 'var(--font-inter)',
         }}>
           <span>$0</span>
@@ -369,7 +369,7 @@ export default function ShopPage() {
         <p style={{
           fontFamily: 'var(--font-inter)',
           fontSize: '0.78rem',
-          color: 'rgba(245,242,236,0.35)',
+          color: 'rgba(var(--offwhite-rgb),0.35)',
           marginBottom: '0.8rem',
         }}>
           <span style={{ color: 'var(--offwhite)', fontFamily: 'var(--font-cinzel)' }}>{filtered.length}</span>
@@ -388,7 +388,7 @@ export default function ShopPage() {
             gap: '0.5rem',
             background: resetHovered ? 'rgba(255,255,255,0.06)' : 'transparent',
             border: `1px solid ${resetHovered ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}`,
-            color: resetHovered ? 'var(--offwhite)' : 'rgba(245,242,236,0.4)',
+            color: resetHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.4)',
             padding: '0.6rem',
             borderRadius: '4px',
             fontSize: '0.72rem',
@@ -413,7 +413,7 @@ export default function ShopPage() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '0.5rem',
-              background: mobileSearchHovered ? 'rgba(106,106,183,0.8)' : 'var(--purple)',
+              background: mobileSearchHovered ? 'rgba(var(--purple-rgb),0.8)' : 'var(--purple)',
               border: 'none',
               color: '#fff',
               padding: '0.8rem',
@@ -423,7 +423,7 @@ export default function ShopPage() {
               textTransform: 'uppercase',
               cursor: 'pointer',
               fontFamily: 'var(--font-inter)',
-              boxShadow: mobileSearchHovered ? '0 8px 16px rgba(106,106,183,0.4)' : 'none',
+              boxShadow: mobileSearchHovered ? '0 8px 16px rgba(var(--purple-rgb),0.4)' : 'none',
               transition: 'all 0.2s ease',
             }}>
             <FontAwesomeIcon icon={faSearch} style={{ width: '12px' }} />
@@ -515,7 +515,7 @@ export default function ShopPage() {
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: '0.4rem',
-                background: filterTabHovered ? 'rgba(106,106,183,0.85)' : 'var(--purple)',
+                background: filterTabHovered ? 'rgba(var(--purple-rgb),0.85)' : 'var(--purple)',
                 border: 'none',
                 color: '#fff',
                 padding: '1rem 0.6rem',
@@ -586,7 +586,7 @@ export default function ShopPage() {
                   style={{
                     background: closeFiltersHovered ? 'rgba(255,255,255,0.08)' : 'transparent',
                     border: `1px solid ${closeFiltersHovered ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}`,
-                    color: closeFiltersHovered ? 'var(--offwhite)' : 'rgba(245,242,236,0.6)',
+                    color: closeFiltersHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.6)',
                     width: '32px',
                     height: '32px',
                     borderRadius: '50%',
@@ -629,7 +629,7 @@ export default function ShopPage() {
               <div style={{
                 textAlign: 'center',
                 padding: '5rem',
-                color: 'rgba(245,242,236,0.2)',
+                color: 'rgba(var(--offwhite-rgb),0.2)',
                 fontFamily: 'var(--font-inter)',
               }}>
                 <p style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>
@@ -661,7 +661,7 @@ export default function ShopPage() {
                       onMouseLeave={() => setHoveredId(null)}
                       style={{
                         background: 'rgba(255,255,255,0.02)',
-                        border: `1px solid ${hovered && !outOfStock ? 'rgba(106,106,183,0.4)' : 'rgba(255,255,255,0.06)'}`,
+                        border: `1px solid ${hovered && !outOfStock ? 'rgba(var(--purple-rgb),0.4)' : 'rgba(255,255,255,0.06)'}`,
                         borderRadius: '4px',
                         overflow: 'hidden',
                         display: 'flex',
@@ -682,7 +682,7 @@ export default function ShopPage() {
                           zIndex: 2,
                         }}>
                           <span style={{
-                            backgroundColor: 'rgba(228,51,41,0.9)',
+                            backgroundColor: 'rgba(var(--red-rgb),0.9)',
                             color: '#fff',
                             padding: '0.3rem 1rem',
                             fontSize: '0.65rem',
@@ -730,7 +730,7 @@ export default function ShopPage() {
                         <span style={{
                           display: 'inline-block',
                           backgroundColor: 'rgba(50,50,124,0.3)',
-                          color: 'rgba(245,242,236,0.6)',
+                          color: 'rgba(var(--offwhite-rgb),0.6)',
                           padding: '0.2rem 0.6rem',
                           borderRadius: '2px',
                           fontSize: '0.65rem',
@@ -750,7 +750,7 @@ export default function ShopPage() {
                           <p style={{
                             fontFamily: 'var(--font-inter)',
                             fontSize: '0.78rem',
-                            color: 'rgba(245,242,236,0.4)',
+                            color: 'rgba(var(--offwhite-rgb),0.4)',
                             lineHeight: 1.6,
                           }}>
                             <Highlighted text={searching ? snippet(product.description, search) : truncate(product.description, 10)} query={search} />
@@ -782,7 +782,7 @@ export default function ShopPage() {
                                 {saleIsActive(product) && (
                                   <span style={{
                                     textDecoration: 'line-through',
-                                    color: 'rgba(245,242,236,0.35)',
+                                    color: 'rgba(var(--offwhite-rgb),0.35)',
                                     fontSize: isMobile ? '0.78rem' : '0.9rem',
                                   }}>${product.price.toFixed(2)}</span>
                                 )}
@@ -818,7 +818,7 @@ export default function ShopPage() {
                               fontSize: '0.7rem',
                               letterSpacing: '0.08em',
                               textTransform: 'uppercase',
-                              color: hovered && !outOfStock ? 'var(--purple)' : 'rgba(245,242,236,0.3)',
+                              color: hovered && !outOfStock ? 'var(--purple)' : 'rgba(var(--offwhite-rgb),0.3)',
                               transition: 'color 0.2s',
                             }}>
                               Learn More →
@@ -848,7 +848,7 @@ export default function ShopPage() {
                   style={{
                     background: 'transparent',
                     border: '1px solid rgba(255,255,255,0.1)',
-                    color: page === 1 ? 'rgba(245,242,236,0.2)' : 'rgba(245,242,236,0.6)',
+                    color: page === 1 ? 'rgba(var(--offwhite-rgb),0.2)' : 'rgba(var(--offwhite-rgb),0.6)',
                     padding: '0.5rem 1rem',
                     borderRadius: '2px',
                     fontSize: '0.78rem',
@@ -860,14 +860,14 @@ export default function ShopPage() {
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => {
                   const active = p === page
                   if (totalPages > 7 && Math.abs(p - page) > 2 && p !== 1 && p !== totalPages) {
-                    if (p === 2 || p === totalPages - 1) return <span key={p} style={{ color: 'rgba(245,242,236,0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.78rem' }}>…</span>
+                    if (p === 2 || p === totalPages - 1) return <span key={p} style={{ color: 'rgba(var(--offwhite-rgb),0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.78rem' }}>…</span>
                     return null
                   }
                   return (
                     <button key={p} onClick={() => goToPage(p)} style={{
                       background: active ? 'var(--purple)' : 'transparent',
                       border: `1px solid ${active ? 'var(--purple)' : 'rgba(255,255,255,0.1)'}`,
-                      color: active ? '#fff' : 'rgba(245,242,236,0.5)',
+                      color: active ? '#fff' : 'rgba(var(--offwhite-rgb),0.5)',
                       width: '36px', height: '36px',
                       borderRadius: '2px',
                       fontSize: '0.78rem',
@@ -883,7 +883,7 @@ export default function ShopPage() {
                   style={{
                     background: 'transparent',
                     border: '1px solid rgba(255,255,255,0.1)',
-                    color: page === totalPages ? 'rgba(245,242,236,0.2)' : 'rgba(245,242,236,0.6)',
+                    color: page === totalPages ? 'rgba(var(--offwhite-rgb),0.2)' : 'rgba(var(--offwhite-rgb),0.6)',
                     padding: '0.5rem 1rem',
                     borderRadius: '2px',
                     fontSize: '0.78rem',

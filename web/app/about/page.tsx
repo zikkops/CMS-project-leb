@@ -97,7 +97,7 @@ export default function AboutPage() {
                 marginBottom: '2rem',
               }} />
               <p style={{
-                color: 'rgba(245,242,236,0.55)',
+                color: 'rgba(var(--offwhite-rgb),0.55)',
                 lineHeight: 1.9,
                 marginBottom: '1.2rem',
                 fontFamily: 'var(--font-inter)',
@@ -107,7 +107,7 @@ export default function AboutPage() {
                 makes people want to sit a while longer — that is the whole idea.
               </p>
               <p style={{
-                color: 'rgba(245,242,236,0.55)',
+                color: 'rgba(var(--offwhite-rgb),0.55)',
                 lineHeight: 1.9,
                 marginBottom: '1.2rem',
                 fontFamily: 'var(--font-inter)',
@@ -118,7 +118,7 @@ export default function AboutPage() {
                 the same kitchen standards and the same welcome.
               </p>
               <p style={{
-                color: 'rgba(245,242,236,0.55)',
+                color: 'rgba(var(--offwhite-rgb),0.55)',
                 lineHeight: 1.9,
                 fontFamily: 'var(--font-inter)',
               }}>
@@ -177,7 +177,7 @@ export default function AboutPage() {
                   fontSize: '0.75rem',
                   letterSpacing: '0.15em',
                   textTransform: 'uppercase',
-                  color: 'rgba(245,242,236,0.35)',
+                  color: 'rgba(var(--offwhite-rgb),0.35)',
                 }}>{label}</p>
               </div>
             ))}
@@ -273,7 +273,7 @@ export default function AboutPage() {
                     <p style={{
                       fontFamily: 'var(--font-inter)',
                       fontSize: '0.82rem',
-                      color: 'rgba(245,242,236,0.45)',
+                      color: 'rgba(var(--offwhite-rgb),0.45)',
                       lineHeight: 1.7,
                     }}>{text}</p>
                   </div>

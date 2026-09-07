@@ -109,7 +109,7 @@ export default function InvoicesPage() {
         <div style={{ marginBottom: '2rem' }}>
           <a href="/admin" style={{
             fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
             fontFamily: 'var(--font-inter)', marginBottom: '0.5rem', display: 'block',
           }}>← Back to Dashboard</a>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
@@ -124,7 +124,7 @@ export default function InvoicesPage() {
               }}>+ Record a Sale</a>
               <button onClick={load} style={{
                 backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-                color: 'rgba(245,242,236,0.5)', padding: '0.65rem 1.2rem', borderRadius: '2px',
+                color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.65rem 1.2rem', borderRadius: '2px',
                 fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase',
                 cursor: 'pointer', fontFamily: 'var(--font-inter)',
               }}>Refresh</button>
@@ -138,7 +138,7 @@ export default function InvoicesPage() {
             <button key={f} onClick={() => setFilter(f)} style={{
               backgroundColor: filter === f ? 'rgba(255,255,255,0.08)' : 'transparent',
               border: `1px solid ${filter === f ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)'}`,
-              color: filter === f ? 'var(--offwhite)' : 'rgba(245,242,236,0.4)',
+              color: filter === f ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.4)',
               padding: '0.45rem 1rem', borderRadius: '2px', fontSize: '0.72rem',
               letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer',
               fontFamily: 'var(--font-inter)',
@@ -152,12 +152,12 @@ export default function InvoicesPage() {
 
         {/* Orders */}
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : visible.length === 0 ? (
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
-            color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
+            color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
             {filter === 'all' ? 'No sales recorded yet.' : `No ${filter} orders.`}
           </div>
@@ -184,14 +184,14 @@ export default function InvoicesPage() {
                           </span>
                           <span style={{
                             fontSize: '0.65rem', padding: '0.2rem 0.6rem', borderRadius: '2px',
-                            backgroundColor: order.status === 'refunded' ? 'rgba(228,51,41,0.15)' : 'rgba(0,160,152,0.15)',
+                            backgroundColor: order.status === 'refunded' ? 'rgba(var(--red-rgb),0.15)' : 'rgba(var(--teal-rgb),0.15)',
                             color: order.status === 'refunded' ? 'var(--red)' : 'var(--teal)',
                             fontFamily: 'var(--font-inter)', letterSpacing: '0.1em', textTransform: 'uppercase',
                           }}>
                             {order.status}
                           </span>
                         </div>
-                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.5)' }}>
+                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
                           {fmtDateTime(order.createdAt as any)} · {order.branch}
                         </p>
                       </div>
@@ -199,7 +199,7 @@ export default function InvoicesPage() {
                         <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color: 'var(--teal)' }}>
                           ${order.total.toFixed(2)}
                         </p>
-                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)' }}>
+                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                           by {order.processedByEmail}
                         </p>
                       </div>
@@ -215,11 +215,11 @@ export default function InvoicesPage() {
                       {order.items.map((item, i) => (
                         <p key={i} style={{
                           fontFamily: 'var(--font-inter)', fontSize: '0.75rem',
-                          color: 'rgba(245,242,236,0.45)',
+                          color: 'rgba(var(--offwhite-rgb),0.45)',
                         }}>
                           {item.productName} × {item.quantity} @ ${item.unitPrice.toFixed(2)}
                           {item.priceType === 'wholesale' && (
-                            <span style={{ color: 'rgba(245,242,236,0.3)', marginLeft: '0.3rem' }}>(wholesale)</span>
+                            <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)', marginLeft: '0.3rem' }}>(wholesale)</span>
                           )}
                         </p>
                       ))}
@@ -229,9 +229,9 @@ export default function InvoicesPage() {
                     {order.status === 'refunded' && (
                       <div style={{
                         padding: '0.5rem 0.8rem', borderRadius: '2px',
-                        backgroundColor: 'rgba(228,51,41,0.08)', marginBottom: '0.75rem',
+                        backgroundColor: 'rgba(var(--red-rgb),0.08)', marginBottom: '0.75rem',
                       }}>
-                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(228,51,41,0.8)' }}>
+                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--red-rgb),0.8)' }}>
                           Refunded {fmtDate(order.refundedAt as any)} by {order.refundedBy}
                           {order.refundNote && ` — "${order.refundNote}"`}
                         </p>
@@ -246,7 +246,7 @@ export default function InvoicesPage() {
                           target="_blank"
                           rel="noreferrer"
                           style={{
-                            backgroundColor: 'transparent', border: '1px solid rgba(0,160,152,0.4)',
+                            backgroundColor: 'transparent', border: '1px solid rgba(var(--teal-rgb),0.4)',
                             color: 'var(--teal)', textDecoration: 'none',
                             padding: '0.45rem 1rem', borderRadius: '2px', fontSize: '0.7rem',
                             letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
@@ -258,7 +258,7 @@ export default function InvoicesPage() {
                           disabled={regenerating === order.id}
                           style={{
                             backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
-                            color: 'rgba(245,242,236,0.5)', padding: '0.45rem 1rem', borderRadius: '2px',
+                            color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.45rem 1rem', borderRadius: '2px',
                             fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase',
                             cursor: regenerating === order.id ? 'not-allowed' : 'pointer',
                             fontFamily: 'var(--font-inter)',
@@ -275,8 +275,8 @@ export default function InvoicesPage() {
                             else { setRefunding(order.id); setRefundError('') }
                           }}
                           style={{
-                            backgroundColor: isRefundOpen ? 'rgba(228,51,41,0.15)' : 'transparent',
-                            border: '1px solid rgba(228,51,41,0.4)',
+                            backgroundColor: isRefundOpen ? 'rgba(var(--red-rgb),0.15)' : 'transparent',
+                            border: '1px solid rgba(var(--red-rgb),0.4)',
                             color: 'var(--red)', padding: '0.45rem 1rem', borderRadius: '2px',
                             fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase',
                             cursor: 'pointer', fontFamily: 'var(--font-inter)',
@@ -291,13 +291,13 @@ export default function InvoicesPage() {
                   {/* Refund panel */}
                   {isRefundOpen && (
                     <div style={{
-                      borderTop: '1px solid rgba(228,51,41,0.2)',
+                      borderTop: '1px solid rgba(var(--red-rgb),0.2)',
                       padding: isMobile ? '1rem' : '1.25rem 1.5rem',
-                      backgroundColor: 'rgba(228,51,41,0.04)',
+                      backgroundColor: 'rgba(var(--red-rgb),0.04)',
                     }}>
                       <p style={{
                         fontFamily: 'var(--font-inter)', fontSize: '0.72rem',
-                        color: 'rgba(228,51,41,0.8)', marginBottom: '0.75rem',
+                        color: 'rgba(var(--red-rgb),0.8)', marginBottom: '0.75rem',
                       }}>
                         This will reverse the sale and restore stock for all {order.items.length} item(s) to {order.branch}.
                       </p>
@@ -309,7 +309,7 @@ export default function InvoicesPage() {
                         style={{
                           ...inp,
                           marginBottom: '0.75rem',
-                          border: '1px solid rgba(228,51,41,0.3)',
+                          border: '1px solid rgba(var(--red-rgb),0.3)',
                         }}
                       />
                       {refundError && (
@@ -335,7 +335,7 @@ export default function InvoicesPage() {
                           onClick={() => { setRefunding(null); setRefundNote('') }}
                           style={{
                             backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-                            color: 'rgba(245,242,236,0.5)', padding: '0.6rem 1.2rem', borderRadius: '2px',
+                            color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.6rem 1.2rem', borderRadius: '2px',
                             fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase',
                             cursor: 'pointer', fontFamily: 'var(--font-inter)',
                           }}

@@ -39,6 +39,27 @@ function envNum(key: string, fallback: number): number {
   return Number.isFinite(n) ? n : fallback
 }
 
+// A colour, guaranteed to come back as a valid hex.
+//
+// Validated rather than passed through because brandCss.ts now derives an
+// rgb() triplet from each of these, so that a translucent colour can follow
+// the brand. A triplet cannot be derived from "blue" or from "#12345", and a
+// variable holding a broken triplet does not fail loudly — it makes every
+// rgba() referencing it invalid, so the property is dropped and the element
+// silently inherits. One typo in one environment variable would take out the
+// text colour of the whole app.
+//
+// So a value that is not a hex colour is refused here and the default stands.
+// #RGB is expanded, because it is a legal CSS colour a person will reasonably
+// type and it is not a legal triplet source as written.
+function envColor(key: string, fallback: string): string {
+  const raw = (process.env[key] ?? '').trim()
+  if (raw === '') return fallback
+  const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(raw)
+  if (short) return `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}`
+  return /^#[0-9a-f]{6}$/i.test(raw) ? raw : fallback
+}
+
 function envList(key: string, fallback: string[]): string[] {
   const raw = process.env[key]
   if (!raw) return fallback
@@ -150,13 +171,13 @@ export const BRAND: BrandConfig = {
   // brand — a demo should not be mistakable for a customer's site, and a
   // placeholder that looks finished never gets replaced.
   colors: {
-    primary:    env('NEXT_PUBLIC_COLOR_PRIMARY',    '#4A8DB7'),
-    secondary:  env('NEXT_PUBLIC_COLOR_SECONDARY',  '#B79A4A'),
-    tertiary:   env('NEXT_PUBLIC_COLOR_TERTIARY',   '#7C7CA8'),
-    deep:       env('NEXT_PUBLIC_COLOR_DEEP',       '#3A3A5C'),
-    danger:     env('NEXT_PUBLIC_COLOR_DANGER',     '#C4544A'),
-    background: env('NEXT_PUBLIC_COLOR_BACKGROUND', '#0F0F11'),
-    foreground: env('NEXT_PUBLIC_COLOR_FOREGROUND', '#EDEBE7'),
+    primary:    envColor('NEXT_PUBLIC_COLOR_PRIMARY',    '#4A8DB7'),
+    secondary:  envColor('NEXT_PUBLIC_COLOR_SECONDARY',  '#B79A4A'),
+    tertiary:   envColor('NEXT_PUBLIC_COLOR_TERTIARY',   '#7C7CA8'),
+    deep:       envColor('NEXT_PUBLIC_COLOR_DEEP',       '#3A3A5C'),
+    danger:     envColor('NEXT_PUBLIC_COLOR_DANGER',     '#C4544A'),
+    background: envColor('NEXT_PUBLIC_COLOR_BACKGROUND', '#0F0F11'),
+    foreground: envColor('NEXT_PUBLIC_COLOR_FOREGROUND', '#EDEBE7'),
   },
 
   // Font family names as they appear in CSS. The actual loading happens in

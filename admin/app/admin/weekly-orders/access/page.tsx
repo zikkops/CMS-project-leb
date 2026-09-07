@@ -80,14 +80,14 @@ export default function WeeklyOrdersAccessPage() {
 
         <a href="/admin/weekly-orders" style={{
           fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-          color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+          color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
           display: 'block', marginBottom: '0.5rem',
         }}>← Weekly Orders</a>
 
         <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)', marginBottom: '0.25rem' }}>
           Department Access
         </h1>
-        <p style={{ fontSize: '0.82rem', color: 'rgba(245,242,236,0.35)', marginBottom: '2.5rem' }}>
+        <p style={{ fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '2.5rem' }}>
           Control which order departments each staff member can submit and view.
           Admin and manager accounts always have access to all three.
         </p>
@@ -97,13 +97,13 @@ export default function WeeklyOrdersAccessPage() {
           {DEPARTMENTS.map(d => (
             <div key={d} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: DEPT_COLOR[d] }} />
-              <span style={{ fontSize: '0.75rem', color: 'rgba(245,242,236,0.5)' }}>{d}</span>
+              <span style={{ fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>{d}</span>
             </div>
           ))}
         </div>
 
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)' }}>Loading staff…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)' }}>Loading staff…</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
             {accounts.map(account => {
@@ -147,7 +147,7 @@ export default function WeeklyOrdersAccessPage() {
                           style={{
                             backgroundColor: hasAccess ? `${DEPT_COLOR[dept]}20` : 'transparent',
                             border: `1px solid ${hasAccess ? DEPT_COLOR[dept] : 'rgba(255,255,255,0.1)'}`,
-                            color: hasAccess ? DEPT_COLOR[dept] : 'rgba(245,242,236,0.2)',
+                            color: hasAccess ? DEPT_COLOR[dept] : 'rgba(var(--offwhite-rgb),0.2)',
                             padding: '0.3rem 0.7rem', borderRadius: '2px',
                             fontSize: '0.7rem', letterSpacing: '0.05em',
                             cursor: isPrivileged ? 'default' : (isSavingThis ? 'wait' : 'pointer'),

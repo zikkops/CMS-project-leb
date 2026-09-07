@@ -156,21 +156,21 @@ export default function WholesaleOrdersAdminPage() {
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)' }}>
       <div style={{ maxWidth: '960px', margin: '0 auto', padding: isMobile ? '2rem 1rem' : '3rem 2rem' }}>
 
-        <a href="/admin" style={{ fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', textDecoration: 'none', display: 'block', marginBottom: '0.5rem' }}>
+        <a href="/admin" style={{ fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none', display: 'block', marginBottom: '0.5rem' }}>
           ← Dashboard
         </a>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.75rem' }}>
           <div>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', marginBottom: '0.25rem' }}>Wholesale Orders</h1>
-            <p style={{ fontSize: '0.82rem', color: 'rgba(245,242,236,0.35)' }}>
+            <p style={{ fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
               {pendingCount > 0
                 ? <span style={{ color: 'var(--brand-secondary)' }}>{pendingCount} awaiting a decision</span>
                 : 'Nothing pending.'}
             </p>
           </div>
           <a href="/admin/wholesale/accounts" style={{
-            background: 'transparent', color: '#9B9BD6', border: '1px solid rgba(106,106,183,0.4)',
+            background: 'transparent', color: '#9B9BD6', border: '1px solid rgba(var(--purple-rgb),0.4)',
             borderRadius: '4px', padding: '0.65rem 1.2rem', fontSize: '0.78rem',
             letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'none',
           }}>Accounts</a>
@@ -181,7 +181,7 @@ export default function WholesaleOrdersAdminPage() {
             <button key={s} onClick={() => setFilter(s as WholesaleOrderStatus | 'all')} style={{
               background: filter === s ? 'rgba(255,255,255,0.08)' : 'transparent',
               border: `1px solid ${filter === s ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.09)'}`,
-              color: filter === s ? 'var(--offwhite)' : 'rgba(245,242,236,0.35)',
+              color: filter === s ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.35)',
               borderRadius: '20px', padding: '0.4rem 1rem', fontSize: '0.72rem',
               letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
             }}>{s}</button>
@@ -192,16 +192,16 @@ export default function WholesaleOrdersAdminPage() {
           <p style={{
             marginBottom: '1.25rem', padding: '0.8rem 1.1rem', borderRadius: '4px',
             fontSize: '0.82rem',
-            background: notice.kind === 'ok' ? 'rgba(0,160,152,0.08)' : 'rgba(201,150,44,0.08)',
-            border: `1px solid ${notice.kind === 'ok' ? 'rgba(0,160,152,0.3)' : 'rgba(201,150,44,0.3)'}`,
+            background: notice.kind === 'ok' ? 'rgba(var(--teal-rgb),0.08)' : 'rgba(var(--brand-secondary-rgb),0.08)',
+            border: `1px solid ${notice.kind === 'ok' ? 'rgba(var(--teal-rgb),0.3)' : 'rgba(var(--brand-secondary-rgb),0.3)'}`,
             color: notice.kind === 'ok' ? 'var(--teal)' : 'var(--brand-secondary)',
           }}>{notice.text}</p>
         )}
 
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)' }}>Loading…</p>
         ) : visible.length === 0 ? (
-          <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(245,242,236,0.2)', fontSize: '0.88rem' }}>
+          <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.2)', fontSize: '0.88rem' }}>
             No {filter === 'all' ? '' : filter} orders.
           </div>
         ) : (
@@ -217,13 +217,13 @@ export default function WholesaleOrdersAdminPage() {
                     <div>
                       <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.98rem' }}>
                         {o.shopName}
-                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.3)', marginLeft: '0.6rem' }}>
+                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginLeft: '0.6rem' }}>
                           {o.id.slice(0, 8).toUpperCase()}
                         </span>
                       </p>
-                      <p style={{ fontSize: '0.72rem', color: 'rgba(245,242,236,0.35)', marginTop: '0.15rem' }}>
+                      <p style={{ fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.35)', marginTop: '0.15rem' }}>
                         {fmt(o.createdAt)} · {o.items.length} title{o.items.length !== 1 ? 's' : ''} · {o.itemCount} unit{o.itemCount !== 1 ? 's' : ''}
-                        {o.emailedAt && <span style={{ color: 'rgba(0,160,152,0.7)' }}> · emailed</span>}
+                        {o.emailedAt && <span style={{ color: 'rgba(var(--teal-rgb),0.7)' }}> · emailed</span>}
                       </p>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -231,13 +231,13 @@ export default function WholesaleOrdersAdminPage() {
                         {o.status}
                       </span>
                       <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#9B9BD6' }}>${o.totalUsd.toFixed(2)}</span>
-                      <span style={{ color: 'rgba(245,242,236,0.25)' }}>{open ? '▾' : '▸'}</span>
+                      <span style={{ color: 'rgba(var(--offwhite-rgb),0.25)' }}>{open ? '▾' : '▸'}</span>
                     </div>
                   </div>
 
                   {open && (
                     <div style={{ padding: '0 1.1rem 1.1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                      <p style={{ fontSize: '0.75rem', color: 'rgba(245,242,236,0.35)', margin: '0.75rem 0' }}>
+                      <p style={{ fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.35)', margin: '0.75rem 0' }}>
                         {o.accountEmail}
                         {o.decidedByEmail && ` · decided by ${o.decidedByEmail} ${fmt(o.decidedAt)}`}
                       </p>
@@ -248,7 +248,7 @@ export default function WholesaleOrdersAdminPage() {
                             {o.items.map(i => (
                               <tr key={i.productId} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                                 <td style={{ padding: '0.45rem 0', fontSize: '0.82rem' }}>{i.name}</td>
-                                <td style={{ padding: '0.45rem 0', textAlign: 'right', fontSize: '0.78rem', color: 'rgba(245,242,236,0.45)' }}>
+                                <td style={{ padding: '0.45rem 0', textAlign: 'right', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>
                                   {i.quantity} × ${i.unitPrice.toFixed(2)}
                                 </td>
                                 <td style={{ padding: '0.45rem 0 0.45rem 1rem', textAlign: 'right', fontSize: '0.82rem', fontWeight: 600 }}>
@@ -261,7 +261,7 @@ export default function WholesaleOrdersAdminPage() {
                       </div>
 
                       {o.notes && (
-                        <p style={{ marginTop: '0.9rem', fontSize: '0.78rem', color: 'rgba(245,242,236,0.45)' }}>Notes: {o.notes}</p>
+                        <p style={{ marginTop: '0.9rem', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>Notes: {o.notes}</p>
                       )}
 
                       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1.1rem' }}>
@@ -273,8 +273,8 @@ export default function WholesaleOrdersAdminPage() {
                               letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
                             }}>{busyId === o.id ? (busyLabel || 'Working…') : 'Approve'}</button>
                             <button onClick={() => setStatus(o, 'rejected')} disabled={busyId === o.id} style={{
-                              background: 'rgba(228,51,41,0.08)', color: 'var(--red)',
-                              border: '1px solid rgba(228,51,41,0.3)', borderRadius: '4px',
+                              background: 'rgba(var(--red-rgb),0.08)', color: 'var(--red)',
+                              border: '1px solid rgba(var(--red-rgb),0.3)', borderRadius: '4px',
                               padding: '0.6rem 1.2rem', fontSize: '0.75rem',
                               letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
                             }}>Reject</button>
@@ -290,20 +290,20 @@ export default function WholesaleOrdersAdminPage() {
                         )}
                         {o.invoiceUrl && (
                           <a href={o.invoiceUrl} target="_blank" rel="noopener noreferrer" style={{
-                            background: 'rgba(0,160,152,0.1)', color: 'var(--teal)',
-                            border: '1px solid rgba(0,160,152,0.35)', borderRadius: '4px',
+                            background: 'rgba(var(--teal-rgb),0.1)', color: 'var(--teal)',
+                            border: '1px solid rgba(var(--teal-rgb),0.35)', borderRadius: '4px',
                             padding: '0.6rem 1.2rem', fontSize: '0.75rem', textDecoration: 'none',
                             letterSpacing: '0.08em', textTransform: 'uppercase',
                           }}>Invoice {o.invoiceNumber}</a>
                         )}
                         <button onClick={() => emailOrder(o)} style={{
-                          background: 'rgba(201,150,44,0.12)', color: 'var(--brand-secondary)',
-                          border: '1px solid rgba(201,150,44,0.35)', borderRadius: '4px',
+                          background: 'rgba(var(--brand-secondary-rgb),0.12)', color: 'var(--brand-secondary)',
+                          border: '1px solid rgba(var(--brand-secondary-rgb),0.35)', borderRadius: '4px',
                           padding: '0.6rem 1.2rem', fontSize: '0.75rem',
                           letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
                         }}>Email Order</button>
                         <button onClick={() => copyOrder(o)} style={{
-                          background: 'transparent', color: 'rgba(245,242,236,0.5)',
+                          background: 'transparent', color: 'rgba(var(--offwhite-rgb),0.5)',
                           border: '1px solid rgba(255,255,255,0.12)', borderRadius: '4px',
                           padding: '0.6rem 1.2rem', fontSize: '0.75rem',
                           letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
@@ -317,7 +317,7 @@ export default function WholesaleOrdersAdminPage() {
           </div>
         )}
 
-        <p style={{ marginTop: '2rem', fontSize: '0.72rem', color: 'rgba(245,242,236,0.25)', lineHeight: 1.8 }}>
+        <p style={{ marginTop: '2rem', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.25)', lineHeight: 1.8 }}>
           &ldquo;Email Order&rdquo; opens a prefilled message to {WHOLESALE_ORDERS_EMAIL} in your mail
           client — nothing is sent from a server, so there&apos;s no delivery guarantee. Approving does
           not deduct stock; confirm availability before you commit to a shop.

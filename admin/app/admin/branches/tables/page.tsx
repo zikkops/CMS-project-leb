@@ -58,7 +58,7 @@ const labelStyle = {
   fontSize: '0.65rem',
   letterSpacing: '0.15em',
   textTransform: 'uppercase' as const,
-  color: 'rgba(245,242,236,0.35)',
+  color: 'rgba(var(--offwhite-rgb),0.35)',
   marginBottom: '0.4rem',
   fontFamily: 'var(--font-inter)',
 }
@@ -66,7 +66,7 @@ const labelStyle = {
 const btnStyle = {
   background: 'transparent',
   border: '1px solid rgba(255,255,255,0.15)',
-  color: 'rgba(245,242,236,0.7)',
+  color: 'rgba(var(--offwhite-rgb),0.7)',
   padding: '0.5rem 1rem',
   borderRadius: '2px',
   fontSize: '0.72rem',
@@ -283,13 +283,13 @@ export default function BranchTablesPage() {
       <div style={{ maxWidth: '1300px', margin: '0 auto' }}>
         <a href="/admin" style={{
           fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-          color: 'rgba(245,242,236,0.3)', textDecoration: 'none', fontFamily: 'var(--font-inter)',
+          color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none', fontFamily: 'var(--font-inter)',
           marginBottom: '0.5rem', display: 'block',
         }}>← Back to Dashboard</a>
         <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)', marginBottom: '0.4rem' }}>
           Table Map Editor
         </h1>
-        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)', marginBottom: '1.5rem' }}>
+        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '1.5rem' }}>
           Upload a floor plan and place table markers for each branch
         </p>
 
@@ -298,7 +298,7 @@ export default function BranchTablesPage() {
             <button key={b} onClick={() => handleBranchSwitch(b)} style={{
               backgroundColor: branch === b ? 'var(--teal)' : 'transparent',
               border: `1px solid ${branch === b ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
-              color: branch === b ? '#fff' : 'rgba(245,242,236,0.6)',
+              color: branch === b ? '#fff' : 'rgba(var(--offwhite-rgb),0.6)',
               padding: '0.6rem 1.2rem', borderRadius: '2px', fontSize: '0.78rem',
               cursor: 'pointer', fontFamily: 'var(--font-inter)',
             }}>{b}</button>
@@ -306,12 +306,12 @@ export default function BranchTablesPage() {
         </div>
 
         {loading || migrating ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>
             {migrating ? 'Converting this branch\'s saved layout to the newer pixel-based sizing…' : 'Loading…'}
           </p>
         ) : !imageUrl ? (
           <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center' }}>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.4)', marginBottom: '1.2rem' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginBottom: '1.2rem' }}>
               No floor plan uploaded yet for {branch}.
             </p>
             <label style={{ ...btnStyle, display: 'inline-block', cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.6 : 1 }}>
@@ -334,7 +334,7 @@ export default function BranchTablesPage() {
                     ...btnStyle,
                     backgroundColor: adjacencyMode ? 'var(--purple)' : 'transparent',
                     borderColor: adjacencyMode ? 'var(--purple)' : 'rgba(255,255,255,0.15)',
-                    color: adjacencyMode ? '#fff' : 'rgba(245,242,236,0.7)',
+                    color: adjacencyMode ? '#fff' : 'rgba(var(--offwhite-rgb),0.7)',
                   }}
                 >{adjacencyMode ? 'Adjacency Mode: On' : 'Adjacency Mode: Off'}</button>
                 <button onClick={handleSave} disabled={!dirty || saving} style={{
@@ -383,7 +383,7 @@ export default function BranchTablesPage() {
                         left: `${leftPct}%`, top: `${topPct}%`,
                         width: `${widthPct}%`, height: `${heightPct}%`,
                         transform: `translate(-50%, -50%) rotate(${table.rotation}deg)`,
-                        backgroundColor: table.bookable ? 'rgba(0,160,152,0.55)' : 'rgba(20,20,20,0.4)',
+                        backgroundColor: table.bookable ? 'rgba(var(--teal-rgb),0.55)' : 'rgba(20,20,20,0.4)',
                         border: `2px solid ${isAnchor ? 'var(--purple)' : isSelected ? 'var(--teal)' : 'rgba(20,20,20,0.55)'}`,
                         ...shapeStyle(table.shape),
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -427,7 +427,7 @@ export default function BranchTablesPage() {
                           const min = Number(e.target.value)
                           updateSelected({ capacityMin: min, capacityMax: Math.max(min, selected.capacityMax) })
                         }} style={inputStyle} />
-                      <span style={{ color: 'rgba(245,242,236,0.4)', fontFamily: 'var(--font-inter)', fontSize: '0.8rem' }}>to</span>
+                      <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)', fontFamily: 'var(--font-inter)', fontSize: '0.8rem' }}>to</span>
                       <input type="number" min={selected.capacityMin} value={selected.capacityMax}
                         onChange={e => updateSelected({ capacityMax: Math.max(selected.capacityMin, Number(e.target.value)) })} style={inputStyle} />
                     </div>
@@ -452,11 +452,11 @@ export default function BranchTablesPage() {
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <input type="number" min={5} max={Math.round((imageWidth ?? 1000) * 0.6)} step={1} value={Math.round(selected.width)}
                         onChange={e => updateSelected({ width: Math.min((imageWidth ?? 1000) * 0.6, Math.max(5, Number(e.target.value))) })} style={inputStyle} />
-                      <span style={{ color: 'rgba(245,242,236,0.4)', fontFamily: 'var(--font-inter)', fontSize: '0.8rem' }}>×</span>
+                      <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)', fontFamily: 'var(--font-inter)', fontSize: '0.8rem' }}>×</span>
                       <input type="number" min={5} max={Math.round((imageHeight ?? 1000) * 0.6)} step={1} value={Math.round(selected.height)}
                         onChange={e => updateSelected({ height: Math.min((imageHeight ?? 1000) * 0.6, Math.max(5, Number(e.target.value))) })} style={inputStyle} />
                     </div>
-                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.4rem' }}>
+                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.4rem' }}>
                       Width × height in real pixels, matching the uploaded floor-plan photo's own resolution ({imageWidth ?? '?'}×{imageHeight ?? '?'}) — useful for setting an exact size precisely, e.g. on a hexagonal table, rather than only dragging the resize handle.
                     </p>
                   </div>
@@ -473,19 +473,19 @@ export default function BranchTablesPage() {
                       style={{ ...btnStyle, width: '100%' }}
                     >↻ Rotate 90°</button>
                   </div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.6)', cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.6)', cursor: 'pointer' }}>
                     <input type="checkbox" checked={selected.bookable} onChange={e => updateSelected({ bookable: e.target.checked })} />
                     Bookable by customers
                   </label>
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)' }}>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
                     Adjacent to: {selected.adjacentTo.length === 0 ? 'none' : selected.adjacentTo.map(id => editTables.find(t => t.id === id)?.number ?? '?').join(', ')}
                   </p>
-                  <button onClick={() => handleDeleteTable(selected.id)} style={{ ...btnStyle, border: '1px solid rgba(228,51,41,0.3)', color: 'var(--red)' }}>
+                  <button onClick={() => handleDeleteTable(selected.id)} style={{ ...btnStyle, border: '1px solid rgba(var(--red-rgb),0.3)', color: 'var(--red)' }}>
                     Delete Table
                   </button>
                 </div>
               ) : (
-                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.25)' }}>
+                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.25)' }}>
                   {adjacencyMode ? 'Click two tables to link them.' : 'Select a table to edit it.'}
                 </p>
               )}

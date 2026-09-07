@@ -35,12 +35,12 @@ function D20({ num, rolling }: { num: number; rolling: boolean }) {
       <polygon points={pts} fill="url(#d20fill)" stroke="var(--teal)" strokeWidth="2.5" />
       {hex.map(([x, y], i) => (
         <line key={i} x1={x} y1={y} x2={cx} y2={cy}
-          stroke="rgba(0,160,152,0.28)" strokeWidth="1.2" />
+          stroke="rgba(var(--teal-rgb),0.28)" strokeWidth="1.2" />
       ))}
       {hex.map(([x, y], i) => {
         const [nx, ny] = hex[(i + 1) % 6]
         return <line key={`m${i}`} x1={(x + nx) / 2} y1={(y + ny) / 2} x2={cx} y2={cy}
-          stroke="rgba(0,160,152,0.14)" strokeWidth="1" />
+          stroke="rgba(var(--teal-rgb),0.14)" strokeWidth="1" />
       })}
       <text x={cx} y={cy + (num >= 10 ? 15 : 22)} textAnchor="middle"
         fontFamily="Georgia, 'Times New Roman', serif"
@@ -49,7 +49,7 @@ function D20({ num, rolling }: { num: number; rolling: boolean }) {
       >{num}</text>
       <text x={cx} y={cy + 62} textAnchor="middle"
         fontFamily="'Arial', sans-serif" fontSize="9" letterSpacing="2"
-        fill="rgba(0,160,152,0.5)">D20</text>
+        fill="rgba(var(--teal-rgb),0.5)">D20</text>
     </svg>
   )
 }
@@ -169,9 +169,9 @@ export default function NotFound() {
     <>
       <style>{`
         @keyframes critFlash {
-          0%   { filter: drop-shadow(0 0 32px rgba(228,51,41,0.95)) brightness(2); }
-          35%  { filter: drop-shadow(0 0 22px rgba(228,51,41,0.7))  brightness(1.4); }
-          100% { filter: drop-shadow(0 0  0px rgba(228,51,41,0))    brightness(1); }
+          0%   { filter: drop-shadow(0 0 32px rgba(var(--red-rgb),0.95)) brightness(2); }
+          35%  { filter: drop-shadow(0 0 22px rgba(var(--red-rgb),0.7))  brightness(1.4); }
+          100% { filter: drop-shadow(0 0  0px rgba(var(--red-rgb),0))    brightness(1); }
         }
         .crit-flash { animation: critFlash 1.6s ease-out forwards; }
       `}</style>
@@ -194,7 +194,7 @@ export default function NotFound() {
           position: 'absolute', top: '50%', left: '50%',
           transform: 'translate(-50%, -50%)',
           width: '600px', height: '600px',
-          background: 'radial-gradient(circle, rgba(0,160,152,0.07) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(var(--teal-rgb),0.07) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
 
@@ -226,7 +226,7 @@ export default function NotFound() {
               fontSize: '0.62rem',
               letterSpacing: '0.15em',
               textTransform: 'uppercase',
-              color: 'rgba(0,160,152,0.6)',
+              color: 'rgba(var(--teal-rgb),0.6)',
               fontFamily: 'var(--font-inter)',
               whiteSpace: 'nowrap',
             }}>Roll again</div>
@@ -241,7 +241,7 @@ export default function NotFound() {
             fontWeight: 900,
             lineHeight: 1,
             letterSpacing: '-0.02em',
-            background: 'linear-gradient(135deg, var(--teal) 0%, rgba(0,160,152,0.4) 100%)',
+            background: 'linear-gradient(135deg, var(--teal) 0%, rgba(var(--teal-rgb),0.4) 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
@@ -251,7 +251,7 @@ export default function NotFound() {
           <p style={{
             fontFamily: 'var(--font-cinzel)',
             fontSize: 'clamp(1rem, 3vw, 1.45rem)',
-            color: 'rgba(245,242,236,0.55)',
+            color: 'rgba(var(--offwhite-rgb),0.55)',
             letterSpacing: '0.35em',
             textTransform: 'uppercase',
           }}>Critical Miss</p>
@@ -262,7 +262,7 @@ export default function NotFound() {
           <p style={{
             fontFamily: 'var(--font-inter)',
             fontSize: '1rem',
-            color: 'rgba(245,242,236,0.5)',
+            color: 'rgba(var(--offwhite-rgb),0.5)',
             lineHeight: 1.75,
           }}>
             You rolled a <span style={{ color: 'var(--teal)', fontWeight: 600 }}>1</span> on your perception check.<br />
@@ -284,7 +284,7 @@ export default function NotFound() {
             onMouseEnter={() => setHoverHome(true)}
             onMouseLeave={() => setHoverHome(false)}
             style={{
-              backgroundColor: hoverHome ? 'rgba(0,160,152,0.15)' : 'var(--teal)',
+              backgroundColor: hoverHome ? 'rgba(var(--teal-rgb),0.15)' : 'var(--teal)',
               color: '#fff',
               padding: '0.8rem 2rem',
               borderRadius: '2px',
@@ -295,7 +295,7 @@ export default function NotFound() {
               fontFamily: 'var(--font-inter)',
               border: '1px solid var(--teal)',
               transition: 'all 0.25s ease',
-              boxShadow: hoverHome ? '0 0 20px rgba(0,160,152,0.4)' : 'none',
+              boxShadow: hoverHome ? '0 0 20px rgba(var(--teal-rgb),0.4)' : 'none',
             }}
           >Return to Base Camp</Link>
 
@@ -304,7 +304,7 @@ export default function NotFound() {
             onMouseLeave={() => setHoverShop(false)}
             style={{
               backgroundColor: 'transparent',
-              color: hoverShop ? 'var(--offwhite)' : 'rgba(245,242,236,0.55)',
+              color: hoverShop ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.55)',
               padding: '0.8rem 2rem',
               borderRadius: '2px',
               fontSize: '0.78rem',
@@ -322,7 +322,7 @@ export default function NotFound() {
           position: 'absolute', bottom: '2rem',
           fontFamily: 'var(--font-inter)',
           fontSize: '0.68rem',
-          color: 'rgba(245,242,236,0.15)',
+          color: 'rgba(var(--offwhite-rgb),0.15)',
           letterSpacing: '0.1em',
           userSelect: 'none',
         }}>Error 404 · Page Not Found</p>

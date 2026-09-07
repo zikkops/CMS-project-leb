@@ -100,13 +100,13 @@ export default function DailyInventoryHistoryPage() {
 
         <a href="/admin/supplies/daily" style={{
           fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-          color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+          color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
           display: 'block', marginBottom: '0.5rem', fontFamily: 'var(--font-inter)',
         }}>← Daily Inventory Count</a>
         <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', color: 'var(--offwhite)', marginBottom: '0.2rem' }}>
           Daily Inventory History
         </h1>
-        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.3)', marginBottom: '1.5rem' }}>
+        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '1.5rem' }}>
           Every branch&apos;s Kitchen, Bar, and Cleaning counts, by day. Hover a day for a quick look, click for the full detail.
         </p>
 
@@ -127,33 +127,33 @@ export default function DailyInventoryHistoryPage() {
           {DEPARTMENTS.filter(d => d !== 'Other').map(d => (
             <div key={d} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <span style={{ width: '9px', height: '9px', borderRadius: '2px', background: supplyCategoryColor(d), flexShrink: 0 }} />
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.4)' }}>{d}</span>
+              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>{d}</span>
             </div>
           ))}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span style={{ width: '9px', height: '9px', borderRadius: '2px', border: '1px solid rgba(245,242,236,0.4)', flexShrink: 0 }} />
-            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.4)' }}>Draft (not submitted)</span>
+            <span style={{ width: '9px', height: '9px', borderRadius: '2px', border: '1px solid rgba(var(--offwhite-rgb),0.4)', flexShrink: 0 }} />
+            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>Draft (not submitted)</span>
           </div>
         </div>
 
         {/* Month nav */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-          <button onClick={goPrevMonth} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(245,242,236,0.5)', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '0.9rem' }}>‹</button>
+          <button onClick={goPrevMonth} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.5)', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '0.9rem' }}>‹</button>
           <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color: 'var(--offwhite)', minWidth: '160px', textAlign: 'center' }}>
             {MONTH_LABEL(viewYear, viewMonth)}
           </p>
-          <button onClick={goNextMonth} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(245,242,236,0.5)', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '0.9rem' }}>›</button>
-          <button onClick={goToday} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(245,242,236,0.4)', borderRadius: '4px', padding: '0.4rem 0.9rem', cursor: 'pointer', fontSize: '0.72rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)' }}>Today</button>
+          <button onClick={goNextMonth} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.5)', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '0.9rem' }}>›</button>
+          <button onClick={goToday} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.4)', borderRadius: '4px', padding: '0.4rem 0.9rem', cursor: 'pointer', fontSize: '0.72rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)' }}>Today</button>
         </div>
 
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>Loading…</p>
         ) : (
           <>
             {/* Weekday header */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: isMobile ? '0.25rem' : '0.5rem', marginBottom: '0.4rem' }}>
               {WEEKDAYS.map(w => (
-                <p key={w} style={{ fontFamily: 'var(--font-inter)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.25)', textAlign: 'center' }}>
+                <p key={w} style={{ fontFamily: 'var(--font-inter)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.25)', textAlign: 'center' }}>
                   {isMobile ? w.slice(0, 1) : w}
                 </p>
               ))}
@@ -182,7 +182,7 @@ export default function DailyInventoryHistoryPage() {
                       borderRadius: '6px', padding: isMobile ? '0.3rem' : '0.5rem',
                     }}
                   >
-                    <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: isToday ? 'var(--teal)' : 'rgba(245,242,236,0.35)', fontWeight: isToday ? 700 : 400 }}>
+                    <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: isToday ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.35)', fontWeight: isToday ? 700 : 400 }}>
                       {dayNum}
                     </span>
 
@@ -213,7 +213,7 @@ export default function DailyInventoryHistoryPage() {
                         borderRadius: '6px', padding: '0.65rem 0.8rem',
                         boxShadow: '0 8px 24px rgba(0,0,0,0.4)', pointerEvents: 'none',
                       }}>
-                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)', marginBottom: '0.4rem' }}>
+                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.4rem' }}>
                           {date}
                         </p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>

@@ -319,7 +319,7 @@ export default function ImportGamesPage() {
     fontSize: '0.68rem',
     letterSpacing: '0.2em',
     textTransform: 'uppercase' as const,
-    color: 'rgba(245,242,236,0.35)',
+    color: 'rgba(var(--offwhite-rgb),0.35)',
     marginBottom: '0.5rem',
     fontFamily: 'var(--font-inter)',
   }
@@ -336,7 +336,7 @@ export default function ImportGamesPage() {
             fontSize: '0.7rem',
             letterSpacing: '0.2em',
             textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)',
+            color: 'rgba(var(--offwhite-rgb),0.3)',
             textDecoration: 'none',
             fontFamily: 'var(--font-inter)',
             marginBottom: '0.5rem',
@@ -348,7 +348,7 @@ export default function ImportGamesPage() {
           <p style={{
             fontFamily: 'var(--font-inter)',
             fontSize: '0.8rem',
-            color: 'rgba(245,242,236,0.35)',
+            color: 'rgba(var(--offwhite-rgb),0.35)',
             marginTop: '0.5rem',
             lineHeight: 1.6,
           }}>
@@ -376,7 +376,7 @@ export default function ImportGamesPage() {
             style={{ ...inputStyle, cursor: 'pointer' }}
           />
           {fileName && (
-            <p style={{ marginTop: '0.6rem', fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)', fontFamily: 'var(--font-inter)' }}>
+            <p style={{ marginTop: '0.6rem', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)', fontFamily: 'var(--font-inter)' }}>
               {fileName} — {rows.length} row{rows.length === 1 ? '' : 's'} found
             </p>
           )}
@@ -419,12 +419,12 @@ export default function ImportGamesPage() {
                     {headers.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                   {def.key === 'stock' && anyBranchMapped && (
-                    <p style={{ marginTop: '0.3rem', fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>
+                    <p style={{ marginTop: '0.3rem', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>
                       Ignored — per-branch columns are mapped above.
                     </p>
                   )}
                   {def.key === 'stock' && !anyBranchMapped && mapping.stock && (
-                    <p style={{ marginTop: '0.3rem', fontSize: '0.68rem', color: 'rgba(201,150,44,0.9)', fontFamily: 'var(--font-inter)' }}>
+                    <p style={{ marginTop: '0.3rem', fontSize: '0.68rem', color: 'rgba(var(--brand-secondary-rgb),0.9)', fontFamily: 'var(--font-inter)' }}>
                       All stock will go to {IMPORT_BRANCH}.
                     </p>
                   )}
@@ -463,7 +463,7 @@ export default function ImportGamesPage() {
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                   {['Name', 'Category', 'Retail', 'Wholesale', ...BRANCHES, 'Image'].map(h => (
-                    <th key={h} style={{ textAlign: 'left', padding: '0.5rem 0.8rem', color: 'rgba(245,242,236,0.3)', fontWeight: 400 }}>{h}</th>
+                    <th key={h} style={{ textAlign: 'left', padding: '0.5rem 0.8rem', color: 'rgba(var(--offwhite-rgb),0.3)', fontWeight: 400 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -471,13 +471,13 @@ export default function ImportGamesPage() {
                 {rows.slice(0, 5).map((row, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                     <td style={{ padding: '0.5rem 0.8rem', color: 'var(--offwhite)' }}>{row[mapping.name] || '—'}</td>
-                    <td style={{ padding: '0.5rem 0.8rem', color: 'rgba(245,242,236,0.5)' }}>
+                    <td style={{ padding: '0.5rem 0.8rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
                       {mapping.category ? normalizeCategory(row[mapping.category]) : '—'}
                     </td>
-                    <td style={{ padding: '0.5rem 0.8rem', color: 'rgba(245,242,236,0.5)' }}>
+                    <td style={{ padding: '0.5rem 0.8rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
                       {mapping.price ? `${parsePrice(row[mapping.price])}` : '—'}
                     </td>
-                    <td style={{ padding: '0.5rem 0.8rem', color: 'rgba(245,242,236,0.5)' }}>
+                    <td style={{ padding: '0.5rem 0.8rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
                       {(() => {
                         if (!mapping.wholesalePrice) return '—'
                         const w = parseOptionalPrice(row[mapping.wholesalePrice])
@@ -488,12 +488,12 @@ export default function ImportGamesPage() {
                       const col = mapping[stockKey(b)]
                       const fallback = !anyBranchMapped && b === IMPORT_BRANCH && mapping.stock
                       return (
-                        <td key={b} style={{ padding: '0.5rem 0.8rem', color: fallback ? 'rgba(201,150,44,0.9)' : 'rgba(245,242,236,0.5)' }}>
+                        <td key={b} style={{ padding: '0.5rem 0.8rem', color: fallback ? 'rgba(var(--brand-secondary-rgb),0.9)' : 'rgba(var(--offwhite-rgb),0.5)' }}>
                           {col ? parseQty(row[col]) : fallback ? parseQty(row[mapping.stock]) : '—'}
                         </td>
                       )
                     })}
-                    <td style={{ padding: '0.5rem 0.8rem', color: 'rgba(245,242,236,0.5)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '0.5rem 0.8rem', color: 'rgba(var(--offwhite-rgb),0.5)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {mapping.image ? (row[mapping.image].split(',')[0]?.trim() || '—') : '—'}
                     </td>
                   </tr>
@@ -542,12 +542,12 @@ export default function ImportGamesPage() {
                   </p>
                 )}
                 {results.unchanged > 0 && (
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.5)' }}>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
                     {results.unchanged} already present, no mapped values to change
                   </p>
                 )}
                 {results.skippedNoName > 0 && (
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.5)' }}>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
                     {results.skippedNoName} skipped (no name)
                   </p>
                 )}
@@ -565,7 +565,7 @@ export default function ImportGamesPage() {
                   </p>
                 )}
                 {results.categoriesCreated.length > 0 && (
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.5)' }}>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
                     New categories created: {results.categoriesCreated.join(', ')}
                   </p>
                 )}

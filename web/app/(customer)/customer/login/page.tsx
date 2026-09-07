@@ -251,7 +251,7 @@ export default function CustomerLoginPage() {
             <p style={{
               fontFamily: 'var(--font-inter)',
               fontSize: '0.85rem',
-              color: 'rgba(245,242,236,0.4)',
+              color: 'rgba(var(--offwhite-rgb),0.4)',
             }}>Choose a username and add your phone number to finish setting up your account</p>
           </div>
 
@@ -300,7 +300,7 @@ export default function CustomerLoginPage() {
               style={{
                 position: 'relative',
                 overflow: 'hidden',
-                backgroundColor: !busy && continueHovered ? 'rgba(106,106,183,0.15)' : 'var(--purple)',
+                backgroundColor: !busy && continueHovered ? 'rgba(var(--purple-rgb),0.15)' : 'var(--purple)',
                 color: '#fff',
                 padding: '0.9rem',
                 borderRadius: '4px',
@@ -361,7 +361,7 @@ export default function CustomerLoginPage() {
           <p style={{
             fontFamily: 'var(--font-inter)',
             fontSize: '0.85rem',
-            color: 'rgba(245,242,236,0.4)',
+            color: 'rgba(var(--offwhite-rgb),0.4)',
           }}>{mode === 'signup' ? 'Sign up to get started' : 'Sign in to continue'}</p>
         </div>
 
@@ -406,7 +406,7 @@ export default function CustomerLoginPage() {
             fontSize: '0.7rem',
             letterSpacing: '0.1em',
             textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)',
+            color: 'rgba(var(--offwhite-rgb),0.3)',
           }}>or continue with email</span>
           <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255,255,255,0.08)' }} />
         </div>
@@ -486,7 +486,7 @@ export default function CustomerLoginPage() {
                 transform: 'translateY(-50%)',
                 background: 'transparent',
                 border: 'none',
-                color: eyeHovered ? 'var(--offwhite)' : 'rgba(245,242,236,0.4)',
+                color: eyeHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.4)',
                 cursor: 'pointer',
                 padding: 0,
                 display: 'flex',
@@ -504,7 +504,7 @@ export default function CustomerLoginPage() {
             style={{
               position: 'relative',
               overflow: 'hidden',
-              backgroundColor: !busy && submitHovered ? 'rgba(106,106,183,0.15)' : 'var(--purple)',
+              backgroundColor: !busy && submitHovered ? 'rgba(var(--purple-rgb),0.15)' : 'var(--purple)',
               color: '#fff',
               padding: '0.9rem',
               borderRadius: '4px',
@@ -546,14 +546,14 @@ export default function CustomerLoginPage() {
           <div style={{
             marginTop: '1rem',
             padding: '1rem',
-            border: '1px solid rgba(106,106,183,0.3)',
+            border: '1px solid rgba(var(--purple-rgb),0.3)',
             borderRadius: '4px',
-            backgroundColor: 'rgba(106,106,183,0.08)',
+            backgroundColor: 'rgba(var(--purple-rgb),0.08)',
             textAlign: 'center',
           }}>
             <p style={{
               fontSize: '0.78rem',
-              color: 'rgba(245,242,236,0.6)',
+              color: 'rgba(var(--offwhite-rgb),0.6)',
               fontFamily: 'var(--font-inter)',
               marginBottom: '0.8rem',
               lineHeight: 1.5,
@@ -566,7 +566,7 @@ export default function CustomerLoginPage() {
               onMouseLeave={() => setLinkGoogleHovered(false)}
               style={{
                 width: '100%',
-                backgroundColor: !busy && linkGoogleHovered ? 'rgba(0,160,152,0.15)' : 'var(--teal)',
+                backgroundColor: !busy && linkGoogleHovered ? 'rgba(var(--teal-rgb),0.15)' : 'var(--teal)',
                 color: '#fff',
                 padding: '0.7rem',
                 borderRadius: '2px',
@@ -588,7 +588,7 @@ export default function CustomerLoginPage() {
           textAlign: 'center',
           fontSize: '0.8rem',
           fontFamily: 'var(--font-inter)',
-          color: 'rgba(245,242,236,0.4)',
+          color: 'rgba(var(--offwhite-rgb),0.4)',
         }}>
           {mode === 'signup' ? 'Already have an account?' : "Don't have an account?"}{' '}
           <button

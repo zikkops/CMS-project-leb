@@ -33,7 +33,7 @@ const sectionLabelStyle = {
   fontSize: '0.65rem',
   letterSpacing: '0.2em',
   textTransform: 'uppercase' as const,
-  color: 'rgba(245,242,236,0.3)',
+  color: 'rgba(var(--offwhite-rgb),0.3)',
   fontFamily: 'var(--font-inter)',
   marginBottom: '1rem',
 }
@@ -51,7 +51,7 @@ function Avatar({ url, name, size = 36 }: { url: string; name: string; size?: nu
       {url ? (
         <img src={url} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
-        <span style={{ fontSize: `${size * 0.4}px`, color: 'rgba(245,242,236,0.5)', fontFamily: 'var(--font-cinzel)' }}>
+        <span style={{ fontSize: `${size * 0.4}px`, color: 'rgba(var(--offwhite-rgb),0.5)', fontFamily: 'var(--font-cinzel)' }}>
           {(name || '?').charAt(0).toUpperCase()}
         </span>
       )}
@@ -151,7 +151,7 @@ export default function FriendsPage() {
     borderRadius: '4px',
     padding: isMobile ? '1.5rem 1rem' : '2rem',
     textAlign: 'center' as const,
-    color: 'rgba(245,242,236,0.3)',
+    color: 'rgba(var(--offwhite-rgb),0.3)',
     fontFamily: 'var(--font-inter)',
     fontSize: '0.85rem',
   }
@@ -182,7 +182,7 @@ export default function FriendsPage() {
               fontSize: '0.7rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
-              color: backHovered ? 'var(--offwhite)' : 'rgba(245,242,236,0.3)',
+              color: backHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.3)',
               textDecoration: 'none',
               fontFamily: 'var(--font-inter)',
               marginBottom: '0.5rem',
@@ -205,13 +205,13 @@ export default function FriendsPage() {
             style={inputStyle}
           />
           {loadingDir && (
-            <p style={{ fontSize: '0.75rem', color: 'rgba(245,242,236,0.4)', fontFamily: 'var(--font-inter)', marginTop: '0.5rem' }}>
+            <p style={{ fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)', fontFamily: 'var(--font-inter)', marginTop: '0.5rem' }}>
               Loading members…
             </p>
           )}
           {search.trim() && !loadingDir && (
             searchResults.length === 0 ? (
-              <p style={{ fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', marginTop: '0.6rem' }}>
+              <p style={{ fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', marginTop: '0.6rem' }}>
                 No matching members found.
               </p>
             ) : (
@@ -225,14 +225,14 @@ export default function FriendsPage() {
                       <Avatar url={u.avatarUrl} name={u.displayName} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>{u.displayName}</p>
-                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)' }}>{u.email}</p>
+                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>{u.email}</p>
                       </div>
                       {isFriend ? (
                         <span style={{ fontSize: '0.7rem', color: 'var(--teal)', fontFamily: 'var(--font-inter)' }}>Friends</span>
                       ) : isIncoming ? (
                         <span style={{ fontSize: '0.7rem', color: '#E5A33D', fontFamily: 'var(--font-inter)', textAlign: 'right' }}>Respond below</span>
                       ) : isOutgoing ? (
-                        <span style={{ fontSize: '0.7rem', color: 'rgba(245,242,236,0.4)', fontFamily: 'var(--font-inter)' }}>Request sent</span>
+                        <span style={{ fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.4)', fontFamily: 'var(--font-inter)' }}>Request sent</span>
                       ) : (
                         <button
                           onClick={() => handleSendRequest(u)}
@@ -241,9 +241,9 @@ export default function FriendsPage() {
                           onMouseLeave={() => setHoveredBtn(null)}
                           style={{
                             ...actionButtonStyle,
-                            backgroundColor: busyUid !== u.uid && hoveredBtn === `add-${u.uid}` ? 'rgba(106,106,183,0.8)' : 'var(--purple)',
+                            backgroundColor: busyUid !== u.uid && hoveredBtn === `add-${u.uid}` ? 'rgba(var(--purple-rgb),0.8)' : 'var(--purple)',
                             opacity: busyUid === u.uid ? 0.6 : 1,
-                            boxShadow: busyUid !== u.uid && hoveredBtn === `add-${u.uid}` ? '0 6px 14px rgba(106,106,183,0.4)' : 'none',
+                            boxShadow: busyUid !== u.uid && hoveredBtn === `add-${u.uid}` ? '0 6px 14px rgba(var(--purple-rgb),0.4)' : 'none',
                             transition: 'all 0.2s ease',
                           }}
                         >Add Friend</button>
@@ -273,9 +273,9 @@ export default function FriendsPage() {
                       onMouseLeave={() => setHoveredBtn(null)}
                       style={{
                         ...actionButtonStyle,
-                        backgroundColor: busyUid !== r.id && hoveredBtn === `accept-${r.id}` ? 'rgba(0,160,152,0.8)' : 'var(--teal)',
+                        backgroundColor: busyUid !== r.id && hoveredBtn === `accept-${r.id}` ? 'rgba(var(--teal-rgb),0.8)' : 'var(--teal)',
                         opacity: busyUid === r.id ? 0.6 : 1,
-                        boxShadow: busyUid !== r.id && hoveredBtn === `accept-${r.id}` ? '0 6px 14px rgba(0,160,152,0.4)' : 'none',
+                        boxShadow: busyUid !== r.id && hoveredBtn === `accept-${r.id}` ? '0 6px 14px rgba(var(--teal-rgb),0.4)' : 'none',
                         transition: 'all 0.2s ease',
                       }}
                     >Accept</button>
@@ -288,8 +288,8 @@ export default function FriendsPage() {
                           onMouseEnter={() => setHoveredBtn(`decline-${r.id}`)}
                           onMouseLeave={() => setHoveredBtn(null)}
                           style={{
-                            background: declineHovered ? 'rgba(228,51,41,0.1)' : 'transparent',
-                            border: `1px solid ${declineHovered ? 'var(--red)' : 'rgba(228,51,41,0.3)'}`,
+                            background: declineHovered ? 'rgba(var(--red-rgb),0.1)' : 'transparent',
+                            border: `1px solid ${declineHovered ? 'var(--red)' : 'rgba(var(--red-rgb),0.3)'}`,
                             color: 'var(--red)',
                             padding: '0.5rem 1rem',
                             borderRadius: '2px',
@@ -330,7 +330,7 @@ export default function FriendsPage() {
                     style={{
                       background: 'transparent',
                       border: `1px solid ${hoveredBtn === `remove-${f.requestId}` ? 'var(--red)' : 'rgba(255,255,255,0.1)'}`,
-                      color: hoveredBtn === `remove-${f.requestId}` ? 'var(--red)' : 'rgba(245,242,236,0.5)',
+                      color: hoveredBtn === `remove-${f.requestId}` ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.5)',
                       padding: '0.5rem 1rem',
                       borderRadius: '2px',
                       fontSize: '0.7rem',
@@ -357,7 +357,7 @@ export default function FriendsPage() {
                 <div key={r.id} style={cardStyle}>
                   <Avatar url={r.toAvatar} name={r.toName} />
                   <p style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>{r.toName}</p>
-                  <span style={{ fontSize: '0.7rem', color: 'rgba(245,242,236,0.4)', fontFamily: 'var(--font-inter)' }}>Pending</span>
+                  <span style={{ fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.4)', fontFamily: 'var(--font-inter)' }}>Pending</span>
                   <button
                     onClick={() => handleDecline(r.id)}
                     disabled={busyUid === r.id}
@@ -365,7 +365,7 @@ export default function FriendsPage() {
                     onMouseLeave={() => setHoveredBtn(null)}
                     style={{
                       background: 'transparent', border: 'none',
-                      color: hoveredBtn === `cancel-${r.id}` ? 'var(--red)' : 'rgba(228,51,41,0.6)',
+                      color: hoveredBtn === `cancel-${r.id}` ? 'var(--red)' : 'rgba(var(--red-rgb),0.6)',
                       cursor: 'pointer', fontSize: '0.78rem', padding: '0 0.2rem',
                       transform: hoveredBtn === `cancel-${r.id}` ? 'scale(1.2)' : 'scale(1)',
                       transition: 'all 0.2s ease',

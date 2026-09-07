@@ -83,7 +83,7 @@ function withDraft(drafts: DraftLine[], next: DraftLine): DraftLine[] {
 }
 
 const URGENCY_COLOUR = {
-  fresh: 'rgba(245,242,236,0.45)',
+  fresh: 'rgba(var(--offwhite-rgb),0.45)',
   aging: '#C9962C',
   late: 'var(--red)',
 } as const
@@ -135,7 +135,7 @@ function LineRow({ line, now, discount, onMore }: {
         }}>{line.name}</p>
 
         {line.modifiers.length > 0 && (
-          <p style={{ fontSize: '0.75rem', color: 'rgba(245,242,236,0.45)', marginTop: '0.15rem' }}>
+          <p style={{ fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.45)', marginTop: '0.15rem' }}>
             {describeSelections(line.modifiers)}
           </p>
         )}
@@ -143,7 +143,7 @@ function LineRow({ line, now, discount, onMore }: {
           <p style={{ fontSize: '0.72rem', color: 'var(--brand-secondary)', marginTop: '0.15rem' }}>{line.note}</p>
         )}
 
-        <p style={{ fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.25rem' }}>
+        <p style={{ fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.25rem' }}>
           {line.seat !== null ? `Seat ${line.seat}` : 'Table'}
           {line.course !== null && ` · Course ${line.course}`}
           {' · '}
@@ -177,7 +177,7 @@ function LineRow({ line, now, discount, onMore }: {
               marginTop: '0.3rem', background: 'rgba(255,255,255,0.04)',
               border: '1px solid rgba(255,255,255,0.1)', borderRadius: '3px',
               width: '32px', minHeight: '28px', cursor: 'pointer',
-              color: 'rgba(245,242,236,0.45)', fontSize: '0.9rem', lineHeight: 1,
+              color: 'rgba(var(--offwhite-rgb),0.45)', fontSize: '0.9rem', lineHeight: 1,
               fontFamily: 'var(--font-inter)',
             }}
           >⋯</button>
@@ -196,13 +196,13 @@ function DraftRow({ draft, onRemove, onNote, onQuantity }: {
   return (
     <div style={{
       display: 'flex', gap: '0.6rem', alignItems: 'flex-start',
-      padding: '0.7rem 0', borderBottom: '1px solid rgba(201,150,44,0.2)',
+      padding: '0.7rem 0', borderBottom: '1px solid rgba(var(--brand-secondary-rgb),0.2)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
         <button onClick={() => onQuantity(draft.quantity - 1)} style={{
           width: '30px', minHeight: '30px', borderRadius: '3px', cursor: 'pointer',
           background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
-          color: 'rgba(245,242,236,0.6)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem',
+          color: 'rgba(var(--offwhite-rgb),0.6)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem',
         }}>−</button>
         <span style={{
           fontSize: '0.85rem', color: 'var(--brand-secondary)', minWidth: '1.7rem',
@@ -211,13 +211,13 @@ function DraftRow({ draft, onRemove, onNote, onQuantity }: {
         <button onClick={() => onQuantity(draft.quantity + 1)} style={{
           width: '30px', minHeight: '30px', borderRadius: '3px', cursor: 'pointer',
           background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
-          color: 'rgba(245,242,236,0.6)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem',
+          color: 'rgba(var(--offwhite-rgb),0.6)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem',
         }}>+</button>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: '0.9rem', color: 'var(--offwhite)' }}>{draft.name}</p>
         {draft.modifierLabel && (
-          <p style={{ fontSize: '0.75rem', color: 'rgba(245,242,236,0.45)' }}>{draft.modifierLabel}</p>
+          <p style={{ fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>{draft.modifierLabel}</p>
         )}
         {draft.note && (
           <p style={{ fontSize: '0.75rem', color: 'var(--brand-secondary)', marginTop: '0.1rem', fontWeight: 600 }}>
@@ -231,7 +231,7 @@ function DraftRow({ draft, onRemove, onNote, onQuantity }: {
         </p>
         <button onClick={onNote} style={{
           background: 'none', border: 'none', padding: '0.25rem 0', cursor: 'pointer',
-          color: 'rgba(245,242,236,0.4)', fontSize: '0.68rem',
+          color: 'rgba(var(--offwhite-rgb),0.4)', fontSize: '0.68rem',
           fontFamily: 'var(--font-inter)', letterSpacing: '0.08em', textTransform: 'uppercase',
         }}>{draft.note ? 'Edit note' : '+ Note'}</button>
       </div>
@@ -241,7 +241,7 @@ function DraftRow({ draft, onRemove, onNote, onQuantity }: {
         </p>
         <button onClick={onRemove} style={{
           marginTop: '0.3rem', background: 'none', border: 'none', padding: '0.25rem 0',
-          color: 'rgba(245,242,236,0.4)', fontSize: '0.68rem', cursor: 'pointer',
+          color: 'rgba(var(--offwhite-rgb),0.4)', fontSize: '0.68rem', cursor: 'pointer',
           fontFamily: 'var(--font-inter)', letterSpacing: '0.08em', textTransform: 'uppercase',
         }}>Remove</button>
       </div>
@@ -300,7 +300,7 @@ function ModifierSheet({
           <div key={g.id} style={{ marginBottom: '1.25rem' }}>
             <p style={{
               fontSize: '0.66rem', letterSpacing: '0.14em', textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.4)', marginBottom: '0.5rem',
+              color: 'rgba(var(--offwhite-rgb),0.4)', marginBottom: '0.5rem',
             }}>{g.name} · {selectionLabel(g)}</p>
 
             <div style={{ display: 'grid', gap: '0.4rem' }}>
@@ -310,13 +310,13 @@ function ModifierSheet({
                   <button key={o.id} onClick={() => toggle(g, o.id)} style={{
                     ...tap, textAlign: 'left', padding: '0.7rem 0.9rem',
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    backgroundColor: on ? 'rgba(0,160,152,0.18)' : 'rgba(255,255,255,0.03)',
+                    backgroundColor: on ? 'rgba(var(--teal-rgb),0.18)' : 'rgba(255,255,255,0.03)',
                     border: `1px solid ${on ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
                     color: 'var(--offwhite)',
                   }}>
                     <span>{o.name}</span>
                     {o.priceDelta > 0 && (
-                      <span style={{ color: 'rgba(245,242,236,0.45)' }}>+{money(o.priceDelta)}</span>
+                      <span style={{ color: 'rgba(var(--offwhite-rgb),0.45)' }}>+{money(o.priceDelta)}</span>
                     )}
                   </button>
                 )
@@ -332,14 +332,14 @@ function ModifierSheet({
         <div style={{ display: 'flex', gap: '0.6rem' }}>
           <button onClick={onCancel} style={{
             ...tap, flex: 1, backgroundColor: 'transparent',
-            border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(245,242,236,0.6)',
+            border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(var(--offwhite-rgb),0.6)',
           }}>Cancel</button>
           <button
             disabled={Boolean(problem)}
             onClick={() => onAdd(allIds, label)}
             style={{
               ...tap, flex: 2, border: 'none',
-              backgroundColor: problem ? 'rgba(0,160,152,0.25)' : 'var(--teal)',
+              backgroundColor: problem ? 'rgba(var(--teal-rgb),0.25)' : 'var(--teal)',
               color: '#fff', cursor: problem ? 'default' : 'pointer',
               letterSpacing: '0.1em', textTransform: 'uppercase',
             }}
@@ -468,7 +468,7 @@ export default function CheckPage() {
     return (
       <main style={{
         minHeight: '100vh', backgroundColor: 'var(--black)', padding: '3rem 1.25rem',
-        fontFamily: 'var(--font-inter)', color: 'rgba(245,242,236,0.4)', textAlign: 'center',
+        fontFamily: 'var(--font-inter)', color: 'rgba(var(--offwhite-rgb),0.4)', textAlign: 'center',
       }}>
         {/* Without this branch a refused read reads as "Loading…" forever,
             which is the same silent failure wearing a spinner. */}
@@ -494,7 +494,7 @@ export default function CheckPage() {
 
         <button onClick={() => router.push('/pos')} style={{
           background: 'none', border: 'none', padding: '0.3rem 0', cursor: 'pointer',
-          color: 'rgba(245,242,236,0.35)', fontSize: '0.7rem', letterSpacing: '0.14em',
+          color: 'rgba(var(--offwhite-rgb),0.35)', fontSize: '0.7rem', letterSpacing: '0.14em',
           textTransform: 'uppercase', fontFamily: 'var(--font-inter)', marginBottom: '0.6rem',
         }}>← Floor</button>
 
@@ -510,7 +510,7 @@ export default function CheckPage() {
                 staff meal that quietly shows a smaller number is one nobody
                 can audit. */}
             {totals.discount > 0 && (
-              <p style={{ fontSize: '0.7rem', color: 'rgba(245,242,236,0.4)', marginTop: '0.15rem' }}>
+              <p style={{ fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginTop: '0.15rem' }}>
                 {money(totals.gross)} − {money(totals.discount)} staff
               </p>
             )}
@@ -520,7 +520,7 @@ export default function CheckPage() {
         {liveError && (
           <p style={{
             color: 'var(--brand-secondary)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6,
-            background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.25)',
+            background: 'rgba(var(--brand-secondary-rgb),0.08)', border: '1px solid rgba(var(--brand-secondary-rgb),0.25)',
             borderRadius: '3px', padding: '0.7rem 0.9rem',
           }}>{liveError}</p>
         )}
@@ -528,7 +528,7 @@ export default function CheckPage() {
         {error && (
           <p style={{
             color: 'var(--red)', fontSize: '0.82rem', marginBottom: '1rem',
-            background: 'rgba(228,51,41,0.08)', border: '1px solid rgba(228,51,41,0.25)',
+            background: 'rgba(var(--red-rgb),0.08)', border: '1px solid rgba(var(--red-rgb),0.25)',
             borderRadius: '3px', padding: '0.7rem 0.9rem',
           }}>{error}</p>
         )}
@@ -537,7 +537,7 @@ export default function CheckPage() {
         )}
 
         {check.lines.length === 0 && drafts.length === 0 && (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontSize: '0.88rem', padding: '2rem 0' }}>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontSize: '0.88rem', padding: '2rem 0' }}>
             Nothing ordered yet.
           </p>
         )}
@@ -574,7 +574,7 @@ export default function CheckPage() {
             a table sat directly under the order, a thumb's width from it. */}
         <button onClick={() => setActions(true)} style={{
           ...tap, width: '100%', marginTop: '1.5rem', backgroundColor: 'transparent',
-          border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(245,242,236,0.55)',
+          border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(var(--offwhite-rgb),0.55)',
         }}>Check options{check.staffDiscount ? ' · staff meal on' : ''}</button>
       </div>
 
@@ -594,7 +594,7 @@ export default function CheckPage() {
           onClick={handleSend}
           style={{
             ...tap, flex: 1, border: 'none', color: '#fff',
-            backgroundColor: canSend && !busy ? 'var(--teal)' : 'rgba(0,160,152,0.25)',
+            backgroundColor: canSend && !busy ? 'var(--teal)' : 'rgba(var(--teal-rgb),0.25)',
             cursor: canSend && !busy ? 'pointer' : 'default',
             letterSpacing: '0.1em', textTransform: 'uppercase',
           }}
@@ -609,7 +609,7 @@ export default function CheckPage() {
                 Add items
               </h2>
               <button onClick={() => setPicking(false)} style={{
-                background: 'none', border: 'none', color: 'rgba(245,242,236,0.5)',
+                background: 'none', border: 'none', color: 'rgba(var(--offwhite-rgb),0.5)',
                 fontSize: '0.8rem', cursor: 'pointer', padding: '0.5rem',
               }}>Done</button>
             </div>
@@ -619,14 +619,14 @@ export default function CheckPage() {
             <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
               <button onClick={() => setSeat(null)} style={{
                 ...tap, minHeight: '40px', padding: '0 0.8rem',
-                backgroundColor: seat === null ? 'rgba(0,160,152,0.18)' : 'transparent',
+                backgroundColor: seat === null ? 'rgba(var(--teal-rgb),0.18)' : 'transparent',
                 border: `1px solid ${seat === null ? 'var(--teal)' : 'rgba(255,255,255,0.12)'}`,
                 color: 'var(--offwhite)', fontSize: '0.75rem',
               }}>Table</button>
               {Array.from({ length: Math.max(check.guestCount, 4) }, (_, n) => n + 1).map(s => (
                 <button key={s} onClick={() => setSeat(s)} style={{
                   ...tap, minHeight: '40px', padding: '0 0.8rem',
-                  backgroundColor: seat === s ? 'rgba(0,160,152,0.18)' : 'transparent',
+                  backgroundColor: seat === s ? 'rgba(var(--teal-rgb),0.18)' : 'transparent',
                   border: `1px solid ${seat === s ? 'var(--teal)' : 'rgba(255,255,255,0.12)'}`,
                   color: 'var(--offwhite)', fontSize: '0.75rem',
                 }}>{s}</button>
@@ -637,7 +637,7 @@ export default function CheckPage() {
                 like seat, and off by default because most orders have one
                 course and nobody should have to say so. */}
             <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.9rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.62rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', marginRight: '0.2rem' }}>Course</span>
+              <span style={{ fontSize: '0.62rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', marginRight: '0.2rem' }}>Course</span>
               <button onClick={() => setCourse(null)} style={{
                 ...tap, minHeight: '40px', padding: '0 0.8rem',
                 backgroundColor: course === null ? 'rgba(255,255,255,0.08)' : 'transparent',
@@ -666,7 +666,7 @@ export default function CheckPage() {
               {/* The differentiator, one tab along from the coffee. */}
               <button onClick={() => setCategory('retail')} style={{
                 ...tap, minHeight: '40px', padding: '0 0.9rem', whiteSpace: 'nowrap',
-                backgroundColor: activeCategory === 'retail' ? 'rgba(201,150,44,0.15)' : 'transparent',
+                backgroundColor: activeCategory === 'retail' ? 'rgba(var(--brand-secondary-rgb),0.15)' : 'transparent',
                 border: `1px solid ${activeCategory === 'retail' ? 'var(--brand-secondary)' : 'rgba(255,255,255,0.1)'}`,
                 color: 'var(--offwhite)', fontSize: '0.78rem',
               }}>Retail</button>
@@ -691,12 +691,12 @@ export default function CheckPage() {
                         reason to turn somebody away. */}
                     <span style={{
                       fontSize: '0.65rem',
-                      color: p.stock > 0 ? 'rgba(245,242,236,0.3)' : 'var(--red)',
+                      color: p.stock > 0 ? 'rgba(var(--offwhite-rgb),0.3)' : 'var(--red)',
                     }}>{p.stock} in stock</span>
                   </button>
                 ))}
                 {products.length === 0 && (
-                  <p style={{ color: 'rgba(245,242,236,0.3)', fontSize: '0.82rem', gridColumn: '1 / -1' }}>
+                  <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontSize: '0.82rem', gridColumn: '1 / -1' }}>
                     Nothing in the retail catalogue yet.
                   </p>
                 )}
@@ -715,7 +715,7 @@ export default function CheckPage() {
                 </button>
               ))}
               {shown.length === 0 && (
-                <p style={{ color: 'rgba(245,242,236,0.3)', fontSize: '0.82rem', gridColumn: '1 / -1' }}>
+                <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontSize: '0.82rem', gridColumn: '1 / -1' }}>
                   Nothing available in this category.
                 </p>
               )}
@@ -746,7 +746,7 @@ export default function CheckPage() {
               color: 'var(--offwhite)', marginBottom: '0.3rem',
             }}>{lineMenu.quantity}× {lineMenu.name}</h2>
             <p style={{
-              fontSize: '0.75rem', color: 'rgba(245,242,236,0.35)', marginBottom: '1.2rem',
+              fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '1.2rem',
             }}>
               {lineMenu.status === 'sent'
                 ? 'Already sent to the kitchen. Voiding it tells the pass.'
@@ -755,7 +755,7 @@ export default function CheckPage() {
 
             <p style={{
               fontSize: '0.64rem', letterSpacing: '0.14em', textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.35)', marginBottom: '0.5rem',
+              color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.5rem',
             }}>Void — why?</p>
 
             <div style={{ display: 'grid', gap: '0.4rem' }}>
@@ -786,7 +786,7 @@ export default function CheckPage() {
                     {showsStock && (
                       <span style={{
                         fontSize: '0.68rem',
-                        color: r.returnsToStock ? 'var(--teal)' : 'rgba(228,51,41,0.7)',
+                        color: r.returnsToStock ? 'var(--teal)' : 'rgba(var(--red-rgb),0.7)',
                       }}>
                         {r.returnsToStock ? 'goes back on the shelf' : 'not returned to stock'}
                       </span>
@@ -798,7 +798,7 @@ export default function CheckPage() {
 
             <button onClick={() => setLineMenu(null)} style={{
               ...tap, width: '100%', marginTop: '0.9rem', backgroundColor: 'transparent',
-              border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(245,242,236,0.6)',
+              border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(var(--offwhite-rgb),0.6)',
             }}>Cancel</button>
           </div>
         </div>
@@ -824,9 +824,9 @@ export default function CheckPage() {
               }}
               style={{
                 ...tap, width: '100%',
-                backgroundColor: check.staffDiscount ? 'rgba(0,160,152,0.18)' : 'transparent',
+                backgroundColor: check.staffDiscount ? 'rgba(var(--teal-rgb),0.18)' : 'transparent',
                 border: `1px solid ${check.staffDiscount ? 'var(--teal)' : 'rgba(255,255,255,0.14)'}`,
-                color: check.staffDiscount ? 'var(--offwhite)' : 'rgba(245,242,236,0.7)',
+                color: check.staffDiscount ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.7)',
               }}
             >{check.staffDiscount ? '✓ Staff meal — tap to remove' : 'Mark as a staff meal'}</button>
 
@@ -838,7 +838,7 @@ export default function CheckPage() {
               onClick={() => { setActions(false); setMoving(true) }}
               style={{
                 ...tap, width: '100%', backgroundColor: 'transparent',
-                border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(245,242,236,0.7)',
+                border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(var(--offwhite-rgb),0.7)',
               }}
             >Move to another table</button>
 
@@ -846,13 +846,13 @@ export default function CheckPage() {
               onClick={() => { setActions(false); setClosing(true) }}
               style={{
                 ...tap, width: '100%', marginTop: '0.6rem', backgroundColor: 'transparent',
-                border: '1px solid rgba(228,51,41,0.35)', color: 'var(--red)',
+                border: '1px solid rgba(var(--red-rgb),0.35)', color: 'var(--red)',
               }}
             >Close this check</button>
 
             <button onClick={() => setActions(false)} style={{
               ...tap, width: '100%', marginTop: '1.2rem', backgroundColor: 'transparent',
-              border: 'none', color: 'rgba(245,242,236,0.4)',
+              border: 'none', color: 'rgba(var(--offwhite-rgb),0.4)',
             }}>Cancel</button>
           </div>
         </div>
@@ -868,7 +868,7 @@ export default function CheckPage() {
               color: 'var(--offwhite)', marginBottom: '0.5rem',
             }}>Close table {check.tableNumber}?</h2>
             <p style={{
-              fontSize: '0.85rem', color: 'rgba(245,242,236,0.4)',
+              fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.4)',
               lineHeight: 1.7, marginBottom: '1.2rem',
             }}>
               {money(totals.net)} across {check.lines.filter(l => l.status !== 'void').length} items.
@@ -877,7 +877,7 @@ export default function CheckPage() {
             <div style={{ display: 'flex', gap: '0.6rem' }}>
               <button onClick={() => setClosing(false)} style={{
                 ...tap, flex: 1, backgroundColor: 'transparent',
-                border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(245,242,236,0.6)',
+                border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(var(--offwhite-rgb),0.6)',
               }}>Keep it open</button>
               <button
                 onClick={() => { setClosing(false); handleClose() }}
@@ -919,14 +919,14 @@ export default function CheckPage() {
             <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem' }}>
               <button onClick={() => { setMoving(false); setMoveTo('') }} style={{
                 ...tap, flex: 1, backgroundColor: 'transparent',
-                border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(245,242,236,0.6)',
+                border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(var(--offwhite-rgb),0.6)',
               }}>Cancel</button>
               <button
                 disabled={!moveTo}
                 onClick={handleMove}
                 style={{
                   ...tap, flex: 2, border: 'none', color: '#fff',
-                  backgroundColor: moveTo ? 'var(--teal)' : 'rgba(0,160,152,0.25)',
+                  backgroundColor: moveTo ? 'var(--teal)' : 'rgba(var(--teal-rgb),0.25)',
                   cursor: moveTo ? 'pointer' : 'default',
                   letterSpacing: '0.1em', textTransform: 'uppercase',
                 }}

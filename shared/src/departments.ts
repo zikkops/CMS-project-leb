@@ -55,7 +55,7 @@ export const SUPPLY_CATEGORY_COLOR: Record<SupplyCategory, string> = {
   ...DEPARTMENT_COLOR,
   // 'Other' is the absence of a category rather than one of them, so it is a
   // muted neutral instead of a fourth hue competing with the three.
-  Other: 'rgba(245,242,236,0.45)',
+  Other: 'rgba(var(--offwhite-rgb),0.45)',
 }
 
 /**

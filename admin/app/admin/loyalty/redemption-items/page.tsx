@@ -37,7 +37,7 @@ const labelStyle = {
   fontSize: '0.68rem',
   letterSpacing: '0.2em',
   textTransform: 'uppercase' as const,
-  color: 'rgba(245,242,236,0.35)',
+  color: 'rgba(var(--offwhite-rgb),0.35)',
   marginBottom: '0.5rem',
   fontFamily: 'var(--font-inter)',
 }
@@ -109,7 +109,7 @@ export default function RedemptionItemsPage() {
           <div>
             <a href="/admin" style={{
               fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.3)', textDecoration: 'none', fontFamily: 'var(--font-inter)',
+              color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none', fontFamily: 'var(--font-inter)',
               marginBottom: '0.5rem', display: 'block',
             }}>← Back to Dashboard</a>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)' }}>
@@ -131,7 +131,7 @@ export default function RedemptionItemsPage() {
         )}
 
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : isMobile ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
             {items.map(item => (
@@ -143,14 +143,14 @@ export default function RedemptionItemsPage() {
                   <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.95rem', color: 'var(--offwhite)' }}>{item.name}</p>
                   <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--teal)', whiteSpace: 'nowrap' }}>{item.coinCost} coins</span>
                 </div>
-                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.45)' }}>{item.description}</p>
+                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>{item.description}</p>
 
                 <button onClick={() => toggleItemActive(item.id, !item.isActive)} style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '2px',
                   padding: '0.6rem 0.8rem', cursor: 'pointer',
                 }}>
-                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.6)' }}>
+                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.6)' }}>
                     {item.isActive ? 'Active' : 'Inactive'}
                   </span>
                   <span style={{
@@ -168,11 +168,11 @@ export default function RedemptionItemsPage() {
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button onClick={() => openEdit(item)} style={{
                     flex: 1, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-                    color: 'rgba(245,242,236,0.5)', padding: '0.6rem', borderRadius: '2px', fontSize: '0.72rem',
+                    color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.6rem', borderRadius: '2px', fontSize: '0.72rem',
                     cursor: 'pointer', fontFamily: 'var(--font-inter)',
                   }}>Edit</button>
                   <button onClick={() => handleDelete(item)} style={{
-                    flex: 1, background: 'transparent', border: '1px solid rgba(228,51,41,0.3)',
+                    flex: 1, background: 'transparent', border: '1px solid rgba(var(--red-rgb),0.3)',
                     color: 'var(--red)', padding: '0.6rem', borderRadius: '2px', fontSize: '0.72rem',
                     cursor: 'pointer', fontFamily: 'var(--font-inter)',
                   }}>Delete</button>
@@ -188,7 +188,7 @@ export default function RedemptionItemsPage() {
                   {['Name', 'Description', 'Coins', 'Status', 'Actions'].map(h => (
                     <th key={h} style={{
                       padding: '1rem 1.2rem', textAlign: 'left', fontSize: '0.65rem', letterSpacing: '0.2em',
-                      textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', fontWeight: 400,
+                      textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', fontWeight: 400,
                     }}>{h}</th>
                   ))}
                 </tr>
@@ -197,7 +197,7 @@ export default function RedemptionItemsPage() {
                 {items.map(item => (
                   <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--offwhite)' }}>{item.name}</td>
-                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.5)', maxWidth: '280px' }}>{item.description}</td>
+                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.5)', maxWidth: '280px' }}>{item.description}</td>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--teal)' }}>{item.coinCost}</td>
                     <td style={{ padding: '1rem 1.2rem' }}>
                       <button onClick={() => toggleItemActive(item.id, !item.isActive)} style={{
@@ -213,7 +213,7 @@ export default function RedemptionItemsPage() {
                             width: '16px', height: '16px', borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.2s',
                           }} />
                         </span>
-                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.5)' }}>
+                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
                           {item.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </button>
@@ -221,11 +221,11 @@ export default function RedemptionItemsPage() {
                     <td style={{ padding: '1rem 1.2rem' }}>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <button onClick={() => openEdit(item)} style={{
-                          background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(245,242,236,0.5)',
+                          background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
                           padding: '0.4rem 0.8rem', borderRadius: '2px', fontSize: '0.7rem', cursor: 'pointer', fontFamily: 'var(--font-inter)',
                         }}>Edit</button>
                         <button onClick={() => handleDelete(item)} style={{
-                          background: 'transparent', border: '1px solid rgba(228,51,41,0.3)', color: 'var(--red)',
+                          background: 'transparent', border: '1px solid rgba(var(--red-rgb),0.3)', color: 'var(--red)',
                           padding: '0.4rem 0.8rem', borderRadius: '2px', fontSize: '0.7rem', cursor: 'pointer', fontFamily: 'var(--font-inter)',
                         }}>Delete</button>
                       </div>
@@ -256,7 +256,7 @@ export default function RedemptionItemsPage() {
                 {editing ? 'Edit Item' : 'Add New Item'}
               </h2>
               <button onClick={() => setOpen(false)} style={{
-                background: 'transparent', border: 'none', color: 'rgba(245,242,236,0.4)', fontSize: '1.2rem', cursor: 'pointer',
+                background: 'transparent', border: 'none', color: 'rgba(var(--offwhite-rgb),0.4)', fontSize: '1.2rem', cursor: 'pointer',
               }}>✕</button>
             </div>
 
@@ -297,7 +297,7 @@ export default function RedemptionItemsPage() {
                       width: '18px', height: '18px', borderRadius: '50%', backgroundColor: '#fff', transition: 'left 0.2s',
                     }} />
                   </span>
-                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.6)' }}>
+                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.6)' }}>
                     {form.isActive ? 'Visible to customers' : 'Hidden from customers'}
                   </span>
                 </button>
@@ -306,7 +306,7 @@ export default function RedemptionItemsPage() {
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                 <button type="button" onClick={() => setOpen(false)} style={{
                   flex: 1, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-                  color: 'rgba(245,242,236,0.5)', padding: '0.8rem', borderRadius: '2px', fontSize: '0.75rem',
+                  color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.8rem', borderRadius: '2px', fontSize: '0.75rem',
                   cursor: 'pointer', fontFamily: 'var(--font-inter)',
                 }}>Cancel</button>
                 <button type="submit" disabled={saving || !canSave} style={{

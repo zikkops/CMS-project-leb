@@ -45,7 +45,7 @@ function useIsMobile(breakpoint = 768) {
 const btn: React.CSSProperties = {
   backgroundColor: 'rgba(255,255,255,0.05)',
   border: '1px solid rgba(255,255,255,0.12)',
-  color: 'rgba(245,242,236,0.7)',
+  color: 'rgba(var(--offwhite-rgb),0.7)',
   padding: '0.55rem 1.1rem',
   borderRadius: '2px',
   fontSize: '0.72rem',
@@ -114,20 +114,20 @@ export default function ReceiptPage() {
         <div style={{ marginBottom: '1.25rem' }}>
           <a href={`/pos/check/${checkId}`} style={{
             fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
             display: 'block', marginBottom: '0.5rem', fontFamily: 'var(--font-inter)',
           }}>← Back to the check</a>
           <h1 style={{
             fontFamily: 'var(--font-cinzel)', fontSize: '1.5rem',
             color: 'var(--offwhite)', marginBottom: '0.2rem',
           }}>Receipt</h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.3)' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
             Prints to whatever printer this device has. No thermal printer is wired up yet.
           </p>
         </div>
 
         {loading && (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)', padding: '2rem 0' }}>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', padding: '2rem 0' }}>
             Loading…
           </p>
         )}
@@ -139,7 +139,7 @@ export default function ReceiptPage() {
         )}
 
         {!loading && !error && !check && (
-          <p style={{ color: 'rgba(245,242,236,0.35)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.35)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
             No check with that id.
           </p>
         )}
@@ -168,8 +168,8 @@ export default function ReceiptPage() {
                 onClick={() => setWidth(w)}
                 style={{
                   ...btn,
-                  color: width === w ? 'var(--teal)' : 'rgba(245,242,236,0.5)',
-                  borderColor: width === w ? 'rgba(0,160,152,0.5)' : 'rgba(255,255,255,0.12)',
+                  color: width === w ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.5)',
+                  borderColor: width === w ? 'rgba(var(--teal-rgb),0.5)' : 'rgba(255,255,255,0.12)',
                 }}
               >{w === RECEIPT_WIDTHS.narrow ? '58mm · 32 col' : '80mm · 42 col'}</button>
             ))}

@@ -41,7 +41,7 @@ const inp: React.CSSProperties = {
 }
 const lbl: React.CSSProperties = {
   display: 'block', fontSize: '0.65rem', letterSpacing: '0.2em',
-  textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)',
+  textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)',
   marginBottom: '0.4rem', fontFamily: 'var(--font-inter)',
 }
 
@@ -198,7 +198,7 @@ export default function RecordSalePage() {
         <div style={{ marginBottom: '2rem' }}>
           <a href="/admin" style={{
             fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
             fontFamily: 'var(--font-inter)', marginBottom: '0.5rem', display: 'block',
           }}>← Back to Dashboard</a>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
@@ -207,7 +207,7 @@ export default function RecordSalePage() {
             </h1>
             <a href="/admin/products/invoices" style={{
               fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.4)', textDecoration: 'none', fontFamily: 'var(--font-inter)',
+              color: 'rgba(var(--offwhite-rgb),0.4)', textDecoration: 'none', fontFamily: 'var(--font-inter)',
               border: '1px solid rgba(255,255,255,0.08)', padding: '0.5rem 1rem', borderRadius: '2px',
             }}>View Invoices →</a>
           </div>
@@ -216,13 +216,13 @@ export default function RecordSalePage() {
         {/* Success */}
         {result && (
           <div style={{
-            background: 'rgba(0,160,152,0.08)', border: '1px solid rgba(0,160,152,0.3)',
+            background: 'rgba(var(--teal-rgb),0.08)', border: '1px solid rgba(var(--teal-rgb),0.3)',
             borderRadius: '6px', padding: '2rem', textAlign: 'center',
           }}>
             <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.3rem', color: 'var(--offwhite)', marginBottom: '0.6rem' }}>
               Sale Recorded
             </p>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.6)', marginBottom: '1.5rem' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.6)', marginBottom: '1.5rem' }}>
               Stock has been deducted and an invoice has been generated.
             </p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -242,7 +242,7 @@ export default function RecordSalePage() {
                 href="/admin/products/invoices"
                 style={{
                   backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
-                  color: 'rgba(245,242,236,0.6)', textDecoration: 'none',
+                  color: 'rgba(var(--offwhite-rgb),0.6)', textDecoration: 'none',
                   padding: '0.8rem 1.8rem', borderRadius: '2px', fontSize: '0.78rem',
                   letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
                 }}
@@ -322,8 +322,8 @@ export default function RecordSalePage() {
                       <div key={product.id} style={{
                         display: 'flex', alignItems: 'center', gap: '0.8rem',
                         padding: '0.7rem 0.8rem', borderRadius: '3px',
-                        backgroundColor: inCart ? 'rgba(106,106,183,0.1)' : 'rgba(255,255,255,0.02)',
-                        border: `1px solid ${inCart ? 'rgba(106,106,183,0.3)' : 'rgba(255,255,255,0.05)'}`,
+                        backgroundColor: inCart ? 'rgba(var(--purple-rgb),0.1)' : 'rgba(255,255,255,0.02)',
+                        border: `1px solid ${inCart ? 'rgba(var(--purple-rgb),0.3)' : 'rgba(255,255,255,0.05)'}`,
                         opacity: stock === 0 && !inCart ? 0.4 : 1,
                       }}>
                         {product.image && (
@@ -333,7 +333,7 @@ export default function RecordSalePage() {
                           <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem', color: 'var(--offwhite)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {product.name}
                           </p>
-                          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)' }}>
+                          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                             {product.category} · ${product.price}
                             {product.wholesalePrice != null && ` · WS: $${product.wholesalePrice}`}
                             {' · '}
@@ -347,7 +347,7 @@ export default function RecordSalePage() {
                           disabled={stock === 0}
                           style={{
                             flexShrink: 0,
-                            backgroundColor: inCart ? 'rgba(106,106,183,0.2)' : 'var(--purple)',
+                            backgroundColor: inCart ? 'rgba(var(--purple-rgb),0.2)' : 'var(--purple)',
                             color: '#fff', border: 'none', borderRadius: '2px',
                             padding: '0.4rem 0.8rem', fontSize: '0.7rem',
                             cursor: stock === 0 ? 'not-allowed' : 'pointer',
@@ -361,7 +361,7 @@ export default function RecordSalePage() {
                     )
                   })}
                   {filteredGames.length === 0 && (
-                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.3)', padding: '1rem 0' }}>
+                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.3)', padding: '1rem 0' }}>
                       No products match this search.
                     </p>
                   )}
@@ -378,7 +378,7 @@ export default function RecordSalePage() {
                 <p style={sectionLabel}>Cart</p>
 
                 {cart.length === 0 ? (
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.25)', marginBottom: '1.5rem' }}>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.25)', marginBottom: '1.5rem' }}>
                     No products added yet.
                   </p>
                 ) : (
@@ -396,7 +396,7 @@ export default function RecordSalePage() {
                               {line.product.name}
                             </p>
                             <button onClick={() => removeFromCart(line.product.id)} style={{
-                              background: 'transparent', border: 'none', color: 'rgba(228,51,41,0.5)',
+                              background: 'transparent', border: 'none', color: 'rgba(var(--red-rgb),0.5)',
                               cursor: 'pointer', fontSize: '0.9rem', padding: 0, flexShrink: 0,
                             }}>✕</button>
                           </div>
@@ -449,7 +449,7 @@ export default function RecordSalePage() {
                     padding: '0.75rem 0', borderTop: '1px solid rgba(255,255,255,0.08)',
                     marginBottom: '1rem',
                   }}>
-                    <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.5)' }}>Order Total</span>
+                    <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>Order Total</span>
                     <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.05rem', color: 'var(--teal)' }}>
                       ${orderTotal.toFixed(2)}
                     </span>
@@ -478,7 +478,7 @@ export default function RecordSalePage() {
                 </button>
 
                 {!customerName.trim() && cart.length > 0 && (
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.5rem', textAlign: 'center' }}>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.5rem', textAlign: 'center' }}>
                     Enter a customer name to confirm.
                   </p>
                 )}

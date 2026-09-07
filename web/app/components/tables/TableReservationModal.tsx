@@ -29,7 +29,7 @@ const labelStyle = {
   fontSize: '0.68rem',
   letterSpacing: '0.2em',
   textTransform: 'uppercase' as const,
-  color: 'rgba(245,242,236,0.35)',
+  color: 'rgba(var(--offwhite-rgb),0.35)',
   marginBottom: '0.5rem',
   fontFamily: 'var(--font-inter)',
 }
@@ -150,7 +150,7 @@ export default function TableReservationModal({ branch, tableIds, tableNumbers, 
           </div>
           <button onClick={onClose} style={{
             background: 'transparent', border: 'none',
-            color: 'rgba(245,242,236,0.4)', fontSize: '1.2rem', cursor: 'pointer',
+            color: 'rgba(var(--offwhite-rgb),0.4)', fontSize: '1.2rem', cursor: 'pointer',
           }}>✕</button>
         </div>
 
@@ -160,7 +160,7 @@ export default function TableReservationModal({ branch, tableIds, tableNumbers, 
               <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color: 'var(--offwhite)', marginBottom: '0.8rem' }}>
                 Request submitted!
               </p>
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.55)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.55)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
                 Your table is held — staff will confirm shortly and reach you on the number you provided.
               </p>
               <button onClick={onClose} style={{
@@ -173,7 +173,7 @@ export default function TableReservationModal({ branch, tableIds, tableNumbers, 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <button type="button" onClick={onBack} style={{
                 alignSelf: 'flex-start', background: 'transparent', border: 'none',
-                color: 'rgba(245,242,236,0.4)', fontSize: '0.72rem', cursor: 'pointer', fontFamily: 'var(--font-inter)', padding: 0,
+                color: 'rgba(var(--offwhite-rgb),0.4)', fontSize: '0.72rem', cursor: 'pointer', fontFamily: 'var(--font-inter)', padding: 0,
               }}>← Change tables</button>
 
               <div>
@@ -186,9 +186,9 @@ export default function TableReservationModal({ branch, tableIds, tableNumbers, 
               <div>
                 <label style={labelStyle}>Available Times</label>
                 {loadingTimes ? (
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.3)' }}>Checking availability…</p>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>Checking availability…</p>
                 ) : times.length === 0 ? (
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.3)' }}>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
                     No times available this day — try another date.
                   </p>
                 ) : (
@@ -201,7 +201,7 @@ export default function TableReservationModal({ branch, tableIds, tableNumbers, 
                           style={{
                             backgroundColor: active ? 'var(--teal)' : 'transparent',
                             border: `1px solid ${active ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
-                            color: active ? '#fff' : 'rgba(245,242,236,0.6)',
+                            color: active ? '#fff' : 'rgba(var(--offwhite-rgb),0.6)',
                             padding: '0.6rem 0.4rem',
                             borderRadius: '2px',
                             fontSize: '0.78rem',

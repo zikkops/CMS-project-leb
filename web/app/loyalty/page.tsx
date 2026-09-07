@@ -130,8 +130,8 @@ export default function LoyaltyPage() {
           <div style={{
             position: 'absolute', inset: 0, pointerEvents: 'none',
             background: `
-              radial-gradient(ellipse at 25% 70%, rgba(0,160,152,0.25) 0%, transparent 55%),
-              radial-gradient(ellipse at 75% 25%, rgba(106,106,183,0.25) 0%, transparent 55%)
+              radial-gradient(ellipse at 25% 70%, rgba(var(--teal-rgb),0.25) 0%, transparent 55%),
+              radial-gradient(ellipse at 75% 25%, rgba(var(--purple-rgb),0.25) 0%, transparent 55%)
             `,
           }} />
 
@@ -175,7 +175,7 @@ export default function LoyaltyPage() {
             <p style={{
               fontFamily: 'var(--font-inter)',
               fontSize: isMobile ? '0.85rem' : '1rem',
-              color: 'rgba(245,242,236,0.6)',
+              color: 'rgba(var(--offwhite-rgb),0.6)',
               lineHeight: 1.8,
               maxWidth: '520px',
               margin: '0 auto 2.5rem',
@@ -203,7 +203,7 @@ export default function LoyaltyPage() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.5rem',
-                    backgroundColor: signInHovered ? 'rgba(0,160,152,0.15)' : 'var(--teal)',
+                    backgroundColor: signInHovered ? 'rgba(var(--teal-rgb),0.15)' : 'var(--teal)',
                     color: '#fff',
                     padding: '0.65rem 1.4rem',
                     borderRadius: '2px',
@@ -240,7 +240,7 @@ export default function LoyaltyPage() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '0.5rem',
-                      backgroundColor: signInHovered ? 'rgba(0,160,152,0.15)' : 'var(--teal)',
+                      backgroundColor: signInHovered ? 'rgba(var(--teal-rgb),0.15)' : 'var(--teal)',
                       color: '#fff',
                       padding: '0.65rem 1.4rem',
                       borderRadius: '2px',
@@ -274,9 +274,9 @@ export default function LoyaltyPage() {
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      backgroundColor: profileLinkHovered ? 'rgba(245,242,236,0.08)' : 'transparent',
-                      border: `1px solid ${profileLinkHovered ? 'rgba(245,242,236,0.5)' : 'rgba(245,242,236,0.25)'}`,
-                      color: profileLinkHovered ? 'var(--offwhite)' : 'rgba(245,242,236,0.8)',
+                      backgroundColor: profileLinkHovered ? 'rgba(var(--offwhite-rgb),0.08)' : 'transparent',
+                      border: `1px solid ${profileLinkHovered ? 'rgba(var(--offwhite-rgb),0.5)' : 'rgba(var(--offwhite-rgb),0.25)'}`,
+                      color: profileLinkHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.8)',
                       padding: '0.65rem 1.4rem',
                       borderRadius: '2px',
                       fontSize: '0.72rem',
@@ -309,14 +309,14 @@ export default function LoyaltyPage() {
               }}>
                 <div style={{
                   padding: isMobile ? '1.75rem' : '2.5rem',
-                  border: '1px solid rgba(0,160,152,0.2)',
+                  border: '1px solid rgba(var(--teal-rgb),0.2)',
                   borderRadius: '4px',
-                  background: 'rgba(0,160,152,0.05)',
+                  background: 'rgba(var(--teal-rgb),0.05)',
                 }}>
                   <div style={{
                     width: '52px', height: '52px',
                     borderRadius: '50%',
-                    backgroundColor: 'rgba(0,160,152,0.15)',
+                    backgroundColor: 'rgba(var(--teal-rgb),0.15)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     marginBottom: '1.5rem',
                   }}>
@@ -325,7 +325,7 @@ export default function LoyaltyPage() {
                   <h3 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.3rem', color: 'var(--offwhite)', marginBottom: '0.9rem' }}>
                     points — Experience Points
                   </h3>
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: isMobile ? '0.85rem' : '0.9rem', color: 'rgba(245,242,236,0.55)', lineHeight: 1.8 }}>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: isMobile ? '0.85rem' : '0.9rem', color: 'rgba(var(--offwhite-rgb),0.55)', lineHeight: 1.8 }}>
                     points is your progression currency. It accumulates as you visit, play, and attend
                     events. It never gets spent — it only grows and levels you up, unlocking
                     permanent perks along the way.
@@ -334,14 +334,14 @@ export default function LoyaltyPage() {
 
                 <div style={{
                   padding: isMobile ? '1.75rem' : '2.5rem',
-                  border: '1px solid rgba(106,106,183,0.2)',
+                  border: '1px solid rgba(var(--purple-rgb),0.2)',
                   borderRadius: '4px',
-                  background: 'rgba(106,106,183,0.05)',
+                  background: 'rgba(var(--purple-rgb),0.05)',
                 }}>
                   <div style={{
                     width: '52px', height: '52px',
                     borderRadius: '50%',
-                    backgroundColor: 'rgba(106,106,183,0.15)',
+                    backgroundColor: 'rgba(var(--purple-rgb),0.15)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     marginBottom: '1.5rem',
                   }}>
@@ -350,7 +350,7 @@ export default function LoyaltyPage() {
                   <h3 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.3rem', color: 'var(--offwhite)', marginBottom: '0.9rem' }}>
                     Points
                   </h3>
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: isMobile ? '0.85rem' : '0.9rem', color: 'rgba(245,242,236,0.55)', lineHeight: 1.8 }}>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: isMobile ? '0.85rem' : '0.9rem', color: 'rgba(var(--offwhite-rgb),0.55)', lineHeight: 1.8 }}>
                     Points are your reward currency. Earn them alongside points and spend them on
                     free coffees, drinks, burgers, event tickets, and D&amp;D sessions at any branch.
                   </p>
@@ -392,7 +392,7 @@ export default function LoyaltyPage() {
                     <h3 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color: 'var(--offwhite)', marginBottom: '0.7rem' }}>
                       {card.title}
                     </h3>
-                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.5)', lineHeight: 1.7, marginBottom: '1.25rem' }}>
+                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.5)', lineHeight: 1.7, marginBottom: '1.25rem' }}>
                       {card.desc}
                     </p>
 
@@ -400,12 +400,12 @@ export default function LoyaltyPage() {
                       <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem', color: card.color }}>
                         +{card.pointsEarned} points
                       </span>
-                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.3)' }}>+</span>
+                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>+</span>
                       <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem', color: card.color }}>
                         {card.coins} Coins
                       </span>
                     </div>
-                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', marginTop: '0.4rem' }}>
+                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.4rem' }}>
                       {card.unit}
                     </p>
 
@@ -448,10 +448,10 @@ export default function LoyaltyPage() {
                           padding: '1.25rem 1.4rem',
                         }}>
                           <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.05rem', color }}>{tier.label}</p>
-                          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)', margin: '0.3rem 0 0.6rem' }}>
+                          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)', margin: '0.3rem 0 0.6rem' }}>
                             {tier.threshold === 0 ? 'From your first visit' : `${tier.threshold.toLocaleString()}+ points earned`}
                           </p>
-                          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.83rem', color: 'rgba(245,242,236,0.55)', lineHeight: 1.6 }}>
+                          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.83rem', color: 'rgba(var(--offwhite-rgb),0.55)', lineHeight: 1.6 }}>
                             {tier.blurb}
                           </p>
                         </div>
@@ -479,15 +479,15 @@ export default function LoyaltyPage() {
                           justifyContent: 'center',
                         }}>
                           <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color, marginBottom: '0.4rem' }}>{tier.label}</p>
-                          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)', marginBottom: '0.8rem' }}>
+                          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.8rem' }}>
                             {tier.threshold === 0 ? 'To start' : `${tier.threshold.toLocaleString()}+`}
                           </p>
-                          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.76rem', color: 'rgba(245,242,236,0.5)', lineHeight: 1.6 }}>
+                          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.76rem', color: 'rgba(var(--offwhite-rgb),0.5)', lineHeight: 1.6 }}>
                             {tier.blurb}
                           </p>
                         </div>
                         {i < TIERS.length - 1 && (
-                          <FontAwesomeIcon icon={faArrowRight} style={{ width: '14px', color: 'rgba(245,242,236,0.15)', flexShrink: 0, margin: '0 0.6rem' }} />
+                          <FontAwesomeIcon icon={faArrowRight} style={{ width: '14px', color: 'rgba(var(--offwhite-rgb),0.15)', flexShrink: 0, margin: '0 0.6rem' }} />
                         )}
                       </div>
                     )
@@ -522,7 +522,7 @@ export default function LoyaltyPage() {
                           <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', color }}>{p.tier}</span>
                           
                         </div>
-                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.6)', lineHeight: 1.6 }}>{p.perk}</p>
+                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.6)', lineHeight: 1.6 }}>{p.perk}</p>
                       </div>
                     )
                   })}
@@ -542,7 +542,7 @@ export default function LoyaltyPage() {
                         background: i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent',
                       }}>
                         <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color }}>{p.tier}</span>
-                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(245,242,236,0.7)' }}>{p.perk}</span>
+                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.7)' }}>{p.perk}</span>
                       </div>
                     )
                   })}
@@ -567,7 +567,7 @@ export default function LoyaltyPage() {
                   padding: isMobile ? '2.5rem 1.5rem' : '3rem',
                   textAlign: 'center',
                 }}>
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.35)' }}>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
                     Redeemable items are being set up — check back soon!
                   </p>
                 </div>
@@ -585,7 +585,7 @@ export default function LoyaltyPage() {
                       <div style={{
                         width: '44px', height: '44px',
                         borderRadius: '50%',
-                        backgroundColor: 'rgba(0,160,152,0.12)',
+                        backgroundColor: 'rgba(var(--teal-rgb),0.12)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         marginBottom: '1.1rem',
                       }}>
@@ -594,7 +594,7 @@ export default function LoyaltyPage() {
                       <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
                         {item.name}
                       </p>
-                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.5)', lineHeight: 1.6, marginBottom: '1.1rem', flex: 1 }}>
+                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)', lineHeight: 1.6, marginBottom: '1.1rem', flex: 1 }}>
                         {item.description}
                       </p>
                       <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.15rem', color: 'var(--teal)' }}>
@@ -605,7 +605,7 @@ export default function LoyaltyPage() {
                 </div>
               )}
 
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.35)', marginTop: '1.5rem', textAlign: 'center' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.35)', marginTop: '1.5rem', textAlign: 'center' }}>
                 Redeem directly from your profile. A manager confirms your request in-branch when you arrive.
               </p>
             </section>
@@ -620,7 +620,7 @@ export default function LoyaltyPage() {
                 <div style={{ position: 'relative', paddingLeft: '2.2rem' }}>
                   <div style={{
                     position: 'absolute', left: '11px', top: '12px', bottom: '12px',
-                    width: '2px', backgroundColor: 'rgba(228,51,41,0.2)',
+                    width: '2px', backgroundColor: 'rgba(var(--red-rgb),0.2)',
                   }} />
                   {SUBMIT_STEPS.map((step, i) => (
                     <div key={i} style={{ position: 'relative', marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
@@ -632,7 +632,7 @@ export default function LoyaltyPage() {
                         fontFamily: 'var(--font-cinzel)', fontSize: '0.75rem',
                         border: '3px solid var(--black)',
                       }}>{i + 1}</div>
-                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.65)', lineHeight: 1.7 }}>
+                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.65)', lineHeight: 1.7 }}>
                         {step}
                       </p>
                     </div>
@@ -642,7 +642,7 @@ export default function LoyaltyPage() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', position: 'relative' }}>
                   <div style={{
                     position: 'absolute', top: '17px', left: '5%', right: '5%',
-                    height: '2px', backgroundColor: 'rgba(228,51,41,0.2)', zIndex: 0,
+                    height: '2px', backgroundColor: 'rgba(var(--red-rgb),0.2)', zIndex: 0,
                   }} />
                   {SUBMIT_STEPS.map((step, i) => (
                     <div key={i} style={{ flex: 1, textAlign: 'center', padding: '0 0.6rem', position: 'relative', zIndex: 1 }}>
@@ -654,7 +654,7 @@ export default function LoyaltyPage() {
                         margin: '0 auto 1rem',
                         border: '3px solid var(--black)',
                       }}>{i + 1}</div>
-                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.55)', lineHeight: 1.6 }}>
+                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.55)', lineHeight: 1.6 }}>
                         {step}
                       </p>
                     </div>
@@ -673,12 +673,12 @@ export default function LoyaltyPage() {
             textAlign: 'center',
             padding: isMobile ? '4rem 1.5rem' : '6rem 2rem',
             overflow: 'hidden',
-            background: 'linear-gradient(180deg, rgba(0,160,152,0.06) 0%, rgba(10,10,10,0) 100%)',
+            background: 'linear-gradient(180deg, rgba(var(--teal-rgb),0.06) 0%, rgba(10,10,10,0) 100%)',
             borderTop: '1px solid rgba(255,255,255,0.05)',
           }}>
             <div style={{
               position: 'absolute', inset: 0, pointerEvents: 'none',
-              background: 'radial-gradient(ellipse at 50% 0%, rgba(0,160,152,0.15) 0%, transparent 60%)',
+              background: 'radial-gradient(ellipse at 50% 0%, rgba(var(--teal-rgb),0.15) 0%, transparent 60%)',
             }} />
 
             <div style={{ position: 'relative', zIndex: 1 }}>
@@ -693,7 +693,7 @@ export default function LoyaltyPage() {
               <p style={{
                 fontFamily: 'var(--font-inter)',
                 fontSize: isMobile ? '0.85rem' : '0.95rem',
-                color: 'rgba(245,242,236,0.55)',
+                color: 'rgba(var(--offwhite-rgb),0.55)',
                 marginBottom: '2.25rem',
               }}>
                 Sign in with your Google account — it takes 10 seconds.
@@ -708,7 +708,7 @@ export default function LoyaltyPage() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.6rem',
-                  backgroundColor: joinHovered ? 'rgba(0,160,152,0.15)' : 'var(--teal)',
+                  backgroundColor: joinHovered ? 'rgba(var(--teal-rgb),0.15)' : 'var(--teal)',
                   color: '#fff',
                   padding: '1.1rem 3rem',
                   borderRadius: '2px',
@@ -720,7 +720,7 @@ export default function LoyaltyPage() {
                   marginBottom: '1.5rem',
                   border: '1px solid var(--teal)',
                   backdropFilter: joinHovered ? 'blur(10px)' : 'none',
-                  boxShadow: joinHovered ? '0 0 24px rgba(0,160,152,0.4)' : 'none',
+                  boxShadow: joinHovered ? '0 0 24px rgba(var(--teal-rgb),0.4)' : 'none',
                   transition: 'all 0.3s ease',
                 }}>
                 <span style={{

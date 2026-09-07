@@ -54,8 +54,8 @@ function branchStatus(qty: number, threshold: number): 'ok' | 'low' | 'out' {
 
 
 const S_COLOR  = { ok: 'var(--teal)', low: 'var(--brand-secondary)', out: 'var(--red)' }
-const S_BG     = { ok: 'rgba(0,160,152,0.06)',   low: 'rgba(201,150,44,0.08)',  out: 'rgba(228,51,41,0.09)'  }
-const S_BORDER = { ok: 'rgba(0,160,152,0.18)',   low: 'rgba(201,150,44,0.26)',  out: 'rgba(228,51,41,0.32)'  }
+const S_BG     = { ok: 'rgba(var(--teal-rgb),0.06)',   low: 'rgba(var(--brand-secondary-rgb),0.08)',  out: 'rgba(var(--red-rgb),0.09)'  }
+const S_BORDER = { ok: 'rgba(var(--teal-rgb),0.18)',   low: 'rgba(var(--brand-secondary-rgb),0.26)',  out: 'rgba(var(--red-rgb),0.32)'  }
 const S_LABEL  = { ok: 'OK', low: 'Low', out: 'Out' }
 
 const EMPTY_FORM = { name: '', nameAr: '', category: 'Kitchen' as Category, unit: 'pieces', threshold: 5, provider: '', vatable: true }
@@ -69,7 +69,7 @@ const inp: React.CSSProperties = {
 const sel: React.CSSProperties = { ...inp, background: '#1c1c1c', cursor: 'pointer' }
 const lbl: React.CSSProperties = {
   display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase',
-  color: 'rgba(245,242,236,0.35)', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)',
+  color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)',
 }
 
 export default function SuppliesPage() {
@@ -218,12 +218,12 @@ export default function SuppliesPage() {
       if (b === 'Unknown') return -1
       return a.localeCompare(b)
     })
-    return keys.map(key => ({ key, color: 'rgba(245,242,236,0.45)', items: map.get(key)! }))
+    return keys.map(key => ({ key, color: 'rgba(var(--offwhite-rgb),0.45)', items: map.get(key)! }))
   }, [visible, groupBy])
 
   if (checking || loading) return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+      <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
     </div>
   )
 
@@ -231,13 +231,13 @@ export default function SuppliesPage() {
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)' }}>
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '3rem 2rem' }}>
 
-        <a href="/admin" style={{ fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', textDecoration: 'none', marginBottom: '0.5rem', display: 'block' }}>
+        <a href="/admin" style={{ fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none', marginBottom: '0.5rem', display: 'block' }}>
           ← Dashboard
         </a>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', marginBottom: '0.25rem' }}>Inventory Management</h1>
-            <p style={{ fontSize: '0.82rem', color: 'rgba(245,242,236,0.35)' }}>
+            <p style={{ fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
               {supplies.length} items tracked
               {alertCount > 0 && <span style={{ color: 'var(--red)', marginLeft: '0.5rem' }}>• {alertCount} need attention in {branch}</span>}
             </p>
@@ -246,7 +246,7 @@ export default function SuppliesPage() {
             <a href="/admin/supplies/daily" style={{ background: 'transparent', color: '#6A9E5A', border: '1px solid rgba(106,158,90,0.35)', borderRadius: '4px', padding: '0.65rem 1.2rem', fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
               Daily Inventory Count
             </a>
-            <button onClick={seedFromTemplates} disabled={seeding} title="Adds new items from Weekly Orders and fills in Arabic names for existing items that don't have one yet" style={{ background: 'transparent', color: 'rgba(245,242,236,0.5)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '4px', padding: '0.65rem 1.2rem', fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase', cursor: seeding ? 'not-allowed' : 'pointer', opacity: seeding ? 0.5 : 1 }}>
+            <button onClick={seedFromTemplates} disabled={seeding} title="Adds new items from Weekly Orders and fills in Arabic names for existing items that don't have one yet" style={{ background: 'transparent', color: 'rgba(var(--offwhite-rgb),0.5)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '4px', padding: '0.65rem 1.2rem', fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase', cursor: seeding ? 'not-allowed' : 'pointer', opacity: seeding ? 0.5 : 1 }}>
               {seeding ? 'Syncing…' : 'Import & Sync from Weekly Orders'}
             </button>
             <button onClick={openAdd} style={{ background: 'var(--teal)', color: '#000', border: 'none', borderRadius: '4px', padding: '0.65rem 1.4rem', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}>
@@ -261,7 +261,7 @@ export default function SuppliesPage() {
             <button key={b} onClick={() => setBranch(b)} style={{
               background: branch === b ? `${BRANCH_COLOR(b)}18` : 'transparent',
               border: `1px solid ${branch === b ? BRANCH_COLOR(b) : 'rgba(255,255,255,0.09)'}`,
-              color: branch === b ? BRANCH_COLOR(b) : 'rgba(245,242,236,0.35)',
+              color: branch === b ? BRANCH_COLOR(b) : 'rgba(var(--offwhite-rgb),0.35)',
               borderRadius: '6px', padding: '0.5rem 1.25rem',
               fontSize: '0.78rem', fontWeight: branch === b ? 600 : 400,
               letterSpacing: '0.06em', cursor: 'pointer',
@@ -277,7 +277,7 @@ export default function SuppliesPage() {
             {(['category', 'provider'] as const).map(g => (
               <button key={g} onClick={() => setGroupBy(g)} style={{
                 background: groupBy === g ? 'rgba(255,255,255,0.1)' : 'transparent',
-                color: groupBy === g ? 'var(--offwhite)' : 'rgba(245,242,236,0.35)',
+                color: groupBy === g ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.35)',
                 border: 'none', padding: '0.6rem 1.1rem', fontSize: '0.72rem',
                 letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
               }}>
@@ -289,7 +289,7 @@ export default function SuppliesPage() {
 
         {/* Groups */}
         {visible.length === 0 ? (
-          <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(245,242,236,0.2)', fontSize: '0.88rem' }}>
+          <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.2)', fontSize: '0.88rem' }}>
             {search ? 'No items match your search.' : 'No items yet. Click "+ Add Item" or import from Weekly Orders.'}
           </div>
         ) : (
@@ -299,7 +299,7 @@ export default function SuppliesPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.75rem' }}>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: group.color, flexShrink: 0 }} />
                   <span style={{ fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: group.color, fontWeight: 600 }}>{group.key}</span>
-                  <span style={{ fontSize: '0.65rem', color: 'rgba(245,242,236,0.25)' }}>({group.items.length})</span>
+                  <span style={{ fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.25)' }}>({group.items.length})</span>
                   <span style={{ flex: 1, height: '1px', background: `${group.color}25` }} />
                   {(() => {
                     const n = group.items.filter(s => branchStatus(s.quantity[branch] ?? 0, s.threshold) !== 'ok').length
@@ -319,11 +319,11 @@ export default function SuppliesPage() {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem', lineHeight: 1.3 }}>{s.name}</p>
                             {s.nameAr && (
-                              <p dir="rtl" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(201,150,44,0.8)', marginTop: '0.15rem' }}>{s.nameAr}</p>
+                              <p dir="rtl" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--brand-secondary-rgb),0.8)', marginTop: '0.15rem' }}>{s.nameAr}</p>
                             )}
                             <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.2rem', flexWrap: 'wrap' }}>
                               {groupBy !== 'category' && <span style={{ fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: CAT_COLOR[s.category] }}>{s.category}</span>}
-                              {groupBy !== 'provider' && s.provider && <span style={{ fontSize: '0.6rem', color: 'rgba(245,242,236,0.28)' }}>{s.provider}</span>}
+                              {groupBy !== 'provider' && s.provider && <span style={{ fontSize: '0.6rem', color: 'rgba(var(--offwhite-rgb),0.28)' }}>{s.provider}</span>}
                             </div>
                           </div>
                           <span style={{ background: `${S_COLOR[st]}20`, color: S_COLOR[st], border: `1px solid ${S_COLOR[st]}40`, borderRadius: '3px', padding: '0.1rem 0.45rem', fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap', flexShrink: 0 }}>
@@ -335,12 +335,12 @@ export default function SuppliesPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.1rem' }}>
                           <span>
                             <span style={{ fontSize: '1.3rem', fontWeight: 700, color: S_COLOR[st], letterSpacing: '-0.02em' }}>{qty}</span>
-                            <span style={{ fontSize: '0.7rem', color: 'rgba(245,242,236,0.4)', marginLeft: '0.2rem' }}>{s.unit}</span>
+                            <span style={{ fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginLeft: '0.2rem' }}>{s.unit}</span>
                           </span>
 
                           {/* Threshold inline edit */}
                           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            <span style={{ fontSize: '0.6rem', color: 'rgba(245,242,236,0.25)' }}>min</span>
+                            <span style={{ fontSize: '0.6rem', color: 'rgba(var(--offwhite-rgb),0.25)' }}>min</span>
                             {thrEditId === s.id ? (
                               <input type="number" value={thrVal} min={1} autoFocus
                                 onChange={e => setThrVal(e.target.value)}
@@ -350,8 +350,8 @@ export default function SuppliesPage() {
                               />
                             ) : (
                               <button onClick={() => { setThrEditId(s.id); setThrVal(String(s.threshold)) }} title="Click to change minimum" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.1rem 0.25rem', borderRadius: '3px' }}>
-                                <span style={{ fontSize: '0.78rem', color: 'rgba(245,242,236,0.35)', fontWeight: 600 }}>{s.threshold}</span>
-                                <span style={{ fontSize: '0.55rem', color: 'rgba(245,242,236,0.18)', marginLeft: '0.15rem' }}>✎</span>
+                                <span style={{ fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.35)', fontWeight: 600 }}>{s.threshold}</span>
+                                <span style={{ fontSize: '0.55rem', color: 'rgba(var(--offwhite-rgb),0.18)', marginLeft: '0.15rem' }}>✎</span>
                               </button>
                             )}
                           </div>
@@ -359,8 +359,8 @@ export default function SuppliesPage() {
 
                         {/* Actions */}
                         <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.1rem' }}>
-                          <button onClick={() => openEdit(s)} style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(245,242,236,0.5)', borderRadius: '4px', padding: '0.28rem', fontSize: '0.68rem', cursor: 'pointer' }}>Edit</button>
-                          <button onClick={() => deleteItem(s.id)} disabled={deletingId === s.id} style={{ background: 'rgba(228,51,41,0.08)', border: '1px solid rgba(228,51,41,0.2)', color: 'var(--red)', borderRadius: '4px', padding: '0.28rem 0.5rem', fontSize: '0.68rem', cursor: 'pointer', opacity: deletingId === s.id ? 0.5 : 1 }}>
+                          <button onClick={() => openEdit(s)} style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(var(--offwhite-rgb),0.5)', borderRadius: '4px', padding: '0.28rem', fontSize: '0.68rem', cursor: 'pointer' }}>Edit</button>
+                          <button onClick={() => deleteItem(s.id)} disabled={deletingId === s.id} style={{ background: 'rgba(var(--red-rgb),0.08)', border: '1px solid rgba(var(--red-rgb),0.2)', color: 'var(--red)', borderRadius: '4px', padding: '0.28rem 0.5rem', fontSize: '0.68rem', cursor: 'pointer', opacity: deletingId === s.id ? 0.5 : 1 }}>
                             {deletingId === s.id ? '…' : '✕'}
                           </button>
                         </div>
@@ -397,7 +397,7 @@ export default function SuppliesPage() {
                   <button
                     type="button" onClick={autoTranslate} disabled={translating || !form.name.trim()} title="Auto-translate from Item Name"
                     style={{
-                      background: 'rgba(201,150,44,0.12)', border: '1px solid rgba(201,150,44,0.3)',
+                      background: 'rgba(var(--brand-secondary-rgb),0.12)', border: '1px solid rgba(var(--brand-secondary-rgb),0.3)',
                       color: 'var(--brand-secondary)', padding: '0.55rem 0.7rem', borderRadius: '4px', fontSize: '0.8rem',
                       cursor: translating || !form.name.trim() ? 'not-allowed' : 'pointer', flexShrink: 0,
                     }}
@@ -451,10 +451,10 @@ export default function SuppliesPage() {
                   onClick={() => setForm(f => ({ ...f, vatable: !f.vatable }))}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '0.6rem', width: '100%',
-                    background: form.vatable ? 'rgba(0,160,152,0.1)' : 'transparent',
-                    border: `1px solid ${form.vatable ? 'rgba(0,160,152,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                    background: form.vatable ? 'rgba(var(--teal-rgb),0.1)' : 'transparent',
+                    border: `1px solid ${form.vatable ? 'rgba(var(--teal-rgb),0.4)' : 'rgba(255,255,255,0.1)'}`,
                     borderRadius: '4px', padding: '0.6rem 0.7rem', cursor: 'pointer',
-                    color: form.vatable ? 'var(--teal)' : 'rgba(245,242,236,0.4)',
+                    color: form.vatable ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.4)',
                     fontFamily: 'var(--font-inter)', fontSize: '0.8rem', textAlign: 'left',
                   }}
                 >
@@ -471,7 +471,7 @@ export default function SuppliesPage() {
                       The state is the tick; the label is the question. */}
                   VAT applies to this item
                 </button>
-                <p style={{ fontSize: '0.62rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.25rem' }}>
+                <p style={{ fontSize: '0.62rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.25rem' }}>
                   {form.vatable ? 'Taxed at the configured rate.' : 'Zero-rated.'} Used as the default when receiving; each delivery can override it.
                 </p>
               </div>
@@ -479,7 +479,7 @@ export default function SuppliesPage() {
               <div>
                 <label style={lbl}>Minimum (Alert Threshold)</label>
                 <input style={inp} type="number" min={1} value={form.threshold} onChange={e => setForm(f => ({ ...f, threshold: Number(e.target.value) }))} />
-                <p style={{ fontSize: '0.62rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.25rem' }}>Applies to each branch — turns orange/red below this</p>
+                <p style={{ fontSize: '0.62rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.25rem' }}>Applies to each branch — turns orange/red below this</p>
               </div>
             </div>
 
@@ -487,7 +487,7 @@ export default function SuppliesPage() {
               <button onClick={save} disabled={saving || !form.name.trim()} style={{ flex: 1, background: 'var(--teal)', color: '#000', border: 'none', borderRadius: '4px', padding: '0.7rem', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
                 {saving ? 'Saving…' : modal === 'add' ? 'Add Item' : 'Save Changes'}
               </button>
-              <button onClick={() => setModal(null)} style={{ background: 'transparent', color: 'rgba(245,242,236,0.4)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '0.7rem 1rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+              <button onClick={() => setModal(null)} style={{ background: 'transparent', color: 'rgba(var(--offwhite-rgb),0.4)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '0.7rem 1rem', fontSize: '0.85rem', cursor: 'pointer' }}>
                 Cancel
               </button>
             </div>

@@ -14,7 +14,7 @@ const labelStyle = {
   fontSize: '0.68rem',
   letterSpacing: '0.2em',
   textTransform: 'uppercase' as const,
-  color: 'rgba(245,242,236,0.35)',
+  color: 'rgba(var(--offwhite-rgb),0.35)',
   marginBottom: '0.5rem',
   fontFamily: 'var(--font-inter)',
 }
@@ -86,7 +86,7 @@ export default function RedeemPage() {
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.4rem' : '1.7rem', color: 'var(--offwhite)', marginBottom: '0.8rem' }}>
             Verify your email first
           </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.5)', lineHeight: 1.7, marginBottom: '2rem' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.5)', lineHeight: 1.7, marginBottom: '2rem' }}>
             Redeeming Points spends real value, so we need to confirm it's really you first.
             Check your inbox for the verification email, then head to your profile to confirm it.
           </p>
@@ -107,7 +107,7 @@ export default function RedeemPage() {
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.6rem' : '2rem', color: 'var(--offwhite)', marginBottom: '1rem' }}>
             Request submitted!
           </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(245,242,236,0.6)', lineHeight: 1.6, marginBottom: '2rem' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.6)', lineHeight: 1.6, marginBottom: '2rem' }}>
             Show this to the manager at <strong style={{ color: 'var(--offwhite)' }}>{success.branchName}</strong> to claim your{' '}
             <strong style={{ color: 'var(--offwhite)' }}>{success.itemName}</strong>. Coins will be deducted on confirmation.
           </p>
@@ -120,7 +120,7 @@ export default function RedeemPage() {
                 position: 'relative',
                 overflow: 'hidden',
                 width: '100%',
-                backgroundColor: redeemAgainHovered ? 'rgba(106,106,183,0.15)' : 'var(--purple)',
+                backgroundColor: redeemAgainHovered ? 'rgba(var(--purple-rgb),0.15)' : 'var(--purple)',
                 color: '#fff',
                 border: '1px solid var(--purple)',
                 padding: '0.9rem',
@@ -171,7 +171,7 @@ export default function RedeemPage() {
             fontSize: '0.7rem',
             letterSpacing: '0.2em',
             textTransform: 'uppercase',
-            color: backHovered ? 'var(--offwhite)' : 'rgba(245,242,236,0.3)',
+            color: backHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.3)',
             textDecoration: 'none',
             fontFamily: 'var(--font-inter)',
             marginBottom: '0.5rem',
@@ -193,7 +193,7 @@ export default function RedeemPage() {
           alignItems: 'center',
           marginBottom: '2rem',
         }}>
-          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Your Balance
           </span>
           <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.6rem', color: 'var(--teal)' }}>
@@ -202,7 +202,7 @@ export default function RedeemPage() {
         </div>
 
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : items.length === 0 ? (
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)',
@@ -210,7 +210,7 @@ export default function RedeemPage() {
             padding: isMobile ? '3rem 1.5rem' : '4rem',
             textAlign: 'center',
           }}>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.3)' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
               No redeemable items available right now.
             </p>
           </div>
@@ -233,7 +233,7 @@ export default function RedeemPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                     <div>
                       <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', color: 'var(--offwhite)', marginBottom: '0.3rem' }}>{item.name}</p>
-                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(245,242,236,0.45)' }}>{item.description}</p>
+                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>{item.description}</p>
                     </div>
                     <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', color: 'var(--teal)', whiteSpace: 'nowrap' }}>{item.coinCost} coins</span>
                   </div>
@@ -241,11 +241,11 @@ export default function RedeemPage() {
                   {isConfirming ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.9rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-inter)', fontSize: '0.82rem' }}>
-                        <span style={{ color: 'rgba(245,242,236,0.4)' }}>Current Balance</span>
+                        <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)' }}>Current Balance</span>
                         <span style={{ color: 'var(--offwhite)' }}>{points.toLocaleString()} coins</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-inter)', fontSize: '0.82rem' }}>
-                        <span style={{ color: 'rgba(245,242,236,0.4)' }}>Remaining After Redemption</span>
+                        <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)' }}>Remaining After Redemption</span>
                         <span style={{ color: 'var(--teal)' }}>{(points - item.coinCost).toLocaleString()} coins</span>
                       </div>
 
@@ -264,7 +264,7 @@ export default function RedeemPage() {
                           onMouseLeave={() => setHoveredBtn(null)}
                           style={{
                             flex: 1,
-                            backgroundColor: !submitting && hoveredBtn === `confirm-${item.id}` ? 'rgba(106,106,183,0.8)' : 'var(--purple)',
+                            backgroundColor: !submitting && hoveredBtn === `confirm-${item.id}` ? 'rgba(var(--purple-rgb),0.8)' : 'var(--purple)',
                             color: '#fff',
                             border: 'none',
                             padding: '0.8rem',
@@ -275,7 +275,7 @@ export default function RedeemPage() {
                             fontFamily: 'var(--font-inter)',
                             cursor: submitting ? 'not-allowed' : 'pointer',
                             opacity: submitting ? 0.6 : 1,
-                            boxShadow: !submitting && hoveredBtn === `confirm-${item.id}` ? '0 6px 14px rgba(106,106,183,0.4)' : 'none',
+                            boxShadow: !submitting && hoveredBtn === `confirm-${item.id}` ? '0 6px 14px rgba(var(--purple-rgb),0.4)' : 'none',
                             transition: 'all 0.2s ease',
                           }}
                         >{submitting ? 'Submitting…' : 'Confirm Redemption'}</button>
@@ -288,7 +288,7 @@ export default function RedeemPage() {
                             flex: isMobile ? 1 : 'initial',
                             background: hoveredBtn === `cancel-${item.id}` ? 'rgba(255,255,255,0.06)' : 'transparent',
                             border: `1px solid ${hoveredBtn === `cancel-${item.id}` ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}`,
-                            color: hoveredBtn === `cancel-${item.id}` ? 'var(--offwhite)' : 'rgba(245,242,236,0.5)',
+                            color: hoveredBtn === `cancel-${item.id}` ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.5)',
                             padding: '0.8rem 1.5rem',
                             borderRadius: '2px',
                             fontSize: '0.75rem',
@@ -310,8 +310,8 @@ export default function RedeemPage() {
                       style={{
                         width: isMobile ? '100%' : 'auto',
                         alignSelf: isMobile ? 'stretch' : 'flex-end',
-                        backgroundColor: canAfford ? (hoveredBtn === `redeem-${item.id}` ? 'rgba(106,106,183,0.8)' : 'var(--purple)') : 'rgba(255,255,255,0.05)',
-                        color: canAfford ? '#fff' : 'rgba(245,242,236,0.35)',
+                        backgroundColor: canAfford ? (hoveredBtn === `redeem-${item.id}` ? 'rgba(var(--purple-rgb),0.8)' : 'var(--purple)') : 'rgba(255,255,255,0.05)',
+                        color: canAfford ? '#fff' : 'rgba(var(--offwhite-rgb),0.35)',
                         border: 'none',
                         padding: '0.8rem 1.5rem',
                         borderRadius: '2px',
@@ -320,7 +320,7 @@ export default function RedeemPage() {
                         textTransform: 'uppercase',
                         fontFamily: 'var(--font-inter)',
                         cursor: canAfford ? 'pointer' : 'not-allowed',
-                        boxShadow: canAfford && hoveredBtn === `redeem-${item.id}` ? '0 6px 14px rgba(106,106,183,0.4)' : 'none',
+                        boxShadow: canAfford && hoveredBtn === `redeem-${item.id}` ? '0 6px 14px rgba(var(--purple-rgb),0.4)' : 'none',
                         transition: 'all 0.2s ease',
                       }}
                     >{canAfford ? 'Redeem' : 'Not enough coins'}</button>

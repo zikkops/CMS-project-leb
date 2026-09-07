@@ -65,14 +65,14 @@ const STATUS_COLORS: Record<Transaction['status'], string> = {
   pending:   '#E5A33D',
   approved:  '#2ECC71',
   rejected:  'var(--red)',
-  cancelled: 'rgba(245,242,236,0.35)',
+  cancelled: 'rgba(var(--offwhite-rgb),0.35)',
 }
 
 const REDEMPTION_STATUS_COLORS: Record<Redemption['status'], string> = {
   pending:   '#E5A33D',
   redeemed:  '#2ECC71',
   rejected:  'var(--red)',
-  cancelled: 'rgba(245,242,236,0.35)',
+  cancelled: 'rgba(var(--offwhite-rgb),0.35)',
 }
 
 // Shared by the Events and Tables tabs. Was keyed off the D&D Reservation
@@ -178,7 +178,7 @@ function TransactionCard({
           )}
         </div>
 
-        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.5)', marginTop: '0.3rem' }}>
+        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginTop: '0.3rem' }}>
           {resolveBranchName(tx.branchId)} · {formatDate(tx.createdAt)}
         </p>
 
@@ -188,7 +188,7 @@ function TransactionCard({
         </div>
 
         {showSplit && tx.userId.length > 1 && (
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)', marginTop: '0.4rem' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginTop: '0.4rem' }}>
             Split with {tx.userId.length - 1} other{tx.userId.length - 1 === 1 ? '' : 's'}
           </p>
         )}
@@ -217,7 +217,7 @@ function TransactionCard({
               </button>
             )}
             {tx.checkNumber && (
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.5)' }}>
+              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
                 Check #{tx.checkNumber}
               </span>
             )}
@@ -230,9 +230,9 @@ function TransactionCard({
             onMouseLeave={() => setCancelHovered(false)}
             style={{
               marginTop: '0.7rem',
-              background: cancelHovered ? 'rgba(228,51,41,0.1)' : 'transparent',
+              background: cancelHovered ? 'rgba(var(--red-rgb),0.1)' : 'transparent',
               border: `1px solid ${cancelHovered ? 'var(--red)' : 'rgba(255,255,255,0.1)'}`,
-              color: cancelHovered ? 'var(--red)' : 'rgba(245,242,236,0.5)',
+              color: cancelHovered ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.5)',
               padding: '0.5rem 1rem',
               borderRadius: '2px',
               fontSize: '0.7rem',
@@ -273,7 +273,7 @@ function ActionButton({ href, label, color, variant = 'solid' }: {
         display: 'block',
         textAlign: 'center',
         backgroundColor: hovered ? `${color}15` : (variant === 'solid' ? color : 'transparent'),
-        color: variant === 'solid' || hovered ? '#fff' : 'rgba(245,242,236,0.7)',
+        color: variant === 'solid' || hovered ? '#fff' : 'rgba(var(--offwhite-rgb),0.7)',
         border: `1px solid ${hovered ? color : (variant === 'solid' ? color : 'rgba(255,255,255,0.1)')}`,
         padding: '0.9rem',
         borderRadius: '4px',
@@ -497,7 +497,7 @@ export default function CustomerProfilePage() {
     fontSize: '0.65rem',
     letterSpacing: '0.2em',
     textTransform: 'uppercase' as const,
-    color: 'rgba(245,242,236,0.3)',
+    color: 'rgba(var(--offwhite-rgb),0.3)',
     fontFamily: 'var(--font-inter)',
     marginBottom: '1rem',
   }
@@ -507,7 +507,7 @@ export default function CustomerProfilePage() {
     borderRadius: '4px',
     padding: isMobile ? '2rem 1rem' : '2.5rem',
     textAlign: 'center' as const,
-    color: 'rgba(245,242,236,0.3)',
+    color: 'rgba(var(--offwhite-rgb),0.3)',
     fontFamily: 'var(--font-inter)',
     fontSize: '0.85rem',
   }
@@ -563,7 +563,7 @@ export default function CustomerProfilePage() {
                 position: 'absolute',
                 top: isMobile ? '0.8rem' : '1.2rem',
                 right: isMobile ? '0.8rem' : '1.2rem',
-                background: signOutHovered ? 'rgba(228,51,41,0.15)' : 'rgba(0,0,0,0.25)',
+                background: signOutHovered ? 'rgba(var(--red-rgb),0.15)' : 'rgba(0,0,0,0.25)',
                 border: `1px solid ${signOutHovered ? 'var(--red)' : 'rgba(255,255,255,0.25)'}`,
                 color: signOutHovered ? 'var(--red)' : 'rgba(255,255,255,0.8)',
                 padding: isMobile ? '0.5rem 0.9rem' : '0.6rem 1.2rem',
@@ -610,7 +610,7 @@ export default function CustomerProfilePage() {
                 <span style={{
                   fontFamily: 'var(--font-cinzel)',
                   fontSize: isMobile ? '1.8rem' : '2.6rem',
-                  color: 'rgba(245,242,236,0.5)',
+                  color: 'rgba(var(--offwhite-rgb),0.5)',
                 }}>{initials}</span>
               )}
 
@@ -802,7 +802,7 @@ export default function CustomerProfilePage() {
                     <span style={{
                       fontFamily: 'var(--font-cinzel)',
                       fontSize: '0.85rem',
-                      color: unlocked ? color : 'rgba(245,242,236,0.4)',
+                      color: unlocked ? color : 'rgba(var(--offwhite-rgb),0.4)',
                       minWidth: isMobile ? '45px' : '55px',
                       flexShrink: 0,
                     }}>{p.tier}</span>
@@ -810,14 +810,14 @@ export default function CustomerProfilePage() {
                       flex: 1,
                       fontFamily: 'var(--font-inter)',
                       fontSize: isMobile ? '0.78rem' : '0.85rem',
-                      color: unlocked ? 'rgba(245,242,236,0.8)' : 'rgba(245,242,236,0.4)',
+                      color: unlocked ? 'rgba(var(--offwhite-rgb),0.8)' : 'rgba(var(--offwhite-rgb),0.4)',
                     }}>{p.perk}</p>
                     <span style={{
                       fontSize: '0.62rem',
                       padding: '0.2rem 0.6rem',
                       borderRadius: '2px',
                       backgroundColor: unlocked ? `${color}25` : 'rgba(255,255,255,0.06)',
-                      color: unlocked ? color : 'rgba(245,242,236,0.35)',
+                      color: unlocked ? color : 'rgba(var(--offwhite-rgb),0.35)',
                       fontFamily: 'var(--font-inter)',
                       letterSpacing: '0.06em',
                       textTransform: 'uppercase',
@@ -851,7 +851,7 @@ export default function CustomerProfilePage() {
               <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem', color: '#E5A33D' }}>
                 Verify your email
               </p>
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.5)', marginTop: '0.2rem' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginTop: '0.2rem' }}>
                 {verificationSent
                   ? `Sent to ${profile.email} — check your inbox, then tap "I've Verified."`
                   : 'Submitting checks and redeeming Points are locked until you verify your email.'}
@@ -898,15 +898,15 @@ export default function CustomerProfilePage() {
                     alignItems: isMobile ? 'stretch' : 'center',
                     gap: '0.8rem',
                     padding: isMobile ? '1rem' : '1.2rem',
-                    backgroundColor: 'rgba(106,106,183,0.06)',
-                    border: '1px solid rgba(106,106,183,0.2)',
+                    backgroundColor: 'rgba(var(--purple-rgb),0.06)',
+                    border: '1px solid rgba(var(--purple-rgb),0.2)',
                     borderRadius: '4px',
                   }}>
                     <div style={{ minWidth: 0 }}>
                       <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--offwhite)' }}>
                         {invite.reservationLabel}
                       </p>
-                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.5)', marginTop: '0.2rem' }}>
+                      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginTop: '0.2rem' }}>
                         {invite.reservationDate} · invited by {invite.inviterName}
                       </p>
                     </div>
@@ -918,11 +918,11 @@ export default function CustomerProfilePage() {
                         onMouseLeave={() => setHoveredAcceptId(null)}
                         style={{
                           flex: isMobile ? 1 : 'initial',
-                          backgroundColor: !isBusy && hoveredAcceptId === invite.id ? 'rgba(0,160,152,0.8)' : 'var(--teal)', color: '#fff', border: 'none',
+                          backgroundColor: !isBusy && hoveredAcceptId === invite.id ? 'rgba(var(--teal-rgb),0.8)' : 'var(--teal)', color: '#fff', border: 'none',
                           padding: '0.6rem 1.2rem', borderRadius: '2px', fontSize: '0.72rem',
                           letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
                           cursor: isBusy ? 'not-allowed' : 'pointer', opacity: isBusy ? 0.6 : 1,
-                          boxShadow: !isBusy && hoveredAcceptId === invite.id ? '0 6px 14px rgba(0,160,152,0.4)' : 'none',
+                          boxShadow: !isBusy && hoveredAcceptId === invite.id ? '0 6px 14px rgba(var(--teal-rgb),0.4)' : 'none',
                           transition: 'all 0.2s ease',
                         }}>Accept</button>
                       <button
@@ -932,8 +932,8 @@ export default function CustomerProfilePage() {
                         onMouseLeave={() => setHoveredDeclineId(null)}
                         style={{
                           flex: isMobile ? 1 : 'initial',
-                          background: !isBusy && hoveredDeclineId === invite.id ? 'rgba(228,51,41,0.1)' : 'transparent',
-                          border: `1px solid ${!isBusy && hoveredDeclineId === invite.id ? 'var(--red)' : 'rgba(228,51,41,0.3)'}`,
+                          background: !isBusy && hoveredDeclineId === invite.id ? 'rgba(var(--red-rgb),0.1)' : 'transparent',
+                          border: `1px solid ${!isBusy && hoveredDeclineId === invite.id ? 'var(--red)' : 'rgba(var(--red-rgb),0.3)'}`,
                           color: 'var(--red)',
                           padding: '0.6rem 1.2rem', borderRadius: '2px', fontSize: '0.72rem',
                           letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
@@ -984,7 +984,7 @@ export default function CustomerProfilePage() {
                     style={{
                       backgroundColor: active ? theme.accent : hov ? `${theme.accent}25` : 'transparent',
                       border: `1px solid ${active || hov ? theme.accent : 'rgba(255,255,255,0.1)'}`,
-                      color: active ? '#fff' : hov ? 'var(--offwhite)' : 'rgba(245,242,236,0.5)',
+                      color: active ? '#fff' : hov ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.5)',
                       padding: isMobile ? '0.55rem 0.8rem' : '0.6rem 1.2rem',
                       borderRadius: '2px',
                       fontSize: isMobile ? '0.7rem' : '0.75rem',
@@ -1061,12 +1061,12 @@ export default function CustomerProfilePage() {
                             whiteSpace: 'nowrap',
                           }}>{r.status}</span>
                         </div>
-                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.5)', marginTop: '0.3rem' }}>
+                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginTop: '0.3rem' }}>
                           {r.itemDescription}
                         </p>
                         <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                           <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: theme.accent }}>-{r.coinCost} Points</span>
-                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)' }}>
+                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                             {resolveBranchName(r.branchId)} · {formatDate(r.createdAt)}
                           </span>
                         </div>
@@ -1081,9 +1081,9 @@ export default function CustomerProfilePage() {
                             onMouseLeave={() => setHoveredCancelId(null)}
                             style={{
                               marginTop: '0.7rem',
-                              background: hoveredCancelId === r.id ? 'rgba(228,51,41,0.1)' : 'transparent',
+                              background: hoveredCancelId === r.id ? 'rgba(var(--red-rgb),0.1)' : 'transparent',
                               border: `1px solid ${hoveredCancelId === r.id ? 'var(--red)' : 'rgba(255,255,255,0.1)'}`,
-                              color: hoveredCancelId === r.id ? 'var(--red)' : 'rgba(245,242,236,0.5)',
+                              color: hoveredCancelId === r.id ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.5)',
                               padding: '0.5rem 1rem',
                               borderRadius: '2px',
                               fontSize: '0.7rem',
@@ -1131,10 +1131,10 @@ export default function CustomerProfilePage() {
                             whiteSpace: 'nowrap',
                           }}>{r.status}</span>
                         </div>
-                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.5)', marginTop: '0.3rem' }}>
+                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginTop: '0.3rem' }}>
                           📍 {r.branch} · {r.eventDate} · {r.eventTimeStart}–{r.eventTimeEnd}
                         </p>
-                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.4)', marginTop: '0.3rem' }}>
+                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginTop: '0.3rem' }}>
                           {r.partySize} {r.partySize === 1 ? 'person' : 'people'}
                         </p>
                         {r.status === 'rejected' && r.rejectionReason && (
@@ -1180,10 +1180,10 @@ export default function CustomerProfilePage() {
                             whiteSpace: 'nowrap',
                           }}>{r.status}</span>
                         </div>
-                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.5)', marginTop: '0.3rem' }}>
+                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginTop: '0.3rem' }}>
                           📍 {r.branch} · {formatSessionDateTime(r.startAt)}
                         </p>
-                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.4)', marginTop: '0.3rem' }}>
+                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginTop: '0.3rem' }}>
                           {r.partySize} {r.partySize === 1 ? 'person' : 'people'}
                         </p>
                         {r.status === 'rejected' && r.rejectionReason && (
@@ -1247,7 +1247,7 @@ export default function CustomerProfilePage() {
                 style={{
                   background: modalCloseHovered ? 'rgba(255,255,255,0.08)' : 'transparent',
                   border: `1px solid ${modalCloseHovered ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}`,
-                  color: modalCloseHovered ? 'var(--offwhite)' : 'rgba(245,242,236,0.5)',
+                  color: modalCloseHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.5)',
                   padding: isMobile ? '0.35rem 0.7rem' : '0.4rem 1rem',
                   borderRadius: '2px',
                   fontSize: isMobile ? '0.65rem' : '0.72rem',
@@ -1275,7 +1275,7 @@ export default function CustomerProfilePage() {
                   fontSize: '0.65rem',
                   letterSpacing: '0.2em',
                   textTransform: 'uppercase',
-                  color: 'rgba(245,242,236,0.3)',
+                  color: 'rgba(var(--offwhite-rgb),0.3)',
                   fontFamily: 'var(--font-inter)',
                   marginBottom: '1rem',
                 }}>Choose an Avatar</p>
@@ -1319,7 +1319,7 @@ export default function CustomerProfilePage() {
                   fontSize: '0.65rem',
                   letterSpacing: '0.2em',
                   textTransform: 'uppercase',
-                  color: 'rgba(245,242,236,0.3)',
+                  color: 'rgba(var(--offwhite-rgb),0.3)',
                   fontFamily: 'var(--font-inter)',
                   marginBottom: '1rem',
                 }}>Theme Color</p>

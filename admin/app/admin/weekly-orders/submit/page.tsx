@@ -175,7 +175,7 @@ export default function SubmitOrderPage() {
         <div style={{ textAlign: 'center', maxWidth: '480px' }}>
           <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✓</div>
           <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.5rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>Report Submitted</h2>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.4)', marginBottom: '2rem' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginBottom: '2rem' }}>
             {branch} — {dept} — {week.label}
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
@@ -186,7 +186,7 @@ export default function SubmitOrderPage() {
             }}>View Reports</a>
             <button onClick={() => { setDone(false); setQtys({}); setNotes('') }} style={{
               backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-              color: 'rgba(245,242,236,0.5)', padding: '0.7rem 1.5rem', borderRadius: '2px',
+              color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.7rem 1.5rem', borderRadius: '2px',
               fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase',
               cursor: 'pointer', fontFamily: 'var(--font-inter)',
             }}>Submit Another</button>
@@ -204,13 +204,13 @@ export default function SubmitOrderPage() {
         <div style={{ marginBottom: '2.5rem' }}>
           <a href="/admin/weekly-orders" style={{
             fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
             marginBottom: '0.5rem', display: 'block', fontFamily: 'var(--font-inter)',
           }}>← Weekly Orders</a>
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', color: 'var(--offwhite)', marginBottom: '0.25rem' }}>
             End of Week Order
           </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(245,242,236,0.4)' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
             Week of {week.label}
           </p>
         </div>
@@ -219,7 +219,7 @@ export default function SubmitOrderPage() {
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
-            color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
+            color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
             No departments assigned. Ask your admin to assign you a department at{' '}
             <a href="/admin/weekly-orders/access" style={{ color: 'var(--teal)' }}>
@@ -227,12 +227,12 @@ export default function SubmitOrderPage() {
             </a>.
           </div>
         ) : loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading items…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading items…</p>
         ) : items.length === 0 ? (
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
-            color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
+            color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
             No order items defined yet.{' '}
             {role === 'admin' && <a href="/admin/weekly-orders/template" style={{ color: 'var(--teal)' }}>Set up the template →</a>}
@@ -243,7 +243,7 @@ export default function SubmitOrderPage() {
             {/* Branch selector */}
             <div style={{ marginBottom: '2rem' }}>
               <label style={{
-                display: 'block', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)',
+                display: 'block', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)',
                 letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.4rem',
                 fontFamily: 'var(--font-inter)',
               }}>Branch</label>
@@ -264,10 +264,10 @@ export default function SubmitOrderPage() {
               const alerts = supplies.filter(s => supplyStatus(s.quantity[branchKey] ?? 0, s.threshold) !== 'ok')
               const ok     = supplies.filter(s => supplyStatus(s.quantity[branchKey] ?? 0, s.threshold) === 'ok')
               return (
-                <div style={{ marginBottom: '2rem', border: `1px solid ${alerts.length > 0 ? 'rgba(228,51,41,0.25)' : 'rgba(0,160,152,0.18)'}`, borderRadius: '6px', overflow: 'hidden' }}>
+                <div style={{ marginBottom: '2rem', border: `1px solid ${alerts.length > 0 ? 'rgba(var(--red-rgb),0.25)' : 'rgba(var(--teal-rgb),0.18)'}`, borderRadius: '6px', overflow: 'hidden' }}>
                   <button type="button" onClick={() => setSuppliesOpen(o => !o)} style={{
                     width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '0.65rem 1rem', background: alerts.length > 0 ? 'rgba(228,51,41,0.05)' : 'rgba(0,160,152,0.05)',
+                    padding: '0.65rem 1rem', background: alerts.length > 0 ? 'rgba(var(--red-rgb),0.05)' : 'rgba(var(--teal-rgb),0.05)',
                     border: 'none', color: 'var(--offwhite)', cursor: 'pointer', fontFamily: 'var(--font-inter)',
                     fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase',
                   }}>
@@ -289,29 +289,29 @@ export default function SubmitOrderPage() {
                         const st  = supplyStatus(qty, s.threshold)
                         return (
                           <div key={s.id} style={{
-                            background: st === 'out' ? 'rgba(228,51,41,0.1)' : 'rgba(201,150,44,0.09)',
-                            border: `1px solid ${st === 'out' ? 'rgba(228,51,41,0.3)' : 'rgba(201,150,44,0.28)'}`,
+                            background: st === 'out' ? 'rgba(var(--red-rgb),0.1)' : 'rgba(var(--brand-secondary-rgb),0.09)',
+                            border: `1px solid ${st === 'out' ? 'rgba(var(--red-rgb),0.3)' : 'rgba(var(--brand-secondary-rgb),0.28)'}`,
                             borderRadius: '4px', padding: '0.3rem 0.65rem',
                             display: 'flex', alignItems: 'center', gap: '0.45rem',
                           }}>
                             <span style={{ fontSize: '0.75rem', color: 'var(--offwhite)' }}>{s.name}</span>
                             <span style={{ fontSize: '0.88rem', fontWeight: 700, color: st === 'out' ? 'var(--red)' : 'var(--brand-secondary)' }}>{qty}</span>
-                            <span style={{ fontSize: '0.6rem', color: 'rgba(245,242,236,0.3)' }}>{s.unit} · min {s.threshold}</span>
+                            <span style={{ fontSize: '0.6rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>{s.unit} · min {s.threshold}</span>
                           </div>
                         )
                       })}
                       {ok.map(s => (
                         <div key={s.id} style={{
-                          background: 'rgba(0,160,152,0.06)', border: '1px solid rgba(0,160,152,0.16)',
+                          background: 'rgba(var(--teal-rgb),0.06)', border: '1px solid rgba(var(--teal-rgb),0.16)',
                           borderRadius: '4px', padding: '0.3rem 0.65rem',
                           display: 'flex', alignItems: 'center', gap: '0.4rem',
                         }}>
-                          <span style={{ fontSize: '0.75rem', color: 'rgba(245,242,236,0.55)' }}>{s.name}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.55)' }}>{s.name}</span>
                           <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--teal)' }}>{s.quantity[branchKey] ?? 0}</span>
-                          <span style={{ fontSize: '0.6rem', color: 'rgba(245,242,236,0.25)' }}>{s.unit}</span>
+                          <span style={{ fontSize: '0.6rem', color: 'rgba(var(--offwhite-rgb),0.25)' }}>{s.unit}</span>
                         </div>
                       ))}
-                      <a href="/admin/supplies" style={{ marginLeft: 'auto', alignSelf: 'center', fontSize: '0.62rem', color: 'rgba(245,242,236,0.25)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                      <a href="/admin/supplies" style={{ marginLeft: 'auto', alignSelf: 'center', fontSize: '0.62rem', color: 'rgba(var(--offwhite-rgb),0.25)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
                         Update supplies →
                       </a>
                     </div>
@@ -323,7 +323,7 @@ export default function SubmitOrderPage() {
             {/* Department selector */}
             <div style={{ marginBottom: '2.5rem' }}>
               <label style={{
-                display: 'block', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)',
+                display: 'block', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)',
                 letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.6rem',
                 fontFamily: 'var(--font-inter)',
               }}>Department</label>
@@ -336,7 +336,7 @@ export default function SubmitOrderPage() {
                     style={{
                       backgroundColor: dept === d ? `${DEPT_COLOR[d]}20` : 'transparent',
                       border: `1px solid ${dept === d ? DEPT_COLOR[d] : 'rgba(255,255,255,0.12)'}`,
-                      color: dept === d ? DEPT_COLOR[d] : 'rgba(245,242,236,0.5)',
+                      color: dept === d ? DEPT_COLOR[d] : 'rgba(var(--offwhite-rgb),0.5)',
                       padding: '0.55rem 1.2rem', borderRadius: '2px', fontSize: '0.78rem',
                       letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer',
                       fontFamily: 'var(--font-inter)', fontWeight: dept === d ? 600 : 400,
@@ -358,7 +358,7 @@ export default function SubmitOrderPage() {
             {dept ? (
               <>
                 {provGroups.length === 0 ? (
-                  <p style={{ color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem', marginBottom: '2rem' }}>
+                  <p style={{ color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem', marginBottom: '2rem' }}>
                     No items in the {dept} template yet.
                   </p>
                 ) : (
@@ -387,7 +387,7 @@ export default function SubmitOrderPage() {
                           <div key={providerId ?? '__none__'}>
                             <p style={{
                               fontFamily: 'var(--font-inter)', fontSize: '0.78rem',
-                              color: provider ? 'rgba(245,242,236,0.55)' : 'rgba(245,242,236,0.25)',
+                              color: provider ? 'rgba(var(--offwhite-rgb),0.55)' : 'rgba(var(--offwhite-rgb),0.25)',
                               fontWeight: 600, marginBottom: '0.5rem',
                               letterSpacing: '0.04em',
                             }}>
@@ -409,7 +409,7 @@ export default function SubmitOrderPage() {
                                       background: '#1a1a1a',
                                       fontFamily: 'var(--font-inter)', fontSize: '0.7rem',
                                       letterSpacing: '0.1em', textTransform: 'uppercase',
-                                      color: category ? DEPT_COLOR[dept] : 'rgba(245,242,236,0.25)',
+                                      color: category ? DEPT_COLOR[dept] : 'rgba(var(--offwhite-rgb),0.25)',
                                       fontWeight: 600, display: 'flex', justifyContent: 'space-between',
                                       alignItems: 'center',
                                     }}>
@@ -424,7 +424,7 @@ export default function SubmitOrderPage() {
                                     const si = supplyMap.get(item.name.toLowerCase().trim())
                                     const st = si ? supplyStatus(si.qty, si.threshold) : null
                                     const stColor = st === 'ok' ? 'var(--teal)' : st === 'low' ? 'var(--brand-secondary)' : st === 'out' ? 'var(--red)' : null
-                                    const stBg    = st === 'ok' ? 'rgba(0,160,152,0.12)' : st === 'low' ? 'rgba(201,150,44,0.14)' : st === 'out' ? 'rgba(228,51,41,0.14)' : null
+                                    const stBg    = st === 'ok' ? 'rgba(var(--teal-rgb),0.12)' : st === 'low' ? 'rgba(var(--brand-secondary-rgb),0.14)' : st === 'out' ? 'rgba(var(--red-rgb),0.14)' : null
                                     return isMobile ? (
                                       // Mobile: input on top, name below
                                       <div key={item.id} style={{
@@ -439,7 +439,7 @@ export default function SubmitOrderPage() {
                                             placeholder="0"
                                             style={{ ...inp, width: '90px', textAlign: 'center', fontSize: '1rem' }}
                                           />
-                                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)' }}>
+                                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                                             {packLabel(item.unit, item.packSize, item.packUnit)}
                                           </span>
                                           {si && stColor && (
@@ -468,7 +468,7 @@ export default function SubmitOrderPage() {
                                           {item.nameAr && (
                                             <span dir="rtl" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--brand-secondary)' }}>{item.nameAr}</span>
                                           )}
-                                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.3)' }}>
+                                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
                                             ({packLabel(item.unit, item.packSize, item.packUnit)})
                                           </span>
                                           {si && stColor && (
@@ -485,7 +485,7 @@ export default function SubmitOrderPage() {
                                             placeholder="0"
                                             style={{ ...inp, width: '90px', textAlign: 'right' }}
                                           />
-                                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.35)', minWidth: '36px' }}>
+                                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.35)', minWidth: '36px' }}>
                                             {packLabel(item.unit, item.packSize, item.packUnit)}
                                           </span>
                                         </div>
@@ -505,7 +505,7 @@ export default function SubmitOrderPage() {
                 {/* Notes */}
                 <div style={{ marginBottom: '2rem' }}>
                   <label style={{
-                    display: 'block', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)',
+                    display: 'block', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)',
                     letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.4rem',
                     fontFamily: 'var(--font-inter)',
                   }}>Notes (optional)</label>
@@ -532,7 +532,7 @@ export default function SubmitOrderPage() {
                 </button>
               </>
             ) : (
-              <p style={{ color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
+              <p style={{ color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
                 Select a department above to see the order form.
               </p>
             )}

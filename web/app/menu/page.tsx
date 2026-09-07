@@ -42,9 +42,9 @@ const sectionColors: Record<Section, string> = {
 }
 
 const sectionBg: Record<Section, string> = {
-  Food:     'rgba(0,160,152,0.06)',
-  Beverage: 'rgba(106,106,183,0.06)',
-  Sweets:   'rgba(228,51,41,0.06)',
+  Food:     'rgba(var(--teal-rgb),0.06)',
+  Beverage: 'rgba(var(--purple-rgb),0.06)',
+  Sweets:   'rgba(var(--red-rgb),0.06)',
 }
 
 function useIsMobile(breakpoint = 768) {
@@ -196,7 +196,7 @@ export default function MenuPage() {
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: '0.4rem',
-                  background: categoriesTabHovered ? 'rgba(0,160,152,0.85)' : 'var(--teal)',
+                  background: categoriesTabHovered ? 'rgba(var(--teal-rgb),0.85)' : 'var(--teal)',
                   border: 'none',
                   color: '#fff',
                   padding: '1rem 0.6rem',
@@ -302,7 +302,7 @@ export default function MenuPage() {
                           <p style={{
                             fontFamily: 'var(--font-inter)',
                             fontSize: '0.78rem',
-                            color: 'rgba(245,242,236,0.2)',
+                            color: 'rgba(var(--offwhite-rgb),0.2)',
                             padding: '0.5rem 1.5rem 0.5rem 2rem',
                           }}>No categories yet</p>
                         ) : sectionCats.map(cat => (
@@ -325,7 +325,7 @@ export default function MenuPage() {
                             onMouseLeave={e => {
                               if (activeCategory !== cat.id) {
                                 const el = e.currentTarget as HTMLButtonElement
-                                el.style.color = 'rgba(245,242,236,0.45)'
+                                el.style.color = 'rgba(var(--offwhite-rgb),0.45)'
                                 el.style.borderLeftColor = 'transparent'
                                 const shine = el.querySelector('.shine') as HTMLElement
                                 if (shine) shine.style.left = '-60%'
@@ -344,7 +344,7 @@ export default function MenuPage() {
                                 : 'transparent',
                               border: 'none',
                               borderLeft: `2px solid ${activeCategory === cat.id ? sectionColors[s] : 'transparent'}`,
-                              color: activeCategory === cat.id ? 'var(--offwhite)' : 'rgba(245,242,236,0.45)',
+                              color: activeCategory === cat.id ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.45)',
                               padding: '0.6rem 1rem 0.6rem 2rem',
                               fontSize: '0.82rem',
                               cursor: 'pointer',
@@ -395,7 +395,7 @@ export default function MenuPage() {
             {/* RIGHT — All Items */}
             <div style={{ padding: isMobile ? '1.5rem' : '4rem' }}>
               {categories.length === 0 ? (
-                <p style={{ color: 'rgba(245,242,236,0.2)', fontFamily: 'var(--font-inter)' }}>
+                <p style={{ color: 'rgba(var(--offwhite-rgb),0.2)', fontFamily: 'var(--font-inter)' }}>
                   No categories yet.
                 </p>
               ) : (
@@ -522,7 +522,7 @@ export default function MenuPage() {
                                     <p style={{
                                       fontFamily: 'var(--font-inter)',
                                       fontSize: '0.78rem',
-                                      color: 'rgba(245,242,236,0.4)',
+                                      color: 'rgba(var(--offwhite-rgb),0.4)',
                                       lineHeight: 1.6,
                                     }}>{item.description}</p>
                                   </div>

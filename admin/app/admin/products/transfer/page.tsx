@@ -27,7 +27,7 @@ const labelStyle: React.CSSProperties = {
   fontSize: '0.68rem',
   letterSpacing: '0.2em',
   textTransform: 'uppercase',
-  color: 'rgba(245,242,236,0.35)',
+  color: 'rgba(var(--offwhite-rgb),0.35)',
   fontFamily: 'var(--font-inter)',
   marginBottom: '0.5rem',
 }
@@ -163,7 +163,7 @@ export default function TransferStockPage() {
       <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', color: 'var(--offwhite)', marginBottom: '0.4rem' }}>
         Transfer Stock
       </h1>
-      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.4)', marginBottom: '2.5rem' }}>
+      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginBottom: '2.5rem' }}>
         Move copies of one or more products between branches in a single transfer.
       </p>
 
@@ -176,13 +176,13 @@ export default function TransferStockPage() {
             {lockedFrom ? (
               <div style={{
                 ...selectStyle,
-                color: 'rgba(245,242,236,0.5)',
+                color: 'rgba(var(--offwhite-rgb),0.5)',
                 border: '1px solid rgba(255,255,255,0.06)',
                 backgroundColor: '#141414',
                 display: 'flex', alignItems: 'center',
               }}>
                 {lockedFrom}
-                <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', color: 'rgba(245,242,236,0.25)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.25)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                   (your branch)
                 </span>
               </div>
@@ -194,7 +194,7 @@ export default function TransferStockPage() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'center' : undefined, paddingBottom: isMobile ? 0 : '0.75rem' }}>
-            <FontAwesomeIcon icon={faArrowRight} style={{ color: 'rgba(245,242,236,0.2)', width: '16px', transform: isMobile ? 'rotate(90deg)' : undefined }} />
+            <FontAwesomeIcon icon={faArrowRight} style={{ color: 'rgba(var(--offwhite-rgb),0.2)', width: '16px', transform: isMobile ? 'rotate(90deg)' : undefined }} />
           </div>
 
           <div>
@@ -215,7 +215,7 @@ export default function TransferStockPage() {
           <div style={{ position: 'relative' }}>
             <FontAwesomeIcon
               icon={faSearch}
-              style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(245,242,236,0.3)', width: '13px', pointerEvents: 'none' }}
+              style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(var(--offwhite-rgb),0.3)', width: '13px', pointerEvents: 'none' }}
             />
             <input
               ref={searchRef}
@@ -246,9 +246,9 @@ export default function TransferStockPage() {
                 maxHeight: '220px', overflowY: 'auto',
               }}>
                 {loadingGames ? (
-                  <p style={{ padding: '0.8rem 1rem', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)' }}>Loading…</p>
+                  <p style={{ padding: '0.8rem 1rem', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>Loading…</p>
                 ) : filteredGames.length === 0 ? (
-                  <p style={{ padding: '0.8rem 1rem', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)' }}>
+                  <p style={{ padding: '0.8rem 1rem', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
                     {search.trim() ? 'No products found.' : 'All products already added.'}
                   </p>
                 ) : filteredGames.slice(0, 12).map(g => {
@@ -262,7 +262,7 @@ export default function TransferStockPage() {
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                         width: '100%', textAlign: 'left',
                         background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.04)',
-                        color: avail > 0 ? 'var(--offwhite)' : 'rgba(245,242,236,0.3)',
+                        color: avail > 0 ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.3)',
                         padding: '0.65rem 1rem', fontSize: '0.82rem',
                         fontFamily: 'var(--font-inter)', cursor: avail > 0 ? 'pointer' : 'default',
                       }}
@@ -270,7 +270,7 @@ export default function TransferStockPage() {
                       onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'}
                     >
                       <span>{g.name}</span>
-                      <span style={{ fontSize: '0.72rem', color: avail > 0 ? 'rgba(245,242,236,0.35)' : 'rgba(245,242,236,0.2)', marginLeft: '1rem', flexShrink: 0 }}>
+                      <span style={{ fontSize: '0.72rem', color: avail > 0 ? 'rgba(var(--offwhite-rgb),0.35)' : 'rgba(var(--offwhite-rgb),0.2)', marginLeft: '1rem', flexShrink: 0 }}>
                         {avail} at {fromBranch}
                       </span>
                     </button>
@@ -294,14 +294,14 @@ export default function TransferStockPage() {
                   alignItems: 'center',
                   padding: '0.8rem 1rem',
                   backgroundColor: 'rgba(255,255,255,0.02)',
-                  border: `1px solid ${invalid ? 'rgba(228,51,41,0.25)' : 'rgba(255,255,255,0.06)'}`,
+                  border: `1px solid ${invalid ? 'rgba(var(--red-rgb),0.25)' : 'rgba(255,255,255,0.06)'}`,
                   borderRadius: '2px',
                 }}>
                   <div>
                     <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem', color: 'var(--offwhite)', marginBottom: '0.15rem' }}>
                       {item.product.name}
                     </p>
-                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.3)' }}>
+                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
                       {available} available at {fromBranch}
                       {invalid && item.qty > available ? ` — max ${available}` : ''}
                     </p>
@@ -315,7 +315,7 @@ export default function TransferStockPage() {
                     style={{
                       width: '72px',
                       backgroundColor: '#1a1a1a',
-                      border: `1px solid ${invalid ? 'rgba(228,51,41,0.4)' : 'rgba(255,255,255,0.12)'}`,
+                      border: `1px solid ${invalid ? 'rgba(var(--red-rgb),0.4)' : 'rgba(255,255,255,0.12)'}`,
                       color: 'var(--offwhite)',
                       padding: '0.5rem 0.6rem',
                       borderRadius: '2px',
@@ -330,7 +330,7 @@ export default function TransferStockPage() {
                     onClick={() => removeItem(item.product.id)}
                     style={{
                       background: 'transparent', border: 'none',
-                      color: 'rgba(245,242,236,0.3)', cursor: 'pointer',
+                      color: 'rgba(var(--offwhite-rgb),0.3)', cursor: 'pointer',
                       padding: '0.4rem', lineHeight: 1,
                     }}
                   >
@@ -346,10 +346,10 @@ export default function TransferStockPage() {
         {result && (
           <div style={{
             padding: '0.85rem 1rem', borderRadius: '2px',
-            backgroundColor: result.ok ? 'rgba(0,160,152,0.1)' : 'rgba(228,51,41,0.1)',
-            border: `1px solid ${result.ok ? 'rgba(0,160,152,0.3)' : 'rgba(228,51,41,0.3)'}`,
+            backgroundColor: result.ok ? 'rgba(var(--teal-rgb),0.1)' : 'rgba(var(--red-rgb),0.1)',
+            border: `1px solid ${result.ok ? 'rgba(var(--teal-rgb),0.3)' : 'rgba(var(--red-rgb),0.3)'}`,
             fontFamily: 'var(--font-inter)', fontSize: '0.82rem',
-            color: result.ok ? 'var(--teal)' : 'rgba(228,51,41,0.9)',
+            color: result.ok ? 'var(--teal)' : 'rgba(var(--red-rgb),0.9)',
           }}>
             {result.msg}
           </div>
@@ -360,7 +360,7 @@ export default function TransferStockPage() {
           disabled={!canSubmit || submitting}
           style={{
             alignSelf: 'flex-start',
-            backgroundColor: !canSubmit || submitting ? 'rgba(0,160,152,0.3)' : 'var(--teal)',
+            backgroundColor: !canSubmit || submitting ? 'rgba(var(--teal-rgb),0.3)' : 'var(--teal)',
             color: '#fff', border: 'none',
             padding: '0.8rem 2rem', borderRadius: '2px',
             fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase',

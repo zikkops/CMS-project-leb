@@ -110,27 +110,27 @@ export default function WholesaleAccountsPage() {
   }
   const lbl: React.CSSProperties = {
     display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase',
-    color: 'rgba(245,242,236,0.35)', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)',
+    color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)',
   }
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)' }}>
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: isMobile ? '2rem 1rem' : '3rem 2rem' }}>
 
-        <a href="/admin" style={{ fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', textDecoration: 'none', display: 'block', marginBottom: '0.5rem' }}>
+        <a href="/admin" style={{ fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none', display: 'block', marginBottom: '0.5rem' }}>
           ← Dashboard
         </a>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
           <div>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '2rem', marginBottom: '0.25rem' }}>Wholesale Accounts</h1>
-            <p style={{ fontSize: '0.82rem', color: 'rgba(245,242,236,0.35)' }}>
+            <p style={{ fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
               Shops that buy from us at trade prices. Not the suppliers in Weekly Orders.
             </p>
           </div>
           <div style={{ display: 'flex', gap: '0.6rem' }}>
             <a href="/admin/wholesale/orders" style={{
-              background: 'transparent', color: '#9B9BD6', border: '1px solid rgba(106,106,183,0.4)',
+              background: 'transparent', color: '#9B9BD6', border: '1px solid rgba(var(--purple-rgb),0.4)',
               borderRadius: '4px', padding: '0.65rem 1.2rem', fontSize: '0.78rem',
               letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'none',
             }}>Orders</a>
@@ -171,14 +171,14 @@ export default function WholesaleAccountsPage() {
             <div>
               <label style={lbl}>Password *</label>
               <input style={inp} type="password" required minLength={6} autoComplete="new-password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
-              <p style={{ fontSize: '0.65rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.25rem' }}>
+              <p style={{ fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.25rem' }}>
                 At least 6 characters — send it to the shop yourself; there&apos;s no invite email.
               </p>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end' }}>
               <button type="submit" disabled={saving} style={{
                 background: saving ? 'rgba(255,255,255,0.08)' : 'var(--teal)',
-                color: saving ? 'rgba(245,242,236,0.3)' : '#000',
+                color: saving ? 'rgba(var(--offwhite-rgb),0.3)' : '#000',
                 border: 'none', borderRadius: '4px', padding: '0.7rem 1.5rem',
                 fontSize: '0.8rem', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', width: '100%',
               }}>{saving ? 'Creating…' : 'Create Account'}</button>
@@ -187,9 +187,9 @@ export default function WholesaleAccountsPage() {
         )}
 
         {loading ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)' }}>Loading…</p>
         ) : accounts.length === 0 ? (
-          <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(245,242,236,0.2)', fontSize: '0.88rem' }}>
+          <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.2)', fontSize: '0.88rem' }}>
             No wholesale accounts yet.
           </div>
         ) : (
@@ -197,7 +197,7 @@ export default function WholesaleAccountsPage() {
             {accounts.map(a => (
               <div key={a.uid} style={{
                 background: 'rgba(255,255,255,0.02)',
-                border: `1px solid ${a.active ? 'rgba(255,255,255,0.07)' : 'rgba(228,51,41,0.25)'}`,
+                border: `1px solid ${a.active ? 'rgba(255,255,255,0.07)' : 'rgba(var(--red-rgb),0.25)'}`,
                 borderRadius: '6px', padding: '1rem 1.2rem',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 gap: '1rem', flexWrap: 'wrap', opacity: a.active ? 1 : 0.6,
@@ -207,7 +207,7 @@ export default function WholesaleAccountsPage() {
                     {a.shopName}
                     {!a.active && <span style={{ marginLeft: '0.6rem', fontFamily: 'var(--font-inter)', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red)' }}>Deactivated</span>}
                   </p>
-                  <p style={{ fontSize: '0.75rem', color: 'rgba(245,242,236,0.35)', marginTop: '0.2rem' }}>
+                  <p style={{ fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.35)', marginTop: '0.2rem' }}>
                     {a.email}{a.contactName && ` · ${a.contactName}`}{a.phone && ` · ${a.phone}`}
                   </p>
                 </div>
@@ -215,8 +215,8 @@ export default function WholesaleAccountsPage() {
                   onClick={() => toggleActive(a)}
                   disabled={busyUid === a.uid}
                   style={{
-                    background: a.active ? 'rgba(228,51,41,0.08)' : 'rgba(0,160,152,0.1)',
-                    border: `1px solid ${a.active ? 'rgba(228,51,41,0.3)' : 'rgba(0,160,152,0.35)'}`,
+                    background: a.active ? 'rgba(var(--red-rgb),0.08)' : 'rgba(var(--teal-rgb),0.1)',
+                    border: `1px solid ${a.active ? 'rgba(var(--red-rgb),0.3)' : 'rgba(var(--teal-rgb),0.35)'}`,
                     color: a.active ? 'var(--red)' : 'var(--teal)',
                     borderRadius: '4px', padding: '0.5rem 1rem', fontSize: '0.72rem',
                     letterSpacing: '0.06em', textTransform: 'uppercase',
@@ -228,7 +228,7 @@ export default function WholesaleAccountsPage() {
           </div>
         )}
 
-        <p style={{ marginTop: '2rem', fontSize: '0.72rem', color: 'rgba(245,242,236,0.25)', lineHeight: 1.8 }}>
+        <p style={{ marginTop: '2rem', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.25)', lineHeight: 1.8 }}>
           Deactivating drops the account&apos;s wholesale claim and revokes its sessions, so trade
           pricing closes immediately rather than lingering on an already-issued token. The login
           itself is kept, so reactivating restores access without a new password.

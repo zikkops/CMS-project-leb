@@ -25,7 +25,7 @@ function FooterLink({ label, href }: { label: string; href: string }) {
       onMouseLeave={() => setHovered(false)}
       style={{
         fontSize: '0.82rem',
-        color: hovered ? 'var(--teal)' : 'rgba(245,242,236,0.5)',
+        color: hovered ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.5)',
         textDecoration: 'none',
         fontFamily: 'var(--font-inter)',
         transition: 'color 0.2s ease',
@@ -67,7 +67,7 @@ export default function Footer() {
             />
             <p style={{
               fontSize: '0.82rem',
-              color: 'rgba(245,242,236,0.35)',
+              color: 'rgba(var(--offwhite-rgb),0.35)',
               lineHeight: 1.7,
               maxWidth: isMobile ? '100%' : '240px',
               fontFamily: 'var(--font-inter)',
@@ -82,7 +82,7 @@ export default function Footer() {
               fontSize: '0.68rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.25)',
+              color: 'rgba(var(--offwhite-rgb),0.25)',
               marginBottom: '1.2rem',
               fontFamily: 'var(--font-inter)',
             }}>Explore</p>
@@ -106,7 +106,7 @@ export default function Footer() {
               fontSize: '0.68rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.25)',
+              color: 'rgba(var(--offwhite-rgb),0.25)',
               marginBottom: '1.2rem',
               fontFamily: 'var(--font-inter)',
             }}>Branches</p>
@@ -125,14 +125,14 @@ export default function Footer() {
                     <span style={{
                       display: 'block',
                       fontSize: '0.82rem',
-                      color: 'rgba(245,242,236,0.5)',
+                      color: 'rgba(var(--offwhite-rgb),0.5)',
                       fontFamily: 'var(--font-inter)',
                       marginBottom: '0.15rem',
                     }}>{city}</span>
                     <span style={{
                       display: 'block',
                       fontSize: '0.7rem',
-                      color: 'rgba(245,242,236,0.25)',
+                      color: 'rgba(var(--offwhite-rgb),0.25)',
                       fontFamily: 'var(--font-inter)',
                     }}>{hours}</span>
                   </a>
@@ -144,7 +144,7 @@ export default function Footer() {
                       display: 'inline-block',
                       marginTop: '0.3rem',
                       fontSize: '0.68rem',
-                      color: 'rgba(245,242,236,0.2)',
+                      color: 'rgba(var(--offwhite-rgb),0.2)',
                       fontFamily: 'var(--font-inter)',
                       textDecoration: 'none',
                     }}
@@ -160,7 +160,7 @@ export default function Footer() {
               fontSize: '0.68rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
-              color: 'rgba(245,242,236,0.25)',
+              color: 'rgba(var(--offwhite-rgb),0.25)',
               marginBottom: '1.2rem',
               fontFamily: 'var(--font-inter)',
             }}>Connect</p>
@@ -182,12 +182,12 @@ export default function Footer() {
                       width: '36px',
                       height: '36px',
                       border: `1px solid ${hovered ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
-                      backgroundColor: hovered ? 'rgba(0,160,152,0.12)' : 'transparent',
+                      backgroundColor: hovered ? 'rgba(var(--teal-rgb),0.12)' : 'transparent',
                       borderRadius: '50%',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: hovered ? 'var(--teal)' : 'rgba(245,242,236,0.4)',
+                      color: hovered ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.4)',
                       transform: hovered ? 'translateY(-3px)' : 'none',
                       transition: 'all 0.25s ease',
                     }}>
@@ -212,14 +212,14 @@ export default function Footer() {
         }}>
           <p style={{
             fontSize: isMobile ? '0.7rem' : '0.74rem',
-            color: 'rgba(245,242,236,0.2)',
+            color: 'rgba(var(--offwhite-rgb),0.2)',
             fontFamily: 'var(--font-inter)',
           }}>
             {`© ${new Date().getFullYear()} ${BRAND.name}. All rights reserved.`}
           </p>
           <p style={{
             fontSize: isMobile ? '0.7rem' : '0.74rem',
-            color: 'rgba(245,242,236,0.2)',
+            color: 'rgba(var(--offwhite-rgb),0.2)',
             fontFamily: 'var(--font-inter)',
           }}>
             Developed by Mark Zakkak

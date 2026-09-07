@@ -23,7 +23,7 @@ const selStyle: React.CSSProperties = { ...inp, backgroundColor: '#1a1a1a', curs
 
 const labelStyle: React.CSSProperties = {
   display: 'block', fontSize: '0.68rem', letterSpacing: '0.12em',
-  textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)',
+  textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)',
   marginBottom: '0.4rem', fontFamily: 'var(--font-inter)',
 }
 
@@ -124,13 +124,13 @@ export default function TipsCalculatorPage() {
         <div style={{ marginBottom: '2rem' }}>
           <a href="/admin/end-of-day/history" style={{
             fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)', textDecoration: 'none',
+            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
             display: 'block', marginBottom: '0.5rem', fontFamily: 'var(--font-inter)',
           }}>← EOD History</a>
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', color: 'var(--offwhite)', marginBottom: '0.2rem' }}>
             Tips Calculator
           </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
             Monthly tip distribution by shift — 11% deducted, remainder split by shift points
           </p>
         </div>
@@ -160,7 +160,7 @@ export default function TipsCalculatorPage() {
         </div>
 
         {loading && (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         )}
         {err && (
           <p style={{ color: 'var(--red)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>{err}</p>
@@ -170,7 +170,7 @@ export default function TipsCalculatorPage() {
           <div style={{
             border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
-            color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
+            color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
             No EOD reports for {monthLabel} — {branch}.
           </div>
@@ -178,7 +178,7 @@ export default function TipsCalculatorPage() {
 
         {!loading && branch && !hasTipsData && monthReports.length > 0 && (
           <div style={{
-            background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.2)',
+            background: 'rgba(var(--brand-secondary-rgb),0.08)', border: '1px solid rgba(var(--brand-secondary-rgb),0.2)',
             borderRadius: '4px', padding: '1rem 1.25rem', marginBottom: '2rem',
             fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'var(--brand-secondary)',
           }}>
@@ -222,11 +222,11 @@ function PeriodCard({ period }: { period: PeriodResult }) {
           <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', color: 'var(--brand-secondary)', letterSpacing: '0.1em' }}>
             {period.label}
           </span>
-          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)', marginLeft: '0.75rem' }}>
+          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginLeft: '0.75rem' }}>
             {period.dateRange}
           </span>
         </div>
-        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.3)' }}>
+        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
           {period.reportCount} day{period.reportCount !== 1 ? 's' : ''} of data
         </span>
       </div>
@@ -248,7 +248,7 @@ function PeriodCard({ period }: { period: PeriodResult }) {
       {period.staff.length === 0 && (
         <div style={{
           padding: '2rem', textAlign: 'center',
-          color: 'rgba(245,242,236,0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.82rem',
+          color: 'rgba(var(--offwhite-rgb),0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.82rem',
         }}>
           {!hasData ? 'No tips or attendance recorded for this period.' : 'No attendance recorded for this period.'}
         </div>
@@ -262,7 +262,7 @@ function PeriodCard({ period }: { period: PeriodResult }) {
             padding: '0.55rem 1.25rem',
             fontFamily: 'var(--font-inter)', fontSize: '0.62rem',
             letterSpacing: '0.1em', textTransform: 'uppercase',
-            color: 'rgba(245,242,236,0.3)',
+            color: 'rgba(var(--offwhite-rgb),0.3)',
             borderBottom: '1px solid rgba(255,255,255,0.04)',
           }}>
             <span>Staff member</span>
@@ -283,13 +283,13 @@ function PeriodCard({ period }: { period: PeriodResult }) {
                 <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'var(--offwhite)' }}>
                   {s.name}
                   {isMobile && (
-                    <span style={{ display: 'block', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)', marginTop: '0.15rem' }}>
+                    <span style={{ display: 'block', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginTop: '0.15rem' }}>
                       {s.shiftPoints} pt{s.shiftPoints !== 1 ? 's' : ''}
                     </span>
                   )}
                 </span>
                 {!isMobile && (
-                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.4)', textAlign: 'center' }}>
+                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.4)', textAlign: 'center' }}>
                     {/* Points ÷ 2 floors double shifts; remainder = singles */}
                     {s.shiftPoints} pt{s.shiftPoints !== 1 ? 's' : ''}
                   </span>
@@ -319,7 +319,7 @@ function PeriodCard({ period }: { period: PeriodResult }) {
             borderTop: '1px solid rgba(255,255,255,0.1)',
             background: 'rgba(255,255,255,0.02)',
           }}>
-            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)' }}>
+            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
               Total
             </span>
             {!isMobile && (
@@ -343,7 +343,7 @@ function PeriodCard({ period }: { period: PeriodResult }) {
         borderTop: '1px solid rgba(255,255,255,0.04)',
         background: 'rgba(0,0,0,0.2)',
         fontFamily: 'var(--font-inter)', fontSize: '0.65rem',
-        color: 'rgba(245,242,236,0.2)', letterSpacing: '0.03em',
+        color: 'rgba(var(--offwhite-rgb),0.2)', letterSpacing: '0.03em',
       }}>
         AM shift = 1 pt · PM shift = 1 pt · Double shift = 2 pts · Tips per point = net ÷ total points
       </div>
@@ -354,12 +354,12 @@ function PeriodCard({ period }: { period: PeriodResult }) {
 function SummaryCell({ label, value, highlight, dim }: { label: string; value: string; highlight?: boolean; dim?: boolean }) {
   return (
     <div style={{ padding: '0.9rem 1.25rem' }}>
-      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', marginBottom: '0.3rem' }}>
+      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '0.3rem' }}>
         {label}
       </p>
       <p style={{
         fontFamily: 'var(--font-inter)', fontSize: '1rem', fontWeight: 600,
-        color: dim ? 'rgba(245,242,236,0.2)' : highlight ? 'var(--brand-secondary)' : 'var(--offwhite)',
+        color: dim ? 'rgba(var(--offwhite-rgb),0.2)' : highlight ? 'var(--brand-secondary)' : 'var(--offwhite)',
       }}>
         {value}
       </p>

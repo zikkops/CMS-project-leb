@@ -102,7 +102,7 @@ export default function EventsPreview() {
             onMouseEnter={() => setViewAllHovered(true)}
             onMouseLeave={() => setViewAllHovered(false)}
             style={{
-              backgroundColor: viewAllHovered ? 'rgba(106,106,183,0.12)' : 'transparent',
+              backgroundColor: viewAllHovered ? 'rgba(var(--purple-rgb),0.12)' : 'transparent',
               border: `1px solid ${viewAllHovered ? 'var(--purple)' : 'rgba(255,255,255,0.2)'}`,
               color: viewAllHovered ? 'var(--purple)' : 'var(--offwhite)',
               padding: '0.8rem 2rem',
@@ -132,7 +132,7 @@ export default function EventsPreview() {
             gap: isMobile ? '1.25rem' : '1.5rem',
           }}>
             {[0, 1, 2].map(i => (
-              <div key={i} style={{ border: '1px solid rgba(106,106,183,0.2)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div key={i} style={{ border: '1px solid rgba(var(--purple-rgb),0.2)', borderRadius: '4px', overflow: 'hidden' }}>
                 <Skeleton height="140px" borderRadius="0" />
                 <div style={{ padding: isMobile ? '1.25rem' : '1.5rem' }}>
                   <Skeleton width="40%" height="1.8rem" style={{ marginBottom: '0.8rem' }} />
@@ -144,7 +144,7 @@ export default function EventsPreview() {
             ))}
           </div>
         ) : events.length === 0 ? (
-          <p style={{ color: 'rgba(245,242,236,0.3)', fontFamily: 'var(--font-inter)' }}>
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>
             No upcoming events right now. Check back soon!
           </p>
         ) : (
@@ -172,7 +172,7 @@ export default function EventsPreview() {
                     transition: 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
                   }}>
                   <div style={{
-                    border: `1px solid ${hovered ? 'rgba(106,106,183,0.6)' : 'rgba(106,106,183,0.2)'}`,
+                    border: `1px solid ${hovered ? 'rgba(var(--purple-rgb),0.6)' : 'rgba(var(--purple-rgb),0.2)'}`,
                     borderRadius: '4px',
                     overflow: 'hidden',
                     transition: 'border-color 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -199,7 +199,7 @@ export default function EventsPreview() {
                         <span style={{
                           fontFamily: 'var(--font-cinzel)',
                           fontSize: isMobile ? '1.4rem' : '2rem',
-                          color: 'rgba(106,106,183,0.4)',
+                          color: 'rgba(var(--purple-rgb),0.4)',
                         }}>
                           {d.getDate()}
                         </span>
@@ -225,7 +225,7 @@ export default function EventsPreview() {
                         <p style={{
                           fontFamily: 'var(--font-inter)',
                           fontSize: '0.62rem',
-                          color: 'rgba(245,242,236,0.35)',
+                          color: 'rgba(var(--offwhite-rgb),0.35)',
                           textTransform: 'uppercase',
                           letterSpacing: '0.1em',
                           marginTop: '0.2rem',
@@ -237,7 +237,7 @@ export default function EventsPreview() {
                         fontSize: isMobile ? '0.6rem' : '0.65rem',
                         padding: isMobile ? '0.2rem 0.5rem' : '0.25rem 0.7rem',
                         borderRadius: '2px',
-                        backgroundColor: 'rgba(106,106,183,0.15)',
+                        backgroundColor: 'rgba(var(--purple-rgb),0.15)',
                         color: 'var(--purple)',
                         fontFamily: 'var(--font-inter)',
                         letterSpacing: '0.08em',
@@ -256,7 +256,7 @@ export default function EventsPreview() {
                       display: 'flex',
                       gap: '0.6rem',
                       fontSize: isMobile ? '0.66rem' : '0.72rem',
-                      color: 'rgba(245,242,236,0.4)',
+                      color: 'rgba(var(--offwhite-rgb),0.4)',
                       fontFamily: 'var(--font-inter)',
                       marginBottom: '0.4rem',
                       flexWrap: 'wrap',
@@ -272,7 +272,7 @@ export default function EventsPreview() {
                       marginBottom: '1.2rem',
                       fontSize: '0.72rem',
                       fontFamily: 'var(--font-inter)',
-                      color: 'rgba(245,242,236,0.4)',
+                      color: 'rgba(var(--offwhite-rgb),0.4)',
                     }}>
                       <span>👥 {ev.minPlayers}–{ev.maxPlayers} players</span>
                       <span style={{ color: 'var(--teal)' }}>
@@ -285,7 +285,7 @@ export default function EventsPreview() {
                       width: '100%',
                       textAlign: 'center',
                       background: 'transparent',
-                      border: `1px solid ${hovered ? 'var(--purple)' : 'rgba(106,106,183,0.3)'}`,
+                      border: `1px solid ${hovered ? 'var(--purple)' : 'rgba(var(--purple-rgb),0.3)'}`,
                       color: hovered ? 'var(--purple)' : 'var(--offwhite)',
                       padding: '0.6rem',
                       borderRadius: '2px',
@@ -326,7 +326,7 @@ export default function EventsPreview() {
             onClick={e => e.stopPropagation()}
             style={{
               backgroundColor: '#111',
-              border: '1px solid rgba(106,106,183,0.3)',
+              border: '1px solid rgba(var(--purple-rgb),0.3)',
               borderRadius: '8px',
               width: '100%',
               maxWidth: '1100px',
@@ -361,7 +361,7 @@ export default function EventsPreview() {
                   <span style={{
                     fontFamily: 'var(--font-cinzel)',
                     fontSize: '5rem',
-                    color: 'rgba(106,106,183,0.3)',
+                    color: 'rgba(var(--purple-rgb),0.3)',
                   }}>{new Date(selected.date).getDate()}</span>
                 </div>
               )}
@@ -402,7 +402,7 @@ export default function EventsPreview() {
                   float: 'right',
                   background: 'transparent',
                   border: 'none',
-                  color: closeHovered ? 'var(--offwhite)' : 'rgba(245,242,236,0.4)',
+                  color: closeHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.4)',
                   fontSize: '1.2rem',
                   cursor: 'pointer',
                   marginBottom: '1rem',
@@ -417,7 +417,7 @@ export default function EventsPreview() {
                 fontSize: '0.65rem',
                 padding: '0.25rem 0.8rem',
                 borderRadius: '2px',
-                backgroundColor: 'rgba(106,106,183,0.15)',
+                backgroundColor: 'rgba(var(--purple-rgb),0.15)',
                 color: 'var(--purple)',
                 fontFamily: 'var(--font-inter)',
                 letterSpacing: '0.1em',
@@ -437,7 +437,7 @@ export default function EventsPreview() {
               <p style={{
                 fontFamily: 'var(--font-inter)',
                 fontSize: '0.88rem',
-                color: 'rgba(245,242,236,0.55)',
+                color: 'rgba(var(--offwhite-rgb),0.55)',
                 lineHeight: 1.8,
                 marginBottom: '1.5rem',
               }}>{selected.description}</p>
@@ -472,7 +472,7 @@ export default function EventsPreview() {
                       fontSize: '0.62rem',
                       letterSpacing: '0.15em',
                       textTransform: 'uppercase',
-                      color: 'rgba(245,242,236,0.3)',
+                      color: 'rgba(var(--offwhite-rgb),0.3)',
                       marginBottom: '0.3rem',
                     }}>{label}</p>
                     <p style={{
@@ -496,7 +496,7 @@ export default function EventsPreview() {
                     display: 'block',
                     width: '100%',
                     textAlign: 'center',
-                    backgroundColor: reserveHovered ? 'rgba(106,106,183,0.15)' : 'var(--purple)',
+                    backgroundColor: reserveHovered ? 'rgba(var(--purple-rgb),0.15)' : 'var(--purple)',
                     color: '#fff',
                     border: '1px solid var(--purple)',
                     padding: '0.9rem',
@@ -531,7 +531,7 @@ export default function EventsPreview() {
                       textAlign: 'center',
                       backgroundColor: registerHovered ? 'rgba(255,255,255,0.06)' : 'transparent',
                       border: `1px solid ${registerHovered ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)'}`,
-                      color: registerHovered ? 'var(--offwhite)' : 'rgba(245,242,236,0.7)',
+                      color: registerHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.7)',
                       padding: '0.9rem',
                       borderRadius: '2px',
                       fontSize: '0.78rem',

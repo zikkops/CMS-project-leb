@@ -89,7 +89,7 @@ export default function Branches() {
                 fontSize: '0.7rem',
                 letterSpacing: '0.15em',
                 textTransform: 'uppercase',
-                color: 'rgba(245,242,236,0.3)',
+                color: 'rgba(var(--offwhite-rgb),0.3)',
                 marginBottom: '1.8rem',
                 fontFamily: 'var(--font-inter)',
               }}>{label}</p>
@@ -104,7 +104,7 @@ export default function Branches() {
                     display: 'flex',
                     gap: '0.8rem',
                     fontSize: '0.82rem',
-                    color: 'rgba(245,242,236,0.5)',
+                    color: 'rgba(var(--offwhite-rgb),0.5)',
                     fontFamily: 'var(--font-inter)',
                     alignItems: 'flex-start',
                   }}>
@@ -127,7 +127,7 @@ export default function Branches() {
                     flex: 1,
                     background: 'transparent',
                     border: '1px solid rgba(255,255,255,0.1)',
-                    color: 'rgba(245,242,236,0.6)',
+                    color: 'rgba(var(--offwhite-rgb),0.6)',
                     padding: '0.6rem',
                     borderRadius: '2px',
                     fontSize: '0.72rem',

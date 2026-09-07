@@ -62,8 +62,8 @@ function ProductCard({
       onMouseLeave={() => setHovered(false)}
       style={{
         display: 'flex', flexDirection: 'column',
-        background: qty > 0 ? 'rgba(106,106,183,0.07)' : hovered ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)',
-        border: `1px solid ${qty > 0 ? 'rgba(106,106,183,0.6)' : hovered ? 'rgba(106,106,183,0.4)' : 'rgba(255,255,255,0.07)'}`,
+        background: qty > 0 ? 'rgba(var(--purple-rgb),0.07)' : hovered ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)',
+        border: `1px solid ${qty > 0 ? 'rgba(var(--purple-rgb),0.6)' : hovered ? 'rgba(var(--purple-rgb),0.4)' : 'rgba(255,255,255,0.07)'}`,
         borderRadius: '6px',
         overflow: 'hidden',
         transition: 'all 0.22s ease',
@@ -105,7 +105,7 @@ function ProductCard({
 
           <div style={{
             position: 'absolute', top: '0.6rem', left: '0.6rem',
-            background: inStock ? 'rgba(0,160,152,0.85)' : 'rgba(228,51,41,0.75)',
+            background: inStock ? 'rgba(var(--teal-rgb),0.85)' : 'rgba(var(--red-rgb),0.75)',
             color: '#fff', padding: '0.2rem 0.55rem', borderRadius: '3px',
             fontSize: '0.65rem', fontFamily: 'var(--font-inter)',
             letterSpacing: '0.08em', textTransform: 'uppercase',
@@ -129,24 +129,24 @@ function ProductCard({
         )}
 
         {product.retailPrice > 0 && (
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.28)' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.28)' }}>
             Margin ${(product.retailPrice - product.wholesalePrice).toFixed(2)}
           </p>
         )}
 
         <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '0.4rem' }}>
           {product.players && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
               <FontAwesomeIcon icon={faUsers} style={{ width: '11px' }} />{product.players}
             </span>
           )}
           {product.duration && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
               <FontAwesomeIcon icon={faClock} style={{ width: '11px' }} />{product.duration}
             </span>
           )}
           {product.age && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(245,242,236,0.35)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
               <FontAwesomeIcon icon={faCakeCandles} style={{ width: '11px' }} />{product.age}+
             </span>
           )}
@@ -163,7 +163,7 @@ function ProductCard({
             style={{
               width: '30px', height: '30px', borderRadius: '4px', cursor: qty === 0 ? 'not-allowed' : 'pointer',
               background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
-              color: qty === 0 ? 'rgba(245,242,236,0.2)' : 'var(--offwhite)', fontSize: '1rem', lineHeight: 1,
+              color: qty === 0 ? 'rgba(var(--offwhite-rgb),0.2)' : 'var(--offwhite)', fontSize: '1rem', lineHeight: 1,
             }}
           >−</button>
           <input
@@ -182,7 +182,7 @@ function ProductCard({
             aria-label={`Add one ${product.name}`}
             style={{
               width: '30px', height: '30px', borderRadius: '4px', cursor: 'pointer',
-              background: 'rgba(106,106,183,0.18)', border: '1px solid rgba(106,106,183,0.5)',
+              background: 'rgba(var(--purple-rgb),0.18)', border: '1px solid rgba(var(--purple-rgb),0.5)',
               color: '#9B9BD6', fontSize: '1rem', lineHeight: 1,
             }}
           >+</button>
@@ -339,7 +339,7 @@ export default function WholesalePage() {
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', color: 'var(--offwhite)', marginBottom: '0.8rem' }}>
               Trade access only
             </h1>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(245,242,236,0.4)', lineHeight: 1.7, marginBottom: '2rem' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.4)', lineHeight: 1.7, marginBottom: '2rem' }}>
               Wholesale pricing is available to approved trade accounts. Sign in to see prices and place an order.
             </p>
             <Link href="/wholesale/login" style={{
@@ -366,17 +366,17 @@ export default function WholesalePage() {
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.6rem', color: 'var(--offwhite)', marginBottom: '0.8rem' }}>
               Order received
             </h1>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(245,242,236,0.45)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.45)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
               Thanks — we&apos;ll review it and get back to you to confirm availability and delivery.
               Your reference is <span style={{ color: 'var(--teal)' }}>{placed.id.slice(0, 8).toUpperCase()}</span>.
             </p>
 
             {placed.invoiceUrl ? (
               <div style={{
-                background: 'rgba(0,160,152,0.06)', border: '1px solid rgba(0,160,152,0.28)',
+                background: 'rgba(var(--teal-rgb),0.06)', border: '1px solid rgba(var(--teal-rgb),0.28)',
                 borderRadius: '6px', padding: '1.1rem 1.25rem', marginBottom: '1.75rem',
               }}>
-                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.35)', marginBottom: '0.35rem' }}>
+                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.35rem' }}>
                   Invoice
                 </p>
                 <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.95rem', color: 'var(--offwhite)', marginBottom: '0.9rem' }}>
@@ -399,7 +399,7 @@ export default function WholesalePage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
-                      background: 'transparent', color: 'rgba(245,242,236,0.6)',
+                      background: 'transparent', color: 'rgba(var(--offwhite-rgb),0.6)',
                       border: '1px solid rgba(255,255,255,0.15)', padding: '0.65rem 1.4rem',
                       borderRadius: '3px', textDecoration: 'none', fontFamily: 'var(--font-inter)',
                       fontSize: '0.76rem', letterSpacing: '0.08em', textTransform: 'uppercase',
@@ -408,7 +408,7 @@ export default function WholesalePage() {
                 </div>
               </div>
             ) : (
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.3)', marginBottom: '1.75rem' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '1.75rem' }}>
                 Your invoice will follow by email.
               </p>
             )}
@@ -416,13 +416,13 @@ export default function WholesalePage() {
             <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/wholesale/orders" style={{
               background: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
-              color: 'rgba(245,242,236,0.6)', padding: '0.8rem 1.6rem', borderRadius: '3px',
+              color: 'rgba(var(--offwhite-rgb),0.6)', padding: '0.8rem 1.6rem', borderRadius: '3px',
               fontFamily: 'var(--font-inter)', fontSize: '0.8rem', letterSpacing: '0.1em',
               textTransform: 'uppercase', textDecoration: 'none',
             }}>My Orders</Link>
             <button onClick={() => setPlaced(null)} style={{
               background: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
-              color: 'rgba(245,242,236,0.6)', padding: '0.8rem 2rem', borderRadius: '3px',
+              color: 'rgba(var(--offwhite-rgb),0.6)', padding: '0.8rem 2rem', borderRadius: '3px',
               fontFamily: 'var(--font-inter)', fontSize: '0.8rem', letterSpacing: '0.1em',
               textTransform: 'uppercase', cursor: 'pointer',
             }}>Place another order</button>
@@ -451,19 +451,19 @@ export default function WholesalePage() {
               <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.5rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
                 Wholesale Catalogue
               </h1>
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(245,242,236,0.4)' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                 Signed in as <span style={{ color: 'var(--teal)' }}>{account.shopName || account.email}</span>
               </p>
             </div>
             <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
               <Link href="/wholesale/orders" style={{
                 fontFamily: 'var(--font-inter)', fontSize: '0.75rem', letterSpacing: '0.06em',
-                color: 'rgba(245,242,236,0.5)', textDecoration: 'none',
+                color: 'rgba(var(--offwhite-rgb),0.5)', textDecoration: 'none',
                 border: '1px solid rgba(255,255,255,0.12)', borderRadius: '3px', padding: '0.5rem 1rem',
               }}>My Orders</Link>
               <button onClick={() => signOut(auth)} style={{
                 fontFamily: 'var(--font-inter)', fontSize: '0.75rem', letterSpacing: '0.06em',
-                color: 'rgba(245,242,236,0.35)', background: 'none',
+                color: 'rgba(var(--offwhite-rgb),0.35)', background: 'none',
                 border: '1px solid rgba(255,255,255,0.08)', borderRadius: '3px', padding: '0.5rem 1rem', cursor: 'pointer',
               }}>Sign out</button>
             </div>
@@ -472,14 +472,14 @@ export default function WholesalePage() {
           {/* Filters */}
           <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.75rem', marginBottom: '2rem', alignItems: isMobile ? 'stretch' : 'center' }}>
             <div style={{ position: 'relative', flex: isMobile ? undefined : '0 0 260px' }}>
-              <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', width: '13px', color: 'rgba(245,242,236,0.3)', pointerEvents: 'none' }} />
+              <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', width: '13px', color: 'rgba(var(--offwhite-rgb),0.3)', pointerEvents: 'none' }} />
               <input
                 type="search" placeholder="Search products…" value={search}
                 onChange={e => setSearch(e.target.value)}
                 style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--offwhite)', padding: '0.7rem 1rem 0.7rem 2.4rem', borderRadius: '4px', fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)', boxSizing: 'border-box' }}
               />
               {search && (
-                <button onClick={() => setSearch('')} style={{ position: 'absolute', right: '0.7rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(245,242,236,0.35)', cursor: 'pointer', padding: 0 }}>
+                <button onClick={() => setSearch('')} style={{ position: 'absolute', right: '0.7rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(var(--offwhite-rgb),0.35)', cursor: 'pointer', padding: 0 }}>
                   <FontAwesomeIcon icon={faXmark} style={{ width: '13px' }} />
                 </button>
               )}
@@ -494,13 +494,13 @@ export default function WholesalePage() {
               ))}
             </select>
 
-            <button onClick={() => setStockOnly(s => !s)} style={{ padding: '0.4rem 0.85rem', borderRadius: '20px', border: `1px solid ${stockOnly ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`, fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'var(--font-inter)', backgroundColor: stockOnly ? 'rgba(0,160,152,0.12)' : 'transparent', color: stockOnly ? 'var(--teal)' : 'rgba(245,242,236,0.45)', whiteSpace: 'nowrap' }}>
+            <button onClick={() => setStockOnly(s => !s)} style={{ padding: '0.4rem 0.85rem', borderRadius: '20px', border: `1px solid ${stockOnly ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`, fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'var(--font-inter)', backgroundColor: stockOnly ? 'rgba(var(--teal-rgb),0.12)' : 'transparent', color: stockOnly ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.45)', whiteSpace: 'nowrap' }}>
               In Stock Only
             </button>
           </div>
 
           {!loading && (
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.25)', marginBottom: '1.5rem', letterSpacing: '0.06em' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.25)', marginBottom: '1.5rem', letterSpacing: '0.06em' }}>
               {filtered.length} product{filtered.length !== 1 ? 's' : ''} available at wholesale
             </p>
           )}
@@ -510,7 +510,7 @@ export default function WholesalePage() {
               {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} height="320px" borderRadius="6px" />)}
             </div>
           ) : filtered.length === 0 ? (
-            <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(245,242,236,0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem' }}>
+            <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem' }}>
               {products.length === 0 ? 'No products are currently listed for wholesale.' : 'No products match your filters.'}
             </div>
           ) : (
@@ -537,12 +537,12 @@ export default function WholesalePage() {
       {count > 0 && (
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
-          background: 'rgba(12,12,12,0.97)', borderTop: '1px solid rgba(106,106,183,0.4)',
+          background: 'rgba(12,12,12,0.97)', borderTop: '1px solid rgba(var(--purple-rgb),0.4)',
           padding: isMobile ? '0.9rem 1rem' : '1rem 2rem',
         }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <div>
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                 {cartItems.length} title{cartItems.length !== 1 ? 's' : ''} · {count} unit{count !== 1 ? 's' : ''}
               </p>
               <p style={{ fontFamily: 'var(--font-inter)', fontSize: '1.15rem', fontWeight: 700, color: '#9B9BD6' }}>
@@ -559,14 +559,14 @@ export default function WholesalePage() {
             )}
 
             <button onClick={() => setCart({})} style={{
-              background: 'none', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(245,242,236,0.4)',
+              background: 'none', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(var(--offwhite-rgb),0.4)',
               padding: '0.7rem 1.1rem', borderRadius: '3px', cursor: 'pointer',
               fontFamily: 'var(--font-inter)', fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase',
             }}>Clear</button>
 
             <button onClick={handleSubmit} disabled={submitting} style={{
               background: submitting ? 'rgba(255,255,255,0.08)' : 'var(--purple)',
-              color: submitting ? 'rgba(245,242,236,0.3)' : '#fff',
+              color: submitting ? 'rgba(var(--offwhite-rgb),0.3)' : '#fff',
               border: 'none', padding: '0.75rem 2rem', borderRadius: '3px',
               cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 700,
               fontFamily: 'var(--font-inter)', fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase',
