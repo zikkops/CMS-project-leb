@@ -35,6 +35,7 @@ npx tsc --noEmit -p pos      # or web, or admin — whichever you touched
 npm run build                # all three
 npm run verify:checks        # if you touched money, stock or tickets
 npm run verify:receipt       # if you touched what a customer is handed
+npm run verify:brand         # if you touched a colour, a variable or brand.ts
 npm run verify:delivery-math # if you touched receiving or costing
 npm run audit:writes         # must stay at 0
 ```

@@ -74,6 +74,7 @@ There is **no `adminUsers` collection** — staff and customers share `users/{ui
 | `npm run audit:branding` | Fails while any brand value is inlined outside `brand.ts` |
 | `npm run audit:writes` | Fails if a privileged write reappears in the browser (baseline 0) |
 | `npm run verify:checks` | Checks the POS check, void and money rules |
+| `npm run verify:brand` | Checks every var() the source uses is one brandCss.ts defines |
 | `npm run verify:receipt` | Checks the receipt document and its fixed-width layout |
 | `npm run verify:features` | Checks the feature-flag registry |
 | `npm run verify:hosts` | Checks the hostname routing |
