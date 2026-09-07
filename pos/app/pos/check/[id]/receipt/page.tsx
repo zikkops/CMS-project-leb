@@ -146,7 +146,7 @@ export default function ReceiptPage() {
 
         {check && blocked && (
           <p style={{
-            color: '#C9962C', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
+            color: 'var(--brand-secondary)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
             lineHeight: 1.6, padding: '1rem 0',
           }}>{blocked}</p>
         )}

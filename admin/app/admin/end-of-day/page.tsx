@@ -20,7 +20,7 @@ import { ROLE_LABELS } from '@big-cms/shared/adminAuth'
 const inp: React.CSSProperties = {
   backgroundColor: 'rgba(255,255,255,0.04)',
   border: '1px solid rgba(255,255,255,0.1)',
-  color: '#F5F2EC',
+  color: 'var(--offwhite)',
   padding: '0.6rem 0.8rem',
   borderRadius: '2px',
   fontSize: '0.88rem',
@@ -242,8 +242,8 @@ function EndOfDayInner() {
 
   if (checking) return null
 
-  const diffLbpColor  = totals.differenceLbp === 0 ? 'var(--teal)' : totals.differenceLbp > 0 ? 'var(--red)' : '#C9962C'
-  const diffUsdColor  = totals.differenceUsd  === 0 ? 'var(--teal)' : totals.differenceUsd  > 0 ? 'var(--red)' : '#C9962C'
+  const diffLbpColor  = totals.differenceLbp === 0 ? 'var(--teal)' : totals.differenceLbp > 0 ? 'var(--red)' : 'var(--brand-secondary)'
+  const diffUsdColor  = totals.differenceUsd  === 0 ? 'var(--teal)' : totals.differenceUsd  > 0 ? 'var(--red)' : 'var(--brand-secondary)'
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--black)', padding: isMobile ? '1.25rem 1rem 3rem' : '2rem 1.5rem 4rem' }}>
@@ -367,7 +367,7 @@ function EndOfDayInner() {
 
                 {/* USD */}
                 <div>
-                  <p style={{ ...labelStyle, color: '#C9962C', marginBottom: '0.75rem' }}>US Dollar (USD)</p>
+                  <p style={{ ...labelStyle, color: 'var(--brand-secondary)', marginBottom: '0.75rem' }}>US Dollar (USD)</p>
                   <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '4px', overflow: 'hidden' }}>
                     {USD_DENOMS.map((denom, i) => (
                       <div key={denom} style={{
@@ -397,7 +397,7 @@ function EndOfDayInner() {
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     }}>
                       <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)', letterSpacing: '0.05em' }}>TOTAL</span>
-                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: '#C9962C', fontWeight: 600 }}>
+                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'var(--brand-secondary)', fontWeight: 600 }}>
                         ${totals.totalCashUsd.toLocaleString()}
                       </span>
                     </div>
@@ -493,7 +493,7 @@ function EndOfDayInner() {
 
             {/* ── Tips ────────────────────────────────────────────────────── */}
             <div style={{ marginBottom: '2.5rem' }}>
-              <SectionTitle label="TIPS" color="#C9962C" />
+              <SectionTitle label="TIPS" color="var(--brand-secondary)" />
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1.5rem', flexWrap: 'wrap' }}>
                 <div style={{ flex: '0 0 220px' }}>
                   <label style={labelStyle}>Tips collected (USD)</label>
@@ -513,7 +513,7 @@ function EndOfDayInner() {
                     <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.35)', marginBottom: '0.2rem', letterSpacing: '0.05em' }}>
                       After 11% deduction
                     </p>
-                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '1rem', color: '#C9962C', fontWeight: 600 }}>
+                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '1rem', color: 'var(--brand-secondary)', fontWeight: 600 }}>
                       {formatUsd(Number(tipsUsd) * 0.89)}
                     </p>
                   </div>
@@ -591,7 +591,7 @@ function EndOfDayInner() {
                           {entry.isGuest && (
                             <span style={{
                               fontSize: '0.6rem', letterSpacing: '0.08em',
-                              background: 'rgba(201,150,44,0.15)', color: '#C9962C',
+                              background: 'rgba(201,150,44,0.15)', color: 'var(--brand-secondary)',
                               border: '1px solid rgba(201,150,44,0.3)',
                               borderRadius: '3px', padding: '0.15rem 0.4rem',
                               fontFamily: 'var(--font-inter)', textTransform: 'uppercase',
@@ -675,7 +675,7 @@ function EndOfDayInner() {
                 <a
                   href={`/admin/end-of-day/summary?branch=${encodeURIComponent(branch)}&date=${date}`}
                   style={{
-                    fontSize: '0.78rem', color: '#C9962C',
+                    fontSize: '0.78rem', color: 'var(--brand-secondary)',
                     textDecoration: 'none', fontFamily: 'var(--font-inter)',
                   }}
                 >View summary →</a>
@@ -803,7 +803,7 @@ function StaffSearchCombobox({
                 onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.07)')}
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
-                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: '#F5F2EC' }}>
+                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>
                   {s.email}
                 </span>
                 <span style={{
@@ -916,7 +916,7 @@ function LineItemList({
   const inp2: React.CSSProperties = {
     backgroundColor: 'rgba(255,255,255,0.04)',
     border: '1px solid rgba(255,255,255,0.1)',
-    color: '#F5F2EC',
+    color: 'var(--offwhite)',
     padding: '0.55rem 0.75rem',
     borderRadius: '2px',
     fontSize: '0.85rem',

@@ -37,7 +37,7 @@ import {
 const inp: React.CSSProperties = {
   backgroundColor: 'rgba(255,255,255,0.04)',
   border: '1px solid rgba(255,255,255,0.1)',
-  color: '#F5F2EC',
+  color: 'var(--offwhite)',
   padding: '0.6rem 0.8rem',
   borderRadius: '2px',
   fontSize: '0.88rem',
@@ -101,7 +101,7 @@ function Stat({ label, value, sub, color }: {
 }
 
 function Note({ tone, children }: { tone: 'warn' | 'info'; children: React.ReactNode }) {
-  const color = tone === 'warn' ? '#C9962C' : 'rgba(245,242,236,0.35)'
+  const color = tone === 'warn' ? 'var(--brand-secondary)' : 'rgba(245,242,236,0.35)'
   return (
     <p style={{
       fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color,
@@ -293,7 +293,7 @@ export default function FoodCostReportPage() {
               color={
                 stats.fcp === null ? 'rgba(245,242,236,0.3)'
                   : stats.fcp <= 0.35 ? 'var(--teal)'
-                  : stats.fcp <= 0.45 ? '#C9962C'
+                  : stats.fcp <= 0.45 ? 'var(--brand-secondary)'
                   : 'var(--red)'
               }
             />

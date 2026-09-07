@@ -215,7 +215,7 @@ export default function AdminGamesPage() {
     width: '100%',
     backgroundColor: '#1a1a1a',
     border: '1px solid rgba(255,255,255,0.1)',
-    color: '#F5F2EC',
+    color: 'var(--offwhite)',
     padding: '0.75rem 1rem',
     borderRadius: '2px',
     fontSize: '0.85rem',
@@ -395,7 +395,7 @@ export default function AdminGamesPage() {
                     flex: 1,
                     backgroundColor: '#1a1a1a',
                     border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#F5F2EC',
+                    color: 'var(--offwhite)',
                     padding: '0.6rem 0.8rem',
                     borderRadius: '2px',
                     fontSize: '0.82rem',
@@ -456,7 +456,7 @@ export default function AdminGamesPage() {
               onChange={e => setCategoryFilter(e.target.value)}
               style={{
                 ...inputStyle,
-                color: '#F5F2EC',
+                color: 'var(--offwhite)',
                 backgroundColor: '#1a1a1a',
                 flex: isMobile ? 'auto' : '0 0 220px',
                 padding: '1rem 1.2rem',
@@ -742,9 +742,9 @@ export default function AdminGamesPage() {
                 <label style={labelStyle}>Category</label>
                 <select value={form.category}
                   onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                  style={{ ...inputStyle, color: '#F5F2EC', backgroundColor: '#1a1a1a' }}>
+                  style={{ ...inputStyle, color: 'var(--offwhite)', backgroundColor: '#1a1a1a' }}>
                   {displayCategories.map(c => (
-                    <option key={c} value={c} style={{ backgroundColor: '#1a1a1a', color: '#F5F2EC' }}>{c}</option>
+                    <option key={c} value={c} style={{ backgroundColor: '#1a1a1a', color: 'var(--offwhite)' }}>{c}</option>
                   ))}
                 </select>
               </div>

@@ -94,7 +94,7 @@ export default function InvoicesPage() {
 
   const inp: React.CSSProperties = {
     width: '100%', backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)',
-    color: '#F5F2EC', padding: '0.65rem 0.8rem', borderRadius: '2px',
+    color: 'var(--offwhite)', padding: '0.65rem 0.8rem', borderRadius: '2px',
     fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)',
     resize: 'vertical' as const,
   }

@@ -87,7 +87,7 @@ function FeatureRow({
         </p>
 
         {held && (
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: '#C9962C', marginTop: '0.2rem' }}>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'var(--brand-secondary)', marginTop: '0.2rem' }}>
             Held off by {blockedBy.join(', ')} — switch that back on and this returns.
           </p>
         )}

@@ -15,6 +15,7 @@ import {
   listDeliveriesForOrder, fulfilmentByTemplateId, type Delivery,
 } from '@big-cms/shared/deliveries'
 import { BRANCHES, STOCKED_BRANCHES, emptyStock, PRIMARY_BRANCH } from '@big-cms/shared/branches'
+import { DEPARTMENT_COLOR as DEPT_COLOR } from '@big-cms/shared/departments'
 
 // Configuration, not a constant — see app/admin/supplies/page.tsx for what
 // the hardcoded version did to the stock figures.
@@ -60,14 +61,14 @@ function SuppliesStatus() {
     <div style={{ marginBottom: '2rem', border: `1px solid ${alerts.length > 0 ? 'rgba(228,51,41,0.3)' : 'rgba(0,160,152,0.2)'}`, borderRadius: '6px', overflow: 'hidden' }}>
       <button
         onClick={() => setOpen(o => !o)}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: alerts.length > 0 ? 'rgba(228,51,41,0.06)' : 'rgba(0,160,152,0.06)', border: 'none', color: '#F5F2EC', cursor: 'pointer', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: alerts.length > 0 ? 'rgba(228,51,41,0.06)' : 'rgba(0,160,152,0.06)', border: 'none', color: 'var(--offwhite)', cursor: 'pointer', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <span style={{ color: alerts.length > 0 ? '#E43329' : '#00A098' }}>●</span>
+          <span style={{ color: alerts.length > 0 ? 'var(--red)' : 'var(--teal)' }}>●</span>
           Supplies Status
           {alerts.length > 0
-            ? <span style={{ background: '#E43329', color: '#fff', borderRadius: '3px', padding: '0.05rem 0.4rem', fontSize: '0.65rem', fontWeight: 700 }}>{alerts.length} low</span>
-            : <span style={{ color: '#00A098', fontSize: '0.7rem' }}>All OK</span>
+            ? <span style={{ background: 'var(--red)', color: '#fff', borderRadius: '3px', padding: '0.05rem 0.4rem', fontSize: '0.65rem', fontWeight: 700 }}>{alerts.length} low</span>
+            : <span style={{ color: 'var(--teal)', fontSize: '0.7rem' }}>All OK</span>
           }
         </span>
         <span style={{ opacity: 0.4, fontSize: '0.9rem' }}>{open ? '▲' : '▼'}</span>
@@ -80,8 +81,8 @@ function SuppliesStatus() {
             const out = lowBranches.some(b => (s.quantity[b] ?? 0) <= 0)
             return (
               <div key={s.id} style={{ background: out ? 'rgba(228,51,41,0.12)' : 'rgba(201,150,44,0.1)', border: `1px solid ${out ? 'rgba(228,51,41,0.35)' : 'rgba(201,150,44,0.3)'}`, borderRadius: '4px', padding: '0.3rem 0.7rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.78rem', color: '#F5F2EC' }}>{s.name}</span>
-                <span style={{ fontSize: '0.65rem', color: out ? '#E43329' : '#C9962C', fontWeight: 600 }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--offwhite)' }}>{s.name}</span>
+                <span style={{ fontSize: '0.65rem', color: out ? 'var(--red)' : 'var(--brand-secondary)', fontWeight: 600 }}>
                   {lowBranches.map(b => `${b} ${s.quantity[b]}`).join(' · ')}
                 </span>
                 <span style={{ fontSize: '0.62rem', color: 'rgba(245,242,236,0.3)' }}>/ min {s.threshold}</span>
@@ -106,11 +107,6 @@ function SuppliesStatus() {
   )
 }
 
-const DEPT_COLOR: Record<Department, string> = {
-  Kitchen:  '#00A098',
-  Bar:      '#C9962C',
-  Cleaning: '#8B7CF6',
-}
 
 function fmtDate(ts: { seconds: number } | null): string {
   if (!ts) return '—'
@@ -133,7 +129,7 @@ function ReceivedTag({ ordered, received, unit }: {
   const complete = received + 1e-9 >= ordered
   const color = received <= 0 ? 'rgba(245,242,236,0.28)'
     : complete ? 'var(--teal)'
-    : '#C9962C'
+    : 'var(--brand-secondary)'
   const label = received <= 0 ? 'nothing received'
     : complete ? `${received} ${unit} received`
     : `${received} of ${ordered} ${unit}`
@@ -395,7 +391,7 @@ function ReportCard({
             {fulfilment && (
               <span style={{
                 fontFamily: 'var(--font-inter)', fontSize: '0.75rem', fontWeight: 600,
-                color: fulfilment.full === fulfilment.total ? 'var(--teal)' : '#C9962C',
+                color: fulfilment.full === fulfilment.total ? 'var(--teal)' : 'var(--brand-secondary)',
                 letterSpacing: '0.03em',
               }}>
                 {fulfilment.full === fulfilment.total
@@ -436,7 +432,7 @@ function ReportCard({
               }} />
               <div style={{
                 width: `${(fulfilment.partial / fulfilment.total) * 100}%`,
-                backgroundColor: '#C9962C',
+                backgroundColor: 'var(--brand-secondary)',
               }} />
             </div>
           )}
@@ -587,7 +583,7 @@ function ReportCard({
                                     <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>
                                       {item.name}
                                       {ar && (
-                                        <span dir="rtl" style={{ color: '#C9962C', marginRight: '0.6rem', marginLeft: '0.6rem' }}>{ar}</span>
+                                        <span dir="rtl" style={{ color: 'var(--brand-secondary)', marginRight: '0.6rem', marginLeft: '0.6rem' }}>{ar}</span>
                                       )}
                                       {fulfilment && (
                                         <ReceivedTag
@@ -617,7 +613,7 @@ function ReportCard({
                                               width: '75px',
                                               backgroundColor: '#1a1a1a',
                                               border: '1px solid rgba(0,160,152,0.6)',
-                                              color: '#F5F2EC',
+                                              color: 'var(--offwhite)',
                                               padding: '0.3rem 0.5rem',
                                               borderRadius: '2px',
                                               fontSize: '0.88rem',

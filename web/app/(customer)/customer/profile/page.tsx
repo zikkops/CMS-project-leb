@@ -877,9 +877,9 @@ export default function CustomerProfilePage() {
         )}
 
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.8rem' }}>
-          <ActionButton href="/customer/submit-check" label="Submit a Check" color="#6A6AB7" />
-          <ActionButton href="/customer/redeem" label="Redeem Points" color="#00A098" />
-          <ActionButton href="/customer/friends" label="Friends" color="#00A098" variant="outline" />
+          <ActionButton href="/customer/submit-check" label="Submit a Check" color="var(--purple)" />
+          <ActionButton href="/customer/redeem" label="Redeem Points" color="var(--teal)" />
+          <ActionButton href="/customer/friends" label="Friends" color="var(--teal)" variant="outline" />
         </div>
 
         {/* Pending Invites — someone added you (by account) to their event

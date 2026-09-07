@@ -10,7 +10,7 @@ import { BRANCHES } from '@big-cms/shared/branches'
 
 const inp: React.CSSProperties = {
   backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)',
-  color: '#F5F2EC', padding: '0.6rem 0.8rem', borderRadius: '2px',
+  color: 'var(--offwhite)', padding: '0.6rem 0.8rem', borderRadius: '2px',
   fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)',
 }
 
@@ -306,7 +306,7 @@ function ProviderCard({
                       onClick={translateAllCats}
                       style={{
                         background: 'rgba(201,150,44,0.1)', border: '1px solid rgba(201,150,44,0.3)',
-                        color: '#C9962C', padding: '0.2rem 0.55rem', borderRadius: '2px',
+                        color: 'var(--brand-secondary)', padding: '0.2rem 0.55rem', borderRadius: '2px',
                         fontSize: '0.65rem', cursor: 'pointer', fontFamily: 'var(--font-inter)',
                         letterSpacing: '0.06em',
                       }}

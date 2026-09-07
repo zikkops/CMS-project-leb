@@ -213,7 +213,7 @@ export default function AdminEventsPage() {
     width: '100%',
     backgroundColor: '#1a1a1a',
     border: '1px solid rgba(255,255,255,0.1)',
-    color: '#F5F2EC',
+    color: 'var(--offwhite)',
     padding: '0.75rem 1rem',
     borderRadius: '2px',
     fontSize: '0.85rem',
@@ -332,7 +332,7 @@ export default function AdminEventsPage() {
                   flex: 1,
                   backgroundColor: '#1a1a1a',
                   border: '1px solid rgba(255,255,255,0.1)',
-                  color: '#F5F2EC',
+                  color: 'var(--offwhite)',
                   padding: '0.6rem 0.8rem',
                   borderRadius: '2px',
                   fontSize: '0.82rem',
@@ -632,10 +632,10 @@ export default function AdminEventsPage() {
                   <label style={labelStyle}>Type</label>
                   <select value={form.type}
                     onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                    style={{ ...inputStyle, color: '#F5F2EC', backgroundColor: '#1a1a1a' }}>
+                    style={{ ...inputStyle, color: 'var(--offwhite)', backgroundColor: '#1a1a1a' }}>
                     {eventTypes.map(t => (
                       <option key={t.id} value={t.name}
-                        style={{ backgroundColor: '#1a1a1a', color: '#F5F2EC' }}>
+                        style={{ backgroundColor: '#1a1a1a', color: 'var(--offwhite)' }}>
                         {t.name}
                       </option>
                     ))}
@@ -645,10 +645,10 @@ export default function AdminEventsPage() {
                   <label style={labelStyle}>Branch</label>
                   <select value={form.branch}
                     onChange={e => setForm(f => ({ ...f, branch: e.target.value }))}
-                    style={{ ...inputStyle, color: '#F5F2EC', backgroundColor: '#1a1a1a' }}>
+                    style={{ ...inputStyle, color: 'var(--offwhite)', backgroundColor: '#1a1a1a' }}>
                     {BRANCH_OPTIONS.map(b => (
                       <option key={b} value={b}
-                        style={{ backgroundColor: '#1a1a1a', color: '#F5F2EC' }}>
+                        style={{ backgroundColor: '#1a1a1a', color: 'var(--offwhite)' }}>
                         {b}
                       </option>
                     ))}

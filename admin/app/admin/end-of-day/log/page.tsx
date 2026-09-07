@@ -74,7 +74,7 @@ export default function EndOfDayLogPage() {
                     ? 'rgba(0,160,152,0.12)'
                     : 'rgba(201,150,44,0.12)',
                   border: `1px solid ${entry.action === 'submit' ? 'rgba(0,160,152,0.3)' : 'rgba(201,150,44,0.3)'}`,
-                  color: entry.action === 'submit' ? 'var(--teal)' : '#C9962C',
+                  color: entry.action === 'submit' ? 'var(--teal)' : 'var(--brand-secondary)',
                   borderRadius: '2px', padding: '0.2rem 0.6rem',
                   fontSize: '0.66rem', letterSpacing: '0.1em', fontWeight: 600,
                   whiteSpace: 'nowrap',

@@ -22,6 +22,7 @@ import {
   DEPARTMENTS, type Department,
 } from '@big-cms/shared/weeklyOrders'
 import { BRANCHES, isStockedBranch, emptyStock, PRIMARY_BRANCH } from '@big-cms/shared/branches'
+import { DEPARTMENT_COLOR as DEPT_COLOR } from '@big-cms/shared/departments'
 
 // Was a literal union of the original café's three branches, which meant
 // every guard below rejected every branch in any other deployment — the
@@ -36,15 +37,10 @@ function supplyStatus(qty: number, threshold: number): 'ok' | 'low' | 'out' {
   return 'ok'
 }
 
-const DEPT_COLOR: Record<Department, string> = {
-  Kitchen:  '#00A098',
-  Bar:      '#C9962C',
-  Cleaning: '#8B7CF6',
-}
 
 const inp: React.CSSProperties = {
   backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)',
-  color: '#F5F2EC', padding: '0.6rem 0.8rem', borderRadius: '2px',
+  color: 'var(--offwhite)', padding: '0.6rem 0.8rem', borderRadius: '2px',
   fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)',
 }
 
@@ -272,15 +268,15 @@ export default function SubmitOrderPage() {
                   <button type="button" onClick={() => setSuppliesOpen(o => !o)} style={{
                     width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '0.65rem 1rem', background: alerts.length > 0 ? 'rgba(228,51,41,0.05)' : 'rgba(0,160,152,0.05)',
-                    border: 'none', color: '#F5F2EC', cursor: 'pointer', fontFamily: 'var(--font-inter)',
+                    border: 'none', color: 'var(--offwhite)', cursor: 'pointer', fontFamily: 'var(--font-inter)',
                     fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase',
                   }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ color: alerts.length > 0 ? '#E43329' : '#00A098' }}>●</span>
+                      <span style={{ color: alerts.length > 0 ? 'var(--red)' : 'var(--teal)' }}>●</span>
                       {branch} Supplies
                       {alerts.length > 0
-                        ? <span style={{ background: '#E43329', color: '#fff', borderRadius: '3px', padding: '0.05rem 0.35rem', fontSize: '0.6rem', fontWeight: 700 }}>{alerts.length} low</span>
-                        : <span style={{ color: '#00A098', fontSize: '0.65rem' }}>All OK</span>
+                        ? <span style={{ background: 'var(--red)', color: '#fff', borderRadius: '3px', padding: '0.05rem 0.35rem', fontSize: '0.6rem', fontWeight: 700 }}>{alerts.length} low</span>
+                        : <span style={{ color: 'var(--teal)', fontSize: '0.65rem' }}>All OK</span>
                       }
                     </span>
                     <span style={{ opacity: 0.4 }}>{suppliesOpen ? '▲' : '▼'}</span>
@@ -298,8 +294,8 @@ export default function SubmitOrderPage() {
                             borderRadius: '4px', padding: '0.3rem 0.65rem',
                             display: 'flex', alignItems: 'center', gap: '0.45rem',
                           }}>
-                            <span style={{ fontSize: '0.75rem', color: '#F5F2EC' }}>{s.name}</span>
-                            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: st === 'out' ? '#E43329' : '#C9962C' }}>{qty}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--offwhite)' }}>{s.name}</span>
+                            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: st === 'out' ? 'var(--red)' : 'var(--brand-secondary)' }}>{qty}</span>
                             <span style={{ fontSize: '0.6rem', color: 'rgba(245,242,236,0.3)' }}>{s.unit} · min {s.threshold}</span>
                           </div>
                         )
@@ -311,7 +307,7 @@ export default function SubmitOrderPage() {
                           display: 'flex', alignItems: 'center', gap: '0.4rem',
                         }}>
                           <span style={{ fontSize: '0.75rem', color: 'rgba(245,242,236,0.55)' }}>{s.name}</span>
-                          <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#00A098' }}>{s.quantity[branchKey] ?? 0}</span>
+                          <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--teal)' }}>{s.quantity[branchKey] ?? 0}</span>
                           <span style={{ fontSize: '0.6rem', color: 'rgba(245,242,236,0.25)' }}>{s.unit}</span>
                         </div>
                       ))}
@@ -427,7 +423,7 @@ export default function SubmitOrderPage() {
                                   {cItems.map((item, idx) => {
                                     const si = supplyMap.get(item.name.toLowerCase().trim())
                                     const st = si ? supplyStatus(si.qty, si.threshold) : null
-                                    const stColor = st === 'ok' ? '#00A098' : st === 'low' ? '#C9962C' : st === 'out' ? '#E43329' : null
+                                    const stColor = st === 'ok' ? 'var(--teal)' : st === 'low' ? 'var(--brand-secondary)' : st === 'out' ? 'var(--red)' : null
                                     const stBg    = st === 'ok' ? 'rgba(0,160,152,0.12)' : st === 'low' ? 'rgba(201,150,44,0.14)' : st === 'out' ? 'rgba(228,51,41,0.14)' : null
                                     return isMobile ? (
                                       // Mobile: input on top, name below
@@ -455,7 +451,7 @@ export default function SubmitOrderPage() {
                                         <div>
                                           <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'var(--offwhite)', fontWeight: 500 }}>{item.name}</span>
                                           {item.nameAr && (
-                                            <span dir="rtl" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: '#C9962C', marginLeft: '0.5rem' }}>{item.nameAr}</span>
+                                            <span dir="rtl" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--brand-secondary)', marginLeft: '0.5rem' }}>{item.nameAr}</span>
                                           )}
                                         </div>
                                       </div>
@@ -470,7 +466,7 @@ export default function SubmitOrderPage() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                                           <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'var(--offwhite)', fontWeight: 500 }}>{item.name}</span>
                                           {item.nameAr && (
-                                            <span dir="rtl" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: '#C9962C' }}>{item.nameAr}</span>
+                                            <span dir="rtl" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--brand-secondary)' }}>{item.nameAr}</span>
                                           )}
                                           <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(245,242,236,0.3)' }}>
                                             ({packLabel(item.unit, item.packSize, item.packUnit)})

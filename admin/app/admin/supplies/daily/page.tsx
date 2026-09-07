@@ -5,25 +5,20 @@ import { useSearchParams } from 'next/navigation'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useIsMobile } from '@big-cms/shared/useIsMobile'
 import { branchColor } from '@big-cms/shared/branches'
+import { supplyCategoryColor } from '@big-cms/shared/departments'
 import {
   INVENTORY_BRANCHES, DEPARTMENTS, todayDateStr, listSuppliesForCount, emptyInventoryReport,
   getDailyInventory, saveDailyInventoryDraft, submitDailyInventory, listDailyInventories,
   type SupplyForCount, type InventoryLine, type DailyInventoryReport,
 } from '@big-cms/shared/dailyInventory'
 
-const DEPT_COLOR: Record<string, string> = {
-  Kitchen:  '#00A098',
-  Bar:      '#C9962C',
-  Cleaning: '#8B7CF6',
-  Other:    'rgba(245,242,236,0.45)',
-}
 
 // Colours come from lib/branches so every screen agrees, and so a branch
 // outside the original three gets one at all.
 
 const inp: React.CSSProperties = {
   background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
-  color: '#F5F2EC', borderRadius: '4px', padding: '0.5rem 0.7rem',
+  color: 'var(--offwhite)', borderRadius: '4px', padding: '0.5rem 0.7rem',
   fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box',
   fontFamily: 'var(--font-inter)',
 }
@@ -233,9 +228,9 @@ function DailyInventoryInner() {
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             {departmentOptions.map(d => (
               <button key={d} onClick={() => setDepartment(d)} style={{
-                background: department === d ? `${DEPT_COLOR[d]}18` : 'transparent',
-                border: `1px solid ${department === d ? DEPT_COLOR[d] : 'rgba(255,255,255,0.09)'}`,
-                color: department === d ? DEPT_COLOR[d] : 'rgba(245,242,236,0.35)',
+                background: department === d ? `${supplyCategoryColor(d)}18` : 'transparent',
+                border: `1px solid ${department === d ? supplyCategoryColor(d) : 'rgba(255,255,255,0.09)'}`,
+                color: department === d ? supplyCategoryColor(d) : 'rgba(245,242,236,0.35)',
                 borderRadius: '6px', padding: '0.5rem 1.25rem',
                 fontSize: '0.78rem', fontWeight: department === d ? 600 : 400,
                 letterSpacing: '0.06em', cursor: 'pointer', fontFamily: 'var(--font-inter)',
@@ -266,7 +261,7 @@ function DailyInventoryInner() {
               <div style={{
                 background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.22)',
                 borderRadius: '4px', padding: '0.85rem 1.1rem', marginBottom: '1.25rem',
-                fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: '#C9962C',
+                fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--brand-secondary)',
               }}>
                 In-progress count found — resuming where it was left off.
               </div>
@@ -285,7 +280,7 @@ function DailyInventoryInner() {
               <div style={{ flex: 1, height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                 <div style={{
                   width: items.length > 0 ? `${(countedCount / items.length) * 100}%` : '0%',
-                  height: '100%', background: allCounted ? 'var(--teal)' : DEPT_COLOR[department], transition: 'width 0.2s',
+                  height: '100%', background: allCounted ? 'var(--teal)' : supplyCategoryColor(department), transition: 'width 0.2s',
                 }} />
               </div>
               <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.4)', whiteSpace: 'nowrap' }}>
@@ -333,7 +328,7 @@ function DailyInventoryInner() {
                                 value={val}
                                 onChange={e => setCounts(prev2 => ({ ...prev2, [s.id]: e.target.value }))}
                                 placeholder="Count"
-                                style={{ ...inp, width: '90px', textAlign: 'center', fontWeight: 600, color: counted ? 'var(--teal)' : '#F5F2EC' }}
+                                style={{ ...inp, width: '90px', textAlign: 'center', fontWeight: 600, color: counted ? 'var(--teal)' : 'var(--offwhite)' }}
                               />
                               <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.35)' }}>{s.unit}</span>
                             </div>
@@ -358,7 +353,7 @@ function DailyInventoryInner() {
                               value={val}
                               onChange={e => setCounts(prev2 => ({ ...prev2, [s.id]: e.target.value }))}
                               placeholder="Count"
-                              style={{ ...inp, width: '90px', textAlign: 'center', fontWeight: 600, color: counted ? 'var(--teal)' : '#F5F2EC' }}
+                              style={{ ...inp, width: '90px', textAlign: 'center', fontWeight: 600, color: counted ? 'var(--teal)' : 'var(--offwhite)' }}
                             />
                             <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.35)' }}>{s.unit}</span>
                             {counted && delta !== 0 && (
@@ -379,7 +374,7 @@ function DailyInventoryInner() {
             )}
 
             {err && <p style={{ color: 'var(--red)', fontSize: '0.82rem', marginBottom: '1rem', fontFamily: 'var(--font-inter)' }}>{err}</p>}
-            {saved === 'draft' && <p style={{ color: '#C9962C', fontSize: '0.82rem', marginBottom: '1rem', fontFamily: 'var(--font-inter)' }}>✓ Progress saved.</p>}
+            {saved === 'draft' && <p style={{ color: 'var(--brand-secondary)', fontSize: '0.82rem', marginBottom: '1rem', fontFamily: 'var(--font-inter)' }}>✓ Progress saved.</p>}
             {saved === 'submitted' && <p style={{ color: 'var(--teal)', fontSize: '0.82rem', marginBottom: '1rem', fontFamily: 'var(--font-inter)' }}>✓ {department} inventory submitted — stock levels updated for {branch}.</p>}
 
             {/* Actions */}
@@ -401,7 +396,7 @@ function DailyInventoryInner() {
                 disabled={!allCounted || saving || submitting}
                 title={!allCounted ? 'Every item needs a count before submitting' : undefined}
                 style={{
-                  background: allCounted ? DEPT_COLOR[department] : 'rgba(255,255,255,0.08)',
+                  background: allCounted ? supplyCategoryColor(department) : 'rgba(255,255,255,0.08)',
                   color: allCounted ? '#000' : 'rgba(245,242,236,0.3)', border: 'none', padding: '0.75rem 2rem', borderRadius: '2px',
                   fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700,
                   cursor: allCounted && !saving && !submitting ? 'pointer' : 'not-allowed',
@@ -455,7 +450,7 @@ function DailyInventoryInner() {
                             </span>
                           </div>
                           {h.status === 'submitted' && (
-                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: discrepancies > 0 ? '#C9962C' : 'rgba(245,242,236,0.3)' }}>
+                            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: discrepancies > 0 ? 'var(--brand-secondary)' : 'rgba(245,242,236,0.3)' }}>
                               {discrepancies > 0 ? `${discrepancies} item${discrepancies !== 1 ? 's' : ''} changed` : 'matched expected'}
                             </span>
                           )}

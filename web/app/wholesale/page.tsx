@@ -93,11 +93,11 @@ function ProductCard({
           )}
 
           <div style={{ position: 'absolute', top: '0.6rem', right: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-end' }}>
-            <div style={{ background: '#6A6AB7', color: '#fff', padding: '0.22rem 0.55rem', borderRadius: '3px', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-inter)', whiteSpace: 'nowrap' }}>
+            <div style={{ background: 'var(--purple)', color: '#fff', padding: '0.22rem 0.55rem', borderRadius: '3px', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-inter)', whiteSpace: 'nowrap' }}>
               WS ${product.wholesalePrice.toFixed(2)}
             </div>
             {product.retailPrice > 0 && (
-              <div style={{ background: '#C9962C', color: '#000', padding: '0.22rem 0.55rem', borderRadius: '3px', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-inter)', whiteSpace: 'nowrap' }}>
+              <div style={{ background: 'var(--brand-secondary)', color: '#000', padding: '0.22rem 0.55rem', borderRadius: '3px', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-inter)', whiteSpace: 'nowrap' }}>
                 RP ${product.retailPrice.toFixed(2)}
               </div>
             )}
@@ -173,7 +173,7 @@ function ProductCard({
             style={{
               width: '56px', textAlign: 'center', padding: '0.35rem',
               background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: '4px', color: qty > 0 ? '#6A6AB7' : 'var(--offwhite)',
+              borderRadius: '4px', color: qty > 0 ? 'var(--purple)' : 'var(--offwhite)',
               fontWeight: 700, fontFamily: 'var(--font-inter)', fontSize: '0.85rem', outline: 'none',
             }}
           />
@@ -187,7 +187,7 @@ function ProductCard({
             }}
           >+</button>
           {qty > 0 && (
-            <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', fontWeight: 700, color: '#6A6AB7' }}>
+            <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', fontWeight: 700, color: 'var(--purple)' }}>
               ${(product.wholesalePrice * qty).toFixed(2)}
             </span>
           )}
@@ -333,7 +333,7 @@ export default function WholesalePage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem',
         }}>
           <div style={{ textAlign: 'center', maxWidth: '420px' }}>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#6A6AB7', marginBottom: '0.8rem' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--purple)', marginBottom: '0.8rem' }}>
               {BRAND.name} — Wholesale
             </p>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', color: 'var(--offwhite)', marginBottom: '0.8rem' }}>
@@ -445,7 +445,7 @@ export default function WholesalePage() {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap', marginBottom: '2.5rem' }}>
             <div>
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#6A6AB7', marginBottom: '0.6rem' }}>
+              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--purple)', marginBottom: '0.6rem' }}>
                 {BRAND.name} — Wholesale
               </p>
               <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.5rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
@@ -487,10 +487,10 @@ export default function WholesalePage() {
 
             <select
               value={category} onChange={e => setCategory(e.target.value)}
-              style={{ flex: isMobile ? undefined : '0 0 200px', background: '#1c1c1c', border: '1px solid rgba(255,255,255,0.15)', color: '#F5F2EC', padding: '0.7rem 1rem', borderRadius: '4px', fontSize: '0.85rem', fontFamily: 'var(--font-inter)', outline: 'none', cursor: 'pointer' }}
+              style={{ flex: isMobile ? undefined : '0 0 200px', background: '#1c1c1c', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--offwhite)', padding: '0.7rem 1rem', borderRadius: '4px', fontSize: '0.85rem', fontFamily: 'var(--font-inter)', outline: 'none', cursor: 'pointer' }}
             >
               {allCats.map(cat => (
-                <option key={cat} value={cat} style={{ background: '#1c1c1c', color: '#F5F2EC' }}>{cat}</option>
+                <option key={cat} value={cat} style={{ background: '#1c1c1c', color: 'var(--offwhite)' }}>{cat}</option>
               ))}
             </select>
 
@@ -554,7 +554,7 @@ export default function WholesalePage() {
               <input
                 value={notes} onChange={e => setNotes(e.target.value)}
                 placeholder="Notes for this order (optional)"
-                style={{ flex: 1, minWidth: '180px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#F5F2EC', padding: '0.6rem 0.9rem', borderRadius: '4px', fontSize: '0.82rem', outline: 'none', fontFamily: 'var(--font-inter)' }}
+                style={{ flex: 1, minWidth: '180px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--offwhite)', padding: '0.6rem 0.9rem', borderRadius: '4px', fontSize: '0.82rem', outline: 'none', fontFamily: 'var(--font-inter)' }}
               />
             )}
 
@@ -565,7 +565,7 @@ export default function WholesalePage() {
             }}>Clear</button>
 
             <button onClick={handleSubmit} disabled={submitting} style={{
-              background: submitting ? 'rgba(255,255,255,0.08)' : '#6A6AB7',
+              background: submitting ? 'rgba(255,255,255,0.08)' : 'var(--purple)',
               color: submitting ? 'rgba(245,242,236,0.3)' : '#fff',
               border: 'none', padding: '0.75rem 2rem', borderRadius: '3px',
               cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 700,

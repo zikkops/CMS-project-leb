@@ -105,7 +105,7 @@ export default function WholesaleAccountsPage() {
   const inp: React.CSSProperties = {
     width: '100%', boxSizing: 'border-box',
     background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
-    color: '#F5F2EC', borderRadius: '4px', padding: '0.6rem 0.8rem',
+    color: 'var(--offwhite)', borderRadius: '4px', padding: '0.6rem 0.8rem',
     fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)',
   }
   const lbl: React.CSSProperties = {
@@ -114,7 +114,7 @@ export default function WholesaleAccountsPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#F5F2EC', fontFamily: 'var(--font-inter)' }}>
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)' }}>
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: isMobile ? '2rem 1rem' : '3rem 2rem' }}>
 
         <a href="/admin" style={{ fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(245,242,236,0.3)', textDecoration: 'none', display: 'block', marginBottom: '0.5rem' }}>
@@ -135,7 +135,7 @@ export default function WholesaleAccountsPage() {
               letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'none',
             }}>Orders</a>
             <button onClick={() => setShowForm(v => !v)} style={{
-              background: '#00A098', color: '#000', border: 'none', borderRadius: '4px',
+              background: 'var(--teal)', color: '#000', border: 'none', borderRadius: '4px',
               padding: '0.65rem 1.4rem', fontSize: '0.78rem', fontWeight: 700,
               letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
             }}>{showForm ? 'Cancel' : '+ New Account'}</button>
@@ -143,7 +143,7 @@ export default function WholesaleAccountsPage() {
         </div>
 
         {error && (
-          <p style={{ color: '#E43329', fontSize: '0.82rem', marginBottom: '1rem' }}>{error}</p>
+          <p style={{ color: 'var(--red)', fontSize: '0.82rem', marginBottom: '1rem' }}>{error}</p>
         )}
 
         {showForm && (
@@ -177,7 +177,7 @@ export default function WholesaleAccountsPage() {
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end' }}>
               <button type="submit" disabled={saving} style={{
-                background: saving ? 'rgba(255,255,255,0.08)' : '#00A098',
+                background: saving ? 'rgba(255,255,255,0.08)' : 'var(--teal)',
                 color: saving ? 'rgba(245,242,236,0.3)' : '#000',
                 border: 'none', borderRadius: '4px', padding: '0.7rem 1.5rem',
                 fontSize: '0.8rem', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', width: '100%',
@@ -205,7 +205,7 @@ export default function WholesaleAccountsPage() {
                 <div>
                   <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem' }}>
                     {a.shopName}
-                    {!a.active && <span style={{ marginLeft: '0.6rem', fontFamily: 'var(--font-inter)', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#E43329' }}>Deactivated</span>}
+                    {!a.active && <span style={{ marginLeft: '0.6rem', fontFamily: 'var(--font-inter)', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red)' }}>Deactivated</span>}
                   </p>
                   <p style={{ fontSize: '0.75rem', color: 'rgba(245,242,236,0.35)', marginTop: '0.2rem' }}>
                     {a.email}{a.contactName && ` · ${a.contactName}`}{a.phone && ` · ${a.phone}`}
@@ -217,7 +217,7 @@ export default function WholesaleAccountsPage() {
                   style={{
                     background: a.active ? 'rgba(228,51,41,0.08)' : 'rgba(0,160,152,0.1)',
                     border: `1px solid ${a.active ? 'rgba(228,51,41,0.3)' : 'rgba(0,160,152,0.35)'}`,
-                    color: a.active ? '#E43329' : '#00A098',
+                    color: a.active ? 'var(--red)' : 'var(--teal)',
                     borderRadius: '4px', padding: '0.5rem 1rem', fontSize: '0.72rem',
                     letterSpacing: '0.06em', textTransform: 'uppercase',
                     cursor: busyUid === a.uid ? 'not-allowed' : 'pointer',

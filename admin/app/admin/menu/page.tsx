@@ -367,7 +367,7 @@ export default function AdminMenuPage() {
     width: '100%',
     backgroundColor: '#1a1a1a',
     border: '1px solid rgba(255,255,255,0.1)',
-    color: '#F5F2EC',
+    color: 'var(--offwhite)',
     padding: '0.75rem 1rem',
     borderRadius: '2px',
     fontSize: '0.85rem',
@@ -575,10 +575,10 @@ export default function AdminMenuPage() {
               <select
                 value={newCatSection}
                 onChange={e => setNewCatSection(e.target.value as Section)}
-                style={{ ...inputStyle, padding: '0.6rem 0.8rem', fontSize: '0.82rem', color: '#F5F2EC', backgroundColor: '#1a1a1a' }}
+                style={{ ...inputStyle, padding: '0.6rem 0.8rem', fontSize: '0.82rem', color: 'var(--offwhite)', backgroundColor: '#1a1a1a' }}
               >
                 {SECTIONS.map(s => (
-                  <option key={s} value={s} style={{ backgroundColor: '#1a1a1a', color: '#F5F2EC' }}>{s}</option>
+                  <option key={s} value={s} style={{ backgroundColor: '#1a1a1a', color: 'var(--offwhite)' }}>{s}</option>
                 ))}
               </select>
 
@@ -749,9 +749,9 @@ export default function AdminMenuPage() {
                 <label style={labelStyle}>Section</label>
                 <select value={editCatSection}
                   onChange={e => setEditCatSection(e.target.value as Section)}
-                  style={{ ...inputStyle, color: '#F5F2EC', backgroundColor: '#1a1a1a' }}>
+                  style={{ ...inputStyle, color: 'var(--offwhite)', backgroundColor: '#1a1a1a' }}>
                   {SECTIONS.map(s => (
-                    <option key={s} value={s} style={{ backgroundColor: '#1a1a1a', color: '#F5F2EC' }}>{s}</option>
+                    <option key={s} value={s} style={{ backgroundColor: '#1a1a1a', color: 'var(--offwhite)' }}>{s}</option>
                   ))}
                 </select>
               </div>

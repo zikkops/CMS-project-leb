@@ -126,7 +126,7 @@ function CheckCard({
       {unsent > 0 && (
         <span style={{
           position: 'absolute', top: 0, right: 0,
-          backgroundColor: '#C9962C', color: '#1a1a1a',
+          backgroundColor: 'var(--brand-secondary)', color: '#1a1a1a',
           fontSize: '0.6rem', fontWeight: 700,
           padding: '0.15rem 0.4rem', borderBottomLeftRadius: '5px',
         }}>{unsent}</span>
@@ -258,7 +258,7 @@ export default function FloorPage() {
 
         {liveError && (
           <p style={{
-            color: '#C9962C', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6,
+            color: 'var(--brand-secondary)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6,
             background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.25)',
             borderRadius: '3px', padding: '0.7rem 0.9rem',
           }}>{liveError}</p>

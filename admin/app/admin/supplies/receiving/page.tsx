@@ -25,6 +25,7 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '@big-cms/shared/firebase'
 import { branchColor } from '@big-cms/shared/branches'
 import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
+import { supplyCategoryColor } from '@big-cms/shared/departments'
 import {
   DELIVERY_BRANCHES, DELIVERY_DEPARTMENTS, DEFAULT_VAT_RATE,
   REJECT_REASON_LABELS, computeTotals, isShort, priceChange, round2,
@@ -49,19 +50,13 @@ function useIsMobile(breakpoint = 768) {
   return isMobile
 }
 
-const DEPT_COLOR: Record<string, string> = {
-  Kitchen:  '#00A098',
-  Bar:      '#C9962C',
-  Cleaning: '#8B7CF6',
-  Other:    'rgba(245,242,236,0.45)',
-}
 
 // Colours come from lib/branches so every screen agrees, and so a branch
 // outside the original three gets one at all.
 
 const inp: React.CSSProperties = {
   background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
-  color: '#F5F2EC', borderRadius: '4px', padding: '0.5rem 0.7rem',
+  color: 'var(--offwhite)', borderRadius: '4px', padding: '0.5rem 0.7rem',
   fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box',
   fontFamily: 'var(--font-inter)',
 }
@@ -127,7 +122,7 @@ function LineRow({
 
   // Quiet by default, loud only when something needs attention. The whole
   // point is that a receiver's eye lands on the exceptions.
-  const accent = short ? 'var(--red)' : priceUp ? '#C9962C' : 'rgba(0,160,152,0.2)'
+  const accent = short ? 'var(--red)' : priceUp ? 'var(--brand-secondary)' : 'rgba(0,160,152,0.2)'
 
   return (
     <div style={{
@@ -179,7 +174,7 @@ function LineRow({
             type="number" min="0" step="any" inputMode="decimal"
             value={line.unitCost}
             onChange={e => onChange(index, { unitCost: Number(e.target.value) })}
-            style={{ ...inp, width: '100%', textAlign: 'center', fontWeight: 600, color: priceUp ? '#C9962C' : '#F5F2EC' }}
+            style={{ ...inp, width: '100%', textAlign: 'center', fontWeight: 600, color: priceUp ? 'var(--brand-secondary)' : 'var(--offwhite)' }}
           />
           {/* Costs are entered in whatever the invoice is written in, but
               everything downstream — the running average, food cost — is USD.
@@ -232,7 +227,7 @@ function LineRow({
               than in a report nobody opens. "This provider raised olive oil
               22% in six weeks" is a renegotiation, and it starts here. */}
           {priceUp && drift !== null && (
-            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', fontWeight: 700, color: '#C9962C' }}>
+            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', fontWeight: 700, color: 'var(--brand-secondary)' }}>
               price up {(drift * 100).toFixed(0)}% vs {fmt(lastCostLocal, currency)}
             </span>
           )}
@@ -589,7 +584,7 @@ function ReceivingInner() {
   }
 
   const ready = branch && department && lines.length > 0
-  const deptColor = DEPT_COLOR[department] ?? 'var(--teal)'
+  const deptColor = supplyCategoryColor(department) ?? 'var(--teal)'
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--black)', padding: isMobile ? '1.25rem 1rem 6rem' : '2rem 1.5rem 6rem' }}>
@@ -655,7 +650,7 @@ function ReceivingInner() {
               <div style={{
                 background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.22)',
                 borderRadius: '4px', padding: '0.85rem 1.1rem', marginBottom: '1.25rem',
-                fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: '#C9962C', lineHeight: 1.5,
+                fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--brand-secondary)', lineHeight: 1.5,
               }}>
                 {unlinkedCount} ordered item{unlinkedCount === 1 ? '' : 's'} on this order {unlinkedCount === 1 ? 'is' : 'are'} not
                 linked to a stocked supply, so {unlinkedCount === 1 ? 'it is' : 'they are'} not shown here — receiving
@@ -754,7 +749,7 @@ function ReceivingInner() {
                       </span>
                     )}
                     {exceptions > 0 && (
-                      <span style={{ color: '#C9962C', fontWeight: 700 }}> · {exceptions} exception{exceptions === 1 ? '' : 's'}</span>
+                      <span style={{ color: 'var(--brand-secondary)', fontWeight: 700 }}> · {exceptions} exception{exceptions === 1 ? '' : 's'}</span>
                     )}
                   </span>
                   <button onClick={confirmAllAsOrdered} style={{
@@ -832,7 +827,7 @@ function ReceivingInner() {
               <div style={{
                 background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.22)',
                 borderRadius: '4px', padding: '0.85rem 1.1rem', marginBottom: '1rem',
-                fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: '#C9962C', lineHeight: 1.5,
+                fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--brand-secondary)', lineHeight: 1.5,
               }}>{warning}</div>
             )}
             {done && <p style={{ color: 'var(--teal)', fontSize: '0.82rem', marginBottom: '1rem', fontFamily: 'var(--font-inter)' }}>✓ {done}</p>}

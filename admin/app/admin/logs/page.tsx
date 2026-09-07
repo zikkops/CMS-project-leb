@@ -136,7 +136,7 @@ export default function AdminLogsPage() {
   const inputStyle = {
     backgroundColor: '#1a1a1a',
     border: '1px solid rgba(255,255,255,0.1)',
-    color: '#F5F2EC',
+    color: 'var(--offwhite)',
     padding: '0.6rem 0.9rem',
     borderRadius: '2px',
     fontSize: '0.82rem',
@@ -203,7 +203,7 @@ export default function AdminLogsPage() {
           <select
             value={sectionFilter}
             onChange={e => setSectionFilter(e.target.value)}
-            style={{ ...inputStyle, color: '#F5F2EC', backgroundColor: '#1a1a1a', minWidth: isMobile ? 'auto' : '180px' }}
+            style={{ ...inputStyle, color: 'var(--offwhite)', backgroundColor: '#1a1a1a', minWidth: isMobile ? 'auto' : '180px' }}
           >
             <option value="all">All Sections</option>
             {sections.map(s => <option key={s} value={s}>{s}</option>)}

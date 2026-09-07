@@ -140,7 +140,7 @@ function LineRow({ line, now, discount, onMore }: {
           </p>
         )}
         {line.note && (
-          <p style={{ fontSize: '0.72rem', color: '#C9962C', marginTop: '0.15rem' }}>{line.note}</p>
+          <p style={{ fontSize: '0.72rem', color: 'var(--brand-secondary)', marginTop: '0.15rem' }}>{line.note}</p>
         )}
 
         <p style={{ fontSize: '0.68rem', color: 'rgba(245,242,236,0.3)', marginTop: '0.25rem' }}>
@@ -205,7 +205,7 @@ function DraftRow({ draft, onRemove, onNote, onQuantity }: {
           color: 'rgba(245,242,236,0.6)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem',
         }}>−</button>
         <span style={{
-          fontSize: '0.85rem', color: '#C9962C', minWidth: '1.7rem',
+          fontSize: '0.85rem', color: 'var(--brand-secondary)', minWidth: '1.7rem',
           fontWeight: 600, textAlign: 'center',
         }}>{draft.quantity}×</span>
         <button onClick={() => onQuantity(draft.quantity + 1)} style={{
@@ -220,11 +220,11 @@ function DraftRow({ draft, onRemove, onNote, onQuantity }: {
           <p style={{ fontSize: '0.75rem', color: 'rgba(245,242,236,0.45)' }}>{draft.modifierLabel}</p>
         )}
         {draft.note && (
-          <p style={{ fontSize: '0.75rem', color: '#C9962C', marginTop: '0.1rem', fontWeight: 600 }}>
+          <p style={{ fontSize: '0.75rem', color: 'var(--brand-secondary)', marginTop: '0.1rem', fontWeight: 600 }}>
             {draft.note}
           </p>
         )}
-        <p style={{ fontSize: '0.68rem', color: '#C9962C', marginTop: '0.25rem' }}>
+        <p style={{ fontSize: '0.68rem', color: 'var(--brand-secondary)', marginTop: '0.25rem' }}>
           {draft.seat !== null ? `Seat ${draft.seat} · ` : ''}
           {draft.course !== null ? `Course ${draft.course} · ` : ''}
           On this phone — not sent
@@ -326,7 +326,7 @@ function ModifierSheet({
         ))}
 
         {problem && (
-          <p style={{ color: '#C9962C', fontSize: '0.78rem', marginBottom: '0.8rem' }}>{problem}</p>
+          <p style={{ color: 'var(--brand-secondary)', fontSize: '0.78rem', marginBottom: '0.8rem' }}>{problem}</p>
         )}
 
         <div style={{ display: 'flex', gap: '0.6rem' }}>
@@ -519,7 +519,7 @@ export default function CheckPage() {
 
         {liveError && (
           <p style={{
-            color: '#C9962C', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6,
+            color: 'var(--brand-secondary)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6,
             background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.25)',
             borderRadius: '3px', padding: '0.7rem 0.9rem',
           }}>{liveError}</p>
@@ -667,7 +667,7 @@ export default function CheckPage() {
               <button onClick={() => setCategory('retail')} style={{
                 ...tap, minHeight: '40px', padding: '0 0.9rem', whiteSpace: 'nowrap',
                 backgroundColor: activeCategory === 'retail' ? 'rgba(201,150,44,0.15)' : 'transparent',
-                border: `1px solid ${activeCategory === 'retail' ? '#C9962C' : 'rgba(255,255,255,0.1)'}`,
+                border: `1px solid ${activeCategory === 'retail' ? 'var(--brand-secondary)' : 'rgba(255,255,255,0.1)'}`,
                 color: 'var(--offwhite)', fontSize: '0.78rem',
               }}>Retail</button>
             </div>
@@ -683,7 +683,7 @@ export default function CheckPage() {
                   }}>
                     <span style={{ fontSize: '0.82rem' }}>{p.name}</span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--teal)' }}>
-                      {money(p.price)}{p.onSale && <span style={{ color: '#C9962C' }}> on sale</span>}
+                      {money(p.price)}{p.onSale && <span style={{ color: 'var(--brand-secondary)' }}> on sale</span>}
                     </span>
                     {/* Shown, never enforced. A till must not refuse a sale
                         because a count is stale — the customer is holding the

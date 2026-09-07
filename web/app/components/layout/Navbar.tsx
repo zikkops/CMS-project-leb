@@ -274,7 +274,7 @@ export default function Navbar() {
                             const busy = friendBusyId === req.id
                             return (
                               <div key={req.id} style={{ padding: '0.8rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: '#C9962C', marginBottom: '0.3rem' }}>
+                                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--brand-secondary)', marginBottom: '0.3rem' }}>
                                   Friend Request
                                 </p>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
@@ -291,7 +291,7 @@ export default function Navbar() {
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.4rem' }}>
                                   <button onClick={() => handleFriendAccept(req)} disabled={busy} style={{
-                                    flex: 1, backgroundColor: '#C9962C', color: '#fff', border: 'none',
+                                    flex: 1, backgroundColor: 'var(--brand-secondary)', color: '#fff', border: 'none',
                                     padding: '0.4rem', borderRadius: '2px', fontSize: '0.68rem', letterSpacing: '0.04em',
                                     textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
                                     cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1,

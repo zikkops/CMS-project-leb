@@ -36,7 +36,7 @@ function useIsMobile(bp = 768) {
 
 const inp: React.CSSProperties = {
   width: '100%', backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)',
-  color: '#F5F2EC', padding: '0.75rem 1rem', borderRadius: '2px',
+  color: 'var(--offwhite)', padding: '0.75rem 1rem', borderRadius: '2px',
   fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)',
 }
 const lbl: React.CSSProperties = {
@@ -282,7 +282,7 @@ export default function RecordSalePage() {
                     <select
                       value={branch}
                       onChange={e => { setBranch(e.target.value); setCart([]) }}
-                      style={{ ...inp, backgroundColor: '#1a1a1a', color: '#F5F2EC' }}
+                      style={{ ...inp, backgroundColor: '#1a1a1a', color: 'var(--offwhite)' }}
                     >
                       {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
                     </select>
@@ -417,7 +417,7 @@ export default function RecordSalePage() {
                                 <select
                                   value={line.priceType}
                                   onChange={e => setPriceType(line.product.id, e.target.value as 'retail' | 'wholesale')}
-                                  style={{ ...inp, padding: '0.5rem 0.6rem', fontSize: '0.82rem', backgroundColor: '#1a1a1a', color: '#F5F2EC' }}
+                                  style={{ ...inp, padding: '0.5rem 0.6rem', fontSize: '0.82rem', backgroundColor: '#1a1a1a', color: 'var(--offwhite)' }}
                                 >
                                   <option value="retail">Retail ${line.product.price}</option>
                                   <option value="wholesale">Wholesale ${line.product.wholesalePrice}</option>

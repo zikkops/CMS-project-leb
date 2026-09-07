@@ -180,7 +180,7 @@ function ClosedRow({ check, isMobile, onRefund }: {
                   {' '}({l.modifiers.map(m => m.optionName).join(', ')})
                 </span>
               )}
-              {l.note && <span style={{ color: '#C9962C' }}> — {l.note}</span>}
+              {l.note && <span style={{ color: 'var(--brand-secondary)' }}> — {l.note}</span>}
               {l.status === 'void' && l.voidReason && (
                 <span style={{ color: 'rgba(228,51,41,0.5)' }}> — {l.voidReason}</span>
               )}
@@ -295,7 +295,7 @@ export default function ClosedChecksPage() {
 
         {error && (
           <p style={{
-            color: '#C9962C', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6,
+            color: 'var(--brand-secondary)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6,
             background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.25)',
             borderRadius: '3px', padding: '0.7rem 0.9rem',
           }}>{error}</p>

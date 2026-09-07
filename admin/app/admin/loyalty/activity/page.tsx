@@ -141,7 +141,7 @@ export default function LoyaltyActivityPage() {
   const inputStyle = {
     backgroundColor: '#1a1a1a',
     border: '1px solid rgba(255,255,255,0.1)',
-    color: '#F5F2EC',
+    color: 'var(--offwhite)',
     padding: '0.6rem 0.9rem',
     borderRadius: '2px',
     fontSize: '0.82rem',

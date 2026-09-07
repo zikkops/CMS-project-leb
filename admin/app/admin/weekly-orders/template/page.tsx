@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useIsMobile } from '@big-cms/shared/useIsMobile'
 import { useRequireRole } from '@big-cms/shared/adminAuth'
+import { DEPARTMENT_COLOR as DEPT_COLOR } from '@big-cms/shared/departments'
 import {
   listTemplateItems, addTemplateItem, updateTemplateItem, deleteTemplateItem,
   listProviders,
@@ -13,15 +14,10 @@ import {
 
 const UNITS: OrderUnit[] = ['box', 'kg', 'liter', 'gallon', 'bottle', 'bag', 'pcs', 'jar', 'block', 'can']
 
-const DEPT_COLOR: Record<Department, string> = {
-  Kitchen:  '#00A098',
-  Bar:      '#C9962C',
-  Cleaning: '#8B7CF6',
-}
 
 const inp: React.CSSProperties = {
   backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)',
-  color: '#F5F2EC', padding: '0.55rem 0.75rem', borderRadius: '2px',
+  color: 'var(--offwhite)', padding: '0.55rem 0.75rem', borderRadius: '2px',
   fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)',
 }
 
@@ -184,7 +180,7 @@ function ItemRow({ item, providers, onUpdated, onDeleted }: {
             <input value={nameAr} onChange={e => setNameAr(e.target.value)} placeholder="عربي" dir="rtl" style={{ ...inp, flex: 1, textAlign: 'right' }} />
             <button onClick={autoTranslate} disabled={translating} title="Auto-translate" style={{
               background: 'rgba(201,150,44,0.12)', border: '1px solid rgba(201,150,44,0.3)',
-              color: '#C9962C', padding: '0.35rem 0.5rem', borderRadius: '2px', fontSize: '0.72rem', cursor: 'pointer',
+              color: 'var(--brand-secondary)', padding: '0.35rem 0.5rem', borderRadius: '2px', fontSize: '0.72rem', cursor: 'pointer',
             }}>{translating ? '…' : '🌐'}</button>
           </div>
 
@@ -415,7 +411,7 @@ export default function OrderTemplatePage() {
               {items.filter(i => !i.nameAr).length > 0 && (
                 <button onClick={translateAll} disabled={transAll} style={{
                   backgroundColor: 'rgba(201,150,44,0.12)', border: '1px solid rgba(201,150,44,0.3)',
-                  color: '#C9962C', padding: '0.6rem 1.1rem', borderRadius: '2px',
+                  color: 'var(--brand-secondary)', padding: '0.6rem 1.1rem', borderRadius: '2px',
                   fontSize: '0.73rem', letterSpacing: '0.08em', textTransform: 'uppercase',
                   cursor: transAll ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-inter)',
                 }}>

@@ -53,7 +53,7 @@ function useNow(everyMs = 10_000) {
 
 const URGENCY = {
   fresh: { border: 'rgba(0,160,152,0.45)', text: 'var(--teal)' },
-  aging: { border: '#C9962C', text: '#C9962C' },
+  aging: { border: 'var(--brand-secondary)', text: 'var(--brand-secondary)' },
   late: { border: 'var(--red)', text: 'var(--red)' },
 } as const
 
@@ -142,7 +142,7 @@ function TicketCard({
             {l.note && (
               <p style={{
                 fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
-                color: '#C9962C', marginTop: '0.1rem', fontWeight: 600,
+                color: 'var(--brand-secondary)', marginTop: '0.1rem', fontWeight: 600,
               }}>{l.note}</p>
             )}
             {l.seat !== null && (
@@ -338,7 +338,7 @@ export default function KdsPage() {
 
       {(liveError || error) && (
         <p style={{
-          color: '#C9962C', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: 1.6,
+          color: 'var(--brand-secondary)', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: 1.6,
           background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.25)',
           borderRadius: '3px', padding: '0.8rem 1rem',
         }}>{error || liveError}</p>

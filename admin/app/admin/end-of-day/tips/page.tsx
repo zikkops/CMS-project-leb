@@ -11,7 +11,7 @@ const DEDUCTION = 0.11  // 11% taken off the top before distribution
 const inp: React.CSSProperties = {
   backgroundColor: 'rgba(255,255,255,0.04)',
   border: '1px solid rgba(255,255,255,0.1)',
-  color: '#F5F2EC',
+  color: 'var(--offwhite)',
   padding: '0.6rem 0.8rem',
   borderRadius: '2px',
   fontSize: '0.88rem',
@@ -180,7 +180,7 @@ export default function TipsCalculatorPage() {
           <div style={{
             background: 'rgba(201,150,44,0.08)', border: '1px solid rgba(201,150,44,0.2)',
             borderRadius: '4px', padding: '1rem 1.25rem', marginBottom: '2rem',
-            fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: '#C9962C',
+            fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'var(--brand-secondary)',
           }}>
             No tips data found for {monthLabel}. Make sure tips are entered on the EOD form for each day.
           </div>
@@ -219,7 +219,7 @@ function PeriodCard({ period }: { period: PeriodResult }) {
         display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.5rem',
       }}>
         <div>
-          <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', color: '#C9962C', letterSpacing: '0.1em' }}>
+          <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', color: 'var(--brand-secondary)', letterSpacing: '0.1em' }}>
             {period.label}
           </span>
           <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(245,242,236,0.4)', marginLeft: '0.75rem' }}>
@@ -297,7 +297,7 @@ function PeriodCard({ period }: { period: PeriodResult }) {
                 {!isMobile && (
                   <span style={{
                     fontFamily: 'var(--font-inter)', fontSize: '0.88rem', fontWeight: 600,
-                    color: '#C9962C', textAlign: 'center',
+                    color: 'var(--brand-secondary)', textAlign: 'center',
                   }}>
                     {s.shiftPoints}
                   </span>
@@ -325,7 +325,7 @@ function PeriodCard({ period }: { period: PeriodResult }) {
             {!isMobile && (
               <>
                 <span />
-                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', fontWeight: 600, color: '#C9962C', textAlign: 'center' }}>
+                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', fontWeight: 600, color: 'var(--brand-secondary)', textAlign: 'center' }}>
                   {period.totalShiftPoints}
                 </span>
               </>
@@ -359,7 +359,7 @@ function SummaryCell({ label, value, highlight, dim }: { label: string; value: s
       </p>
       <p style={{
         fontFamily: 'var(--font-inter)', fontSize: '1rem', fontWeight: 600,
-        color: dim ? 'rgba(245,242,236,0.2)' : highlight ? '#C9962C' : 'var(--offwhite)',
+        color: dim ? 'rgba(245,242,236,0.2)' : highlight ? 'var(--brand-secondary)' : 'var(--offwhite)',
       }}>
         {value}
       </p>

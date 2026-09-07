@@ -4,24 +4,19 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useIsMobile } from '@big-cms/shared/useIsMobile'
 import { branchAbbrev } from '@big-cms/shared/branches'
+import { supplyCategoryColor } from '@big-cms/shared/departments'
 import {
   INVENTORY_BRANCHES, DEPARTMENTS, listDailyInventories,
   type DailyInventoryReport,
 } from '@big-cms/shared/dailyInventory'
 
-const DEPT_COLOR: Record<string, string> = {
-  Kitchen:  '#00A098',
-  Bar:      '#C9962C',
-  Cleaning: '#8B7CF6',
-  Other:    'rgba(245,242,236,0.45)',
-}
 
 // branchAbbrev() derives these from the configured names and de-duplicates
 // collisions, rather than a fixed table that only knew the original three.
 
 const sel: React.CSSProperties = {
   background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.12)',
-  color: '#F5F2EC', borderRadius: '4px', padding: '0.5rem 0.7rem',
+  color: 'var(--offwhite)', borderRadius: '4px', padding: '0.5rem 0.7rem',
   fontSize: '0.82rem', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-inter)',
 }
 
@@ -131,7 +126,7 @@ export default function DailyInventoryHistoryPage() {
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
           {DEPARTMENTS.filter(d => d !== 'Other').map(d => (
             <div key={d} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <span style={{ width: '9px', height: '9px', borderRadius: '2px', background: DEPT_COLOR[d], flexShrink: 0 }} />
+              <span style={{ width: '9px', height: '9px', borderRadius: '2px', background: supplyCategoryColor(d), flexShrink: 0 }} />
               <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.4)' }}>{d}</span>
             </div>
           ))}
@@ -201,9 +196,9 @@ export default function DailyInventoryHistoryPage() {
                             fontFamily: 'var(--font-inter)', letterSpacing: '0.02em',
                             padding: isMobile ? '0.05rem 0.15rem' : '0.1rem 0.3rem',
                             borderRadius: '2px', lineHeight: 1.4,
-                            color: r.status === 'submitted' ? '#000' : DEPT_COLOR[r.department],
-                            background: r.status === 'submitted' ? DEPT_COLOR[r.department] : 'transparent',
-                            border: r.status === 'submitted' ? 'none' : `1px solid ${DEPT_COLOR[r.department]}`,
+                            color: r.status === 'submitted' ? '#000' : supplyCategoryColor(r.department),
+                            background: r.status === 'submitted' ? supplyCategoryColor(r.department) : 'transparent',
+                            border: r.status === 'submitted' ? 'none' : `1px solid ${supplyCategoryColor(r.department)}`,
                           }}
                         >{branchAbbrev(r.branch)}</span>
                       ))}
@@ -225,9 +220,9 @@ export default function DailyInventoryHistoryPage() {
                           {dayReports.map(r => (
                             <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
                               <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'var(--offwhite)' }}>
-                                {r.branch} · <span style={{ color: DEPT_COLOR[r.department] }}>{r.department}</span>
+                                {r.branch} · <span style={{ color: supplyCategoryColor(r.department) }}>{r.department}</span>
                               </span>
-                              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: r.status === 'submitted' ? 'var(--teal)' : '#C9962C' }}>
+                              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: r.status === 'submitted' ? 'var(--teal)' : 'var(--brand-secondary)' }}>
                                 {r.status === 'submitted' ? 'Submitted' : 'Draft'}
                               </span>
                             </div>

@@ -165,7 +165,7 @@ export default function TableReservationsPage() {
               value={adminBranchFilter}
               onChange={e => setAdminBranchFilter(e.target.value)}
               style={{
-                backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', color: '#F5F2EC',
+                backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--offwhite)',
                 padding: '0.6rem 0.9rem', borderRadius: '2px', fontSize: '0.82rem', outline: 'none', fontFamily: 'var(--font-inter)',
               }}
             >
@@ -179,7 +179,7 @@ export default function TableReservationsPage() {
               value={managerBranchFilter}
               onChange={e => setManagerBranchFilter(e.target.value)}
               style={{
-                backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', color: '#F5F2EC',
+                backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--offwhite)',
                 padding: '0.6rem 0.9rem', borderRadius: '2px', fontSize: '0.82rem', outline: 'none', fontFamily: 'var(--font-inter)',
               }}
             >
@@ -301,7 +301,7 @@ export default function TableReservationsPage() {
                         autoFocus
                         style={{
                           width: '100%', backgroundColor: '#1a1a1a', border: '1px solid rgba(228,51,41,0.3)',
-                          color: '#F5F2EC', padding: '0.7rem 0.9rem', borderRadius: '2px', fontSize: '0.82rem',
+                          color: 'var(--offwhite)', padding: '0.7rem 0.9rem', borderRadius: '2px', fontSize: '0.82rem',
                           outline: 'none', fontFamily: 'var(--font-inter)',
                         }}
                       />

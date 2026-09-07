@@ -306,7 +306,7 @@ export default function ImportGamesPage() {
     width: '100%',
     backgroundColor: '#1a1a1a',
     border: '1px solid rgba(255,255,255,0.1)',
-    color: '#F5F2EC',
+    color: 'var(--offwhite)',
     padding: '0.6rem 0.8rem',
     borderRadius: '2px',
     fontSize: '0.82rem',
@@ -413,7 +413,7 @@ export default function ImportGamesPage() {
                     value={mapping[def.key] ?? ''}
                     onChange={e => setMapping(m => ({ ...m, [def.key]: e.target.value }))}
                     disabled={importing}
-                    style={{ ...inputStyle, color: '#F5F2EC', backgroundColor: '#1a1a1a' }}
+                    style={{ ...inputStyle, color: 'var(--offwhite)', backgroundColor: '#1a1a1a' }}
                   >
                     <option value="">— none —</option>
                     {headers.map(h => <option key={h} value={h}>{h}</option>)}
@@ -537,7 +537,7 @@ export default function ImportGamesPage() {
                   ✓ {results.created} product{results.created === 1 ? '' : 's'} imported
                 </p>
                 {results.updated > 0 && (
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: '#C9962C' }}>
+                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--brand-secondary)' }}>
                     ✎ {results.updated} existing product{results.updated === 1 ? '' : 's'} updated
                   </p>
                 )}

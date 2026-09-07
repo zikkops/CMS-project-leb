@@ -64,7 +64,7 @@ export default function EndOfDayHistoryPage() {
                 padding: '0.45rem 1rem',
                 borderRadius: '2px', border: 'none', cursor: 'pointer',
                 fontSize: '0.75rem', fontFamily: 'var(--font-inter)',
-                backgroundColor: branch === b ? '#C9962C' : 'rgba(255,255,255,0.05)',
+                backgroundColor: branch === b ? 'var(--brand-secondary)' : 'rgba(255,255,255,0.05)',
                 color: branch === b ? '#000' : 'rgba(245,242,236,0.5)',
                 fontWeight: branch === b ? 600 : 400,
               }}
@@ -85,7 +85,7 @@ export default function EndOfDayHistoryPage() {
             color: 'rgba(245,242,236,0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
             No reports yet for this branch.{' '}
-            <a href="/admin/end-of-day" style={{ color: '#C9962C' }}>Submit the first one →</a>
+            <a href="/admin/end-of-day" style={{ color: 'var(--brand-secondary)' }}>Submit the first one →</a>
           </div>
         )}
 
@@ -100,8 +100,8 @@ export default function EndOfDayHistoryPage() {
                 r.expenses, r.income,
                 r.exchangeRate,
               )
-              const diffLbpColor = t.differenceLbp === 0 ? 'var(--teal)' : t.differenceLbp > 0 ? 'var(--red)' : '#C9962C'
-              const diffUsdColor = t.differenceUsd  === 0 ? 'var(--teal)' : t.differenceUsd  > 0 ? 'var(--red)' : '#C9962C'
+              const diffLbpColor = t.differenceLbp === 0 ? 'var(--teal)' : t.differenceLbp > 0 ? 'var(--red)' : 'var(--brand-secondary)'
+              const diffUsdColor = t.differenceUsd  === 0 ? 'var(--teal)' : t.differenceUsd  > 0 ? 'var(--red)' : 'var(--brand-secondary)'
               return (
                 <div key={r.id} style={{
                   background: 'rgba(255,255,255,0.02)',
@@ -135,7 +135,7 @@ export default function EndOfDayHistoryPage() {
                     <a
                       href={`/admin/end-of-day?branch=${encodeURIComponent(r.branch)}&date=${r.date}`}
                       style={{
-                        fontSize: '0.72rem', color: '#C9962C',
+                        fontSize: '0.72rem', color: 'var(--brand-secondary)',
                         textDecoration: 'none', fontFamily: 'var(--font-inter)',
                         whiteSpace: 'nowrap',
                       }}
@@ -176,8 +176,8 @@ export default function EndOfDayHistoryPage() {
                 r.expenses, r.income,
                 r.exchangeRate,
               )
-              const diffLbpColor = t.differenceLbp === 0 ? 'var(--teal)' : t.differenceLbp > 0 ? 'var(--red)' : '#C9962C'
-              const diffUsdColor = t.differenceUsd  === 0 ? 'var(--teal)' : t.differenceUsd  > 0 ? 'var(--red)' : '#C9962C'
+              const diffLbpColor = t.differenceLbp === 0 ? 'var(--teal)' : t.differenceLbp > 0 ? 'var(--red)' : 'var(--brand-secondary)'
+              const diffUsdColor = t.differenceUsd  === 0 ? 'var(--teal)' : t.differenceUsd  > 0 ? 'var(--red)' : 'var(--brand-secondary)'
               return (
                 <div key={r.id} style={{
                   display: 'grid',
@@ -207,7 +207,7 @@ export default function EndOfDayHistoryPage() {
                   <a
                     href={`/admin/end-of-day?branch=${encodeURIComponent(r.branch)}&date=${r.date}`}
                     style={{
-                      fontSize: '0.72rem', color: '#C9962C',
+                      fontSize: '0.72rem', color: 'var(--brand-secondary)',
                       textDecoration: 'none', fontFamily: 'var(--font-inter)',
                       whiteSpace: 'nowrap',
                     }}

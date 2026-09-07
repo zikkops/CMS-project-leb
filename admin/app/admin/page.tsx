@@ -183,7 +183,7 @@ export default function AdminPage() {
     },
     {
       title: 'Wholesale',
-      color: '#6A6AB7',
+      color: 'var(--purple)',
       cards: [
         { label: 'Wholesale Orders',   icon: faHandshake, daily: true,  desc: 'Approve or reject trade orders from shops, then email them on', href: '/admin/wholesale/orders',   access: SECTION_ACCESS.products },
         { label: 'Wholesale Accounts', icon: faStore,     daily: false, desc: 'Create and deactivate the shop logins that can see trade pricing', href: '/admin/wholesale/accounts', access: ['admin'] as Role[] },
@@ -202,7 +202,7 @@ export default function AdminPage() {
     },
     {
       title: 'End of Day',
-      color: '#C9962C',
+      color: 'var(--brand-secondary)',
       cards: [
         { label: 'Submit EOD Report', icon: faMoneyBill,       daily: true,  desc: 'Fill in cash count, expenses, income, and attendance for the end of shift', href: '/admin/end-of-day',          access: SECTION_ACCESS.endOfDay },
         { label: 'EOD History',       icon: faClockRotateLeft, daily: true,  desc: 'Browse past end-of-day reports by branch',                                   href: '/admin/end-of-day/history',  access: SECTION_ACCESS.endOfDayHistory },

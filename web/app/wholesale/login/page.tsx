@@ -63,7 +63,7 @@ export default function WholesaleLoginPage() {
     width: '100%', boxSizing: 'border-box',
     backgroundColor: 'rgba(255,255,255,0.04)',
     border: '1px solid rgba(255,255,255,0.12)',
-    color: '#F5F2EC', padding: '0.8rem 1rem', borderRadius: '3px',
+    color: 'var(--offwhite)', padding: '0.8rem 1rem', borderRadius: '3px',
     fontSize: '0.9rem', outline: 'none', fontFamily: 'var(--font-inter)',
   }
 
@@ -80,7 +80,7 @@ export default function WholesaleLoginPage() {
             style={{ width: '120px', height: 'auto', margin: '0 auto 1.5rem' }} />
           <h1 style={{
             fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.5rem' : '1.8rem',
-            color: 'var(--offwhite, #F5F2EC)', marginBottom: '0.4rem',
+            color: 'var(--offwhite, var(--offwhite))', marginBottom: '0.4rem',
           }}>Wholesale</h1>
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(245,242,236,0.35)' }}>
             Sign in to see trade pricing and place an order.
@@ -100,7 +100,7 @@ export default function WholesaleLoginPage() {
           />
 
           {error && (
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--red, #E43329)' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--red, var(--red))' }}>
               {error}
             </p>
           )}
@@ -108,7 +108,7 @@ export default function WholesaleLoginPage() {
           <button
             type="submit" disabled={busy}
             style={{
-              backgroundColor: busy ? 'rgba(255,255,255,0.08)' : 'var(--teal, #00A098)',
+              backgroundColor: busy ? 'rgba(255,255,255,0.08)' : 'var(--teal, var(--teal))',
               color: busy ? 'rgba(245,242,236,0.3)' : '#000',
               border: 'none', borderRadius: '3px', padding: '0.85rem',
               fontSize: '0.82rem', fontWeight: 700, letterSpacing: '0.1em',

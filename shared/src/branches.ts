@@ -76,7 +76,7 @@ export function resolveBranchName(branchId: string | undefined | null): string {
 }
 
 // ── Per-branch presentation ────────────────────────────────────────────────
-// Five admin screens each kept their own `{ Beirut: '#00A098', Zouk: ... }`
+// Five admin screens each kept their own `{ Beirut: 'var(--teal)', Zouk: ... }`
 // map. Every one of them was keyed on the ORIGINAL café's branch names, so in
 // a deployment configured with any other branches they returned undefined for
 // every branch that actually exists — an uncoloured tab, or a blank

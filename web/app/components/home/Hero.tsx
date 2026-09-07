@@ -233,12 +233,12 @@ export default function Hero() {
           // Mobile — 2 columns
           <>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', width: '100%', opacity: 0, transform: 'translateY(20px)' }}>
-              <HeroButton label="Our Menu"  color="#00A098" onClick={() => scrollTo('menu-section')} />
-              <HeroButton label="Shop"      color="#6A6AB7" onClick={() => scrollTo('shop-section')} />
+              <HeroButton label="Our Menu"  color="var(--teal)" onClick={() => scrollTo('menu-section')} />
+              <HeroButton label="Shop"      color="var(--purple)" onClick={() => scrollTo('shop-section')} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', width: '100%', opacity: 0, transform: 'translateY(20px)' }}>
-              <HeroButton label="Events"    color="#E43329" onClick={() => scrollTo('events-section')} />
-              <HeroButton label={isStaff && ADMIN_HOME ? 'CMS' : 'Reserve'} color="#32327C" onClick={() => goStaffOrTables(router, isStaff)} />
+              <HeroButton label="Events"    color="var(--red)" onClick={() => scrollTo('events-section')} />
+              <HeroButton label={isStaff && ADMIN_HOME ? 'CMS' : 'Reserve'} color="var(--navy)" onClick={() => goStaffOrTables(router, isStaff)} />
             </div>
           </>
         ) : (
@@ -247,12 +247,12 @@ export default function Hero() {
           // leaving one stranded on a row of its own.
           <>
             <div style={{ display: 'flex', gap: '1rem', opacity: 0, transform: 'translateY(20px)' }}>
-              <HeroButton label="Our Menu"          color="#00A098" onClick={() => scrollTo('menu-section')} />
-              <HeroButton label="Shop"              color="#6A6AB7" onClick={() => scrollTo('shop-section')} />
+              <HeroButton label="Our Menu"          color="var(--teal)" onClick={() => scrollTo('menu-section')} />
+              <HeroButton label="Shop"              color="var(--purple)" onClick={() => scrollTo('shop-section')} />
             </div>
             <div style={{ display: 'flex', gap: '1rem', opacity: 0, transform: 'translateY(20px)' }}>
-              <HeroButton label="Events"            color="#E43329" onClick={() => scrollTo('events-section')} />
-              <HeroButton label={isStaff && ADMIN_HOME ? 'CMS' : 'Reserve a Spot'} color="#32327C" onClick={() => goStaffOrTables(router, isStaff)} />
+              <HeroButton label="Events"            color="var(--red)" onClick={() => scrollTo('events-section')} />
+              <HeroButton label={isStaff && ADMIN_HOME ? 'CMS' : 'Reserve a Spot'} color="var(--navy)" onClick={() => goStaffOrTables(router, isStaff)} />
             </div>
           </>
         )}

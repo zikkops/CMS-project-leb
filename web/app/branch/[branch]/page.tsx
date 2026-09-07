@@ -97,7 +97,7 @@ function ProductCard({ product }: { product: Product }) {
               productWholesale now, which the rules gate to wholesale accounts
               and staff — so this page could not render one even if it tried. */}
           {product.retailPrice > 0 && (
-            <div style={{ background: '#C9962C', color: '#000', padding: '0.22rem 0.55rem', borderRadius: '3px', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-inter)', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+            <div style={{ background: 'var(--brand-secondary)', color: '#000', padding: '0.22rem 0.55rem', borderRadius: '3px', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-inter)', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
               RP ${product.retailPrice.toFixed(2)}
             </div>
           )}
@@ -258,7 +258,7 @@ export default function BranchCataloguePage() {
 
           {/* Header */}
           <div style={{ marginBottom: '2.5rem' }}>
-            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#C9962C', marginBottom: '0.6rem' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--brand-secondary)', marginBottom: '0.6rem' }}>
               {BRAND.name} — {BRANCH}
             </p>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.5rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
@@ -292,10 +292,10 @@ export default function BranchCataloguePage() {
             <select
               value={category}
               onChange={e => setCategory(e.target.value)}
-              style={{ flex: isMobile ? undefined : '0 0 200px', background: '#1c1c1c', border: '1px solid rgba(255,255,255,0.15)', color: '#F5F2EC', padding: '0.7rem 1rem', borderRadius: '4px', fontSize: '0.85rem', fontFamily: 'var(--font-inter)', outline: 'none', cursor: 'pointer' }}
+              style={{ flex: isMobile ? undefined : '0 0 200px', background: '#1c1c1c', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--offwhite)', padding: '0.7rem 1rem', borderRadius: '4px', fontSize: '0.85rem', fontFamily: 'var(--font-inter)', outline: 'none', cursor: 'pointer' }}
             >
               {allCats.map(cat => (
-                <option key={cat} value={cat} style={{ background: '#1c1c1c', color: '#F5F2EC' }}>{cat}</option>
+                <option key={cat} value={cat} style={{ background: '#1c1c1c', color: 'var(--offwhite)' }}>{cat}</option>
               ))}
             </select>
 

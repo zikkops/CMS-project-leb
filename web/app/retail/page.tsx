@@ -83,7 +83,7 @@ function ProductCard({ product }: { product: Product }) {
         {/* Price badge */}
         <div style={{
           position: 'absolute', top: '0.6rem', right: '0.6rem',
-          background: '#C9962C',
+          background: 'var(--brand-secondary)',
           color: '#000',
           padding: '0.25rem 0.6rem',
           borderRadius: '3px',
@@ -208,7 +208,7 @@ export default function RetailPage() {
               fontSize: '0.65rem',
               letterSpacing: '0.25em',
               textTransform: 'uppercase',
-              color: '#C9962C',
+              color: 'var(--brand-secondary)',
               marginBottom: '0.6rem',
             }}>{BRAND.name}</p>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.5rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
@@ -258,7 +258,7 @@ export default function RetailPage() {
                   padding: '0.4rem 0.85rem', borderRadius: '20px', border: 'none',
                   fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase',
                   cursor: 'pointer', fontFamily: 'var(--font-inter)',
-                  backgroundColor: category === cat ? '#C9962C' : 'rgba(255,255,255,0.06)',
+                  backgroundColor: category === cat ? 'var(--brand-secondary)' : 'rgba(255,255,255,0.06)',
                   color: category === cat ? '#000' : 'rgba(245,242,236,0.5)',
                   transition: 'all 0.15s ease',
                 }}>{cat}</button>

@@ -33,7 +33,7 @@ const inputStyle = {
   width: '100%',
   backgroundColor: '#1a1a1a',
   border: '1px solid rgba(255,255,255,0.1)',
-  color: '#F5F2EC',
+  color: 'var(--offwhite)',
   padding: '0.8rem 1rem',
   borderRadius: '4px',
   fontSize: '0.85rem',
@@ -214,7 +214,7 @@ export default function LoyaltyEventsPage() {
 
           <div>
             <label style={labelStyle}>Branch</label>
-            <select value={branchId} onChange={e => setBranchId(e.target.value)} style={{ ...inputStyle, color: '#F5F2EC', backgroundColor: '#1a1a1a' }}>
+            <select value={branchId} onChange={e => setBranchId(e.target.value)} style={{ ...inputStyle, color: 'var(--offwhite)', backgroundColor: '#1a1a1a' }}>
               {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
             </select>
           </div>

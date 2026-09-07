@@ -32,7 +32,7 @@ function D20({ num, rolling }: { num: number; rolling: boolean }) {
           <stop offset="100%" stopColor="#0b0619" />
         </radialGradient>
       </defs>
-      <polygon points={pts} fill="url(#d20fill)" stroke="#00a098" strokeWidth="2.5" />
+      <polygon points={pts} fill="url(#d20fill)" stroke="var(--teal)" strokeWidth="2.5" />
       {hex.map(([x, y], i) => (
         <line key={i} x1={x} y1={y} x2={cx} y2={cy}
           stroke="rgba(0,160,152,0.28)" strokeWidth="1.2" />
@@ -45,7 +45,7 @@ function D20({ num, rolling }: { num: number; rolling: boolean }) {
       <text x={cx} y={cy + (num >= 10 ? 15 : 22)} textAnchor="middle"
         fontFamily="Georgia, 'Times New Roman', serif"
         fontSize={num >= 10 ? '46' : '58'}
-        fontWeight="bold" fill="#00a098" filter="url(#d20glow)"
+        fontWeight="bold" fill="var(--teal)" filter="url(#d20glow)"
       >{num}</text>
       <text x={cx} y={cy + 62} textAnchor="middle"
         fontFamily="'Arial', sans-serif" fontSize="9" letterSpacing="2"

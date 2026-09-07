@@ -81,7 +81,7 @@ function ProductCard({ product }: { product: Product }) {
           {product.price > 0 && (
             <div style={{
               position: 'absolute', top: '0.6rem', right: '0.6rem',
-              background: '#C9962C', color: '#000',
+              background: 'var(--brand-secondary)', color: '#000',
               padding: '0.25rem 0.6rem', borderRadius: '3px',
               fontSize: '0.8rem', fontWeight: 700, fontFamily: 'var(--font-inter)', whiteSpace: 'nowrap',
             }}>
@@ -245,10 +245,10 @@ export default function PriceListPage() {
 
             <select
               value={category} onChange={e => setCategory(e.target.value)}
-              style={{ flex: isMobile ? undefined : '0 0 200px', background: '#1c1c1c', border: '1px solid rgba(255,255,255,0.15)', color: '#F5F2EC', padding: '0.7rem 1rem', borderRadius: '4px', fontSize: '0.85rem', fontFamily: 'var(--font-inter)', outline: 'none', cursor: 'pointer' }}
+              style={{ flex: isMobile ? undefined : '0 0 200px', background: '#1c1c1c', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--offwhite)', padding: '0.7rem 1rem', borderRadius: '4px', fontSize: '0.85rem', fontFamily: 'var(--font-inter)', outline: 'none', cursor: 'pointer' }}
             >
               {allCats.map(cat => (
-                <option key={cat} value={cat} style={{ background: '#1c1c1c', color: '#F5F2EC' }}>{cat}</option>
+                <option key={cat} value={cat} style={{ background: '#1c1c1c', color: 'var(--offwhite)' }}>{cat}</option>
               ))}
             </select>
           </div>

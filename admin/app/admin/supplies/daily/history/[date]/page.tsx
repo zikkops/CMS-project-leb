@@ -6,13 +6,8 @@ import { useParams } from 'next/navigation'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useIsMobile } from '@big-cms/shared/useIsMobile'
 import { listDailyInventoriesForDate, type DailyInventoryReport } from '@big-cms/shared/dailyInventory'
+import { supplyCategoryColor } from '@big-cms/shared/departments'
 
-const DEPT_COLOR: Record<string, string> = {
-  Kitchen:  '#00A098',
-  Bar:      '#C9962C',
-  Cleaning: '#8B7CF6',
-  Other:    'rgba(245,242,236,0.45)',
-}
 
 function discrepancyCount(r: DailyInventoryReport) {
   return r.items.filter(i => i.countedQty != null && i.countedQty !== i.previousQty).length
@@ -103,17 +98,17 @@ export default function DailyInventoryDayPage() {
                       <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.95rem', color: 'var(--offwhite)' }}>{r.branch}</span>
                       <span style={{
                         fontFamily: 'var(--font-inter)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase',
-                        color: DEPT_COLOR[r.department] ?? 'rgba(245,242,236,0.5)',
+                        color: supplyCategoryColor(r.department),
                       }}>{r.department}</span>
                       <span style={{
                         fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.05em', textTransform: 'uppercase',
-                        color: r.status === 'submitted' ? 'var(--teal)' : '#C9962C',
+                        color: r.status === 'submitted' ? 'var(--teal)' : 'var(--brand-secondary)',
                       }}>{r.status === 'submitted' ? 'Submitted' : 'Draft'}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(245,242,236,0.35)' }}>{r.submittedByEmail}</span>
                       {r.status === 'submitted' && (
-                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: discrepancies > 0 ? '#C9962C' : 'rgba(245,242,236,0.3)' }}>
+                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: discrepancies > 0 ? 'var(--brand-secondary)' : 'rgba(245,242,236,0.3)' }}>
                           {discrepancies > 0 ? `${discrepancies} changed` : 'matched'}
                         </span>
                       )}

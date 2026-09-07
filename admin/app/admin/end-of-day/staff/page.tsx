@@ -8,7 +8,7 @@ import { getBranchStaff, saveBranchStaff, listAllStaff, type StaffUser } from '@
 const inp: React.CSSProperties = {
   backgroundColor: 'rgba(255,255,255,0.04)',
   border: '1px solid rgba(255,255,255,0.1)',
-  color: '#F5F2EC',
+  color: 'var(--offwhite)',
   padding: '0.6rem 0.8rem',
   borderRadius: '2px',
   fontSize: '0.88rem',
@@ -261,7 +261,7 @@ export default function EndOfDayStaffPage() {
                       onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
                       <div style={{ textAlign: 'left' }}>
-                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: '#F5F2EC', marginBottom: '0.1rem' }}>
+                        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)', marginBottom: '0.1rem' }}>
                           {s.email}
                         </p>
                         <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(245,242,236,0.35)' }}>
@@ -294,7 +294,7 @@ export default function EndOfDayStaffPage() {
                 <button
                   type="button" onClick={addName}
                   style={{
-                    backgroundColor: newName.trim() ? '#C9962C' : 'rgba(255,255,255,0.06)',
+                    backgroundColor: newName.trim() ? 'var(--brand-secondary)' : 'rgba(255,255,255,0.06)',
                     border: 'none',
                     color: newName.trim() ? '#000' : 'rgba(245,242,236,0.4)',
                     padding: '0.6rem 1.1rem',
@@ -325,7 +325,7 @@ export default function EndOfDayStaffPage() {
           <button
             type="button" onClick={handleSave} disabled={saving}
             style={{
-              backgroundColor: '#C9962C', color: '#000', border: 'none',
+              backgroundColor: 'var(--brand-secondary)', color: '#000', border: 'none',
               padding: '0.85rem 2rem', borderRadius: '2px',
               fontSize: '0.8rem', letterSpacing: '0.1em', textTransform: 'uppercase',
               cursor: saving ? 'not-allowed' : 'pointer',

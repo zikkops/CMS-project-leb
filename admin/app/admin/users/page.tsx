@@ -165,7 +165,7 @@ export default function AdminUsersPage() {
     width: '100%',
     backgroundColor: '#1a1a1a',
     border: '1px solid rgba(255,255,255,0.1)',
-    color: '#F5F2EC',
+    color: 'var(--offwhite)',
     padding: '0.75rem 1rem',
     borderRadius: '2px',
     fontSize: '0.85rem',

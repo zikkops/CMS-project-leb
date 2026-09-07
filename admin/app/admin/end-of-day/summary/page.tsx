@@ -14,7 +14,7 @@ import { BRAND } from '@big-cms/shared/brand'
 const inp: React.CSSProperties = {
   backgroundColor: 'rgba(255,255,255,0.04)',
   border: '1px solid rgba(255,255,255,0.1)',
-  color: '#F5F2EC',
+  color: 'var(--offwhite)',
   padding: '0.6rem 0.8rem',
   borderRadius: '2px',
   fontSize: '0.88rem',
@@ -114,10 +114,10 @@ function EndOfDaySummaryInner() {
 
   const diffLbpColor = !totals ? 'var(--offwhite)'
     : totals.differenceLbp === 0 ? 'var(--teal)'
-    : totals.differenceLbp > 0 ? 'var(--red)' : '#C9962C'
+    : totals.differenceLbp > 0 ? 'var(--red)' : 'var(--brand-secondary)'
   const diffUsdColor = !totals ? 'var(--offwhite)'
     : totals.differenceUsd === 0 ? 'var(--teal)'
-    : totals.differenceUsd > 0 ? 'var(--red)' : '#C9962C'
+    : totals.differenceUsd > 0 ? 'var(--red)' : 'var(--brand-secondary)'
 
   const tipsNum = Number(tips) || (report?.tipsUsd ?? 0)
 
@@ -189,7 +189,7 @@ function EndOfDaySummaryInner() {
           <form onSubmit={handleSaveTips} style={{ marginBottom: '1.5rem' }}>
             <label style={{
               display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em',
-              textTransform: 'uppercase', color: '#C9962C',
+              textTransform: 'uppercase', color: 'var(--brand-secondary)',
               marginBottom: '0.5rem', fontFamily: 'var(--font-inter)',
             }}>Tips (USD)</label>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -207,7 +207,7 @@ function EndOfDaySummaryInner() {
                 type="submit"
                 disabled={saving}
                 style={{
-                  backgroundColor: '#C9962C', color: '#000', border: 'none',
+                  backgroundColor: 'var(--brand-secondary)', color: '#000', border: 'none',
                   padding: '0.65rem 1.25rem', borderRadius: '2px',
                   fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase',
                   cursor: saving ? 'not-allowed' : 'pointer',
@@ -243,7 +243,7 @@ function EndOfDaySummaryInner() {
             }}>
               <p style={{
                 fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem',
-                color: '#C9962C', letterSpacing: '0.15em', textTransform: 'uppercase',
+                color: 'var(--brand-secondary)', letterSpacing: '0.15em', textTransform: 'uppercase',
                 marginBottom: '0.2rem',
               }}>
                 {BRAND.name} — Daily Summary
@@ -272,7 +272,7 @@ function EndOfDaySummaryInner() {
             <Row
               label="Tips"
               value={formatUsd(tipsNum)}
-              color="#C9962C"
+              color="var(--brand-secondary)"
             />
 
             {/* Difference */}

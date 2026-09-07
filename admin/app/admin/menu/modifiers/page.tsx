@@ -177,7 +177,7 @@ function GroupEditor({
 
       {problem && (
         <p style={{
-          color: '#C9962C', fontFamily: 'var(--font-inter)', fontSize: '0.78rem',
+          color: 'var(--brand-secondary)', fontFamily: 'var(--font-inter)', fontSize: '0.78rem',
           marginTop: '0.9rem', lineHeight: 1.6,
         }}>{problem}</p>
       )}
