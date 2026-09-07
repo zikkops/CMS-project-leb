@@ -52,7 +52,7 @@ const money = (n: number) => `$${n.toFixed(2)}`
 
 const URGENCY_COLOUR = {
   fresh: 'rgba(var(--offwhite-rgb),0.45)',
-  aging: '#C9962C',
+  aging: 'var(--brand-secondary)',
   late: 'var(--red)',
 } as const
 

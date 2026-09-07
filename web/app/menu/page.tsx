@@ -35,10 +35,13 @@ interface MenuItem {
 
 const SECTIONS: Section[] = ['Food', 'Beverage', 'Sweets']
 
+// Brand colours all along, just written as literals — sectionBg directly
+// below already reads them from variables, so after the palette migration the
+// tint followed the brand and the label it belongs to did not.
 const sectionColors: Record<Section, string> = {
-  Food:     '#00A098',
-  Beverage: '#6A6AB7',
-  Sweets:   '#E43329',
+  Food:     'var(--teal)',
+  Beverage: 'var(--purple)',
+  Sweets:   'var(--red)',
 }
 
 const sectionBg: Record<Section, string> = {

@@ -33,10 +33,14 @@ export const WHOLESALE_ORDERS_EMAIL =
 export const WHOLESALE_ORDER_STATUSES = ['pending', 'approved', 'rejected', 'fulfilled'] as const
 export type WholesaleOrderStatus = typeof WHOLESALE_ORDER_STATUSES[number]
 
+// Semantic, not arbitrary: waiting, good, bad, done. Three of the four are
+// the brand's own accent, success and danger colours, so they follow it.
+// 'fulfilled' keeps a literal because the palette has no fourth accent and
+// borrowing one would make it read as a repeat of another state.
 export const STATUS_COLOR: Record<WholesaleOrderStatus, string> = {
-  pending:   '#C9962C',
-  approved:  '#00A098',
-  rejected:  '#E43329',
+  pending:   'var(--brand-secondary)',
+  approved:  'var(--teal)',
+  rejected:  'var(--red)',
   fulfilled: '#8B7CF6',
 }
 

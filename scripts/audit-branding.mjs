@@ -166,7 +166,7 @@ const allowedFor = (file, label) => ALLOWED.find(a => a.file === file && a.label
 
 // Above which the medium/low code count may not rise. Lower it as hex codes
 // move to CSS variables; never raise it to make a run pass.
-const BASELINE = 50
+const BASELINE = 43
 
 // Which of a file's lines are prose rather than shipped code, as a parallel
 // array. Imperfect on purpose: a branded string sharing a line with a trailing
