@@ -14,11 +14,15 @@ import { sendEmail, emailConfigured } from '@big-cms/shared/server/email'
 import { FieldValue } from 'firebase-admin/firestore'
 import { INVOICE_NUMBER_PATTERN, INVOICE_IMAGE_URL_PATTERN } from '@big-cms/shared/invoiceFormat'
 import { issueInvoiceNumber } from '@big-cms/shared/server/invoiceNumber'
+import { BRAND } from '@big-cms/shared/brand'
 
 export const runtime = 'nodejs'
 
+// Same fallback as shared/src/wholesale.ts, and for the same reason — see the
+// note there. A personal address as the default recipient is a defect in
+// anything sold to a second operator.
 const ORDERS_EMAIL =
-  process.env.NEXT_PUBLIC_WHOLESALE_ORDERS_EMAIL || 'markzakkak@gmail.com'
+  process.env.NEXT_PUBLIC_WHOLESALE_ORDERS_EMAIL || BRAND.contact.email
 
 interface LineInput { productId: string; quantity: number }
 

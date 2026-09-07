@@ -15,12 +15,20 @@ import {
   collection, doc, getDoc, getDocs, query, where, orderBy, type Timestamp,
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
+import { BRAND } from './brand'
 
 // Where approved wholesale orders are sent. Set
-// NEXT_PUBLIC_WHOLESALE_ORDERS_EMAIL to change it without touching code — the
-// fallback is only a starting point, not a permanent address.
+// NEXT_PUBLIC_WHOLESALE_ORDERS_EMAIL to change it without touching code.
+//
+// The fallback used to be a personal address — the original developer's. That
+// is fine in one café's own codebase and wrong the moment the same code is
+// sold to a second one: an operator who never sets this variable would have
+// had their customers' wholesale orders delivered to a stranger, silently and
+// correctly, with nothing anywhere to suggest it. It falls back to the
+// configured contact address instead, which is at worst the placeholder and
+// therefore visibly unset rather than invisibly wrong.
 export const WHOLESALE_ORDERS_EMAIL =
-  process.env.NEXT_PUBLIC_WHOLESALE_ORDERS_EMAIL || 'markzakkak@gmail.com'
+  process.env.NEXT_PUBLIC_WHOLESALE_ORDERS_EMAIL || BRAND.contact.email
 
 export const WHOLESALE_ORDER_STATUSES = ['pending', 'approved', 'rejected', 'fulfilled'] as const
 export type WholesaleOrderStatus = typeof WHOLESALE_ORDER_STATUSES[number]

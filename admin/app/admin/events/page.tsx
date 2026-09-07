@@ -834,13 +834,17 @@ export default function AdminEventsPage() {
                   ))}
                 </div>
 
-                {/* Custom number input */}
+                {/* Custom number input. The placeholder was a hardcoded
+                    +9611234567 — a Lebanese number, in a product meant to be
+                    sold to cafés anywhere. A placeholder is the example a user
+                    copies the shape of, so a wrong country code teaches the
+                    wrong format. */}
                 <label style={{ ...labelStyle, marginBottom: '0.4rem' }}>
                   Or enter a custom number
                 </label>
                 <input
                   type="tel"
-                  placeholder="+9611234567"
+                  placeholder={BRAND.contact.phone}
                   value={form.contactNumber}
                   onChange={e => setForm(f => ({ ...f, contactNumber: e.target.value }))}
                   style={inputStyle}
