@@ -22,7 +22,8 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'receipt-verify-'))
 execSync(
-  `npx tsc shared/src/receipt.ts shared/src/checks.ts shared/src/money.ts shared/src/modifiers.ts ` +
+  `npx tsc shared/src/receipt.ts shared/src/ticketDoc.ts shared/src/tickets.ts ` +
+  `shared/src/checks.ts shared/src/money.ts shared/src/modifiers.ts ` +
   `--outDir ${out} --module esnext --target es2022 --skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' }
 )
@@ -32,6 +33,7 @@ for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
 }
 
 const R = await import(`file://${join(out, 'receipt.js')}`)
+const T = await import(`file://${join(out, 'ticketDoc.js')}`)
 
 let pass = 0, fail = 0
 const eq = (name, got, want) => {
@@ -144,6 +146,68 @@ eq('and its figure is still printed', noSpaces.endsWith('9.00'), true)
 
 eq('wide roll is 42', R.RECEIPT_WIDTHS.wide, 42)
 eq('narrow roll is 32', R.RECEIPT_WIDTHS.narrow, 32)
+
+// ── The kitchen ticket ─────────────────────────────────────────────────────
+// Same layout engine, opposite priorities. A receipt exists so a figure can be
+// checked; a ticket has no figures at all and exists so somebody at a pass,
+// mid-service, can tell in about a second what to make and for which table.
+console.log('\nbuildTicketDoc — what a cook reads')
+
+const tline = (over = {}) => ({
+  lineId: 'l1', name: 'Flat White', quantity: 1, modifiers: '',
+  seat: null, course: null, note: '', voided: false, ...over,
+})
+const ticket = (over = {}) => ({
+  id: 't1', checkId: 'c1', branch: 'Main', tableNumber: 12, station: 'Kitchen',
+  status: 'new', round: 1, lines: [tline()], sentBy: 'sara', sentByEmail: 's@x',
+  bumpedAt: null, bumpedBy: null, ...over,
+})
+const topts = { sentAt: '2026-09-07T19:42:00Z', sentBy: 'sara', timeZone: 'UTC' }
+const ttext = (t, w = 32) => T.ticketToText(t, topts, w)
+
+eq('station leads', T.buildTicketDoc(ticket(), topts)[0],
+   { kind: 'center', text: 'KITCHEN', strong: true })
+eq('then the table', T.buildTicketDoc(ticket(), topts)[1],
+   { kind: 'center', text: 'TABLE 12', strong: true })
+eq('no round label on the first send', ttext(ticket()).includes('ROUND'), false)
+eq('round 2 is labelled, or it gets cooked twice',
+   ttext(ticket({ round: 2 })).includes('ROUND 2'), true)
+eq('the time it was sent is on it', ttext(ticket()).includes('19:42'), true)
+eq('no prices anywhere', /\d+\.\d{2}/.test(ttext(ticket())), false)
+
+eq('quantity leads the line',
+   ttext(ticket({ lines: [tline({ quantity: 3 })] })).includes('3  Flat White'), true)
+eq('modifiers are indented under it',
+   ttext(ticket({ lines: [tline({ modifiers: 'Large, Oat' })] })).includes('      Large, Oat'), true)
+eq('a note is indented too',
+   ttext(ticket({ lines: [tline({ note: 'no ice' })] })).includes('      no ice'), true)
+eq('seat and course are shown when set',
+   ttext(ticket({ lines: [tline({ seat: 3, course: 2 })] })).includes('seat 3 · course 2'), true)
+
+eq('VOID goes in front of the name, not after',
+   ttext(ticket({ lines: [tline({ voided: true })] })).includes('VOID  1  Flat White'), true)
+eq('a voided line is kept rather than dropped',
+   ttext(ticket({ lines: [tline({ voided: true })] })).includes('Flat White'), true)
+eq('an all-void ticket says so at the top',
+   ttext(ticket({ lines: [tline({ voided: true })] })).includes('ALL ITEMS VOIDED'), true)
+eq('a partly-void ticket does not',
+   ttext(ticket({ lines: [tline(), tline({ lineId: 'l2', voided: true })] }))
+     .includes('ALL ITEMS VOIDED'), false)
+eq('an empty ticket still prints something', ttext(ticket({ lines: [] })).includes('NO ITEMS'), true)
+
+// The bug these found in receipt.ts: `left` rows were sliced, not wrapped, so
+// a long name lost its end. Invisible on a receipt, where the only left rows
+// are short modifier lines. A cook guessing at "Halloumi & Zaatar Manou" is
+// not invisible.
+const longName = ttext(ticket({ lines: [tline({ name: 'Halloumi & Zaatar Manoushe', quantity: 2 })] }))
+eq('a long item name wraps rather than being cut', longName.includes('Manoushe'), true)
+eq('and no line exceeds the roll', longName.split('\n').every(l => l.length <= 32), true)
+eq('an indented line keeps its indent when it wraps',
+   ttext(ticket({ lines: [tline({ modifiers: 'Oat milk, extra shot, no sugar, half caff please' })] }))
+     .split('\n').filter(l => l.startsWith('      ')).length >= 2, true)
+eq('the wide roll is respected too',
+   ttext(ticket({ lines: [tline({ name: 'Halloumi & Zaatar Manoushe' })] }), 42)
+     .split('\n').every(l => l.length <= 42), true)
 
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

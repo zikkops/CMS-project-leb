@@ -293,12 +293,35 @@ function pairText(left: string, right: string, width: number): string[] {
  * means a browser print view and a thermal printer produce the same document
  * rather than two that drift.
  */
+/**
+ * A left-aligned row, wrapped rather than cut.
+ *
+ * This used to be `text.slice(0, width)`, which is the same defect pairText()
+ * goes out of its way to avoid one function above: a name losing its end is
+ * worse than a name taking two lines. It did not show on a receipt, where the
+ * only left rows are short modifier lines — it showed the moment kitchen
+ * tickets started using left rows for item names, and printed
+ * "Halloumi & Zaatar Manou" for a cook to guess at.
+ *
+ * Continuation lines keep the row's own indentation, so an option indented
+ * under its item still reads as belonging to it after it wraps.
+ */
+function leftText(text: string, width: number): string[] {
+  if (text.length <= width) return [text]
+  const indent = /^\s*/.exec(text)?.[0] ?? ''
+  // Only if the indent leaves room to write anything; a pathological indent
+  // wider than the roll would otherwise loop forever making empty lines.
+  const body = indent.length < width ? width - indent.length : width
+  const [first, ...rest] = wrapText(text.trimStart(), body)
+  return [indent + first, ...rest.map(l => indent + l)]
+}
+
 export function receiptToText(rows: ReceiptRow[], width: number = RECEIPT_WIDTHS.narrow): string {
   const out: string[] = []
   for (const row of rows) {
     switch (row.kind) {
       case 'center': out.push(centerText(row.text, width)); break
-      case 'left':   out.push(row.text.slice(0, width)); break
+      case 'left':   out.push(...leftText(row.text, width)); break
       case 'pair':   out.push(...pairText(row.left, row.right, width)); break
       case 'rule':   out.push('-'.repeat(width)); break
       case 'blank':  out.push(''); break
