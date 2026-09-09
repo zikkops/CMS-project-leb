@@ -17,9 +17,12 @@ import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { BRAND } from '@big-cms/shared/brand'
 import { STATIONS, type Station } from '@big-cms/shared/checks'
 import {
-  minutesWaiting, urgency, canTransition, type Ticket, type TicketStatus,
+  minutesWaiting, urgency, canTransition, ticketSentAtMs, type Ticket, type TicketStatus,
 } from '@big-cms/shared/tickets'
 import { useStationTickets, advanceTicket } from '../../lib/usePos'
+import { usePrintingSettings } from '@big-cms/shared/usePrintingSettings'
+import { activeStations } from '@big-cms/shared/printing'
+import { useAutoPrintTickets } from '../../lib/useAutoPrint'
 
 const STORAGE_KEY = 'kds.station'
 
@@ -78,12 +81,11 @@ function TicketCard({
   onBack: () => void
   isMobile: boolean
 }) {
-  // sentAt is a Firestore timestamp on the wire; it arrives as an object with
-  // seconds. A ticket written moments ago can briefly have none at all, while
-  // the server timestamp resolves — treat that as "just now" rather than 1970.
-  const raw = ticket as unknown as { sentAt?: { seconds?: number } }
-  const sentMs = raw.sentAt?.seconds ? raw.sentAt.seconds * 1000 : now
-  const mins = minutesWaiting(sentMs, now)
+  // sentAt is a server timestamp, and its shape on arrival depends on how the
+  // document was read — ticketSentAtMs handles both. A ticket written moments
+  // ago can briefly have none at all while the server timestamp resolves, so
+  // the fallback is "just now" rather than 1970.
+  const mins = minutesWaiting(ticketSentAtMs(ticket, now), now)
   const level = urgency(mins)
   const next = NEXT_ACTION[ticket.status]
   const live = ticket.lines.filter(l => !l.voided)
@@ -239,6 +241,12 @@ export default function KdsPage() {
 
   const { tickets, error: liveError } = useStationTickets(branch, station === 'All' ? null : station)
 
+  // Paper, if this device is the one with a printer on it. Off until somebody
+  // says otherwise — see useAutoPrint for why that default is not timidity.
+  const { settings: printing, loading: printingLoading } = usePrintingSettings()
+  const autoPrint = useAutoPrintTickets(tickets, branch, printing, printingLoading)
+  const printable = activeStations(printing, branch)
+
   async function move(ticket: Ticket, to: TicketStatus) {
     setBusy(ticket.id)
     setError('')
@@ -326,6 +334,28 @@ export default function KdsPage() {
           <span style={{ fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
             {tickets.length} on the pass
           </span>
+
+          {/* Only offered where a printer is actually configured for this
+              branch. A toggle that cannot do anything is a toggle somebody
+              turns on and then reports as broken. */}
+          {printable.length > 0 && (
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: '0.45rem', cursor: 'pointer',
+              fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase',
+              color: autoPrint.on ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.3)',
+            }}>
+              <input
+                type="checkbox"
+                checked={autoPrint.on}
+                onChange={e => autoPrint.setOn(e.target.checked)}
+                style={{ width: '16px', height: '16px', accentColor: 'var(--teal)' }}
+              />
+              Print here
+              {autoPrint.on && autoPrint.printed > 0 && (
+                <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)' }}>· {autoPrint.printed}</span>
+              )}
+            </label>
+          )}
           <button onClick={() => { setStation(null); try { localStorage.removeItem(STORAGE_KEY) } catch {} }}
             style={{
               background: 'none', border: 'none', padding: '0.3rem 0', cursor: 'pointer',
@@ -342,6 +372,14 @@ export default function KdsPage() {
           background: 'rgba(var(--brand-secondary-rgb),0.08)', border: '1px solid rgba(var(--brand-secondary-rgb),0.25)',
           borderRadius: '3px', padding: '0.8rem 1rem',
         }}>{error || liveError}</p>
+      )}
+
+      {autoPrint.lastError && (
+        <p style={{
+          color: 'rgba(var(--offwhite-rgb),0.5)', fontSize: '0.78rem', marginBottom: '1rem',
+          lineHeight: 1.6, border: '1px solid rgba(var(--offwhite-rgb),0.1)',
+          borderRadius: '3px', padding: '0.6rem 0.9rem',
+        }}>Paper: {autoPrint.lastError} — the ticket is on the pass regardless.</p>
       )}
 
       {tickets.length === 0 ? (

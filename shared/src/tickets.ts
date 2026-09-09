@@ -63,6 +63,13 @@ export interface Ticket {
   lines: TicketLine[]
   sentBy: string
   sentByEmail: string
+  /**
+   * Written as a server timestamp, so its shape on arrival depends on how the
+   * document was read. Declared as unknown rather than guessed at, and read
+   * through ticketSentAtMs() — two call sites were already casting it, each
+   * assuming a different one of the two possible shapes.
+   */
+  sentAt?: unknown
   /** Set when it leaves the screen; null until then. */
   bumpedAt: string | null
   bumpedBy: string | null
@@ -123,6 +130,37 @@ export function toTicketLines(lines: CheckLine[]): TicketLine[] {
  */
 export function minutesWaiting(sentAtMs: number, now: number): number {
   return Math.max(0, Math.floor((now - sentAtMs) / 60_000))
+}
+
+/**
+ * When a ticket was sent, in milliseconds.
+ *
+ * `sentAt` is written as a server timestamp, so what arrives depends on how it
+ * was read: the client SDK gives a Timestamp instance with toMillis(), while a
+ * plain document read gives the underlying { seconds, nanoseconds }. Both are
+ * handled here rather than at each call site — this was already being cast in
+ * two places with two different assumptions about the shape, which is one
+ * wrong guess away from every ticket showing the wrong age.
+ *
+ * `fallback` rather than a throw: a ticket with no time on it is worse than
+ * one stamped a moment late, on a screen and on paper alike.
+ */
+export function ticketSentAtMs(ticket: Ticket, fallback: number): number {
+  const raw = ticket.sentAt
+  if (typeof raw === 'number') return raw
+  if (typeof raw === 'string') {
+    const ms = Date.parse(raw)
+    return Number.isFinite(ms) ? ms : fallback
+  }
+  if (raw && typeof raw === 'object') {
+    const t = raw as { toMillis?: () => number; seconds?: number }
+    if (typeof t.toMillis === 'function') {
+      const ms = t.toMillis()
+      if (Number.isFinite(ms)) return ms
+    }
+    if (typeof t.seconds === 'number') return t.seconds * 1000
+  }
+  return fallback
 }
 
 /** Green, amber, red — the only thing a passing glance needs. */
