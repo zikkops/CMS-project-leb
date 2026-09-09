@@ -121,6 +121,9 @@ export const ADMIN_NAV: AdminNavSection[] = [
       // told why rather than hitting a blank screen.
       { label: 'Business Settings', href: '/admin/settings',          access: ['admin'] as Role[] },
       { label: 'Modules',           href: '/admin/settings/features', access: ['admin'] as Role[] },
+      // Admin, not superadmin: the person who plugs a printer in should not
+      // have to find a superadmin to tell the app about it.
+      { label: 'Printers',          href: '/admin/settings/printers', access: ['admin'] as Role[] },
     ],
   },
 ]
