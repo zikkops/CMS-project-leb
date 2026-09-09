@@ -784,6 +784,22 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Which station prints to what, and how. Written only by
+    // /api/admin/printing, which requires admin.
+    //
+    // Read by any staff because the KDS has to know what it prints to, and the
+    // POS has to know whether a receipt goes out on close.
+    //
+    // This NARROWS the catch-all below, which would otherwise let an admin's
+    // browser write it directly. Nothing here decides money, but the standing
+    // rule from Phase 00 is that new documents go behind a route, and every
+    // one that does is a reason the catch-all needs to exist for one fewer
+    // document.
+    match /appSettings/printing {
+      allow read:  if isStaff();
+      allow write: if false;
+    }
+
     match /appSettings/{id} {
       allow read:  if isStaff();
       allow write: if hasRole(['admin']);
