@@ -200,15 +200,31 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
   the staff use their own phones.
 
   Two things outstanding, neither of them code:
-  - **Printing — the transport only.** The *document* is built:
-    `shared/src/receipt.ts` produces the receipt as rows, `receiptToText()`
-    lays it out at 32 or 42 columns, and `/pos/check/[id]/receipt` prints it
-    from a browser to any ordinary printer, which is enough to pilot with.
-    What still needs the make and model is how those bytes reach a thermal
-    device. The plan's "server sends ESC/POS to a LAN printer" does not work
-    from a cloud host — it is Epson ePOS-Print from the browser over the café
-    wifi, or Star CloudPRNT with the printer polling out, and whichever it is
-    consumes `receiptToText()` rather than laying the receipt out again.
+  - **Printing — one arm of one switch.** Everything but the thermal
+    transport is built. Documents: `receipt.ts` and `ticketDoc.ts`, laid out
+    by `receiptToText()` at 32 or 42 columns. The seam: `printText()` in
+    `shared/src/printClient.ts`, switching on the transport — `browser` works
+    today (a KDS device prints to whatever printer it is attached to), `epos`
+    and `cloudprnt` return a reason rather than pretending. Configuration:
+    `/admin/settings/printers`, stored at `appSettings/printing`. The KDS
+    auto-prints new tickets and, if switched on, the receipt when a check
+    closes — from the device with **Print here** on, never the phone that
+    pressed Close. The decisions are pure functions in
+    `pos/app/lib/printBatch.ts`, asserted by `verify:printing`.
+
+    Choosing hardware now means implementing one `case` in `printText()`.
+    The plan's "server sends ESC/POS to a LAN printer" does not work from a
+    cloud host — it is Epson ePOS-Print from the browser over the café wifi,
+    or Star CloudPRNT with the printer polling out.
+
+    **The `appSettings/printing` rule is written and NOT deployed.** Until
+    it is, the settings are unreadable, every printer reads as off, and the
+    Print here toggle does not appear.
+  - **Timestamps.** A `serverTimestamp()` field arrives as a Firestore
+    `Timestamp`, and `new Date(timestamp)` is Invalid Date — it printed
+    "NaN-NaN-NaN NaN:NaN" on every real receipt while the verifier passed on
+    a string fixture. Read timestamps through `timestampMs()` in
+    `shared/src/timestamps.ts`, never `new Date(field)`.
   - **The pilot.** One section of one branch, the old till still taking
     payment. That constraint is what makes v1 safe to ship badly.
 
