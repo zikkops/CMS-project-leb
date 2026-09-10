@@ -84,6 +84,40 @@ eq('receipt number', find(rows, 'Receipt').right, 'INV-Q3-092026-0007')
 eq('table', find(rows, 'Table').right, '12')
 eq('guests', find(rows, 'Guests').right, '2')
 eq('date comes from closedAt', find(rows, 'Date').right, '2026-09-07 15:30')
+
+// ── closedAt as Firestore actually delivers it ─────────────────────────────
+// The fixture above passes a string, which is the one shape Firestore never
+// sends. The server writes serverTimestamp(), so a real closed check carries a
+// Timestamp — and `new Date(timestamp)` is Invalid Date, which is what printed
+// "NaN-NaN-NaN NaN:NaN" on every real receipt while this file passed.
+{
+  const { createRequire } = await import('node:module')
+  const { Timestamp } = createRequire(join(process.cwd(), 'package.json'))('firebase/firestore')
+  const at = new Date('2026-09-07T15:30:00')   // local, like the fixture
+  const dateFor = closedAt => find(R.buildReceipt(check({ closedAt }), opts), 'Date').right
+
+  eq('a real Timestamp dates the receipt', dateFor(Timestamp.fromDate(at)), '2026-09-07 15:30')
+  eq('a {seconds, nanoseconds} copy does too',
+     dateFor({ seconds: at.getTime() / 1000, nanoseconds: 0 }), '2026-09-07 15:30')
+  eq('an Admin SDK timestamp after Response.json does too',
+     dateFor({ _seconds: at.getTime() / 1000, _nanoseconds: 0 }), '2026-09-07 15:30')
+  eq('no receipt date is ever NaN',
+     [Timestamp.fromDate(at), { seconds: 1 }, 'garbage', null, {}]
+       .map(dateFor).some(d => d.includes('NaN')), false)
+
+  const TS = await import(`file://${join(out, 'timestamps.js')}`)
+  const ms = at.getTime()
+  console.log('\ntimestampMs — every shape a timestamp arrives in')
+  eq('Timestamp instance', TS.timestampMs(Timestamp.fromDate(at), 0), ms)
+  eq('{seconds, nanoseconds}', TS.timestampMs({ seconds: ms / 1000, nanoseconds: 5e8 }, 0), ms + 500)
+  eq('{_seconds, _nanoseconds}', TS.timestampMs({ _seconds: ms / 1000, _nanoseconds: 0 }, 0), ms)
+  eq('ISO string', TS.timestampMs(at.toISOString(), 0), ms)
+  eq('Date', TS.timestampMs(at, 0), ms)
+  eq('number', TS.timestampMs(ms, 0), ms)
+  eq('null falls back', TS.timestampMs(null, 42), 42)
+  eq('an unparseable string falls back', TS.timestampMs('063924391800.000000000x', 42), 42)
+  eq('an empty object falls back', TS.timestampMs({}, 42), 42)
+}
 eq('server is the local part only', find(rows, 'Served by').right, 'sara')
 eq('no mail domain anywhere', R.receiptToText(rows).includes('cafe.example.com'), false)
 

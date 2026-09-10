@@ -28,6 +28,7 @@
 
 import type { CheckLine, Station } from './checks'
 import { describeSelections } from './modifiers'
+import { timestampMs } from './timestamps'
 
 export type TicketStatus =
   | 'new'        // on the pass, nobody has picked it up
@@ -146,21 +147,9 @@ export function minutesWaiting(sentAtMs: number, now: number): number {
  * one stamped a moment late, on a screen and on paper alike.
  */
 export function ticketSentAtMs(ticket: Ticket, fallback: number): number {
-  const raw = ticket.sentAt
-  if (typeof raw === 'number') return raw
-  if (typeof raw === 'string') {
-    const ms = Date.parse(raw)
-    return Number.isFinite(ms) ? ms : fallback
-  }
-  if (raw && typeof raw === 'object') {
-    const t = raw as { toMillis?: () => number; seconds?: number }
-    if (typeof t.toMillis === 'function') {
-      const ms = t.toMillis()
-      if (Number.isFinite(ms)) return ms
-    }
-    if (typeof t.seconds === 'number') return t.seconds * 1000
-  }
-  return fallback
+  // One reader for every timestamp field — see timestamps.ts, which exists
+  // because this and closedAt were each being read their own way.
+  return timestampMs(ticket.sentAt, fallback)
 }
 
 /** Green, amber, red — the only thing a passing glance needs. */

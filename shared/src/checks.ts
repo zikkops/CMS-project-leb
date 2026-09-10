@@ -200,7 +200,14 @@ export interface Check {
   lines: CheckLine[]
   openedBy: string
   openedByEmail: string
-  closedAt: string | null
+  /**
+   * Was typed `string | null`. It has never been a string: the server writes
+   * serverTimestamp(), so a client receives a Timestamp. Trusting the old type,
+   * receipt.ts ran `new Date(check.closedAt)`, got Invalid Date, and printed
+   * "NaN-NaN-NaN NaN:NaN" on every real receipt. Unknown, and read through
+   * timestampMs() in timestamps.ts, so nothing can trust a shape again.
+   */
+  closedAt: unknown
   /**
    * Issued when the check closes, from the same sequence counter sales and
    * wholesale orders use — one series for the business, which is what an

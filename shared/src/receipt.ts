@@ -33,6 +33,7 @@
 import { checkTotals, grossLineTotal, type Check, type CheckLine } from './checks'
 import { describeSelections } from './modifiers'
 import { billTotals } from './money'
+import { timestampMs } from './timestamps'
 
 // ── The document ───────────────────────────────────────────────────────────
 // Deliberately a list of rows rather than a string. A string can only be
@@ -126,8 +127,10 @@ export function buildReceipt(check: Check, opts: ReceiptOptions): ReceiptRow[] {
   const blocked = receiptBlockedReason(check)
   if (blocked) throw new Error(blocked)
 
-  const issuedAt = opts.issuedAt
-    ?? (check.closedAt ? new Date(check.closedAt) : new Date())
+  // Not `new Date(check.closedAt)`. closedAt arrives as a Firestore Timestamp,
+  // whose valueOf() is a sort key Date cannot parse — that line printed
+  // "NaN-NaN-NaN NaN:NaN" on every real receipt. See timestamps.ts.
+  const issuedAt = opts.issuedAt ?? new Date(timestampMs(check.closedAt, Date.now()))
 
   const totals = checkTotals(check)
   const bill = billTotals(totals.net, opts.exchangeRate)
