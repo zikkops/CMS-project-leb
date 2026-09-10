@@ -150,14 +150,20 @@ export function useCheck(checkId: string): {
 export function useStationTickets(branch: string, station: Station | null): {
   tickets: Ticket[]; loading: boolean; error: string
 } {
-  const [tickets, setTickets] = useState<Ticket[]>([])
-  const [loaded, setLoaded] = useState(false)
-  const [error, setError] = useState('')
+  // Keyed by what the listener is subscribed to, and read back only when the
+  // key still matches. Switching station used to leave the previous station's
+  // tickets in state — on screen, and handed to the auto-printer as though
+  // they were the new pass — until the new snapshot landed, with `loading`
+  // false the whole time. A stale list and "not loading" together are how
+  // useAutoPrint came to see a bar pass's entire backlog as fresh.
+  const [snapshot, setSnapshot] = useState<{ key: string; tickets: Ticket[]; error: string } | null>(null)
+  const key = `${branch}|${station ?? '*'}`
 
   const { ready, signedIn } = useAuthReady()
 
   useEffect(() => {
     if (!branch || !ready) return
+    const k = `${branch}|${station ?? '*'}`
     const q = station
       ? query(
           collection(db, 'kitchenTickets'),
@@ -174,19 +180,28 @@ export function useStationTickets(branch: string, station: Station | null): {
         )
     return onSnapshot(q,
       snap => {
-        setTickets(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Ticket))
-        setLoaded(true)
-        setError('')
+        setSnapshot({ key: k, tickets: snap.docs.map(d => ({ id: d.id, ...d.data() }) as Ticket), error: '' })
       },
       err => {
         console.error('[useStationTickets] listener failed:', err)
-        setError(listenerMessage(err))
-        setLoaded(true)
+        // Keep what this same subscription last showed: a dead listener with
+        // an error banner over the last good list beats a blank pass. A list
+        // from a different subscription is never kept.
+        setSnapshot(prev => ({
+          key: k,
+          tickets: prev?.key === k ? prev.tickets : [],
+          error: listenerMessage(err),
+        }))
       },
     )
   }, [branch, station, ready, signedIn])
 
-  return { tickets, loading: !ready || (signedIn && !loaded), error }
+  const current = snapshot?.key === key ? snapshot : null
+  return {
+    tickets: current?.tickets ?? [],
+    loading: !ready || (signedIn && current === null),
+    error: current?.error ?? '',
+  }
 }
 
 /**

@@ -239,12 +239,22 @@ export default function KdsPage() {
     try { window.localStorage.setItem(STORAGE_KEY, s) } catch { /* not fatal */ }
   }
 
-  const { tickets, error: liveError } = useStationTickets(branch, station === 'All' ? null : station)
+  // One value feeds both the listener and the printer's notion of scope, so
+  // they cannot disagree about when the subscription changed.
+  const filter = station === 'All' ? null : station
+  const { tickets, loading: ticketsLoading, error: liveError } = useStationTickets(branch, filter)
 
   // Paper, if this device is the one with a printer on it. Off until somebody
   // says otherwise — see useAutoPrint for why that default is not timidity.
   const { settings: printing, loading: printingLoading } = usePrintingSettings()
-  const autoPrint = useAutoPrintTickets(tickets, branch, printing, printingLoading)
+  const autoPrint = useAutoPrintTickets({
+    tickets,
+    ticketsLoading,
+    scope: `${branch}|${filter ?? '*'}`,
+    branch,
+    settings: printing,
+    settingsLoading: printingLoading,
+  })
   const printable = activeStations(printing, branch)
 
   async function move(ticket: Ticket, to: TicketStatus) {

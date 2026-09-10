@@ -126,5 +126,83 @@ eq('"none" is the default, so nothing prints until somebody says so',
    P.PRINTER_DEFAULT.transport, 'none')
 eq('and the default is not enabled', P.PRINTER_DEFAULT.enabled, false)
 
+// ── When the KDS prints ───────────────────────────────────────────────────
+// A separate transpile: this file lives in pos/, and adding it to the tsc call
+// above would move the common root and every output path with it.
+const outB = mkdtempSync(join(tmpdir(), 'printbatch-verify-'))
+execSync(
+  `npx tsc pos/app/lib/printBatch.ts --outDir ${outB} ` +
+  `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler`,
+  { stdio: 'pipe' },
+)
+const B = await import(`file://${join(outB, 'printBatch.js')}`)
+
+console.log('\nnextPrintBatch — the backlog, a station switch, and printing once')
+
+const base = { ticketsLoading: false, settingsLoading: false, on: true }
+const step = (state, over) => B.nextPrintBatch(state, { ...base, ...over })
+
+let s = B.EMPTY_PRINT_STATE
+let r = step(s, { scope: 'Main|Kitchen', ids: ['k1', 'k2', 'k3'] })
+eq('opening the screen prints none of what is already on the pass', r.print, [])
+s = r.state
+
+r = step(s, { scope: 'Main|Kitchen', ids: ['k1', 'k2', 'k3', 'k4'] })
+eq('a ticket arriving after that prints', r.print, ['k4'])
+s = r.state
+
+r = step(s, { scope: 'Main|Kitchen', ids: ['k1', 'k2', 'k3', 'k4'] })
+eq('the same list again prints nothing', r.print, [])
+
+r = step(s, { scope: 'Main|Kitchen', ids: ['k2', 'k4'] })
+eq('tickets leaving the pass print nothing', r.print, [])
+s = r.state
+
+// THE BUG. The first version printed all three of these.
+r = step(s, { scope: 'Main|Bar', ids: ['b1', 'b2', 'b3'] })
+eq('switching station does not print the new pass\'s backlog', r.print, [])
+s = r.state
+
+r = step(s, { scope: 'Main|Bar', ids: ['b1', 'b2', 'b3', 'b4'] })
+eq('but a new ticket on the new station does', r.print, ['b4'])
+s = r.state
+
+r = step(s, { scope: 'Main|Kitchen', ids: ['k2', 'k4', 'k5'] })
+eq('switching back absorbs what arrived while away', r.print, [])
+s = r.state
+
+r = step(s, { scope: 'Main|*', ids: ['k2', 'k4', 'k5', 'b1', 'b2', 'b3', 'b4'] })
+eq('switching to All does not print the other stations', r.print, [])
+s = r.state
+
+r = step(s, { scope: 'Main|*', ids: ['k2', 'k4', 'k5', 'b1', 'b2', 'b3', 'b4', 'x1', 'x2'] })
+eq('several at once print in list order', r.print, ['x1', 'x2'])
+
+console.log('\nnextPrintBatch — waiting, and this device being off')
+
+const loadingT = step(s, { scope: 'Main|*', ids: ['new'], ticketsLoading: true })
+eq('nothing is decided while tickets are loading', loadingT.print, [])
+// Identity, not eq(): JSON.stringify renders every Set as {}, so comparing
+// states by value would pass whatever the state held.
+eq('and nothing is recorded either (same state object back)', loadingT.state === s, true)
+
+const loadingS = step(B.EMPTY_PRINT_STATE, { scope: 'Main|Kitchen', ids: ['k1'], settingsLoading: true })
+eq('nothing is decided while the printer config is loading', loadingS.state.primedScope, null)
+const afterS = step(loadingS.state, { scope: 'Main|Kitchen', ids: ['k1'] })
+eq('and the first real snapshot after it is still history', afterS.print, [])
+
+let off = step(B.EMPTY_PRINT_STATE, { scope: 'Main|Kitchen', ids: ['k1'] }).state
+const offRun = step(off, { scope: 'Main|Kitchen', ids: ['k1', 'k2'], on: false })
+eq('with this device off, nothing prints', offRun.print, [])
+off = offRun.state
+eq('turning it on does not print what arrived while it was off',
+   step(off, { scope: 'Main|Kitchen', ids: ['k1', 'k2'], on: true }).print, [])
+eq('but the next one after does',
+   step(off, { scope: 'Main|Kitchen', ids: ['k1', 'k2', 'k3'], on: true }).print, ['k3'])
+
+const before = B.EMPTY_PRINT_STATE.seen.size
+step(B.EMPTY_PRINT_STATE, { scope: 'Main|Kitchen', ids: ['a', 'b'] })
+eq('the previous state is never mutated', B.EMPTY_PRINT_STATE.seen.size, before)
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail > 0 ? 1 : 0)

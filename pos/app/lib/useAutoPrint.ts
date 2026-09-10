@@ -6,25 +6,33 @@
 // document, the transport and the configuration are all shared; deciding WHEN
 // to print is a property of this screen.
 //
-// ── The three ways this goes wrong, and what stops each ────────────────────
+// ── The ways this goes wrong, and what stops each ──────────────────────────
 //
 // 1. THE BACKLOG. A listener's first snapshot is every active ticket, so a
 //    screen opening at 8pm would print the whole evening in one go. The first
-//    snapshot is therefore treated as history: everything in it is recorded as
-//    seen and nothing from it prints. A ticket sent while no screen was open
-//    never prints — the screen shows it, and that is the trade. Paper is a
-//    copy of the order, not the order.
+//    snapshot of each SUBSCRIPTION is therefore history: recorded, not
+//    printed. A ticket sent while no screen was looking never prints — the
+//    screen shows it, and that is the trade. Paper is a copy of the order.
 //
-// 2. REPRINTING. Tickets re-render on every status change, every bump, every
-//    re-connect. Ids already printed are remembered for the life of the page,
-//    so a ticket prints once no matter how many times it comes back through.
+// 2. SWITCHING STATION. The same failure by another door, and the one the
+//    first version of this file had: changing the KDS from Kitchen to Bar is a
+//    new subscription, and its first snapshot is the bar pass's whole backlog.
+//    Treating only the FIRST EVER snapshot as history printed every ticket on
+//    the bar pass at once. History is now per scope.
 //
-// 3. TWO SCREENS. This is the one that is invisible until it happens. Two
-//    devices showing the same station both see the same new ticket and both
-//    print it, and the kitchen gets two of everything with nothing anywhere
-//    saying why. So printing is OFF per device until somebody turns it on,
-//    and the setting is stored on the device rather than in the account: it is
-//    a fact about which machine has the printer plugged into it.
+// 3. REPRINTING. Tickets re-render on every status change and reconnect. Ids
+//    are remembered for the life of the page and marked before the print, not
+//    after — printText() is async, and a snapshot arriving mid-print would
+//    otherwise find the same ticket unseen and print it twice.
+//
+// 4. TWO SCREENS. Two devices on one station both see the new ticket and both
+//    print it, and nothing anywhere says why. So printing is OFF per device
+//    until somebody turns it on, stored on the device rather than the account:
+//    it is a fact about which machine has a printer plugged into it.
+//
+// The decision itself is nextPrintBatch() in printBatch.ts — pure, and
+// asserted in scripts/verify-printing.mjs, because case 2 was reasoned
+// correct inside an effect and was not.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ticketSentAtMs, type Ticket } from '@big-cms/shared/tickets'
@@ -32,6 +40,7 @@ import { ticketToText } from '@big-cms/shared/ticketDoc'
 import { printText } from '@big-cms/shared/printClient'
 import { printerFor, type PrintingSettings } from '@big-cms/shared/printing'
 import { BRAND } from '@big-cms/shared/brand'
+import { nextPrintBatch, EMPTY_PRINT_STATE, type PrintBatchState } from './printBatch'
 
 const DEVICE_KEY = 'kds.printsFromThisDevice'
 
@@ -45,31 +54,38 @@ export interface AutoPrintState {
   printed: number
 }
 
+export interface AutoPrintInput {
+  tickets: Ticket[]
+  ticketsLoading: boolean
+  /**
+   * What the ticket listener is subscribed to. Must change exactly when the
+   * listener does — it is how a station switch is recognised as a new pass.
+   */
+  scope: string
+  branch: string
+  settings: PrintingSettings
+  settingsLoading: boolean
+}
+
 /**
  * Print each newly-arrived ticket on its own station's printer.
  *
- * Note "its own": when the screen is showing All, a bar ticket and a kitchen
- * ticket go to different machines. The station on the TICKET decides, never
- * the station the screen happens to be filtered to.
+ * "Its own": with the screen showing All, a bar ticket and a kitchen ticket go
+ * to different machines. The station on the TICKET decides.
  */
-export function useAutoPrintTickets(
-  tickets: Ticket[],
-  branch: string,
-  settings: PrintingSettings,
-  settingsLoading: boolean,
-): AutoPrintState {
+export function useAutoPrintTickets(input: AutoPrintInput): AutoPrintState {
+  const { tickets, ticketsLoading, scope, branch, settings, settingsLoading } = input
+
   const [on, setOnState] = useState(false)
   const [lastError, setLastError] = useState<string | null>(null)
   const [printed, setPrinted] = useState(0)
 
-  // Ids already handled. A ref rather than state: changing it must not cause a
-  // render, and a render must not reset it.
-  const seen = useRef<Set<string>>(new Set())
-  const primed = useRef(false)
+  // A ref: advancing it must not render, and a render must not reset it.
+  const batch = useRef<PrintBatchState>(EMPTY_PRINT_STATE)
 
   // Read once on mount rather than during render — localStorage does not exist
-  // on the server, and reading it while rendering makes the server and client
-  // produce different HTML. Same reasoning as the station picker on the KDS.
+  // on the server, and reading it while rendering mismatches hydration. Same
+  // reasoning as the station picker on the KDS.
   useEffect(() => {
     try {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -83,38 +99,31 @@ export function useAutoPrintTickets(
   }, [])
 
   useEffect(() => {
-    // Wait for the configuration. Acting on the defaults would mean deciding
-    // "no printer" before the answer arrived, and marking the current tickets
-    // as history in the process — so the first real batch would be skipped.
-    if (settingsLoading) return
+    const { state, print } = nextPrintBatch(batch.current, {
+      scope,
+      ids: tickets.map(t => t.id),
+      ticketsLoading,
+      settingsLoading,
+      on,
+    })
+    // Advanced before any printing starts — see case 3 above.
+    batch.current = state
+    if (print.length === 0) return
 
-    // The first list this screen ever sees is history, whatever it contains.
-    if (!primed.current) {
-      for (const t of tickets) seen.current.add(t.id)
-      primed.current = true
-      return
-    }
-
-    const fresh = tickets.filter(t => !seen.current.has(t.id))
-    if (fresh.length === 0) return
-
-    // Marked before printing, not after. printText() is async, and a second
-    // snapshot arriving mid-print would otherwise find the same ticket unseen
-    // and print it again — the duplicate this whole file exists to avoid.
-    for (const t of fresh) seen.current.add(t.id)
-
-    if (!on) return
+    const byId = new Map(tickets.map(t => [t.id, t]))
 
     void (async () => {
-      for (const ticket of fresh) {
+      for (const id of print) {
+        const ticket = byId.get(id)
+        if (!ticket) continue
         const printer = printerFor(settings, branch, ticket.station)
         if (!printer.enabled) continue
 
         const text = ticketToText(ticket, {
           businessName: BRAND.shortName,
-          // The ticket's own send time, not now: a print that queues behind
-          // another would otherwise stamp the paper with the wrong minute, and
-          // the pass judges waiting time off that number.
+          // The ticket's own send time, not now: a print queued behind another
+          // would otherwise stamp the wrong minute, and the pass judges waiting
+          // time off that number.
           sentAt: ticketSentAtMs(ticket, Date.now()),
           sentBy: ticket.sentByEmail.split('@')[0] || ticket.sentBy,
           timeZone: BRAND.locale.timezone,
@@ -131,7 +140,7 @@ export function useAutoPrintTickets(
         }
       }
     })()
-  }, [tickets, branch, settings, settingsLoading, on])
+  }, [tickets, ticketsLoading, scope, branch, settings, settingsLoading, on])
 
   return { on, setOn, lastError, printed }
 }
