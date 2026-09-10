@@ -95,6 +95,8 @@ export interface PurchaseResult {
   invoiceNumber: string
   total: number
   items: PricedLine[]
+  /** A retry of a sale already recorded — no stock moved, no number issued. */
+  duplicate?: boolean
 }
 
 /**
@@ -114,8 +116,15 @@ function normaliseStock(raw: unknown): Record<string, number> {
 export async function createPurchaseOrder(
   caller: Caller,
   input: PurchaseInput,
+  requestId: string | null = null,
 ): Promise<PurchaseResult> {
   const db = adminDb()
+  // The request's key is the order's id, so a retry after a lost reply finds
+  // the sale it already made instead of making a second one — which deducted
+  // the stock twice and issued a second invoice number for one sale.
+  const orderRef = requestId
+    ? db.doc(`productPurchaseOrders/${requestId}`)
+    : db.collection('productPurchaseOrders').doc()
 
   // Duplicate cart entries for one product are summed before anything is read.
   // Two updates to the same document inside one transaction would otherwise
@@ -154,7 +163,20 @@ export async function createPurchaseOrder(
     const productRefs = productIds.map(id => db.doc(`products/${id}`))
     // Every read before every write — a Firestore transaction forbids the
     // reverse, and the counter has to be read here too.
-    const [counterSnap, ...productSnaps] = await tx.getAll(counterRef, ...productRefs)
+    const [counterSnap, orderSnap, ...productSnaps] = await tx.getAll(counterRef, orderRef, ...productRefs)
+
+    // Checked before a single write: this sale already happened, so report it
+    // and touch nothing — not the stock, not the invoice counter.
+    if (orderSnap.exists) {
+      const o = orderSnap.data() ?? {}
+      return {
+        orderId: orderRef.id,
+        invoiceNumber: String(o.invoiceNumber ?? ''),
+        total: Number(o.total ?? 0),
+        items: (Array.isArray(o.items) ? o.items : []) as PricedLine[],
+        duplicate: true,
+      }
+    }
 
     const items: PricedLine[] = []
 
@@ -217,7 +239,6 @@ export async function createPurchaseOrder(
     tx.set(counterRef, { year, nextNumber: sequence })
     const invoiceNumber = formatInvoiceNumber(sequence, issuedAt, prefix)
 
-    const orderRef = db.collection('productPurchaseOrders').doc()
     tx.set(orderRef, {
       invoiceNumber,
       customerName: input.customerName,

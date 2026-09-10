@@ -11,6 +11,7 @@
 
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import { parsePurchaseInput, createPurchaseOrder, refundPurchaseOrder } from '@big-cms/shared/server/purchases'
+import { parseRequestId } from '@big-cms/shared/server/idempotency'
 import { adminDb } from '@big-cms/shared/server/firebaseAdmin'
 import { logCreate, logUpdate } from '@big-cms/shared/server/activityLog'
 
@@ -29,11 +30,13 @@ async function readBody(request: Request): Promise<Record<string, unknown>> {
 export async function POST(request: Request): Promise<Response> {
   try {
     const caller: Caller = await requireSection(request, 'productPurchases')
-    const input = parsePurchaseInput(await readBody(request))
+    const body = await readBody(request)
+    const input = parsePurchaseInput(body)
 
-    const result = await createPurchaseOrder(caller, input)
+    const result = await createPurchaseOrder(caller, input, parseRequestId(body))
 
-    await logCreate(
+    // A retried sale is not a second sale, and logging it would say it was.
+    if (!result.duplicate) await logCreate(
       caller,
       'Product Sale',
       `${result.invoiceNumber} — ${input.customerName} (${input.branch}) $${result.total.toFixed(2)}`,

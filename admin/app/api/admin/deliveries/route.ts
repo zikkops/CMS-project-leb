@@ -14,6 +14,7 @@
 
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import { parseDelivery, postDelivery } from '@big-cms/shared/server/deliveries'
+import { parseRequestId } from '@big-cms/shared/server/idempotency'
 import { logActivity, logCreate } from '@big-cms/shared/server/activityLog'
 import { deliveryDocLabel } from '@big-cms/shared/deliveries'
 
@@ -47,12 +48,16 @@ export async function POST(request: Request): Promise<Response> {
     // being management-only. can() honours per-user grants, so anyone else who
     // genuinely receives stock can be granted the section.
     const actor: Caller = await requireSection(request, 'deliveries')
-    const parsed = parseDelivery(await readBody(request))
+    const body = await readBody(request)
+    const parsed = parseDelivery(body)
 
-    const result = await postDelivery(parsed, { uid: actor.uid, email: actor.email })
+    const result = await postDelivery(
+      parsed, { uid: actor.uid, email: actor.email }, undefined, parseRequestId(body))
 
     const label = deliveryDocLabel(parsed)
-    await logCreate(actor, 'Goods Receiving', label, {
+    // A retry of a delivery already received is not a second delivery, and
+    // logging it as one would have the audit trail say the stock arrived twice.
+    if (!result.duplicate) await logCreate(actor, 'Goods Receiving', label, {
       status: parsed.status,
       branch: parsed.branch,
       department: parsed.department,

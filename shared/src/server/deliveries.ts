@@ -170,6 +170,8 @@ export interface PostResult {
   stockMoved: boolean
   linesApplied: number
   missingSupplies: string[]
+  /** This was a retry of a submission already applied; nothing moved again. */
+  duplicate?: boolean
 }
 
 // ── Posting a delivery ─────────────────────────────────────────────────────
@@ -184,9 +186,18 @@ export async function postDelivery(
   parsed: ParsedDelivery,
   actor: { uid: string; email: string | null },
   existingId?: string,
+  requestId: string | null = null,
 ): Promise<PostResult> {
   const db = adminDb()
-  const ref = existingId ? db.doc(`deliveries/${existingId}`) : db.collection('deliveries').doc()
+  // A NEW delivery takes the request's key as its document id. The re-post
+  // guard below only ever worked when an existing id was passed; a new
+  // delivery got a fresh id every time, so a retry after a lost reply created
+  // a second delivery and moved the stock again. With the key as the id, the
+  // retry lands on the delivery it already created.
+  const ref = existingId
+    ? db.doc(`deliveries/${existingId}`)
+    : requestId ? db.doc(`deliveries/${requestId}`) : db.collection('deliveries').doc()
+  const dup: { result: PostResult | null } = { result: null }
   const totals = computeTotals(parsed.lines, parsed.vatRate)
   const shouldApply = parsed.status !== 'draft'
 
@@ -194,8 +205,29 @@ export async function postDelivery(
   let linesApplied = 0
 
   await db.runTransaction(async (tx: Transaction) => {
-    const prevSnap = existingId ? await tx.get(ref) : null
+    // Firestore re-runs this callback when it contends with another write.
+    // Anything accumulated from a previous run would be counted twice.
+    missingSupplies.length = 0
+    linesApplied = 0
+    dup.result = null
+
+    const prevSnap = existingId || requestId ? await tx.get(ref) : null
     const prev = prevSnap?.exists ? (prevSnap.data() as Delivery) : null
+
+    // A new-delivery request whose document already exists is this same
+    // submission arriving again. Report what the first one did and write
+    // nothing — not the 409 below, which would tell someone their delivery
+    // failed when it had in fact been received.
+    if (!existingId && prev) {
+      dup.result = {
+        id: ref.id,
+        stockMoved: prev.status !== 'draft',
+        linesApplied: 0,
+        missingSupplies: [],
+        duplicate: true,
+      }
+      return
+    }
 
     // Re-posting an already-applied delivery would double the stock. This is
     // the realistic failure: someone opens a received delivery, fixes a typo
@@ -293,5 +325,6 @@ export async function postDelivery(
     }
   })
 
+  if (dup.result) return dup.result
   return { id: ref.id, stockMoved: shouldApply, linesApplied, missingSupplies }
 }

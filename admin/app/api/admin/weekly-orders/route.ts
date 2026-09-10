@@ -15,6 +15,7 @@ import {
   deleteWeeklyOrder, setWhatsappSent, appendOrderLog,
 } from '@big-cms/shared/server/weeklyOrders'
 import { logCreate, logUpdate, logDelete } from '@big-cms/shared/server/activityLog'
+import { parseRequestId } from '@big-cms/shared/server/idempotency'
 
 export const runtime = 'nodejs'
 
@@ -31,16 +32,21 @@ async function readBody(request: Request): Promise<Record<string, unknown>> {
 export async function POST(request: Request): Promise<Response> {
   try {
     const caller: Caller = await requireSection(request, 'weeklyOrdersSubmit')
-    const input = parseSubmitInput(await readBody(request))
+    const body = await readBody(request)
+    const input = parseSubmitInput(body)
 
-    const result = await submitWeeklyOrder(caller, input)
+    const result = await submitWeeklyOrder(caller, input, parseRequestId(body))
     const label = `${input.branch}${input.department ? ` — ${input.department}` : ''} — ${input.weekLabel}`
 
-    await logCreate(caller, 'Weekly Order Report', label, { lines: result.lines })
-    await appendOrderLog(caller, {
-      action: 'submit', reportId: result.id,
-      branch: input.branch, department: input.department, weekLabel: input.weekLabel,
-    })
+    // A retry of an order already submitted is not a second order; logging it
+    // would put a phantom submission in both logs.
+    if (!result.duplicate) {
+      await logCreate(caller, 'Weekly Order Report', label, { lines: result.lines })
+      await appendOrderLog(caller, {
+        action: 'submit', reportId: result.id,
+        branch: input.branch, department: input.department, weekLabel: input.weekLabel,
+      })
+    }
 
     return Response.json({ ok: true, ...result })
   } catch (err) {

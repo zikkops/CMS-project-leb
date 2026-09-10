@@ -22,6 +22,7 @@ import { FieldValue, FieldPath } from 'firebase-admin/firestore'
 import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
+import { alreadyExists } from './idempotency'
 
 const DEPARTMENTS = ['Kitchen', 'Bar', 'Cleaning'] as const
 
@@ -94,7 +95,11 @@ export function parseSubmitInput(body: Record<string, unknown>): SubmitInput {
  * submit an order for an item that never existed, or attribute one to the
  * wrong supplier.
  */
-export async function submitWeeklyOrder(caller: Caller, input: SubmitInput): Promise<{ id: string; lines: number }> {
+export async function submitWeeklyOrder(
+  caller: Caller,
+  input: SubmitInput,
+  requestId: string | null = null,
+): Promise<{ id: string; lines: number; duplicate?: boolean }> {
   assertBranch(caller, input.branch)
   const db = adminDb()
 
@@ -117,7 +122,7 @@ export async function submitWeeklyOrder(caller: Caller, input: SubmitInput): Pro
     }
   })
 
-  const ref = await db.collection('weeklyOrderReports').add({
+  const report = {
     branch: input.branch,
     weekStart: input.weekStart,
     weekLabel: input.weekLabel,
@@ -127,8 +132,23 @@ export async function submitWeeklyOrder(caller: Caller, input: SubmitInput): Pro
     submittedBy: caller.uid,
     submittedByEmail: caller.email ?? '',
     submittedAt: FieldValue.serverTimestamp(),
-  })
+  }
 
+  if (!requestId) {
+    const ref = await db.collection('weeklyOrderReports').add(report)
+    return { id: ref.id, lines: items.length }
+  }
+
+  // create(), not set(): it refuses when the document exists, which is exactly
+  // the retry of a submission that already landed. A second weekly order for
+  // the same week is a supplier delivering twice.
+  const ref = db.doc(`weeklyOrderReports/${requestId}`)
+  try {
+    await ref.create(report)
+  } catch (err) {
+    if (!alreadyExists(err)) throw err
+    return { id: ref.id, lines: items.length, duplicate: true }
+  }
   return { id: ref.id, lines: items.length }
 }
 

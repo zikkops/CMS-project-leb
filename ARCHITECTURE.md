@@ -247,6 +247,7 @@ subcollections are both worse than a flat id.
 - `deliveries` — what actually arrived against an order, and at what cost
 - `dailyInventoryCounts` — the count that closes the loop between ordered, received and used
 - `productPurchaseOrders` — buying stock for the shop, the `products` equivalent of a weekly order
+- `stockTransfers` — one marker per stock transfer, keyed by the request's idempotency key and written in the same transaction as the move, so a retried transfer is recognised instead of moving the stock twice. Server-only: it has no rule, so clients are denied it
 
 **POS (phase 03)**
 - `checks` — one per table visit. Lines carry a snapshot of price, name and station, so history can't move when the menu does. `source: 'menu' | 'product'` is what decides whether Send draws stock.

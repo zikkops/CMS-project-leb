@@ -2,6 +2,7 @@
 
 import { auth } from './firebase'
 import { NetworkError, isNetworkFailure } from './netErrors'
+import { createRequestKeys } from './requestKey'
 
 // The browser half of every call into app/api/**.
 //
@@ -90,4 +91,44 @@ export async function unwrap(res: Response): Promise<Record<string, unknown>> {
     )
   }
   return data as Record<string, unknown>
+}
+
+// ── Submissions that must not happen twice ─────────────────────────────────
+// See shared/src/requestKey.ts. One set of keys for the life of the page: a
+// reload starts fresh, which is the right reading of "I reloaded to see what
+// happened".
+const requestKeys = createRequestKeys(() => {
+  const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto
+  if (c?.randomUUID) return c.randomUUID()
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
+})
+
+/**
+ * POSTs a submission with an idempotency key, so pressing Save again after a
+ * lost reply cannot record it twice.
+ *
+ * The key is settled — the next submission of this kind becomes a new one —
+ * on ANY answer, refusal included: when the server says no, nothing was
+ * written. Only no answer keeps it, which is exactly the case where the
+ * person cannot know whether it worked, and so the case where the message
+ * has to tell them trying again is safe.
+ */
+export async function postOnce(
+  kind: string,
+  path: string,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  const requestId = requestKeys.keyFor(kind, body)
+  let res: Response
+  try {
+    res = await authedFetch(path, 'POST', { ...body, requestId })
+  } catch (err) {
+    if (isNetworkFailure(err)) {
+      throw new NetworkError(
+        'No connection — it may or may not have been saved. Trying again is safe: it will not be saved twice.')
+    }
+    throw err
+  }
+  requestKeys.settled(kind)
+  return res
 }

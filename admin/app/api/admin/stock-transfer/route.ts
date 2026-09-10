@@ -8,6 +8,7 @@
 
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import { parseTransferInput, transferStock } from '@big-cms/shared/server/stockTransfer'
+import { parseRequestId } from '@big-cms/shared/server/idempotency'
 import { logActivity } from '@big-cms/shared/server/activityLog'
 
 export const runtime = 'nodejs'
@@ -24,11 +25,12 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const input = parseTransferInput(body)
-    const result = await transferStock(input)
+    const result = await transferStock(input, parseRequestId(body))
 
     // Names come from the stored documents, not the request, so the log says
     // what was actually moved rather than what the browser called it.
-    await logActivity(caller, 'update', 'Stock Transfer',
+    // A retry of a transfer already made moved nothing; do not log a second one.
+    if (!result.duplicate) await logActivity(caller, 'update', 'Stock Transfer',
       `${input.fromBranch} → ${input.toBranch}: ` +
       input.items.map((i, n) => `${result.names[n]} ×${i.quantity}`).join(', '))
 

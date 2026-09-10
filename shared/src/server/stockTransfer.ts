@@ -84,11 +84,27 @@ export function parseTransferInput(body: Record<string, unknown>): TransferInput
  */
 export async function transferStock(
   input: TransferInput,
-): Promise<{ moved: number; names: string[] }> {
+  requestId: string | null = null,
+): Promise<{ moved: number; names: string[]; duplicate?: boolean }> {
   const db = adminDb()
   const refs = input.items.map(i => db.doc(`products/${i.productId}`))
+  // A transfer creates no document of its own — it rewrites stock — so there
+  // was nothing a retry could recognise, and a lost reply followed by a second
+  // press moved the stock twice. The marker is that document: written in the
+  // same transaction as the move, keyed by the request, and read first.
+  //
+  // stockTransfers has no rule on purpose. Only this server code touches it,
+  // and Firestore denies a client anything unmatched.
+  const markerRef = requestId ? db.doc(`stockTransfers/${requestId}`) : null
 
-  const names = await db.runTransaction(async tx => {
+  const outcome = await db.runTransaction(async tx => {
+    if (markerRef) {
+      const marker = await tx.get(markerRef)
+      if (marker.exists) {
+        const names = marker.data()?.names
+        return { names: Array.isArray(names) ? names.map(String) : [], duplicate: true }
+      }
+    }
     const snaps = await tx.getAll(...refs)
     const resolved: string[] = []
 
@@ -114,8 +130,22 @@ export async function transferStock(
       tx.update(refs[i], { stock, updatedAt: FieldValue.serverTimestamp() })
     })
 
-    return resolved
+    if (markerRef) {
+      tx.set(markerRef, {
+        fromBranch: input.fromBranch,
+        toBranch: input.toBranch,
+        items: input.items,
+        names: resolved,
+        createdAt: FieldValue.serverTimestamp(),
+      })
+    }
+
+    return { names: resolved, duplicate: false }
   })
 
-  return { moved: input.items.reduce((n, i) => n + i.quantity, 0), names }
+  return {
+    moved: input.items.reduce((n, i) => n + i.quantity, 0),
+    names: outcome.names,
+    ...(outcome.duplicate ? { duplicate: true } : {}),
+  }
 }

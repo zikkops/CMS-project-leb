@@ -17,7 +17,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'checks-verify-'))
 execSync(
-  `npx tsc shared/src/checks.ts shared/src/tickets.ts shared/src/money.ts shared/src/netErrors.ts --outDir ${out} --module esnext ` +
+  `npx tsc shared/src/checks.ts shared/src/tickets.ts shared/src/money.ts shared/src/netErrors.ts shared/src/requestKey.ts --outDir ${out} --module esnext ` +
   `--target es2022 --skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' }
 )
@@ -270,6 +270,30 @@ console.log('\ncheckTotals — the discount is its own figure, not folded in')
   eq('a BUG that is a TypeError is not',
      NE.isNetworkFailure(new TypeError('Cannot read properties of undefined')), false)
   eq('nothing at all is not', NE.isNetworkFailure(undefined), false)
+
+  // ── Admin submissions: a delivery, a sale, a transfer, a weekly order ─────
+  const RK = await import(`file://${join(out, 'requestKey.js')}`)
+  console.log('\nrequest keys — a retried Save is recognised, a real second sale is not swallowed')
+  let nonces = 0
+  const keys = RK.createRequestKeys(() => `nonce${++nonces}`)
+  const sale = { customerName: 'A', branch: 'Main', lines: [{ productId: 'p1', quantity: 1 }] }
+  const first = keys.keyFor('purchase', sale)
+  eq('THE BUG: the retry after a lost reply gets the same key',
+     keys.keyFor('purchase', sale), first)
+  eq('an edited submission is a new one',
+     keys.keyFor('purchase', { ...sale, customerName: 'B' }) !== first, true)
+  keys.settled('purchase')
+  // The failure the fix could cause, and must not: a café selling the same
+  // item to the same name twice in a row is two sales.
+  eq('after an answer, an identical sale is a NEW sale',
+     keys.keyFor('purchase', sale) !== first, true)
+  eq('kinds keep separate keys',
+     keys.keyFor('delivery', sale).split('-')[0] !== keys.keyFor('purchase', sale).split('-')[0], true)
+  const realKey = `${'3f2c8a4e-9b1d-4e7a-8c2f-6d5e4a3b2c1d'}-${RK.stableHash(JSON.stringify(sale))}`
+  eq('a real key is a valid document id', RK.REQUEST_KEY_PATTERN.test(realKey), true)
+  eq('a slash could never reach a document path', RK.REQUEST_KEY_PATTERN.test('a/b/c/d/e/f/g/h'), false)
+  eq('the hash is stable', RK.stableHash('abc'), RK.stableHash('abc'))
+  eq('and changes with its input', RK.stableHash('abc') !== RK.stableHash('abd'), true)
 }
 
 console.log('\nvoid reasons — the reason decides the shelf')

@@ -1,6 +1,6 @@
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore'
 import { db } from './firebase'
-import { authedFetch, unwrap } from './apiClient'
+import { authedFetch, unwrap, postOnce } from './apiClient'
 import { BRANCHES } from './branches'
 // Re-exported below so existing import sites keep working; defined in a
 // module with no imports so route handlers can validate against it.
@@ -183,7 +183,9 @@ export async function deleteTemplateItem(id: string, _name: string): Promise<voi
 export async function submitWeeklyReport(
   report: Omit<WeeklyOrderReport, 'id' | 'submittedAt' | 'submittedBy' | 'submittedByEmail'>
 ): Promise<string> {
-  const res = await authedFetch('/api/admin/weekly-orders', 'POST', {
+  // postOnce: submitted twice after a lost reply, a weekly order used to reach
+  // the supplier twice. See shared/src/requestKey.ts.
+  const res = await postOnce('weekly-order', '/api/admin/weekly-orders', {
     branch: report.branch,
     weekStart: report.weekStart,
     weekLabel: report.weekLabel,

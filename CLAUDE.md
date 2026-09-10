@@ -126,6 +126,15 @@ the operation behind a route handler if that matters.
   was no" with `isNetworkFailure()` — never treat every `TypeError` as
   offline, or a bug gets reported to a waiter as bad wifi.
 
+  The same holds for any admin write that CREATES something or moves stock:
+  posting a delivery, a retail sale, a stock transfer and a weekly order all
+  doubled on a retried Save. They go through `postOnce()` in
+  `shared/src/apiClient.ts`, and the server takes `parseRequestId()` and uses
+  it as the new document's id, returning the stored result when it already
+  exists. The key resets on ANY answer, refusal included, so a second
+  identical sale is still a second sale. A new create that touches stock or
+  money should do the same.
+
 ## Styling — match, don't improve
 
 - **Hand-written inline `style={{}}` objects everywhere.** Tailwind is installed

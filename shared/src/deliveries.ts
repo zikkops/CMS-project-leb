@@ -13,6 +13,7 @@ import {
   collection, doc, getDoc, getDocs, query, where, orderBy, limit, Timestamp,
 } from 'firebase/firestore'
 import { db, auth } from './firebase'
+import { postOnce } from './apiClient'
 import type { Delivery } from './deliveryMath'
 
 export * from './deliveryMath'
@@ -99,15 +100,24 @@ export async function saveDelivery(
   payload: Record<string, unknown>,
   existingId?: string,
 ): Promise<SaveResult> {
-  const user = auth.currentUser
-  if (!user) throw new Error('Session expired — please sign in again.')
-  const token = await user.getIdToken()
-
-  const res = await fetch('/api/admin/deliveries', {
-    method: existingId ? 'PATCH' : 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify(existingId ? { ...payload, id: existingId } : payload),
-  })
+  let res: Response
+  if (existingId) {
+    // Editing an existing delivery needs no key: the server already refuses
+    // to re-apply one whose stock has moved.
+    const user = auth.currentUser
+    if (!user) throw new Error('Session expired — please sign in again.')
+    const token = await user.getIdToken()
+    res = await fetch('/api/admin/deliveries', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ...payload, id: existingId }),
+    })
+  } else {
+    // A NEW delivery is the one that could double. It is received on a phone
+    // at a back door, a lost reply looks like a failure, and pressing Save
+    // again used to create a second delivery and move the stock twice.
+    res = await postOnce('delivery', '/api/admin/deliveries', payload)
+  }
 
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {

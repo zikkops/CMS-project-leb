@@ -3,7 +3,7 @@
 import { collection, getDocs, query, orderBy, limit, Timestamp } from 'firebase/firestore'
 import { db } from './firebase'
 import { uploadImage } from './media'
-import { authedFetch, unwrap } from './apiClient'
+import { authedFetch, unwrap, postOnce } from './apiClient'
 import { BRANCHES } from './branches'
 import { BRAND } from './brand'
 
@@ -256,7 +256,9 @@ export async function createPurchaseOrder(input: {
   // caller's shape because the cart UI needs them to render a running total,
   // but they are dropped here rather than transmitted — the server would
   // ignore them, and sending them would imply otherwise.
-  const res = await authedFetch('/api/admin/purchases', 'POST', {
+  // postOnce: a retry after a lost reply must find this sale, not make a
+  // second one — which deducted the stock twice and issued two invoices.
+  const res = await postOnce('purchase', '/api/admin/purchases', {
     customerName: input.customerName,
     branch: input.branch,
     lines: input.items.map(it => ({
@@ -345,7 +347,9 @@ export async function transferGameStock(
   fromBranch: string,
   toBranch: string,
 ): Promise<void> {
-  await unwrap(await authedFetch('/api/admin/stock-transfer', 'POST', { fromBranch, toBranch, items }))
+  // postOnce: a transfer retried after a lost reply used to move the stock
+  // twice. See shared/src/requestKey.ts.
+  await unwrap(await postOnce('transfer', '/api/admin/stock-transfer', { fromBranch, toBranch, items }))
 }
 
 export async function listPurchaseOrders(max = 200): Promise<GamePurchaseOrder[]> {
