@@ -1,7 +1,7 @@
 // SERVER ONLY — see firebaseAdmin.ts for the import rule.
 //
 // Reading a submission's idempotency key. See shared/src/requestKey.ts for
-// what the key is and why these four writes need one.
+// what the key is and why these writes need one.
 
 import { HttpError } from './auth'
 import { REQUEST_KEY_PATTERN } from '../requestKey'

@@ -133,7 +133,10 @@ the operation behind a route handler if that matters.
   it as the new document's id, returning the stored result when it already
   exists. The key resets on ANY answer, refusal included, so a second
   identical sale is still a second sale. A new create that touches stock or
-  money should do the same.
+  money should do the same. Wholesale orders and loyalty event submissions
+  do too. A wholesale order passes `postOnce` an `identity` of cart plus
+  notes, because the invoice is drawn in the browser and a redrawn one must
+  not make the retry look like a new order.
 
 ## Styling — match, don't improve
 

@@ -112,13 +112,19 @@ const requestKeys = createRequestKeys(() => {
  * written. Only no answer keeps it, which is exactly the case where the
  * person cannot know whether it worked, and so the case where the message
  * has to tell them trying again is safe.
+ *
+ * `identity` is what the key is hashed from, when that is not the whole body.
+ * A wholesale order carries an invoice drawn in the browser just before it is
+ * sent; if the invoice were part of the key, a redrawn one would make the
+ * retry look like a new order — the very doubling this exists to stop.
  */
 export async function postOnce(
   kind: string,
   path: string,
   body: Record<string, unknown>,
+  identity?: unknown,
 ): Promise<Response> {
-  const requestId = requestKeys.keyFor(kind, body)
+  const requestId = requestKeys.keyFor(kind, identity === undefined ? body : identity)
   let res: Response
   try {
     res = await authedFetch(path, 'POST', { ...body, requestId })

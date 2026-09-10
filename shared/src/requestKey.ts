@@ -1,5 +1,6 @@
-// Idempotency keys for admin submissions — a delivery, a sale, a stock
-// transfer, a weekly order.
+// Idempotency keys for submissions that create something — a delivery, a
+// sale, a stock transfer, a weekly order, a wholesale order, a loyalty event
+// submission.
 //
 // The same failure as the POS's doubled order, with worse consequences. A
 // request that reaches the server but loses its reply looks like a failure;

@@ -30,6 +30,7 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
+import { alreadyExists } from './idempotency'
 import { TABLE_CHECKIN_POINTS, EVENT_POINTS_PER_PERSON } from '../loyaltyTiers'
 import { BRANCHES } from '../branches'
 
@@ -626,11 +627,14 @@ export interface EventSubmissionResult {
   id: string
   attendees: number
   pointsEach: number
+  /** A retry of a submission already made; nothing new was written. */
+  duplicate?: boolean
 }
 
 export async function createEventSubmission(
   caller: Caller,
   input: EventSubmissionInput,
+  requestId: string | null = null,
 ): Promise<EventSubmissionResult> {
   const db = adminDb()
 
@@ -655,7 +659,12 @@ export async function createEventSubmission(
       `Staff accounts cannot be credited as attendees: ${staff.slice(0, 3).join(', ')}${staff.length > 3 ? `, and ${staff.length - 3} more` : ''}.`)
   }
 
-  const ref = await db.collection('transactions').add({
+  // The request id is the transaction's id. A submission resent after a lost
+  // reply used to queue a second pending award for the same attendance, and a
+  // reviewer approving both paid every attendee twice.
+  const transactions = db.collection('transactions')
+  const ref = requestId ? transactions.doc(requestId) : transactions.doc()
+  const record = {
     type: 'event',
     userId: input.attendeeUids,
     // From the constant, never from the request.
@@ -669,7 +678,23 @@ export async function createEventSubmission(
     eventName: input.eventName,
     splitCount: input.attendeeUids.length,
     createdAt: FieldValue.serverTimestamp(),
-  })
+  }
+
+  try {
+    await ref.create(record)
+  } catch (err) {
+    if (!requestId || !alreadyExists(err)) throw err
+    const prev = (await ref.get()).data() ?? {}
+    if (prev.type !== 'event' || prev.submittedBy !== caller.uid) {
+      throw new HttpError(409, 'That request id is already in use.')
+    }
+    return {
+      id: ref.id,
+      attendees: Number(prev.splitCount ?? input.attendeeUids.length),
+      pointsEach: Number(prev.pointsAmount ?? EVENT_POINTS_PER_PERSON),
+      duplicate: true,
+    }
+  }
 
   return {
     id: ref.id,

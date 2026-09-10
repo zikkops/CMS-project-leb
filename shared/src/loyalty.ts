@@ -6,7 +6,7 @@ import {
   updateDoc, documentId, type Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import { authedFetch, unwrap } from './apiClient'
+import { authedFetch, postOnce, unwrap } from './apiClient'
 
 // Mirrors the shape created by the customer submit-check flow
 // (app/(customer)/customer/submit-check/page.tsx) and read on the profile
@@ -213,7 +213,9 @@ export async function createEventAttendanceTransaction(input: {
   eventName: string
   attendeeUids: string[]
 }): Promise<{ attendees: number; pointsEach: number }> {
-  const data = await unwrap(await authedFetch('/api/admin/loyalty/events', 'POST', input))
+  // postOnce: a submission resent after a lost reply queued a second pending
+  // award for one attendance. See shared/src/requestKey.ts.
+  const data = await unwrap(await postOnce('loyalty-event', '/api/admin/loyalty/events', { ...input }))
   return {
     attendees: Number(data.attendees ?? input.attendeeUids.length),
     pointsEach: Number(data.pointsEach ?? EVENT_POINTS_PER_PERSON),

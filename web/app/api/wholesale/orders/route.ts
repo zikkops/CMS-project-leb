@@ -15,6 +15,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { INVOICE_NUMBER_PATTERN, INVOICE_IMAGE_URL_PATTERN } from '@big-cms/shared/invoiceFormat'
 import { issueInvoiceNumber } from '@big-cms/shared/server/invoiceNumber'
 import { BRAND } from '@big-cms/shared/brand'
+import { parseRequestId, alreadyExists } from '@big-cms/shared/server/idempotency'
 
 export const runtime = 'nodejs'
 
@@ -180,7 +181,13 @@ export async function POST(request: Request): Promise<Response> {
     const totalUsd = Math.round(items.reduce((s, i) => s + i.unitPrice * i.quantity, 0) * 100) / 100
     const itemCount = items.reduce((s, i) => s + i.quantity, 0)
 
-    const ref = await db.collection('wholesaleOrders').add({
+    // The browser's request id becomes the order's id, so a Place Order resent
+    // after a lost reply lands on the order it already made instead of making
+    // a second — and mailing the orders inbox a second time.
+    const requestId = parseRequestId(body)
+    const orders = db.collection('wholesaleOrders')
+    const ref = requestId ? orders.doc(requestId) : orders.doc()
+    const order = {
       accountUid:     account.uid,
       accountEmail:   account.email,
       shopName:       account.shopName,
@@ -195,7 +202,27 @@ export async function POST(request: Request): Promise<Response> {
       decidedByEmail: '',
       decidedAt:      null,
       emailedAt:      null,
-    })
+    }
+
+    try {
+      await ref.create(order)
+    } catch (err) {
+      if (!requestId || !alreadyExists(err)) throw err
+      const prev = (await ref.get()).data() ?? {}
+      // Ids are random, so a match from another shop is not a retry; it is
+      // someone replaying a key they should not have.
+      if (prev.accountUid !== account.uid) throw new HttpError(409, 'That request id is already in use.')
+      // What was stored, not what this request says — and no second email.
+      // `emailed` can read false while the first request is still sending.
+      return Response.json({
+        id: ref.id,
+        totalUsd: Number(prev.totalUsd ?? 0),
+        itemCount: Number(prev.itemCount ?? 0),
+        emailed: prev.emailedAt != null,
+        emailConfigured: emailConfigured(),
+        duplicate: true,
+      })
+    }
 
     // The order is saved. From here every failure is a notification failure,
     // never an order failure — the shop is told their order went through

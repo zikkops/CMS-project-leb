@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { signOut } from 'firebase/auth'
 import { auth, db } from '@big-cms/shared/firebase'
@@ -212,6 +212,10 @@ export default function WholesalePage() {
   const [submitLabel, setSubmitLabel] = useState('')
   const [placed, setPlaced]         = useState<{ id: string; emailed: boolean; invoiceNumber?: string; invoiceUrl?: string } | null>(null)
   const [error, setError]           = useState('')
+  // The invoice drawn for the cart as it stands. Kept across a failed submit so
+  // pressing Place Order again resends the same invoice rather than burning a
+  // second number and uploading a second image for one order.
+  const invoiceFor = useRef<{ cart: string; invoice: { invoiceNumber: string; invoiceUrl: string } } | null>(null)
   const isMobile = useIsMobile()
 
   useEffect(() => {
@@ -284,21 +288,26 @@ export default function WholesalePage() {
       // the order email can carry it. If drawing or uploading fails the order
       // still goes through without one — a missing invoice is worth fixing
       // later, not worth losing the order over.
-      let invoice: { invoiceNumber: string; invoiceUrl: string } | undefined
-      try {
-        setSubmitLabel('Preparing invoice…')
-        invoice = await generateInvoiceForCart({
-          shopName: account.shopName || account.email,
-          items: cartItems,
-          totalUsd: total,
-          issuedByEmail: account.email,
-        })
-      } catch {
-        invoice = undefined
+      const cartSig = JSON.stringify(cartItems.map(i => [i.productId, i.quantity, i.unitPrice]))
+      let invoice = invoiceFor.current?.cart === cartSig ? invoiceFor.current.invoice : undefined
+      if (!invoice) {
+        try {
+          setSubmitLabel('Preparing invoice…')
+          invoice = await generateInvoiceForCart({
+            shopName: account.shopName || account.email,
+            items: cartItems,
+            totalUsd: total,
+            issuedByEmail: account.email,
+          })
+          invoiceFor.current = { cart: cartSig, invoice }
+        } catch {
+          invoice = undefined
+        }
       }
 
       setSubmitLabel('Sending order…')
       const result = await submitWholesaleOrder(account, cartItems, notes.trim(), invoice)
+      invoiceFor.current = null
       setPlaced({ id: result.id, emailed: result.emailed, ...(invoice ?? {}) })
       setCart({})
       setNotes('')

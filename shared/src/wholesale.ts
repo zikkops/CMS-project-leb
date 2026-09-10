@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import { BRAND } from './brand'
+import { postOnce, unwrap } from './apiClient'
 
 // Where approved wholesale orders are sent. Set
 // NEXT_PUBLIC_WHOLESALE_ORDERS_EMAIL to change it without touching code.
@@ -169,20 +170,16 @@ export async function submitWholesaleOrder(
   const clean = items.filter(i => i.quantity > 0)
   if (clean.length === 0) throw new Error('No items in the order.')
 
-  const idToken = await auth.currentUser?.getIdToken()
-  const res = await fetch('/api/wholesale/orders', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-    body: JSON.stringify({
-      // Only ids and quantities are sent — prices come from the server.
-      items: clean.map(i => ({ productId: i.productId, quantity: i.quantity })),
-      notes,
-      ...(invoice ?? {}),
-    }),
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error ?? 'Could not submit the order.')
-  return data as SubmitResult
+  // Only ids and quantities are sent — prices come from the server.
+  const lines = clean.map(i => ({ productId: i.productId, quantity: i.quantity }))
+
+  // postOnce: an order resent after a lost reply was a second order, and a
+  // second email to the orders inbox. Keyed on the cart and the notes only —
+  // see the `identity` note on postOnce for why the invoice is left out.
+  const res = await postOnce('wholesale-order', '/api/wholesale/orders',
+    { items: lines, notes, ...(invoice ?? {}) },
+    { items: lines, notes })
+  return await unwrap(res) as unknown as SubmitResult
 }
 
 // A wholesale account may only ever query its own orders — the rule requires

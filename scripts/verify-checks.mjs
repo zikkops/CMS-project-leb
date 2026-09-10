@@ -289,6 +289,15 @@ console.log('\ncheckTotals — the discount is its own figure, not folded in')
      keys.keyFor('purchase', sale) !== first, true)
   eq('kinds keep separate keys',
      keys.keyFor('delivery', sale).split('-')[0] !== keys.keyFor('purchase', sale).split('-')[0], true)
+  // A wholesale order carries an invoice the browser draws just before it
+  // posts. postOnce hashes the cart and notes, not the whole body, because a
+  // redrawn invoice on a retry would otherwise read as a new order.
+  const cart = { items: [{ productId: 'p1', quantity: 3 }], notes: '' }
+  const wKey = keys.keyFor('wholesale-order', cart)
+  eq('THE WHOLESALE BUG: keyed on the whole body, a redrawn invoice is a "new" order',
+     keys.keyFor('wholesale-order', { ...cart, invoiceNumber: 'OB-2' }) !== keys.keyFor('wholesale-order', { ...cart, invoiceNumber: 'OB-1' }), true)
+  eq('keyed on the cart, the retry with a redrawn invoice is the same order',
+     keys.keyFor('wholesale-order', { items: cart.items, notes: cart.notes }), wKey)
   const realKey = `${'3f2c8a4e-9b1d-4e7a-8c2f-6d5e4a3b2c1d'}-${RK.stableHash(JSON.stringify(sale))}`
   eq('a real key is a valid document id', RK.REQUEST_KEY_PATTERN.test(realKey), true)
   eq('a slash could never reach a document path', RK.REQUEST_KEY_PATTERN.test('a/b/c/d/e/f/g/h'), false)

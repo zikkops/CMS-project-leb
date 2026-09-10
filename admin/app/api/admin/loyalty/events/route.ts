@@ -15,6 +15,7 @@
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import { parseEventSubmissionInput, createEventSubmission } from '@big-cms/shared/server/loyalty'
 import { logCreate } from '@big-cms/shared/server/activityLog'
+import { parseRequestId } from '@big-cms/shared/server/idempotency'
 
 export const runtime = 'nodejs'
 
@@ -37,11 +38,11 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const input = parseEventSubmissionInput(body)
-    const result = await createEventSubmission(caller, input)
+    const result = await createEventSubmission(caller, input, parseRequestId(body))
 
     // Logged after the write, never before — a failed create must not leave
-    // an entry claiming something happened.
-    await logCreate(caller, 'Loyalty Submission',
+    // an entry claiming something happened. Nor a retry of one already logged.
+    if (!result.duplicate) await logCreate(caller, 'Loyalty Submission',
       `Event — ${input.eventName} (${result.attendees} attendee${result.attendees === 1 ? '' : 's'})`, {
         branchId: input.branchId,
         eventDate: input.eventDate,
