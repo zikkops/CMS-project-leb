@@ -156,6 +156,13 @@ export interface CheckLine {
 
   addedBy: string
   addedByEmail: string
+  /**
+   * The Send that added this line, as an idempotency key. A retry of the same
+   * Send carries the same key, and the server skips a batch it has already
+   * applied — see batchAlreadyApplied(). Absent on lines added before this
+   * existed.
+   */
+  batchKey?: string
   /** Set when a ticket was created for it; null while still a draft. */
   sentAt: string | null
   /**
@@ -305,6 +312,41 @@ export interface CheckTotals {
  * staff meal that quietly shows a smaller number is a staff meal nobody can
  * audit. It should be visible as a line somebody signed off.
  */
+// ── Sending the same order twice ───────────────────────────────────────────
+//
+// A Send whose reply is lost has an unknown outcome: the lines may or may not
+// be on the check. Resending blind duplicated them, and the kitchen made the
+// order twice. Each batch of drafts therefore carries a key, the server skips a
+// key it has already applied, and the phone learns from the live check whether
+// the batch landed.
+
+/** What a batch key may look like — a randomUUID() fits. */
+export const BATCH_KEY_PATTERN = /^[A-Za-z0-9-]{8,64}$/
+
+/** Whether this batch is already on the check. A null key is never deduplicated. */
+export function batchAlreadyApplied(
+  lines: readonly { batchKey?: string }[],
+  batchKey: string | null,
+): boolean {
+  return batchKey !== null && lines.some(l => l.batchKey === batchKey)
+}
+
+/**
+ * Where an unsettled batch has got to, read from the live check.
+ *
+ *   absent  none of it is there — it never arrived, or has not been seen yet
+ *   landed  it is on the check, and at least one line is still unsent
+ *   sent    it is on the check and nothing in it is waiting to be fired
+ */
+export function reconcilePendingBatch(
+  lines: readonly { batchKey?: string; status: string }[],
+  batchKey: string,
+): 'absent' | 'landed' | 'sent' {
+  const mine = lines.filter(l => l.batchKey === batchKey)
+  if (mine.length === 0) return 'absent'
+  return mine.some(l => l.status === 'draft') ? 'landed' : 'sent'
+}
+
 export function checkTotals(check: Pick<Check, 'lines' | 'staffDiscount'>): CheckTotals {
   const gross = Math.round(check.lines.reduce((s, l) => s + grossLineTotal(l), 0) * 100) / 100
   const discount = Math.round(

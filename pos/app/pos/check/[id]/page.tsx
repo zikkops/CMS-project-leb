@@ -20,10 +20,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import {
-  lineTotal, grossLineTotal, lineDiscount, checkTotals, VOID_REASONS,
+  lineTotal, grossLineTotal, lineDiscount, checkTotals, VOID_REASONS, reconcilePendingBatch,
   type CheckLine, type StaffDiscount,
 } from '@big-cms/shared/checks'
 import { minutesWaiting, urgency } from '@big-cms/shared/tickets'
+import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import {
   validateSelection, selectionLabel, lineUnitPrice, describeSelections,
   type ModifierGroup,
@@ -66,6 +67,17 @@ const money = (n: number) => `$${n.toFixed(2)}`
  * different note is a different plate, a different modifier is a different
  * drink.
  */
+/**
+ * A key for one batch of drafts. randomUUID where the browser has it (every
+ * secure page does); otherwise enough randomness that two phones sending in
+ * the same instant do not collide.
+ */
+function newBatchKey(): string {
+  const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto
+  if (c?.randomUUID) return c.randomUUID()
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}-${Math.random().toString(36).slice(2, 12)}`
+}
+
 function sameOrder(a: DraftLine, b: DraftLine): boolean {
   return a.source === b.source
     && a.refId === b.refId
@@ -187,8 +199,10 @@ function LineRow({ line, now, discount, onMore }: {
   )
 }
 
-function DraftRow({ draft, onRemove, onNote, onQuantity }: {
+function DraftRow({ draft, locked, onRemove, onNote, onQuantity }: {
   draft: DraftLine
+  /** A send of these is unsettled; changing them would make the retry a different order. */
+  locked: boolean
   onRemove: () => void
   onNote: () => void
   onQuantity: (next: number) => void
@@ -197,8 +211,12 @@ function DraftRow({ draft, onRemove, onNote, onQuantity }: {
     <div style={{
       display: 'flex', gap: '0.6rem', alignItems: 'flex-start',
       padding: '0.7rem 0', borderBottom: '1px solid rgba(var(--brand-secondary-rgb),0.2)',
+      opacity: locked ? 0.7 : 1,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '0.15rem',
+        pointerEvents: locked ? 'none' : 'auto', visibility: locked ? 'hidden' : 'visible',
+      }}>
         <button onClick={() => onQuantity(draft.quantity - 1)} style={{
           width: '30px', minHeight: '30px', borderRadius: '3px', cursor: 'pointer',
           background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
@@ -227,9 +245,10 @@ function DraftRow({ draft, onRemove, onNote, onQuantity }: {
         <p style={{ fontSize: '0.68rem', color: 'var(--brand-secondary)', marginTop: '0.25rem' }}>
           {draft.seat !== null ? `Seat ${draft.seat} · ` : ''}
           {draft.course !== null ? `Course ${draft.course} · ` : ''}
-          On this phone — not sent
+          {locked ? 'Sending — waiting to hear back' : 'On this phone — not sent'}
         </p>
-        <button onClick={onNote} style={{
+        <button onClick={onNote} disabled={locked} style={{
+          visibility: locked ? 'hidden' : 'visible',
           background: 'none', border: 'none', padding: '0.25rem 0', cursor: 'pointer',
           color: 'rgba(var(--offwhite-rgb),0.4)', fontSize: '0.68rem',
           fontFamily: 'var(--font-inter)', letterSpacing: '0.08em', textTransform: 'uppercase',
@@ -239,7 +258,8 @@ function DraftRow({ draft, onRemove, onNote, onQuantity }: {
         <p style={{ fontSize: '0.85rem', color: 'var(--offwhite)' }}>
           {money(lineUnitPrice(draft.unitPrice, []) * draft.quantity)}
         </p>
-        <button onClick={onRemove} style={{
+        <button onClick={onRemove} disabled={locked} style={{
+          visibility: locked ? 'hidden' : 'visible',
           marginTop: '0.3rem', background: 'none', border: 'none', padding: '0.25rem 0',
           color: 'rgba(var(--offwhite-rgb),0.4)', fontSize: '0.68rem', cursor: 'pointer',
           fontFamily: 'var(--font-inter)', letterSpacing: '0.08em', textTransform: 'uppercase',
@@ -379,6 +399,27 @@ export default function CheckPage() {
   const [closing, setClosing] = useState(false)
   const [moveTo, setMoveTo] = useState('')
 
+  // ── An unsettled send ────────────────────────────────────────────────────
+  // Set from the moment a batch of drafts goes to the server until the server
+  // has confirmed it. If the connection drops in between, whether the lines
+  // landed is unknown — and resending them blind is how a kitchen makes the
+  // same order twice. So the batch keeps its key: a retry sends the same key,
+  // and the server skips a batch it has already applied. Meanwhile the drafts
+  // are frozen, because an edit would make the retry a different batch.
+  //
+  // The live check settles it without anyone tapping anything: once lines
+  // carrying the key appear, the batch landed and the phone's copy can go.
+  const [pendingKey, setPendingKey] = useState<string | null>(null)
+  useEffect(() => {
+    if (!pendingKey || !check) return
+    if (reconcilePendingBatch(check.lines, pendingKey) === 'absent') return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDrafts([])
+    setPendingKey(null)
+    setError('')
+  }, [check, pendingKey])
+  const draftsLocked = pendingKey !== null && drafts.length > 0
+
   const categories = useMemo(
     () => menu.categories.filter(c => menu.items.some(i => i.categoryId === c.id)),
     [menu.categories, menu.items],
@@ -395,6 +436,7 @@ export default function CheckPage() {
   )
 
   function addDraft(item: PosMenuItem, optionIds: string[], label: string) {
+    if (draftsLocked) return
     setDrafts(d => withDraft(d, {
       source: 'menu', refId: item.id, name: item.name, unitPrice: item.price,
       quantity: 1, modifierOptionIds: optionIds, modifierLabel: label,
@@ -404,6 +446,7 @@ export default function CheckPage() {
   }
 
   function addProduct(p: PosProduct) {
+    if (draftsLocked) return
     setDrafts(d => withDraft(d, {
       // Merchandise: no modifiers, no course — it is not cooked and does not
       // arrive with anything. The server refuses modifiers on it too.
@@ -422,21 +465,57 @@ export default function CheckPage() {
   async function handleSend() {
     setBusy('Sending…')
     setError('')
+    // One key per batch, and the SAME key on every retry of that batch — see
+    // the note on pendingKey. A fresh key only for a new batch with no earlier
+    // one still unsettled.
+    const key = pendingKey ?? (drafts.length > 0 ? newBatchKey() : null)
+    let landed = false
     try {
       // Two calls, one action. If the first succeeds and the second fails the
       // lines are on the check as unsent drafts — visible, recoverable, and
       // the waiter can simply press Send again. The reverse order would risk
       // firing a ticket for lines that never landed.
-      if (drafts.length > 0) await addLines(checkId, drafts)
-      setDrafts([])
+      //
+      // What the first version missed is the first call succeeding with its
+      // REPLY lost. The drafts stayed on the phone, the lines were already on
+      // the check, and a second Send added them again. The key is what makes
+      // that second Send safe.
+      if (drafts.length > 0 && key) {
+        setPendingKey(key)
+        await addLines(checkId, drafts, key)
+        setDrafts([])
+      }
+      landed = true
       const tickets = await sendCheck(checkId)
+      setPendingKey(null)
       setBusy(tickets.length > 0
         ? `Sent — ${tickets.map(t => `${t.station} ×${t.lines}`).join(', ')}`
         : 'Sent')
       setTimeout(() => setBusy(''), 2500)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send.')
       setBusy('')
+      // An earlier attempt of this batch may already have been fired, and the
+      // live check knows. If it says so, that is a success, whatever this call
+      // said — "Nothing new to send" is the server confirming the first try.
+      if (key && check && reconcilePendingBatch(check.lines, key) === 'sent') {
+        setPendingKey(null)
+        setDrafts([])
+        setBusy('Sent')
+        setTimeout(() => setBusy(''), 2500)
+        return
+      }
+      if (isNetworkFailure(err)) {
+        // No answer: unknown whether anything arrived. Say what is true, and
+        // that trying again is safe — because now it is.
+        setError(!landed && drafts.length > 0
+          ? 'No connection. The order is still on this phone and may already have reached the server — tap Send again when you are back on the wifi; it will not be sent twice. If the wifi stays down, take it to the till.'
+          : 'No connection. The order is on the check but may not have reached the kitchen — tap Send again when you are back on the wifi.')
+      } else {
+        // An answer, and it was no: nothing was written. The drafts are the
+        // waiter's to change again.
+        setPendingKey(null)
+        setError(err instanceof Error ? err.message : 'Could not send.')
+      }
     }
   }
 
@@ -550,6 +629,7 @@ export default function CheckPage() {
           <DraftRow
             key={i}
             draft={d}
+            locked={draftsLocked}
             onRemove={() => setDrafts(list => list.filter((_, n) => n !== i))}
             onQuantity={next => {
               // Down to zero removes it, which is what tapping minus on a
@@ -585,8 +665,9 @@ export default function CheckPage() {
         padding: '0.8rem 1rem', display: 'flex', gap: '0.6rem',
         maxWidth: '640px', margin: '0 auto',
       }}>
-        <button onClick={() => setPicking(true)} style={{
+        <button onClick={() => setPicking(true)} disabled={draftsLocked} style={{
           ...tap, flex: 1, backgroundColor: 'rgba(255,255,255,0.05)',
+          opacity: draftsLocked ? 0.4 : 1,
           border: '1px solid rgba(255,255,255,0.14)', color: 'var(--offwhite)',
         }}>Add items</button>
         <button

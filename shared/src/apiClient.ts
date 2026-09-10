@@ -1,6 +1,7 @@
 'use client'
 
 import { auth } from './firebase'
+import { NetworkError, isNetworkFailure } from './netErrors'
 
 // The browser half of every call into app/api/**.
 //
@@ -22,16 +23,56 @@ import { auth } from './firebase'
  * call. It does NOT force a refresh: a stale *claim* is a different problem,
  * solved by the claimsUpdatedAt stamp in adminAuth.ts.
  */
-export async function authedFetch(path: string, method: string, body?: unknown): Promise<Response> {
+export interface FetchOptions {
+  /**
+   * Give up after this long and throw a NetworkError.
+   *
+   * Opt-in, not a default. A waiter's phone on the edge of the café wifi can
+   * hang on a request indefinitely, and "Sending…" forever is worse than an
+   * error; but an admin importing images legitimately waits, and a blanket
+   * timeout would break that to fix something it never had.
+   */
+  timeoutMs?: number
+}
+
+export async function authedFetch(
+  path: string,
+  method: string,
+  body?: unknown,
+  opts: FetchOptions = {},
+): Promise<Response> {
   const user = auth.currentUser
   if (!user) throw new Error('Session expired — please sign in again.')
-  const token = await user.getIdToken()
 
-  return fetch(path, {
-    method,
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
+  let token: string
+  try {
+    token = await user.getIdToken()
+  } catch (err) {
+    if (isNetworkFailure(err)) throw new NetworkError('No connection — could not reach the server.')
+    throw err
+  }
+
+  const controller = opts.timeoutMs ? new AbortController() : null
+  const timer = controller ? setTimeout(() => controller.abort(), opts.timeoutMs) : null
+  try {
+    return await fetch(path, {
+      method,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: controller?.signal,
+    })
+  } catch (err) {
+    // Re-thrown as one kind with one message, instead of the browser's own
+    // wording — "Failed to fetch", "Load failed" — reaching a waiter.
+    if (isNetworkFailure(err)) {
+      throw new NetworkError(controller?.signal.aborted
+        ? 'The server did not answer in time.'
+        : 'No connection — could not reach the server.')
+    }
+    throw err
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
 }
 
 /**

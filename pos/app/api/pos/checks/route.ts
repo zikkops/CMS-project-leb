@@ -12,7 +12,7 @@
 
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import {
-  parseLineRequests, openCheck, addLines, sendCheck, voidLine, moveCheck, closeCheck,
+  parseLineRequests, parseBatchKey, openCheck, addLines, sendCheck, voidLine, moveCheck, closeCheck,
   setStaffMeal, refundCheck,
 } from '@big-cms/shared/server/checks'
 import { logActivity } from '@big-cms/shared/server/activityLog'
@@ -46,7 +46,7 @@ export async function POST(request: Request): Promise<Response> {
       throw new HttpError(400, 'Missing check id — items can only be added to an open check.')
     }
     if (checkId) {
-      const result = await addLines(caller, checkId, parseLineRequests(body))
+      const result = await addLines(caller, checkId, parseLineRequests(body), parseBatchKey(body))
       // Deliberately not logged. A service is hundreds of these, and an audit
       // entry per item would bury every other thing that happened that day.
       // The check itself is the record of what was ordered.

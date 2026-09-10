@@ -495,9 +495,12 @@ export async function openCheck(
  * at one branch, for nothing anybody sees. The draft lives in local state
  * until Send, which offline persistence keeps across a reload.
  */
-export async function addLines(checkId: string, lines: DraftLine[]): Promise<void> {
+export async function addLines(checkId: string, lines: DraftLine[], batchKey: string): Promise<void> {
   await unwrap(await authedFetch('/api/pos/checks', 'POST', {
     checkId,
+    // The same key on every retry of this batch — the server skips a batch it
+    // has already applied. See handleSend on the check page.
+    batchKey,
     lines: lines.map(l => ({
       source: l.source,
       refId: l.refId,
@@ -507,13 +510,23 @@ export async function addLines(checkId: string, lines: DraftLine[]): Promise<voi
       course: l.course,
       note: l.note,
     })),
-  }))
+  }, { timeoutMs: POS_TIMEOUT_MS }))
 }
 
 export async function sendCheck(checkId: string): Promise<{ station: string; lines: number }[]> {
-  const data = await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'send' }))
+  const data = await unwrap(await authedFetch('/api/pos/checks', 'PATCH',
+    { checkId, action: 'send' }, { timeoutMs: POS_TIMEOUT_MS }))
   return (data.tickets ?? []) as { station: string; lines: number }[]
 }
+
+/**
+ * How long an order call waits before saying so.
+ *
+ * Long enough for a slow connection to finish, short enough that a waiter is
+ * not left staring at "Sending…" while a table waits. Retrying after it is
+ * safe, which is the only reason a timeout is safe at all.
+ */
+const POS_TIMEOUT_MS = 15_000
 
 export async function voidLine(
   checkId: string, lineId: string, reasonKey: string, note: string,

@@ -19,7 +19,7 @@ import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
 import {
-  CHECK_LIMITS, stationForSection, voidReason,
+  CHECK_LIMITS, stationForSection, voidReason, BATCH_KEY_PATTERN, batchAlreadyApplied,
   type Check, type CheckLine, type LineSource,
 } from '../checks'
 import { validateSelection, toSelections, type ModifierGroup } from '../modifiers'
@@ -99,6 +99,23 @@ export function parseLineRequests(body: Record<string, unknown>): LineRequest[] 
  * one for the modifier groups. A read per line would make a ten-item round
  * thirty reads, and a waiter sends rounds all evening.
  */
+/**
+ * The Send's idempotency key, if the phone sent one.
+ *
+ * Optional, so a phone running older code still works — it simply gets no
+ * protection against a doubled retry. Present but malformed is refused rather
+ * than ignored: silently dropping it would switch the protection off without
+ * anyone knowing.
+ */
+export function parseBatchKey(body: Record<string, unknown>): string | null {
+  const raw = body.batchKey
+  if (raw === undefined || raw === null || raw === '') return null
+  if (typeof raw !== 'string' || !BATCH_KEY_PATTERN.test(raw)) {
+    throw new HttpError(400, 'Invalid batch key.')
+  }
+  return raw
+}
+
 async function buildLines(caller: Caller, requests: LineRequest[]): Promise<CheckLine[]> {
   const db = adminDb()
 
@@ -310,24 +327,35 @@ export async function addLines(
   caller: Caller,
   checkId: string,
   requests: LineRequest[],
-): Promise<{ added: number; lines: CheckLine[] }> {
+  batchKey: string | null = null,
+): Promise<{ added: number; lines: CheckLine[]; duplicate: boolean }> {
   // Priced BEFORE the transaction: it reads menu items, categories and
   // modifier groups, and a transaction may not read after its first write.
   const built = await buildLines(caller, requests)
 
+  let duplicate = false
   await adminDb().runTransaction(async tx => {
     const check = await readCheck(tx, checkId)
     if (check.status !== 'open') throw new HttpError(409, 'That check is closed.')
+    // Inside the transaction, so two retries racing each other cannot both
+    // see "not applied yet". Checked before the size limit: a retry of a
+    // batch that filled the check must succeed as a no-op, not fail as full.
+    if (batchAlreadyApplied(check.lines, batchKey)) {
+      duplicate = true
+      return
+    }
     if (check.lines.length + built.length > CHECK_LIMITS.linesPerCheck) {
       throw new HttpError(400, `A check can hold at most ${CHECK_LIMITS.linesPerCheck} items.`)
     }
     tx.update(adminDb().doc(`${CHECKS}/${checkId}`), {
-      lines: [...check.lines, ...built],
+      lines: [...check.lines, ...(batchKey ? built.map(l => ({ ...l, batchKey })) : built)],
       updatedAt: FieldValue.serverTimestamp(),
     })
   })
 
-  return { added: built.length, lines: built }
+  return duplicate
+    ? { added: 0, lines: [], duplicate: true }
+    : { added: built.length, lines: built, duplicate: false }
 }
 
 /**

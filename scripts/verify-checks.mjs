@@ -17,7 +17,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'checks-verify-'))
 execSync(
-  `npx tsc shared/src/checks.ts shared/src/tickets.ts shared/src/money.ts --outDir ${out} --module esnext ` +
+  `npx tsc shared/src/checks.ts shared/src/tickets.ts shared/src/money.ts shared/src/netErrors.ts --outDir ${out} --module esnext ` +
   `--target es2022 --skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' }
 )
@@ -227,6 +227,49 @@ console.log('\ncheckTotals — the discount is its own figure, not folded in')
   eq('staff meal: net', staff.net, 33.27)
   // Returned separately so a staff meal is auditable rather than just smaller.
   eq('gross minus discount is net', +(staff.gross - staff.discount).toFixed(2), staff.net)
+}
+
+// ── The same order twice ───────────────────────────────────────────────────
+// A Send whose reply is lost had an unknown outcome, and resending blind put
+// the lines on the check twice — the kitchen cooked the order twice.
+{
+  const NE = await import(`file://${join(out, 'netErrors.js')}`)
+
+  console.log('\nbatch keys — a retry of the same Send adds nothing')
+  const uuid = '3f2c8a4e-9b1d-4e7a-8c2f-6d5e4a3b2c1d'
+  eq('a randomUUID is a valid key', C.BATCH_KEY_PATTERN.test(uuid), true)
+  eq('an empty key is not', C.BATCH_KEY_PATTERN.test(''), false)
+  eq('punctuation is not', C.BATCH_KEY_PATTERN.test('<script>'), false)
+  eq('an absurd length is not', C.BATCH_KEY_PATTERN.test('a'.repeat(65)), false)
+
+  eq('a new batch is not applied', C.batchAlreadyApplied([{ batchKey: 'other-key-1' }], uuid), false)
+  eq('THE BUG: the retry of a landed batch is recognised',
+     C.batchAlreadyApplied([{}, { batchKey: uuid }, { batchKey: uuid }], uuid), true)
+  eq('a null key is never deduplicated', C.batchAlreadyApplied([{}], null), false)
+  eq('old lines with no key do not match anything', C.batchAlreadyApplied([{}, {}], uuid), false)
+
+  console.log('\nreconcilePendingBatch — the live check settles an unsettled Send')
+  eq('not there: absent', C.reconcilePendingBatch([{ status: 'sent' }], uuid), 'absent')
+  eq('there, still unsent: landed',
+     C.reconcilePendingBatch([{ batchKey: uuid, status: 'draft' }, { batchKey: uuid, status: 'sent' }], uuid), 'landed')
+  eq('there, all fired: sent',
+     C.reconcilePendingBatch([{ batchKey: uuid, status: 'sent' }, { batchKey: uuid, status: 'sent' }], uuid), 'sent')
+  eq('a voided line in it does not hold it open',
+     C.reconcilePendingBatch([{ batchKey: uuid, status: 'sent' }, { batchKey: uuid, status: 'void' }], uuid), 'sent')
+
+  console.log('\nisNetworkFailure — "no answer" is not "the answer was no"')
+  eq('Chrome, offline', NE.isNetworkFailure(new TypeError('Failed to fetch')), true)
+  eq('Safari, offline', NE.isNetworkFailure(new TypeError('Load failed')), true)
+  eq('Firefox, offline',
+     NE.isNetworkFailure(new TypeError('NetworkError when attempting to fetch resource.')), true)
+  eq('our own timeout', NE.isNetworkFailure({ name: 'AbortError', message: 'aborted' }), true)
+  eq('a token refresh with no network', NE.isNetworkFailure({ code: 'auth/network-request-failed' }), true)
+  eq('a NetworkError', NE.isNetworkFailure(new NE.NetworkError('x')), true)
+  eq('a server refusal is not', NE.isNetworkFailure(new Error('That check is closed.')), false)
+  // The one that matters most: a bug must never be reported as bad wifi.
+  eq('a BUG that is a TypeError is not',
+     NE.isNetworkFailure(new TypeError('Cannot read properties of undefined')), false)
+  eq('nothing at all is not', NE.isNetworkFailure(undefined), false)
 }
 
 console.log('\nvoid reasons — the reason decides the shelf')

@@ -116,6 +116,15 @@ the operation behind a route handler if that matters.
   grantable permission in that UI. Account management is deliberately a role
   check, not a section.
 - Branch ids are the branch name itself. `BRANCHES` in `shared/src/branches.ts`.
+- **Anything that adds to a check must be safe to send twice.** A Send whose
+  reply is lost — a phone at the edge of the café wifi — has an unknown
+  outcome, and resending blind put the order on the kitchen ticket twice.
+  Each batch carries a `batchKey`; the server skips a key it has already
+  applied (`batchAlreadyApplied()` in `shared/src/checks.ts`), and the phone
+  reads the live check to learn whether an unsettled batch landed. A new path
+  that appends lines has to do the same. And tell "no answer" from "the answer
+  was no" with `isNetworkFailure()` — never treat every `TypeError` as
+  offline, or a bug gets reported to a waiter as bad wifi.
 
 ## Styling — match, don't improve
 
