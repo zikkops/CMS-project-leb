@@ -63,3 +63,40 @@ export function ymdToLocalDate(ymd: string): Date {
   if (!m) return new Date(Number.NaN)
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
 }
+
+export interface ZonedParts {
+  year: number
+  /** 1-12, not 0-11 like Date.getMonth(). */
+  month: number
+  day: number
+  /** 0-23. */
+  hour: number
+  minute: number
+}
+
+/**
+ * The wall-clock fields of an instant in a given timezone.
+ *
+ * What getFullYear()/getMonth()/getHours() would return if the machine running
+ * this were in that zone — which is exactly the thing that cannot be assumed.
+ * On a server those getters read the HOST's zone, and a host is usually UTC:
+ * three hours behind Beirut, which moved receipts into the previous month and
+ * let the till charge a sale price the screen had already stopped showing.
+ */
+export function zonedParts(at: Date, timeZone: string): ZonedParts {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: 'numeric', hourCycle: 'h23',
+  }).formatToParts(at)
+  const n = (type: string) => Number(parts.find(p => p.type === type)?.value ?? Number.NaN)
+  return {
+    year: n('year'),
+    month: n('month'),
+    day: n('day'),
+    // h23 should already give 0-23, but some engines have printed midnight as
+    // "24"; reduce rather than trust it.
+    hour: n('hour') % 24,
+    minute: n('minute'),
+  }
+}

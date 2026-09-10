@@ -31,7 +31,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
-import { formatInvoiceNumber } from '../invoiceFormat'
+import { formatInvoiceNumber, invoicePeriod } from '../invoiceFormat'
 import { readInvoicePrefixSetting } from './settings'
 import { effectivePrice } from '../productPricing'
 
@@ -209,7 +209,9 @@ export async function createPurchaseOrder(
     // stock — gaps are tolerated in accounting, but there is no reason to
     // manufacture them.
     const issuedAt = new Date()
-    const year = issuedAt.getFullYear()
+    // The café's year, not the host's — same counter, same reason as
+    // server/invoiceNumber.ts.
+    const { year } = invoicePeriod(issuedAt)
     const counter = counterSnap.data() ?? {}
     const sequence = counter.year === year ? Number(counter.nextNumber ?? 0) + 1 : 1
     tx.set(counterRef, { year, nextNumber: sequence })

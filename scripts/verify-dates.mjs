@@ -67,5 +67,113 @@ eq('local midnight, not UTC', [local.getHours(), local.getMinutes()], [0, 0])
 eq('garbage is Invalid Date, not a guess', Number.isNaN(D.ymdToLocalDate('10/09/2026').getTime()), true)
 eq('an empty string too', Number.isNaN(D.ymdToLocalDate('').getTime()), true)
 
+console.log('\nzonedParts — wall-clock fields in a zone, whatever the host says')
+const midnightBeirut = new Date('2026-09-30T21:00:00Z')   // 00:00 on 1 Oct, UTC+3
+eq('midnight is hour 0, never 24', D.zonedParts(midnightBeirut, BEIRUT).hour, 0)
+eq('and it is already the 1st', [D.zonedParts(midnightBeirut, BEIRUT).month, D.zonedParts(midnightBeirut, BEIRUT).day], [10, 1])
+eq('while in UTC it is still the 30th', D.zonedParts(midnightBeirut, 'UTC').day, 30)
+
+// ── Money: what the server charges and what it prints ─────────────────────
+// A separate transpile — these import brand.ts and dates.ts. BRAND's timezone
+// is its default here, Asia/Beirut, because this script loads no .env.
+{
+  const outM = mkdtempSync(join(tmpdir(), 'dates-money-verify-'))
+  execSync(
+    `npx tsc shared/src/invoiceFormat.ts shared/src/productPricing.ts --outDir ${outM} ` +
+    `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler`,
+    { stdio: 'pipe' },
+  )
+  const { readdirSync, readFileSync, writeFileSync } = await import('node:fs')
+  for (const f of readdirSync(outM).filter(f => f.endsWith('.js'))) {
+    const p = join(outM, f)
+    writeFileSync(p, readFileSync(p, 'utf8').replace(/from '(\.\.?\/[^']+?)'/g, "from '$1.js'"))
+  }
+  const INV = await import(`file://${join(outM, 'invoiceFormat.js')}`)
+  const PR = await import(`file://${join(outM, 'productPricing.js')}`)
+  const utcMonth = d => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'numeric' }).format(d)
+
+  console.log('\ninvoice periods — the café\'s quarter, not the host\'s')
+  const oneThirtyOct1 = new Date('2026-09-30T22:30:00Z')   // 01:30 on 1 Oct in Asia/Beirut
+  eq('what a UTC host would have read: still September', utcMonth(oneThirtyOct1), '9')
+  eq('numbered in October and Q4',
+     INV.formatInvoiceNumber(7, oneThirtyOct1, 'INV'), 'INV-Q4-102026-0007')
+  eq('quarterOf agrees', INV.quarterOf(oneThirtyOct1), 4)
+
+  const newYear = new Date('2026-12-31T22:30:00Z')         // 00:30 on 1 Jan 2027, UTC+2
+  eq('the first half-hour of the year belongs to the new year',
+     INV.invoicePeriod(newYear).year, 2027)
+  eq('and is labelled with it', INV.formatInvoiceNumber(1, newYear, 'INV'), 'INV-Q1-012027-0001')
+  eq('an explicit zone is honoured', INV.invoicePeriod(newYear, 'UTC').year, 2026)
+
+  console.log('\nsale prices — the screen and the till read the same calendar')
+  const sale = { price: 10, salePrice: 8, saleEndsAt: '2026-09-30' }
+  eq('the café\'s today at 01:30 on 1 Oct', PR.todayKey(oneThirtyOct1), '2026-10-01')
+  eq('so the sale that ended on the 30th no longer applies',
+     PR.effectivePrice(sale, PR.todayKey(oneThirtyOct1)), 10)
+  eq('it still did on the 30th at 23:00',
+     PR.effectivePrice(sale, PR.todayKey(new Date('2026-09-30T20:00:00Z'))), 8)
+}
+
+// ── Table locks: the same id from the browser that takes a lock and the
+//    server that releases it ────────────────────────────────────────────────
+{
+  const outL = mkdtempSync(join(tmpdir(), 'dates-locks-verify-'))
+  execSync(
+    `npx tsc shared/src/tableLocks.ts --outDir ${outL} ` +
+    `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler`,
+    { stdio: 'pipe' },
+  )
+  const { readdirSync, readFileSync, writeFileSync } = await import('node:fs')
+  for (const f of readdirSync(outL).filter(f => f.endsWith('.js'))) {
+    const p = join(outL, f)
+    writeFileSync(p, readFileSync(p, 'utf8').replace(/from '(\.\.?\/[^']+?)'/g, "from '$1.js'"))
+  }
+  const TL = await import(`file://${join(outL, 'tableLocks.js')}`)
+
+  // The formula as it was, evaluated in a stated zone — what the browser and
+  // the server each computed when they were not in the same one.
+  const oldIdIn = (tableId, d, zone) => {
+    const p = D.zonedParts(d, zone)
+    const key = `${p.year}${String(p.month).padStart(2, '0')}${String(p.day).padStart(2, '0')}`
+    return `${tableId}__${key}_${Math.floor((p.hour * 60 + p.minute) / 30)}`
+  }
+
+  console.log('\ntable locks — one id, whoever computes it')
+  const sevenThirty = new Date('2026-09-10T16:30:00Z')   // 19:30 in Asia/Beirut
+  eq('a 19:30 booking locks bucket 39 of the 10th', TL.lockDocId('t1', sevenThirty), 't1__20260910_39')
+  eq('THE BUG: a UTC server recomputed a different id to release it',
+     oldIdIn('t1', sevenThirty, 'UTC'), 't1__20260910_33')
+  const pastMidnight = new Date('2026-09-10T22:00:00Z')  // 01:00 on the 11th in Asia/Beirut
+  eq('a 01:00 booking belongs to the 11th', TL.lockDocId('t1', pastMidnight), 't1__20260911_2')
+  eq('THE BUG: which a UTC server filed under the 10th',
+     oldIdIn('t1', pastMidnight, 'UTC'), 't1__20260910_44')
+
+  // Existing locks were created by devices in Beirut, with the old formula.
+  // The new ids must be byte-identical for all of them, or every current lock
+  // becomes unreachable — the file's own warning. Checked across a year,
+  // including both DST changes, at every half hour of a few sample days.
+  const samples = []
+  for (const day of ['2026-01-15', '2026-03-28', '2026-03-29', '2026-06-21', '2026-10-24', '2026-10-25', '2026-12-31']) {
+    for (let m = 0; m < 24 * 60; m += 30) {
+      samples.push(new Date(new Date(`${day}T00:00:00Z`).getTime() + m * 60000))
+    }
+  }
+  // Compared against the old formula exactly as a device ran it — Date's own
+  // local getters — not against zonedParts, which would only prove the new
+  // code agrees with itself. That comparison means something only on a machine
+  // whose zone IS the café's, so it runs there and says it was skipped
+  // anywhere else, rather than passing without having checked anything.
+  const deviceOldId = (tableId, d) =>
+    `${tableId}__${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}` +
+    `_${Math.floor((d.getHours() * 60 + d.getMinutes()) / 30)}`
+  const machineZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  if (machineZone === BEIRUT) {
+    const mismatches = samples.filter(d => TL.lockDocId('t1', d) !== deviceOldId('t1', d))
+    eq(`locks already made in Asia/Beirut keep their ids (${samples.length} slots, DST incl.)`, mismatches.length, 0)
+  } else {
+    console.log(`  SKIP  existing-lock compatibility needs a machine in ${BEIRUT}; this one is ${machineZone}`)
+  }
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail > 0 ? 1 : 0)

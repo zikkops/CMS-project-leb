@@ -14,6 +14,9 @@
 // forked from. It is a per-business setting now, chosen once during setup and
 // then locked — see shared/src/server/settings.ts for why locking matters.
 
+import { BRAND } from './brand'
+import { zonedParts } from './dates'
+
 // 1 = January (calendar quarters). Set to 7 for a July–June fiscal year.
 export const FISCAL_YEAR_START_MONTH = 1
 
@@ -34,19 +37,41 @@ export const FALLBACK_INVOICE_PREFIX = 'INV'
  */
 export const INVOICE_PREFIX_PATTERN = /^[A-Z0-9]{2,6}$/
 
-export function quarterOf(date: Date): number {
-  const offset = (date.getMonth() - (FISCAL_YEAR_START_MONTH - 1) + 12) % 12
-  return Math.floor(offset / 3) + 1
+/**
+ * The year, month and quarter an invoice belongs to, in the café's timezone.
+ *
+ * These used to come from getFullYear() and getMonth(), which read the zone of
+ * whatever machine runs them — and invoices are numbered on the server, whose
+ * host is usually UTC. A check closed at 01:00 in Beirut on 1 October was
+ * numbered into Q3 and September; the first hours of a new year were numbered
+ * into the old year's sequence and labelled with it. A quarter printed on an
+ * invoice is what VAT is filed against, so it has to be the café's quarter.
+ *
+ * It looked right in development because the development machine is in
+ * Beirut. Nothing about the code was right; the machine happened to agree.
+ */
+export function invoicePeriod(
+  issuedAt: Date,
+  timeZone: string = BRAND.locale.timezone,
+): { year: number; month: number; quarter: number } {
+  const { year, month } = zonedParts(issuedAt, timeZone)
+  const offset = (month - 1 - (FISCAL_YEAR_START_MONTH - 1) + 12) % 12
+  return { year, month, quarter: Math.floor(offset / 3) + 1 }
+}
+
+export function quarterOf(date: Date, timeZone: string = BRAND.locale.timezone): number {
+  return invoicePeriod(date, timeZone).quarter
 }
 
 export function formatInvoiceNumber(
   sequence: number,
   issuedAt: Date = new Date(),
   prefix: string = FALLBACK_INVOICE_PREFIX,
+  timeZone: string = BRAND.locale.timezone,
 ): string {
-  const q = quarterOf(issuedAt)
-  const mm = String(issuedAt.getMonth() + 1).padStart(2, '0')
-  return `${prefix}-Q${q}-${mm}${issuedAt.getFullYear()}-${String(sequence).padStart(4, '0')}`
+  const { year, month, quarter } = invoicePeriod(issuedAt, timeZone)
+  const mm = String(month).padStart(2, '0')
+  return `${prefix}-Q${quarter}-${mm}${year}-${String(sequence).padStart(4, '0')}`
 }
 
 // Validates a number that arrived from a browser before it goes anywhere near

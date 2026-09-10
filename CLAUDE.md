@@ -233,6 +233,16 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
     `isTodayOrLater()` and display with `ymdToLocalDate()` from
     `shared/src/dates.ts`, and judge "today" in `BRAND.locale.timezone`, not
     the viewer's.
+
+    And never let `getFullYear()`/`getMonth()`/`getHours()` decide a date or
+    a period in shared or server code. On a server they read the HOST's zone,
+    usually UTC: that numbered receipts into the wrong month and year, let the
+    till charge a sale price the screen had stopped showing, and made the
+    server compute different table-lock ids from the browser that created
+    them — so a rejected booking left its table blocked. Use `zonedParts()` /
+    `todayYmd()` with `BRAND.locale.timezone`. All of it looked right in
+    development only because the development machine is in Beirut, which is
+    why `verify:dates` pins every case to an explicit zone.
   - **The pilot.** One section of one branch, the old till still taking
     payment. That constraint is what makes v1 safe to ship badly.
 

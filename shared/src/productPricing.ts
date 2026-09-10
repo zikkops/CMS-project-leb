@@ -8,6 +8,9 @@
 //
 // No React, no Firebase: shared/src/server/** imports this too.
 
+import { BRAND } from './brand'
+import { todayYmd } from './dates'
+
 export interface Priced {
   price: number
   /** Absent or null means not on offer. */
@@ -16,9 +19,20 @@ export interface Priced {
   saleEndsAt?: string | null
 }
 
-/** Today in local time as YYYY-MM-DD — the same shape the date input produces. */
+/**
+ * Today in the CAFÉ's timezone, as YYYY-MM-DD.
+ *
+ * This was "today in local time", and local means different things on the two
+ * sides of a sale. The screen ran it on a device in Beirut; the till's
+ * server-side pricing (server/checks.ts, server/purchases.ts) ran it on the
+ * host, which is usually UTC. So for the first hours after a sale's last day
+ * the waiter's screen showed full price while the server charged the sale
+ * price, and nobody at the table could explain the difference.
+ *
+ * One zone, both sides, and they agree by construction.
+ */
 export function todayKey(now: Date = new Date()): string {
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  return todayYmd(BRAND.locale.timezone, now)
 }
 
 /**

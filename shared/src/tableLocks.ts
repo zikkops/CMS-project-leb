@@ -20,17 +20,37 @@
 // No React and no Firebase import here on purpose, so shared/src/server/** can
 // import it without dragging the client SDK into the server bundle.
 
+import { BRAND } from './brand'
+import { zonedParts } from './dates'
+
 /** Bookings are held in half-hour slots. */
 export const BUCKET_MINUTES = 30
 
-/** YYYYMMDD in LOCAL time — a booking belongs to the day the café is open. */
+// ── Why these read the café's timezone and not "local" ─────────────────────
+// The header's own rule — byte-identical ids on both sides — was broken by
+// the two functions below it. They used getFullYear()/getHours(), which read
+// the zone of whatever runs them: the customer's browser when a booking takes
+// its locks, the server's host when a rejection releases them. A host is
+// usually UTC. The server then computed ids three hours off, deleted locks
+// that did not exist — a no-op, not an error — and left the real ones in
+// place, blocking the table for that slot indefinitely. Two customers in
+// different zones likewise computed different ids for the same real slot, so
+// the lock could not stop them booking it twice.
+//
+// Computed in the café's zone, the ids are the same everywhere. For every lock
+// a Beirut device already created they are also byte-identical to before, so
+// nothing existing becomes unreachable — asserted in scripts/verify-dates.mjs.
+
+/** YYYYMMDD in the café's timezone — a booking belongs to the day the café is open. */
 export function dateKey(d: Date): string {
-  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+  const { year, month, day } = zonedParts(d, BRAND.locale.timezone)
+  return `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`
 }
 
-/** Which half-hour of the day, counted from midnight. */
+/** Which half-hour of the café's day, counted from its midnight. */
 export function bucketIndex(d: Date): number {
-  return Math.floor((d.getHours() * 60 + d.getMinutes()) / BUCKET_MINUTES)
+  const { hour, minute } = zonedParts(d, BRAND.locale.timezone)
+  return Math.floor((hour * 60 + minute) / BUCKET_MINUTES)
 }
 
 /**

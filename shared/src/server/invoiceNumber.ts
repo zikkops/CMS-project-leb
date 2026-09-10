@@ -21,7 +21,7 @@
 // person does not "fix" the duplication.
 
 import { adminDb } from './firebaseAdmin'
-import { formatInvoiceNumber } from '../invoiceFormat'
+import { formatInvoiceNumber, invoicePeriod } from '../invoiceFormat'
 import { readInvoicePrefixSetting } from './settings'
 
 /**
@@ -35,7 +35,10 @@ export async function issueInvoiceNumber(): Promise<{ invoiceNumber: string; seq
   const db = adminDb()
   const ref = db.doc('appSettings/invoiceCounter')
   const issuedAt = new Date()
-  const year = issuedAt.getFullYear()
+  // The café's year, not the host's. The counter resets on it, and a UTC host
+  // would have reset two hours late and numbered the new year's first receipts
+  // into the old sequence. See invoicePeriod().
+  const { year } = invoicePeriod(issuedAt)
 
   // Read before the transaction, not inside it. The prefix is a setting
   // rather than part of the counter's own state, and a read of an unrelated
