@@ -9,6 +9,7 @@ import { recordMediaUpload, uploadImage } from '@big-cms/shared/media'
 import MediaPickerModal from '../../components/admin/MediaPickerModal'
 import { BRANCHES as CONFIGURED_BRANCHES, PRIMARY_BRANCH } from '@big-cms/shared/branches'
 import { BRAND } from '@big-cms/shared/brand'
+import { todayYmd, ymdToLocalDate } from '@big-cms/shared/dates'
 
 // Not a branch — the "runs at every branch" option the picker offers alongside
 // the real ones. Named rather than inlined so the string appears once.
@@ -98,7 +99,9 @@ export default function AdminEventsPage() {
   const [filterStatus, setFilterStatus]       = useState<'upcoming' | 'done'>('upcoming')
 
   const filteredEvents = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0]
+    // The café's today. toISOString() is the UTC date, which rolls over in the
+    // evening west of Greenwich and moved tonight's event to "done" early.
+    const today = todayYmd(BRAND.locale.timezone)
     return events
       .filter(ev => filterBranch === 'all' || ev.branch === filterBranch)
       .filter(ev => filterStatus === 'upcoming' ? ev.date >= today : ev.date < today)
@@ -426,7 +429,7 @@ export default function AdminEventsPage() {
             gap: '1.5rem',
           }}>
             {filteredEvents.map(ev => {
-              const d = new Date(ev.date)
+              const d = ymdToLocalDate(ev.date)
               return (
                 <div key={ev.id} style={{
                   border: '1px solid rgba(255,255,255,0.06)',

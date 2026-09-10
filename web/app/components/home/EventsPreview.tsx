@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '@big-cms/shared/firebase'
 import { BRAND } from '@big-cms/shared/brand'
+import { isTodayOrLater, ymdToLocalDate } from '@big-cms/shared/dates'
 import Skeleton from '../Skeleton'
 import EventReservationModal from '../events/EventReservationModal'
 
@@ -53,7 +54,10 @@ export default function EventsPreview() {
       const snap = await getDocs(collection(db, 'events'))
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as GameEvent))
       const upcoming = all
-        .filter(e => new Date(e.date) >= new Date())
+        // A calendar day in the café's timezone, never `new Date(e.date)`:
+        // that is UTC midnight, 03:00 in Beirut, and comparing it to now hid
+        // tonight's event from 3am on its own day. See shared/src/dates.ts.
+        .filter(e => isTodayOrLater(e.date, BRAND.locale.timezone))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
         .slice(0, 3)
       setEvents(upcoming)
@@ -154,7 +158,7 @@ export default function EventsPreview() {
             gap: isMobile ? '1.25rem' : '1.5rem',
           }}>
             {events.map(ev => {
-              const d = new Date(ev.date)
+              const d = ymdToLocalDate(ev.date)
               const hovered = hoveredEventId === ev.id
               return (
                 <div key={ev.id} onClick={() => setSelected(ev)}
@@ -362,7 +366,7 @@ export default function EventsPreview() {
                     fontFamily: 'var(--font-cinzel)',
                     fontSize: '5rem',
                     color: 'rgba(var(--purple-rgb),0.3)',
-                  }}>{new Date(selected.date).getDate()}</span>
+                  }}>{ymdToLocalDate(selected.date).getDate()}</span>
                 </div>
               )}
 
@@ -378,7 +382,7 @@ export default function EventsPreview() {
                   fontSize: '3rem',
                   color: '#fff',
                   lineHeight: 1,
-                }}>{new Date(selected.date).getDate()}</p>
+                }}>{ymdToLocalDate(selected.date).getDate()}</p>
                 <p style={{
                   fontFamily: 'var(--font-inter)',
                   fontSize: '0.75rem',
@@ -386,7 +390,7 @@ export default function EventsPreview() {
                   textTransform: 'uppercase',
                   letterSpacing: '0.1em',
                 }}>
-                  {new Date(selected.date).toLocaleString('en', { month: 'long', year: 'numeric' })}
+                  {ymdToLocalDate(selected.date).toLocaleString('en', { month: 'long', year: 'numeric' })}
                 </p>
               </div>
             </div>
@@ -451,7 +455,7 @@ export default function EventsPreview() {
               }}>
                 {[
                   { label: 'Branch',  value: selected.branch },
-                  { label: 'Date',    value: new Date(selected.date).toLocaleDateString('en', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) },
+                  { label: 'Date',    value: ymdToLocalDate(selected.date).toLocaleDateString('en', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) },
                   { label: 'Time',    value: `${selected.timeStart} – ${selected.timeEnd}` },
                   { label: 'Players', value: `${selected.minPlayers}–${selected.maxPlayers} players` },
                   { label: 'Price',   value: selected.price === 0 ? 'Free entry' : `$${selected.price} per person` },

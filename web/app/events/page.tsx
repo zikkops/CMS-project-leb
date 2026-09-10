@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '@big-cms/shared/firebase'
 import { BRAND } from '@big-cms/shared/brand'
+import { isTodayOrLater, ymdToLocalDate } from '@big-cms/shared/dates'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
 import { PLACEHOLDER } from '@big-cms/shared/placeholderAssets'
@@ -59,7 +60,7 @@ function EventCard({ ev, dimmed = false, isMobile, hoveredEventId, onHover, onSe
   onHover: (id: string | null) => void
   onSelect: (ev: GameEvent) => void
 }) {
-  const d = new Date(ev.date)
+  const d = ymdToLocalDate(ev.date)
   const hovered = !dimmed && hoveredEventId === ev.id
   return (
     <div
@@ -284,11 +285,12 @@ export default function EventsPage() {
       const all  = snap.docs.map(d => ({ id: d.id, ...d.data() } as GameEvent))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
-      const now = new Date()
-      now.setHours(0, 0, 0, 0)
-
-      setUpcoming(all.filter(e => new Date(e.date) >= now))
-      setCompleted(all.filter(e => new Date(e.date) < now).reverse())
+      // The café's today, compared as a calendar day — not this device's
+      // midnight, which is the wrong day for a visitor browsing from abroad.
+      // See shared/src/dates.ts.
+      const tz = BRAND.locale.timezone
+      setUpcoming(all.filter(e => isTodayOrLater(e.date, tz)))
+      setCompleted(all.filter(e => !isTodayOrLater(e.date, tz)).reverse())
 
       const uniqueBranches = [...new Set(all.map(e => e.branch))]
       setBranches(uniqueBranches)
@@ -521,7 +523,7 @@ export default function EventsPage() {
                     fontFamily: 'var(--font-cinzel)',
                     fontSize: '5rem',
                     color: 'rgba(var(--purple-rgb),0.3)',
-                  }}>{new Date(selected.date).getDate()}</span>
+                  }}>{ymdToLocalDate(selected.date).getDate()}</span>
                 </div>
               )}
 
@@ -537,7 +539,7 @@ export default function EventsPage() {
                   fontSize: '3rem',
                   color: '#fff',
                   lineHeight: 1,
-                }}>{new Date(selected.date).getDate()}</p>
+                }}>{ymdToLocalDate(selected.date).getDate()}</p>
                 <p style={{
                   fontFamily: 'var(--font-inter)',
                   fontSize: '0.75rem',
@@ -545,7 +547,7 @@ export default function EventsPage() {
                   textTransform: 'uppercase',
                   letterSpacing: '0.1em',
                 }}>
-                  {new Date(selected.date).toLocaleString('en', { month: 'long', year: 'numeric' })}
+                  {ymdToLocalDate(selected.date).toLocaleString('en', { month: 'long', year: 'numeric' })}
                 </p>
               </div>
             </div>
@@ -610,7 +612,7 @@ export default function EventsPage() {
               }}>
                 {[
                   { label: 'Branch',  value: selected.branch },
-                  { label: 'Date',    value: new Date(selected.date).toLocaleDateString('en', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) },
+                  { label: 'Date',    value: ymdToLocalDate(selected.date).toLocaleDateString('en', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) },
                   { label: 'Time',    value: `${selected.timeStart} – ${selected.timeEnd}` },
                   { label: 'Players', value: `${selected.minPlayers}–${selected.maxPlayers} players` },
                   { label: 'Price',   value: selected.price === 0 ? 'Free entry' : `$${selected.price} per person` },
@@ -645,7 +647,7 @@ export default function EventsPage() {
 
               {/* CTAs */}
               {(() => {
-                const isCompleted = new Date(selected.date) < new Date(new Date().setHours(0, 0, 0, 0))
+                const isCompleted = !isTodayOrLater(selected.date, BRAND.locale.timezone)
                 return isCompleted ? null : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                 <button

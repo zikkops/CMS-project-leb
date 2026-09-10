@@ -76,6 +76,7 @@ There is **no `adminUsers` collection** — staff and customers share `users/{ui
 | `npm run verify:checks` | Checks the POS check, void and money rules |
 | `npm run verify:brand` | Checks every var() the source uses is one brandCss.ts defines |
 | `npm run verify:printing` | Checks the printer config parsers and what they refuse |
+| `npm run verify:dates` | Checks calendar days are judged in the café's timezone, not UTC |
 | `npm run verify:receipt` | Checks the receipt document and its fixed-width layout |
 | `npm run verify:features` | Checks the feature-flag registry |
 | `npm run verify:hosts` | Checks the hostname routing |

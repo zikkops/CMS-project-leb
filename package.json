@@ -34,7 +34,8 @@
     "cron:reset": "node scripts/cron-reset.mjs",
     "package": "node scripts/package-app.mjs",
     "verify:brand": "node scripts/verify-brand.mjs",
-    "verify:printing": "node scripts/verify-printing.mjs"
+    "verify:printing": "node scripts/verify-printing.mjs",
+    "verify:dates": "node scripts/verify-dates.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

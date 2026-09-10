@@ -37,6 +37,7 @@ npm run verify:checks        # if you touched money, stock or tickets
 npm run verify:receipt       # if you touched what a customer is handed
 npm run verify:brand         # if you touched a colour, a variable or brand.ts
 npm run verify:printing      # if you touched printers or the print seam
+npm run verify:dates         # if you touched an event date or what "today" means
 npm run verify:delivery-math # if you touched receiving or costing
 npm run audit:writes         # must stay at 0
 ```
@@ -225,6 +226,13 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
     "NaN-NaN-NaN NaN:NaN" on every real receipt while the verifier passed on
     a string fixture. Read timestamps through `timestampMs()` in
     `shared/src/timestamps.ts`, never `new Date(field)`.
+
+    Calendar days are the sibling trap. An event's `date` is a `'YYYY-MM-DD'`
+    string, and `new Date(date)` is UTC midnight — 03:00 in Beirut — so the
+    home page hid an event while it was running. Compare with
+    `isTodayOrLater()` and display with `ymdToLocalDate()` from
+    `shared/src/dates.ts`, and judge "today" in `BRAND.locale.timezone`, not
+    the viewer's.
   - **The pilot.** One section of one branch, the old till still taking
     payment. That constraint is what makes v1 safe to ship badly.
 
