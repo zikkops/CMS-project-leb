@@ -28,6 +28,8 @@ import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import type { Check, Station } from '@big-cms/shared/checks'
 import { ACTIVE_TICKET_STATUSES, type Ticket } from '@big-cms/shared/tickets'
 import { effectivePrice, saleIsActive } from '@big-cms/shared/productPricing'
+import { timestampMs } from '@big-cms/shared/timestamps'
+import { nextReceiptBatch, EMPTY_RECEIPT_STATE, type ReceiptDoc } from './printBatch'
 
 // ── Listener failures are surfaced, not swallowed ─────────────────────────
 // These used to end in `() => setLoading(false)`, which turned a
@@ -53,7 +55,7 @@ import { effectivePrice, saleIsActive } from '@big-cms/shared/productPricing'
  * auth.currentUser directly does not work: it is null during that first tick
  * whether or not anybody is signed in.
  */
-function useAuthReady(): { ready: boolean; signedIn: boolean } {
+export function useAuthReady(): { ready: boolean; signedIn: boolean } {
   const [state, setState] = useState({ ready: false, signedIn: false })
   useEffect(() => onAuthStateChanged(auth, user => {
     setState({ ready: true, signedIn: Boolean(user) })
@@ -251,6 +253,60 @@ export function useClosedChecks(branch: string, max = 50): {
   }, [branch, ready, signedIn, max])
 
   return { checks, loading: !ready || (signedIn && !loaded), error }
+}
+
+/**
+ * Calls `onNew` with each check that closes while this is subscribed.
+ *
+ * A plain subscriber rather than a hook, on purpose. Render state was the
+ * source of two bugs in the ticket printer — a list outliving the listener
+ * that produced it, handed on as though it were current. Here the decision
+ * state lives inside the subscription itself, so every subscribe starts clean
+ * and there is no stale list for a reconnect or a toggle to replay.
+ *
+ * Firestore's docChanges() does the rest: the first snapshot's changes are
+ * everything already closed, which nextReceiptBatch() absorbs as history.
+ *
+ * Limited to the newest ten — this watches for closings, it does not list
+ * them — and served by the existing (branch, status, closedAt desc) index.
+ */
+export function watchClosedReceipts(
+  branch: string,
+  onNew: (checks: Check[]) => void,
+  onError: (message: string) => void,
+): () => void {
+  let state = EMPTY_RECEIPT_STATE
+  const q = query(
+    collection(db, 'checks'),
+    where('branch', '==', branch),
+    where('status', '==', 'closed'),
+    orderBy('closedAt', 'desc'),
+    limit(10),
+  )
+  const toDoc = (id: string, data: Record<string, unknown>): ReceiptDoc => ({
+    id,
+    status: String(data.status ?? ''),
+    // NaN while a server timestamp is unresolved; the decision waits for it.
+    closedAtMs: timestampMs(data.closedAt, Number.NaN),
+  })
+  return onSnapshot(q,
+    snap => {
+      const docs = snap.docs.map(d => toDoc(d.id, d.data()))
+      const changes = snap.docChanges()
+        .filter(c => c.type !== 'removed')
+        .map(c => toDoc(c.doc.id, c.doc.data()))
+      const r = nextReceiptBatch(state, docs, changes)
+      state = r.state
+      if (r.print.length === 0) return
+      const byId = new Map(snap.docs.map(d => [d.id, { id: d.id, ...d.data() } as Check]))
+      const out = r.print.map(id => byId.get(id)).filter((c): c is Check => c !== undefined)
+      if (out.length > 0) onNew(out)
+    },
+    err => {
+      console.error('[watchClosedReceipts] listener failed:', err)
+      onError(listenerMessage(err))
+    },
+  )
 }
 
 // ── The menu a waiter orders from ─────────────────────────────────────────

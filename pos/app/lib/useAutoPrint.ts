@@ -1,60 +1,92 @@
 'use client'
 
-// Printing a ticket the moment it lands on the pass.
+// Printing from the KDS: tickets as they land on the pass, and the customer
+// receipt as a check closes.
 //
 // POS-only, so it lives here rather than in shared/ — see CLAUDE.md. The
-// document, the transport and the configuration are all shared; deciding WHEN
+// documents, the transport and the configuration are all shared; deciding WHEN
 // to print is a property of this screen.
 //
-// ── The ways this goes wrong, and what stops each ──────────────────────────
+// ── Why the KDS prints the receipt, not the phone that closed the check ────
+// With the browser transport, "the bar's printer" means "the device at the
+// bar". Printing on close from the device that pressed Close would put the
+// receipt on a waiter's phone while the settings page says it goes to the bar.
+// So the receipt comes out of the KDS showing the receipt station — the same
+// machine, the same "Print here" switch, the same paper as its tickets.
 //
-// 1. THE BACKLOG. A listener's first snapshot is every active ticket, so a
-//    screen opening at 8pm would print the whole evening in one go. The first
-//    snapshot of each SUBSCRIPTION is therefore history: recorded, not
-//    printed. A ticket sent while no screen was looking never prints — the
-//    screen shows it, and that is the trade. Paper is a copy of the order.
+// ── The ways ticket printing goes wrong, and what stops each ───────────────
+//
+// 1. THE BACKLOG. A listener's first snapshot is every active ticket; printing
+//    it would print the whole evening. The first snapshot of each subscription
+//    is history. A ticket sent while no screen was looking never prints — the
+//    screen shows it, and paper is a copy of the order, not the order.
 //
 // 2. SWITCHING STATION. The same failure by another door, and the one the
-//    first version of this file had: changing the KDS from Kitchen to Bar is a
-//    new subscription, and its first snapshot is the bar pass's whole backlog.
-//    Treating only the FIRST EVER snapshot as history printed every ticket on
-//    the bar pass at once. History is now per scope.
+//    first version had: Kitchen → Bar is a new subscription whose first
+//    snapshot is the bar pass's whole backlog. History is per scope.
 //
-// 3. REPRINTING. Tickets re-render on every status change and reconnect. Ids
-//    are remembered for the life of the page and marked before the print, not
-//    after — printText() is async, and a snapshot arriving mid-print would
-//    otherwise find the same ticket unseen and print it twice.
+// 3. REPRINTING. Ids are remembered for the life of the page and marked
+//    before the print — printText() is async, and a snapshot arriving
+//    mid-print would otherwise print the same ticket twice.
 //
-// 4. TWO SCREENS. Two devices on one station both see the new ticket and both
-//    print it, and nothing anywhere says why. So printing is OFF per device
-//    until somebody turns it on, stored on the device rather than the account:
-//    it is a fact about which machine has a printer plugged into it.
+// 4. TWO SCREENS. Two devices on one station would both print every ticket,
+//    with nothing saying why. So printing is off per device until turned on,
+//    stored on the device: it is a fact about which machine has the printer.
 //
-// The decision itself is nextPrintBatch() in printBatch.ts — pure, and
-// asserted in scripts/verify-printing.mjs, because case 2 was reasoned
-// correct inside an effect and was not.
+// Both decisions are pure functions in printBatch.ts, asserted in
+// scripts/verify-printing.mjs — case 2 was reasoned correct inside an effect
+// and was not.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ticketSentAtMs, type Ticket } from '@big-cms/shared/tickets'
+import type { Station } from '@big-cms/shared/checks'
 import { ticketToText } from '@big-cms/shared/ticketDoc'
+import { buildReceipt, receiptToText } from '@big-cms/shared/receipt'
 import { printText } from '@big-cms/shared/printClient'
-import { printerFor, type PrintingSettings } from '@big-cms/shared/printing'
+import {
+  printerFor, shouldPrintReceiptHere, type PrintingSettings,
+} from '@big-cms/shared/printing'
 import { BRAND } from '@big-cms/shared/brand'
 import { nextPrintBatch, EMPTY_PRINT_STATE, type PrintBatchState } from './printBatch'
+import { useAuthReady, watchClosedReceipts } from './usePos'
+import { receiptOptionsFor } from './receiptOptions'
 
 const DEVICE_KEY = 'kds.printsFromThisDevice'
 
-export interface AutoPrintState {
-  /** Whether this device prints. Off until somebody says otherwise. */
-  on: boolean
-  setOn: (next: boolean) => void
+/** This device's "Print here" switch. Off until somebody turns it on. */
+export function usePrintsHere(): { on: boolean; setOn: (next: boolean) => void } {
+  const [on, setOnState] = useState(false)
+
+  // Read once on mount rather than during render — localStorage does not exist
+  // on the server, and reading it while rendering mismatches hydration. Same
+  // reasoning as the station picker on the KDS.
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOnState(window.localStorage.getItem(DEVICE_KEY) === 'yes')
+    } catch { /* private window, storage disabled — stays off */ }
+  }, [])
+
+  const setOn = useCallback((next: boolean) => {
+    setOnState(next)
+    try { window.localStorage.setItem(DEVICE_KEY, next ? 'yes' : 'no') } catch { /* not fatal */ }
+  }, [])
+
+  return { on, setOn }
+}
+
+export interface PaperState {
   /** The last failure, for the screen to show. Null when nothing has failed. */
   lastError: string | null
-  /** How many tickets this device has printed since the page opened. */
+  /** How many this device has printed since the page opened. */
   printed: number
 }
 
+// ── Tickets ────────────────────────────────────────────────────────────────
+
 export interface AutoPrintInput {
+  /** This device's switch, from usePrintsHere(). */
+  on: boolean
   tickets: Ticket[]
   ticketsLoading: boolean
   /**
@@ -73,30 +105,14 @@ export interface AutoPrintInput {
  * "Its own": with the screen showing All, a bar ticket and a kitchen ticket go
  * to different machines. The station on the TICKET decides.
  */
-export function useAutoPrintTickets(input: AutoPrintInput): AutoPrintState {
-  const { tickets, ticketsLoading, scope, branch, settings, settingsLoading } = input
+export function useAutoPrintTickets(input: AutoPrintInput): PaperState {
+  const { on, tickets, ticketsLoading, scope, branch, settings, settingsLoading } = input
 
-  const [on, setOnState] = useState(false)
   const [lastError, setLastError] = useState<string | null>(null)
   const [printed, setPrinted] = useState(0)
 
   // A ref: advancing it must not render, and a render must not reset it.
   const batch = useRef<PrintBatchState>(EMPTY_PRINT_STATE)
-
-  // Read once on mount rather than during render — localStorage does not exist
-  // on the server, and reading it while rendering mismatches hydration. Same
-  // reasoning as the station picker on the KDS.
-  useEffect(() => {
-    try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOnState(window.localStorage.getItem(DEVICE_KEY) === 'yes')
-    } catch { /* private window, storage disabled — stays off */ }
-  }, [])
-
-  const setOn = useCallback((next: boolean) => {
-    setOnState(next)
-    try { window.localStorage.setItem(DEVICE_KEY, next ? 'yes' : 'no') } catch { /* not fatal */ }
-  }, [])
 
   useEffect(() => {
     const { state, print } = nextPrintBatch(batch.current, {
@@ -142,5 +158,72 @@ export function useAutoPrintTickets(input: AutoPrintInput): AutoPrintState {
     })()
   }, [tickets, ticketsLoading, scope, branch, settings, settingsLoading, on])
 
-  return { on, setOn, lastError, printed }
+  return { lastError, printed }
+}
+
+// ── Receipts on close ──────────────────────────────────────────────────────
+
+export interface AutoPrintReceiptsInput {
+  /** This device's switch, from usePrintsHere(). */
+  on: boolean
+  branch: string
+  /** The station this KDS is filtered to, or null for All. */
+  screenStation: Station | null
+  settings: PrintingSettings
+  settingsLoading: boolean
+  /** The live business setting. A receipt is not printed on a guessed rate. */
+  exchangeRate: number
+  rateLoading: boolean
+}
+
+/**
+ * Print the customer receipt when a check closes — if this is the screen that
+ * does that. See the header for why it is this screen and not the till.
+ */
+export function useAutoPrintReceipts(input: AutoPrintReceiptsInput): PaperState & { active: boolean } {
+  const { on, branch, screenStation, settings, settingsLoading, exchangeRate, rateLoading } = input
+
+  const [lastError, setLastError] = useState<string | null>(null)
+  const [printed, setPrinted] = useState(0)
+  const { ready, signedIn } = useAuthReady()
+
+  const active = on && ready && signedIn && !settingsLoading && !rateLoading && branch !== ''
+    && shouldPrintReceiptHere(settings, branch, screenStation)
+
+  // The latest configuration, read at print time. Kept out of the subscribe
+  // effect's dependencies because the settings object is rebuilt on every
+  // snapshot, and resubscribing on each one would re-take the watermark for
+  // nothing and open a gap in which a closing could be missed.
+  const latest = useRef({ settings, exchangeRate })
+  useEffect(() => { latest.current = { settings, exchangeRate } }, [settings, exchangeRate])
+
+  useEffect(() => {
+    if (!active) return
+    return watchClosedReceipts(
+      branch,
+      checks => {
+        void (async () => {
+          for (const check of checks) {
+            const { settings: s, exchangeRate: rate } = latest.current
+            const printer = printerFor(s, branch, s.receiptStation)
+            let text: string
+            try {
+              text = receiptToText(buildReceipt(check, receiptOptionsFor(rate)), printer.width)
+            } catch (err) {
+              // buildReceipt refuses a check with no receipt number rather than
+              // half-printing one. Say so; do not guess.
+              setLastError(`Receipt: ${err instanceof Error ? err.message : 'could not be built'}`)
+              continue
+            }
+            const result = await printText(text, printer)
+            if (result.printed) setPrinted(n => n + 1)
+            else setLastError(`Receipt: ${result.reason ?? 'did not print'}`)
+          }
+        })()
+      },
+      message => setLastError(`Receipts: ${message}`),
+    )
+  }, [active, branch])
+
+  return { lastError, printed, active }
 }

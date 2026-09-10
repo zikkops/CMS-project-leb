@@ -204,5 +204,59 @@ const before = B.EMPTY_PRINT_STATE.seen.size
 step(B.EMPTY_PRINT_STATE, { scope: 'Main|Kitchen', ids: ['a', 'b'] })
 eq('the previous state is never mutated', B.EMPTY_PRINT_STATE.seen.size, before)
 
+// ── Which screen prints the receipt ───────────────────────────────────────
+console.log('\nshouldPrintReceiptHere — the station\'s device, never the phone that closed it')
+
+const rcfg = (over = {}) => P.parsePrintingSettings({
+  receiptOnClose: true,
+  receiptStation: 'Bar',
+  branches: { Main: { Bar: { enabled: true, transport: 'browser' } } },
+  ...over,
+})
+eq('off unless receipt-on-close is on',
+   P.shouldPrintReceiptHere(rcfg({ receiptOnClose: false }), 'Main', 'Bar'), false)
+eq('off when the receipt station has no printer',
+   P.shouldPrintReceiptHere(rcfg({ branches: {} }), 'Main', 'Bar'), false)
+eq('the receipt station\'s screen prints it', P.shouldPrintReceiptHere(rcfg(), 'Main', 'Bar'), true)
+eq('a screen showing All prints it', P.shouldPrintReceiptHere(rcfg(), 'Main', null), true)
+eq('another station\'s screen does not', P.shouldPrintReceiptHere(rcfg(), 'Main', 'Kitchen'), false)
+eq('another branch does not', P.shouldPrintReceiptHere(rcfg(), 'Second', 'Bar'), false)
+
+// ── When the receipt prints ───────────────────────────────────────────────
+console.log('\nnextReceiptBatch — new closings only, and never an old one a refund shuffles in')
+
+const rd = (id, closedAtMs, status = 'closed') => ({ id, status, closedAtMs })
+let rs = B.EMPTY_RECEIPT_STATE
+let rr = B.nextReceiptBatch(rs, [rd('c1', 1000), rd('c2', 2000)], [rd('c1', 1000), rd('c2', 2000)])
+eq('opening the screen prints none of the recent closings', rr.print, [])
+eq('and takes the newest closedAt as the watermark', rr.state.watermark, 2000)
+rs = rr.state
+
+rr = B.nextReceiptBatch(rs, [], [rd('c3', 3000)])
+eq('a check closing after that prints', rr.print, ['c3'])
+rs = rr.state
+
+eq('the same check changing again does not reprint',
+   B.nextReceiptBatch(rs, [], [rd('c3', 3000)]).print, [])
+
+// THE TRAP. A refund drops a check out of the "closed" query and the
+// eleventh-newest slides into the limit-10 window as an added change.
+eq('an old check a refund pushes into the window does not print',
+   B.nextReceiptBatch(rs, [], [rd('c0', 500)]).print, [])
+eq('a refunded check does not print', B.nextReceiptBatch(rs, [], [rd('c9', 9000, 'refunded')]).print, [])
+
+const pending = B.nextReceiptBatch(rs, [], [rd('c4', Number.NaN)])
+eq('an unresolved timestamp waits', pending.print, [])
+eq('and resolving prints it once',
+   B.nextReceiptBatch(pending.state, [], [rd('c4', 4000)]).print, ['c4'])
+
+const outOfOrder = B.nextReceiptBatch(rs, [], [rd('c6', 6000)])
+eq('two closings arriving out of order both print',
+   B.nextReceiptBatch(outOfOrder.state, [], [rd('c5', 5000)]).print, ['c5'])
+
+const empty = B.nextReceiptBatch(B.EMPTY_RECEIPT_STATE, [], [])
+eq('a branch with no closed checks yet primes to zero', empty.state.watermark, 0)
+eq('and its first closing prints', B.nextReceiptBatch(empty.state, [], [rd('n1', 10)]).print, ['n1'])
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail > 0 ? 1 : 0)

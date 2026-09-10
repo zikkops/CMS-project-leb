@@ -23,7 +23,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
-import { BRAND } from '@big-cms/shared/brand'
+import { receiptOptionsFor } from '../../../../lib/receiptOptions'
 import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
 import {
   buildReceipt, receiptToText, receiptBlockedReason, RECEIPT_WIDTHS,
@@ -75,18 +75,9 @@ export default function ReceiptPage() {
 
   const text = useMemo(() => {
     if (!check || blocked) return ''
-    const rows = buildReceipt(check, {
-      businessName: BRAND.name,
-      address: BRAND.contact.address,
-      phone: BRAND.contact.phone,
-      currency: BRAND.locale.currency,
-      secondaryCurrency: BRAND.locale.secondaryCurrency,
-      // The live setting, not the build-time default. When Phase 04 records a
-      // payment the rate it settled at belongs on the check, and this line
-      // becomes a read from the check instead.
-      exchangeRate: settings.exchangeRate,
-      footer: 'Thank you',
-    })
+    // Shared with the KDS's receipt-on-close, so a reprint always matches the
+    // receipt the customer was first handed.
+    const rows = buildReceipt(check, receiptOptionsFor(settings.exchangeRate))
     return receiptToText(rows, width)
   }, [check, blocked, settings.exchangeRate, width])
 

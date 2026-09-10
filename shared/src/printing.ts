@@ -195,3 +195,24 @@ export function printerBlockedReason(printer: StationPrinter): string | null {
   }
   return null
 }
+
+/**
+ * Whether the screen this runs on is the one that prints receipts on close.
+ *
+ * The receipt goes to the receipt station's printer, and with the browser
+ * transport "that station's printer" means "the device at that station" — so
+ * it is the KDS showing that station (or showing everything) that prints it,
+ * never the waiter's phone that happened to press Close. The per-device
+ * "Print here" opt-in is checked by the caller; this answers the rest.
+ *
+ * @param screenStation the station this KDS is filtered to, or null for All
+ */
+export function shouldPrintReceiptHere(
+  settings: PrintingSettings,
+  branch: string,
+  screenStation: Station | null,
+): boolean {
+  if (!settings.receiptOnClose) return false
+  if (!printerFor(settings, branch, settings.receiptStation).enabled) return false
+  return screenStation === null || screenStation === settings.receiptStation
+}

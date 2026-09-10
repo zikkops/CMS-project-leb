@@ -22,7 +22,8 @@ import {
 import { useStationTickets, advanceTicket } from '../../lib/usePos'
 import { usePrintingSettings } from '@big-cms/shared/usePrintingSettings'
 import { activeStations } from '@big-cms/shared/printing'
-import { useAutoPrintTickets } from '../../lib/useAutoPrint'
+import { useAutoPrintTickets, useAutoPrintReceipts, usePrintsHere } from '../../lib/useAutoPrint'
+import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
 
 const STORAGE_KEY = 'kds.station'
 
@@ -247,7 +248,21 @@ export default function KdsPage() {
   // Paper, if this device is the one with a printer on it. Off until somebody
   // says otherwise — see useAutoPrint for why that default is not timidity.
   const { settings: printing, loading: printingLoading } = usePrintingSettings()
+  // One switch for this device, shared by tickets and receipts: it is the same
+  // machine and the same printer either way.
+  const printsHere = usePrintsHere()
+  const { settings: business, loading: businessLoading } = useBusinessSettings()
+  const receipts = useAutoPrintReceipts({
+    on: printsHere.on,
+    branch,
+    screenStation: filter,
+    settings: printing,
+    settingsLoading: printingLoading,
+    exchangeRate: business.exchangeRate,
+    rateLoading: businessLoading,
+  })
   const autoPrint = useAutoPrintTickets({
+    on: printsHere.on,
     tickets,
     ticketsLoading,
     scope: `${branch}|${filter ?? '*'}`,
@@ -256,6 +271,8 @@ export default function KdsPage() {
     settingsLoading: printingLoading,
   })
   const printable = activeStations(printing, branch)
+  const paperError = autoPrint.lastError ?? receipts.lastError
+  const paperCount = autoPrint.printed + receipts.printed
 
   async function move(ticket: Ticket, to: TicketStatus) {
     setBusy(ticket.id)
@@ -352,17 +369,20 @@ export default function KdsPage() {
             <label style={{
               display: 'flex', alignItems: 'center', gap: '0.45rem', cursor: 'pointer',
               fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase',
-              color: autoPrint.on ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.3)',
+              color: printsHere.on ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.3)',
             }}>
               <input
                 type="checkbox"
-                checked={autoPrint.on}
-                onChange={e => autoPrint.setOn(e.target.checked)}
+                checked={printsHere.on}
+                onChange={e => printsHere.setOn(e.target.checked)}
                 style={{ width: '16px', height: '16px', accentColor: 'var(--teal)' }}
               />
               Print here
-              {autoPrint.on && autoPrint.printed > 0 && (
-                <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)' }}>· {autoPrint.printed}</span>
+              {printsHere.on && paperCount > 0 && (
+                <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)' }}>· {paperCount}</span>
+              )}
+              {receipts.active && (
+                <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)' }}>· receipts</span>
               )}
             </label>
           )}
@@ -384,12 +404,12 @@ export default function KdsPage() {
         }}>{error || liveError}</p>
       )}
 
-      {autoPrint.lastError && (
+      {paperError && (
         <p style={{
           color: 'rgba(var(--offwhite-rgb),0.5)', fontSize: '0.78rem', marginBottom: '1rem',
           lineHeight: 1.6, border: '1px solid rgba(var(--offwhite-rgb),0.1)',
           borderRadius: '3px', padding: '0.6rem 0.9rem',
-        }}>Paper: {autoPrint.lastError} — the ticket is on the pass regardless.</p>
+        }}>Paper: {paperError} — nothing is lost; the screen is the record.</p>
       )}
 
       {tickets.length === 0 ? (
