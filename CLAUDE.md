@@ -117,11 +117,12 @@ adding a transport there and changing no call site.
 - Read them at **`/admin/errors`**, admin-only through `useRequireRole(['admin'])`
   — deliberately not a new `SECTION_ACCESS` key, because "can see the crash
   reports" is not a permission anybody hands out for one shift.
-- `npm run verify:errors` asserts the lot. **The `errorReports` rule is written
-  but NOT yet deployed** — until somebody runs
-  `firebase deploy --only firestore:rules`, `/admin/errors` shows its "the rule
-  may not be live yet" message rather than an empty list, which is the whole
-  reason it says that instead of showing nothing.
+- `npm run verify:errors` asserts the lot. **The `errorReports` rule IS
+  deployed** — checked 12 Sep 2026 against the live ruleset with
+  `npm run rules:live`, not read off these notes. `/admin/errors` keeps its "the
+  rule may not be live yet" message as the failure path rather than an empty
+  list, because an empty list reads as "nothing has broken", which is the most
+  reassuring possible way to be wrong.
 
 ## Firestore rules
 
@@ -130,6 +131,16 @@ adding a transport there and changing no call site.
 
 **A rules deploy has no gradual rollout.** A wrong rule breaks that collection
 for every user at once. One collection at a time, verify between each.
+
+**`npm run rules:live` reads the DEPLOYED ruleset and diffs it against this
+file.** Read-only — it cannot deploy, and deploying stays a deliberate
+`firebase deploy --only firestore:rules`. Run it before blaming the code: a
+rule that is written but not deployed looks exactly like a rule that is wrong
+from the application's side, and that is precisely what the printing-settings
+bug was. It reports the RULESET's createTime rather than the release's, because
+a release is created once and updated on every deploy — so the release date
+reads as "the day rules were first ever published" forever, which is the wrong
+answer to the only question being asked.
 
 **The claims rewrite is done and deployed.** Rules read
 `request.auth.token.role` via `hasRole()` and `can()`, one helper per section,
