@@ -87,7 +87,7 @@ export function useOpenChecks(branch: string): {
   const { ready, signedIn } = useAuthReady()
 
   useEffect(() => {
-    if (!branch || !ready) return
+    if (!branch || !ready || !signedIn) return
     // Signed out is not an error, it is a redirect already in flight.
     const q = query(
       collection(db, 'checks'),
@@ -124,7 +124,7 @@ export function useCheck(checkId: string): {
   const { ready, signedIn } = useAuthReady()
 
   useEffect(() => {
-    if (!checkId || !ready) return
+    if (!checkId || !ready || !signedIn) return
     return onSnapshot(doc(db, 'checks', checkId),
       snap => {
         setCheck(snap.exists() ? ({ id: snap.id, ...snap.data() } as Check) : null)
@@ -164,7 +164,7 @@ export function useStationTickets(branch: string, station: Station | null): {
   const { ready, signedIn } = useAuthReady()
 
   useEffect(() => {
-    if (!branch || !ready) return
+    if (!branch || !ready || !signedIn) return
     const k = `${branch}|${station ?? '*'}`
     const q = station
       ? query(
@@ -227,7 +227,7 @@ export function useClosedChecks(branch: string, max = 50): {
   const { ready, signedIn } = useAuthReady()
 
   useEffect(() => {
-    if (!branch || !ready) return
+    if (!branch || !ready || !signedIn) return
     const q = query(
       collection(db, 'checks'),
       where('branch', '==', branch),
