@@ -5,6 +5,8 @@ import {
 import { db } from './firebase'
 import { authedFetch, unwrap } from './apiClient'
 import { STOCKED_BRANCHES } from './branches'
+import { BRAND } from './brand'
+import { todayYmd } from './dates'
 
 // Which branches hold consumable stock is configuration, and STOCKED_BRANCHES
 // is the one place that answers it. This used to be BRANCHES.filter(b => b !==
@@ -48,9 +50,10 @@ export function inventoryDocId(branch: string, date: string, department: string)
   return `${branch}_${date}_${department}`
 }
 
+// The café's today, not the device's — a count dated by a phone abroad would
+// otherwise land on the wrong day's report.
 export function todayDateStr() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return todayYmd(BRAND.locale.timezone)
 }
 
 export interface SupplyForCount {

@@ -64,6 +64,25 @@ export function ymdToLocalDate(ymd: string): Date {
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
 }
 
+/**
+ * The business day a cash-up belongs to, in the café's timezone.
+ *
+ * Before `cutoffHour` in the morning the night shift is still being counted,
+ * so it is the previous day's cash-up. This used to read the device's own
+ * getHours()/getDate(), which is right only on a device in the café's zone —
+ * a manager signing in from abroad got the wrong day's form.
+ *
+ * The step back is done on the calendar day, not by subtracting hours from the
+ * instant, so a daylight-saving change cannot move the cutoff by an hour.
+ */
+export function cashUpDay(timeZone: string, now: Date = new Date(), cutoffHour = 10): string {
+  const p = zonedParts(now, timeZone)
+  const day = new Date(Date.UTC(p.year, p.month - 1, p.day - (p.hour < cutoffHour ? 1 : 0)))
+  const pad = (n: number) => String(n).padStart(2, '0')
+  // UTC getters on a date built in UTC: this is calendar arithmetic, no zone decides it.
+  return `${day.getUTCFullYear()}-${pad(day.getUTCMonth() + 1)}-${pad(day.getUTCDate())}`
+}
+
 export interface ZonedParts {
   year: number
   /** 1-12, not 0-11 like Date.getMonth(). */

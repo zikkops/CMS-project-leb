@@ -4,6 +4,8 @@ import {
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { authedFetch, unwrap } from './apiClient'
+import { BRAND } from './brand'
+import { cashUpDay, todayYmd } from './dates'
 
 // Where the exchange rate comes from.
 //
@@ -123,16 +125,17 @@ export function reportDocId(branch: string, date: string) {
   return `${branch}_${date}`
 }
 
+// Today in the café's timezone, not the device's. These read getFullYear()/
+// getDate() before, which is only right on a device in the café's zone — the
+// trap CLAUDE.md names for shared code.
 export function todayDateStr() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return todayYmd(BRAND.locale.timezone)
 }
 
-// Before 10 am the shift still belongs to the previous day.
+// Before 10 am the shift still belongs to the previous day — judged on the
+// café's clock, so a manager signing in from abroad gets the right form.
 export function defaultEodDateStr() {
-  const now = new Date()
-  const d = now.getHours() < 10 ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1) : now
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return cashUpDay(BRAND.locale.timezone)
 }
 
 export function emptyReport(

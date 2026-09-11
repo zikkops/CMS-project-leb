@@ -175,5 +175,25 @@ eq('while in UTC it is still the 30th', D.zonedParts(midnightBeirut, 'UTC').day,
   }
 }
 
+console.log('\ncashUpDay — before 10am the night is still being counted')
+eq('09:59 in Asia/Beirut is still yesterday\'s cash-up',
+   D.cashUpDay(BEIRUT, new Date('2026-09-11T06:59:00Z')), '2026-09-10')
+eq('10:00 in Asia/Beirut is today\'s',
+   D.cashUpDay(BEIRUT, new Date('2026-09-11T07:00:00Z')), '2026-09-11')
+eq('00:30 on the 1st is the last day of the month before',
+   D.cashUpDay(BEIRUT, new Date('2026-09-30T21:30:00Z')), '2026-09-30')
+eq('09:00 on 1 January is 31 December of the year before',
+   D.cashUpDay(BEIRUT, new Date('2027-01-01T07:00:00Z')), '2026-12-31')
+// 03:00 on the 11th in Asia/Beirut — still the 10th's night. A device in New
+// York reads 20:00 on the 10th and happens to agree, so this case alone does
+// not tell the two clocks apart.
+eq('03:00 on the 11th in Asia/Beirut is the 10th\'s night',
+   D.cashUpDay(BEIRUT, new Date('2026-09-11T00:00:00Z')), '2026-09-10')
+// This one does. 15:00 on the 11th in Asia/Beirut is 08:00 in New York: the
+// old code read the device's clock, saw "before 10am" and opened the 10th's
+// form while the café was mid-afternoon on the 11th.
+eq('THE BUG: 15:00 in Asia/Beirut is the 11th, even on a device in New York',
+   D.cashUpDay(BEIRUT, new Date('2026-09-11T12:00:00Z')), '2026-09-11')
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail > 0 ? 1 : 0)
