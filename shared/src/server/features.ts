@@ -88,6 +88,19 @@ export async function readFlags(): Promise<FeatureFlags> {
 }
 
 /**
+ * Whether a feature is effectively on, for the few server paths whose
+ * behaviour a business switch changes — closeCheck() needs to know whether the
+ * till takes payment.
+ *
+ * Same isFeatureOn() the browser uses, so an off parent takes this with it on
+ * both sides. A flag is still a business switch here, never an access control:
+ * who may do a thing is decided by the role check before this is asked.
+ */
+export async function serverFeatureOn(key: FeatureKey): Promise<boolean> {
+  return isFeatureOn(key, await readFlags())
+}
+
+/**
  * Persists the choice and reports what actually moved.
  *
  * Reports the EFFECTIVE change, not just the stored one. Switching off a

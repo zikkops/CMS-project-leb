@@ -13,15 +13,21 @@
 // look completely ordinary in the review queue because nothing downstream ever
 // questions a price that is already on the line.
 
-import { FieldValue, type Transaction } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp, type Transaction } from 'firebase-admin/firestore'
 import { randomUUID } from 'node:crypto'
 import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
 import {
   CHECK_LIMITS, stationForSection, voidReason, BATCH_KEY_PATTERN, batchAlreadyApplied,
+  checkTotals, closeBlockedReason,
   type Check, type CheckLine, type LineSource,
 } from '../checks'
+import {
+  applyPayment, balance, PAYMENT_KEY_PATTERN,
+  type Payment, type PaymentRequest, type Tender, type PayCurrency,
+} from '../payments'
+import { serverFeatureOn } from './features'
 import { validateSelection, toSelections, type ModifierGroup } from '../modifiers'
 import { effectivePrice } from '../productPricing'
 import { toTicketLines } from '../tickets'
@@ -244,6 +250,49 @@ async function readCheck(tx: Transaction, id: string): Promise<Check> {
   const snap = await tx.get(adminDb().doc(`${CHECKS}/${id}`))
   if (!snap.exists) throw new HttpError(404, 'That check no longer exists.')
   return { id: snap.id, ...(snap.data() as Omit<Check, 'id'>) }
+}
+
+// ── What a caller may pay with ─────────────────────────────────────────────
+
+/**
+ * The payment in the request. Only its shape is checked here — whether it is
+ * a valid amount of money is applyPayment()'s question, answered in one place.
+ */
+export function parsePaymentRequest(body: Record<string, unknown>): PaymentRequest {
+  return {
+    tender: String(body.tender ?? '') as Tender,
+    currency: String(body.currency ?? '') as PayCurrency,
+    amount: Number(body.amount),
+  }
+}
+
+/**
+ * The payment's key, if the till sent one.
+ *
+ * Same contract as parseBatchKey(): optional so an older till still works,
+ * refused when present and malformed — dropping a bad key would switch off
+ * the protection against taking the same money twice without anyone knowing.
+ */
+export function parsePaymentKey(body: Record<string, unknown>): string | null {
+  const raw = body.paymentKey
+  if (raw === undefined || raw === null || raw === '') return null
+  if (typeof raw !== 'string' || !PAYMENT_KEY_PATTERN.test(raw)) {
+    throw new HttpError(400, 'Invalid payment key.')
+  }
+  return raw
+}
+
+/** Why this check cannot close for want of payment, or null when it is paid. */
+function owedOn(check: Check): string | null {
+  const due = checkTotals(check).net
+  const payments = check.payments ?? []
+  // No rate yet means no payment yet. A check owing nothing — a comped table,
+  // a staff meal at 100% — closes without one.
+  if (!check.billRate) return due > 0 ? `$${due.toFixed(2)} is still owed. Take payment first.` : null
+  const b = balance(due, payments, check.billRate)
+  if (b.settled) return null
+  return `$${b.remainingUsd.toFixed(2)} (${b.remainingLbp.toLocaleString('en-US')} LBP) is still owed. ` +
+    'Take payment first.'
 }
 
 // ── Operations ────────────────────────────────────────────────────────────
@@ -642,17 +691,106 @@ async function readCheck2(id: string): Promise<Check> {
   return { id: snap.id, ...(snap.data() as Omit<Check, 'id'>) }
 }
 
+export interface PaymentResult {
+  /** A resend of a payment already on the check; nothing new was taken. */
+  duplicate: boolean
+  tableNumber: number
+  payment: Omit<Payment, 'at'>
+  settled: boolean
+  remainingUsd: number
+  remainingLbp: number
+}
+
+/**
+ * Records one payment on an open check.
+ *
+ * The till says what was handed over; everything else — how much of it the
+ * bill takes, how much goes back, at what rate — is worked out here by
+ * applyPayment(), so a crafted request cannot name its own change any more
+ * than it can name its own price.
+ *
+ * Does not close the check. Closing issues the receipt number, and that stays
+ * in exactly one place; the till closes as soon as this says `settled`.
+ */
+export async function addPayment(
+  caller: Caller,
+  checkId: string,
+  req: PaymentRequest,
+  key: string | null,
+): Promise<PaymentResult> {
+  const db = adminDb()
+  // Outside the transaction: only the first payment uses it, and it is not
+  // part of what this write has to be consistent with.
+  const { exchangeRate } = await readSettings()
+
+  return db.runTransaction(async tx => {
+    const check = await readCheck(tx, checkId)
+    const payments = check.payments ?? []
+    const rate = check.billRate ?? exchangeRate
+    const due = checkTotals(check).net
+
+    const result = (p: Payment, list: Payment[], duplicate: boolean): PaymentResult => {
+      const b = balance(due, list, rate)
+      const { at: _at, ...rest } = p
+      return {
+        duplicate, tableNumber: check.tableNumber, payment: rest,
+        settled: b.settled, remainingUsd: b.remainingUsd, remainingLbp: b.remainingLbp,
+      }
+    }
+
+    // Before the open-check test: a payment resent after its reply was lost
+    // must find itself even when the check has since closed on the strength
+    // of it, rather than being told the check is closed and retried again.
+    const existing = key ? payments.find(p => p.key === key) : undefined
+    if (existing) return result(existing, payments, true)
+
+    const blocked = closeBlockedReason(check)
+    if (blocked) throw new HttpError(409, blocked)
+
+    const outcome = applyPayment(due, payments, rate, req)
+    if (!outcome.ok) throw new HttpError(400, outcome.reason)
+
+    const payment: Payment = {
+      key: key ?? randomUUID(),
+      tender: req.tender,
+      currency: req.currency,
+      amount: req.amount,
+      appliedLbp: outcome.appliedLbp,
+      changeUsd: outcome.changeUsd,
+      changeLbp: outcome.changeLbp,
+      changeRounding: outcome.changeRounding,
+      // Not serverTimestamp(): Firestore refuses one inside an array.
+      at: Timestamp.now(),
+      by: caller.uid,
+      byEmail: caller.email ?? '',
+    }
+    const next = [...payments, payment]
+    tx.update(db.doc(`${CHECKS}/${checkId}`), { payments: next, billRate: rate })
+    return result(payment, next, false)
+  })
+}
+
 /**
  * Closes a check.
  *
- * v1 only: no payment, no tender, no bill. Closing means the table is free
- * again. Phase 04 puts money in front of this.
+ * With the `payments` feature off — the pilot, the old till still taking the
+ * money — closing means the table is free again, exactly as in v1. With it
+ * on, a check closes once its payments cover what it owes, and not before.
  */
 export async function closeCheck(
   caller: Caller,
   checkId: string,
 ): Promise<{ tableNumber: number; receiptNumber: string }> {
   const db = adminDb()
+  const takesPayment = await serverFeatureOn('payments')
+
+  // Refused here, before a number is issued, as well as inside the
+  // transaction. Refusing only inside would burn a receipt number every time
+  // somebody pressed Close on a check that had not been paid.
+  if (takesPayment) {
+    const owed = owedOn(await readCheck2(checkId))
+    if (owed) throw new HttpError(409, owed)
+  }
 
   // Issued BEFORE the transaction, because issueInvoiceNumber runs one of its
   // own and transactions do not nest. A number burnt on a close that then
@@ -669,6 +807,11 @@ export async function closeCheck(
       throw new HttpError(409,
         `${unsent} item${unsent === 1 ? '' : 's'} ${unsent === 1 ? 'has' : 'have'} not been sent yet. ` +
         'Send them or void them first.')
+    }
+
+    if (takesPayment) {
+      const owed = owedOn(check)
+      if (owed) throw new HttpError(409, owed)
     }
 
     tx.update(db.doc(`${CHECKS}/${checkId}`), {

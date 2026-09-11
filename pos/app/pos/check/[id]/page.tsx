@@ -25,6 +25,9 @@ import {
 } from '@big-cms/shared/checks'
 import { minutesWaiting, urgency } from '@big-cms/shared/tickets'
 import { isNetworkFailure } from '@big-cms/shared/netErrors'
+import { useFeature } from '@big-cms/shared/useFeatures'
+import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
+import PaySheet from './PaySheet'
 import {
   validateSelection, selectionLabel, lineUnitPrice, describeSelections,
   type ModifierGroup,
@@ -381,6 +384,10 @@ export default function CheckPage() {
   const { products } = useRetailProducts(check?.branch ?? '')
   const now = useNow()
   const menu = usePosMenu()
+  // Phase 04: with the payments feature on, Close goes through the payment
+  // sheet. Off — the pilot — it is the v1 confirmation, unchanged.
+  const { on: takesPayment } = useFeature('payments')
+  const { settings: business } = useBusinessSettings()
 
   const [drafts, setDrafts] = useState<DraftLine[]>([])
   const [picking, setPicking] = useState(false)
@@ -397,6 +404,7 @@ export default function CheckPage() {
   const [actions, setActions] = useState(false)
   const [lineMenu, setLineMenu] = useState<CheckLine | null>(null)
   const [closing, setClosing] = useState(false)
+  const [paying, setPaying] = useState(false)
   const [moveTo, setMoveTo] = useState('')
 
   // ── An unsettled send ────────────────────────────────────────────────────
@@ -924,12 +932,12 @@ export default function CheckPage() {
             >Move to another table</button>
 
             <button
-              onClick={() => { setActions(false); setClosing(true) }}
+              onClick={() => { setActions(false); if (takesPayment) setPaying(true); else setClosing(true) }}
               style={{
                 ...tap, width: '100%', marginTop: '0.6rem', backgroundColor: 'transparent',
                 border: '1px solid rgba(var(--red-rgb),0.35)', color: 'var(--red)',
               }}
-            >Close this check</button>
+            >{takesPayment ? 'Take payment and close' : 'Close this check'}</button>
 
             <button onClick={() => setActions(false)} style={{
               ...tap, width: '100%', marginTop: '1.2rem', backgroundColor: 'transparent',
@@ -970,6 +978,15 @@ export default function CheckPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {paying && (
+        <PaySheet
+          check={check}
+          liveRate={business.exchangeRate}
+          onDismiss={() => setPaying(false)}
+          onPaid={() => { setPaying(false); handleClose() }}
+        />
       )}
 
       {moving && (

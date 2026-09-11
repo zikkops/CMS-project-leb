@@ -26,6 +26,7 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { auth, db } from '@big-cms/shared/firebase'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import type { Check, Station } from '@big-cms/shared/checks'
+import type { PaymentRequest } from '@big-cms/shared/payments'
 import { ACTIVE_TICKET_STATUSES, type Ticket } from '@big-cms/shared/tickets'
 import { effectivePrice, saleIsActive } from '@big-cms/shared/productPricing'
 import { timestampMs } from '@big-cms/shared/timestamps'
@@ -545,6 +546,33 @@ export async function setStaffMeal(checkId: string, on: boolean): Promise<void> 
 
 export async function refundCheck(checkId: string, reason: string): Promise<void> {
   await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'refund', reason }))
+}
+
+export interface PayResult {
+  duplicate: boolean
+  settled: boolean
+  remainingUsd: number
+  remainingLbp: number
+  payment: { amount: number; currency: string; tender: string; changeUsd: number; changeLbp: number }
+}
+
+/**
+ * Takes one payment on a check.
+ *
+ * The key is the caller's, made once per attempt and kept until an answer
+ * arrives, exactly like a Send's batchKey: a payment whose reply is lost is
+ * resent with the same key and the server returns the one it already took.
+ * Timed out for the same reason Send is — "Paying…" forever on the edge of the
+ * wifi is worse than an error that says it is safe to try again.
+ */
+export async function payCheck(
+  checkId: string,
+  req: PaymentRequest,
+  paymentKey: string,
+): Promise<PayResult> {
+  const data = await unwrap(await authedFetch('/api/pos/checks', 'PATCH',
+    { checkId, action: 'pay', paymentKey, ...req }, { timeoutMs: POS_TIMEOUT_MS }))
+  return data as unknown as PayResult
 }
 
 export async function closeCheck(checkId: string): Promise<void> {

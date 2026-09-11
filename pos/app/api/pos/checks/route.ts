@@ -13,7 +13,7 @@
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import {
   parseLineRequests, parseBatchKey, openCheck, addLines, sendCheck, voidLine, moveCheck, closeCheck,
-  setStaffMeal, refundCheck,
+  setStaffMeal, refundCheck, addPayment, parsePaymentRequest, parsePaymentKey,
 } from '@big-cms/shared/server/checks'
 import { logActivity } from '@big-cms/shared/server/activityLog'
 
@@ -109,6 +109,24 @@ export async function PATCH(request: Request): Promise<Response> {
         await logActivity(caller, 'update', 'POS', on
           ? `Staff meal on a check — ${Math.round(r.food * 100)}% off food, ${Math.round(r.drink * 100)}% off drinks`
           : 'Staff meal removed from a check')
+        return Response.json({ ok: true, ...r })
+      }
+      case 'pay': {
+        // Logged, every one. This is money changing hands, and "who took it,
+        // in what, and how much went back" is the question asked at the
+        // drawer. A resend is not a second payment, so it is not logged twice.
+        const r = await addPayment(caller, checkId, parsePaymentRequest(body), parsePaymentKey(body))
+        if (!r.duplicate) {
+          const p = r.payment
+          const change = [
+            p.changeUsd > 0 ? `$${p.changeUsd}` : '',
+            p.changeLbp > 0 ? `${p.changeLbp.toLocaleString('en-US')} LBP` : '',
+          ].filter(Boolean).join(' + ')
+          await logActivity(caller, 'create', 'POS',
+            `Took ${p.tender} ${p.amount.toLocaleString('en-US')} ${p.currency} on table ${r.tableNumber}` +
+            (change ? ` — change ${change}` : '') +
+            (r.settled ? ' — paid in full' : ''))
+        }
         return Response.json({ ok: true, ...r })
       }
       case 'close': {
