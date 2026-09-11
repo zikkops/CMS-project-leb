@@ -65,6 +65,13 @@ export const FEATURES = {
     label: 'Kitchen Display', group: 'Operations', requires: ['pos'], defaultEnabled: false,
     sections: ['kds'], collections: ['kitchenTickets'],
   },
+  // Phase 04. Off until the café is ready to take money through the till —
+  // the pilot runs with the old till taking payment, and with this off a
+  // check closes exactly as it did in v1. On, a check closes only once its
+  // payments cover what it owes.
+  payments: {
+    label: 'Take Payment', group: 'Operations', requires: ['pos'], defaultEnabled: false,
+  },
 
   // ── Operations — the actual product ──────────────────────────────────────
   menu: {

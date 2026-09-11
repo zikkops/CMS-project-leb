@@ -1,9 +1,9 @@
 // Open checks: what a table has ordered.
 //
 // Phase 03, POS v1. A check gets an order from a waiter's hand to a kitchen
-// and back. It deliberately does NOT touch money — no bill, no split, no
-// payment, no tender. That is Phase 04, and keeping the line exactly there is
-// what makes this phase finishable.
+// and back. It deliberately does NOT do money arithmetic — no bill, no tender,
+// no change. Phase 04 records payments ON a check, but the arithmetic for them
+// lives in payments.ts, so this file stays about what was ordered.
 //
 // No React and no Firebase import: the server validates against these rules
 // and the waiter's screen renders from them, so both halves must be able to
@@ -12,6 +12,7 @@
 import {
   lineUnitPrice, describeSelections, type ModifierSelection,
 } from './modifiers'
+import type { Payment } from './payments'
 
 // ── Where a line draws its stock from ──────────────────────────────────────
 // THE field that has to exist from the first version.
@@ -223,6 +224,13 @@ export interface Check {
   receiptNumber: string | null
   /** null on an ordinary check. Set by the staff-meal toggle. */
   staffDiscount: StaffDiscount | null
+  /**
+   * Phase 04. Absent on every check closed before the till took money, which
+   * is why it is optional rather than an empty array somebody forgot to write.
+   */
+  payments?: Payment[]
+  /** The rate every payment on this check is valued at — fixed by the first. */
+  billRate?: number | null
 }
 
 // ── Bounds ────────────────────────────────────────────────────────────────
