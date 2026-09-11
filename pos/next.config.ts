@@ -62,7 +62,10 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           // This app never uses the camera, mic, or geolocation — deny all
           // three outright rather than leaving them at the browser default.
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          // camera=(self), not camera=(): the till scans a customer's loyalty
+          // QR (Phase 04, slice 5). Still refused to any other origin, and the
+          // microphone and location stay off.
+          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
         ],
       },
     ]

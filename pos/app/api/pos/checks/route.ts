@@ -13,7 +13,7 @@
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import {
   parseLineRequests, parseBatchKey, openCheck, addLines, sendCheck, voidLine, moveCheck, closeCheck,
-  setStaffMeal, refundCheck, addPayment, parsePaymentRequest, parsePaymentKey,
+  setStaffMeal, refundCheck, addPayment, parsePaymentRequest, parsePaymentKey, setLoyaltyCustomer,
 } from '@big-cms/shared/server/checks'
 import { logActivity } from '@big-cms/shared/server/activityLog'
 
@@ -109,6 +109,16 @@ export async function PATCH(request: Request): Promise<Response> {
         await logActivity(caller, 'update', 'POS', on
           ? `Staff meal on a check — ${Math.round(r.food * 100)}% off food, ${Math.round(r.drink * 100)}% off drinks`
           : 'Staff meal removed from a check')
+        return Response.json({ ok: true, ...r })
+      }
+      case 'customer': {
+        // Logged: who collects a check's points is a decision about somebody's
+        // balance, and "who put that customer on my table" gets asked.
+        const code = typeof body.code === 'string' && body.code.trim() ? body.code : null
+        const r = await setLoyaltyCustomer(caller, checkId, code)
+        await logActivity(caller, 'update', 'POS', r.name
+          ? `Loyalty customer ${r.name} added to table ${r.tableNumber}`
+          : `Loyalty customer removed from table ${r.tableNumber}`)
         return Response.json({ ok: true, ...r })
       }
       case 'pay': {

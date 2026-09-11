@@ -154,11 +154,11 @@ const payment = (over = {}) => ({
   appliedLbp: 0, changeUsd: 0, changeLbp: 0, changeRounding: 0,
   at: null, by: 'u', byEmail: 'u@x', ...over,
 })
-// $4.00 at the check's own 90,000 is 360,000; at today's 89,500 it would be 358,000.
-const settled = R.buildReceipt(check({ billRate: 90000 }), opts)
-eq('THE BUG: the lira total uses the check\'s rate, not today\'s', find(settled, 'Total LBP').right, '360,000')
+// $4.00 at the check's own 91,000 is 364,000; at today's 89,500 it would be 358,000.
+const settled = R.buildReceipt(check({ billRate: 91000 }), opts)
+eq('THE BUG: the lira total uses the check\'s rate, not today\'s', find(settled, 'Total LBP').right, '364,000')
 eq('...and says which rate it used',
-   settled.some(r => r.kind === 'left' && r.text.startsWith('At 90,000 LBP')), true)
+   settled.some(r => r.kind === 'left' && r.text.startsWith('At 91,000 LBP')), true)
 eq('a check with no rate of its own uses today\'s', find(rows, 'Total LBP').right, '358,000')
 
 const paid = R.buildReceipt(check({
@@ -180,8 +180,10 @@ eq('no change line when none was given',
 
 console.log('\nVAT — included in the total, at the rate the check recorded')
 const ten = (over = {}) => check({ lines: [line({ unitPrice: 10 })], ...over })
-const vat = R.buildReceipt(ten({ vatRate: 0.11 }), opts)
-eq('prices include VAT: $10.00 shows $0.99 of it', find(vat, 'Incl. VAT 11%').right, '0.99')
+// 10% rather than the café's own rate: the branding audit rightly flags any
+// literal of the configured rate, and a fixture is no exception to that.
+const vat = R.buildReceipt(ten({ vatRate: 0.1 }), opts)
+eq('prices include VAT: $10.00 at 10% shows $0.91 of it', find(vat, 'Incl. VAT 10%').right, '0.91')
 eq('...and the total does not move', find(vat, 'Total USD').right, '10.00')
 eq('the check\'s own rate: a 12% check shows $1.07',
    find(R.buildReceipt(ten({ vatRate: 0.12 }), opts), 'Incl. VAT 12%').right, '1.07')

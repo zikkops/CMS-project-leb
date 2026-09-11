@@ -28,6 +28,7 @@ import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import { useFeature } from '@big-cms/shared/useFeatures'
 import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
 import PaySheet from './PaySheet'
+import CustomerSheet from './CustomerSheet'
 import {
   validateSelection, selectionLabel, lineUnitPrice, describeSelections,
   type ModifierGroup,
@@ -387,6 +388,9 @@ export default function CheckPage() {
   // Phase 04: with the payments feature on, Close goes through the payment
   // sheet. Off — the pilot — it is the v1 confirmation, unchanged.
   const { on: takesPayment } = useFeature('payments')
+  // Phase 04, slice 5: a loyalty customer can be put on the check, and their
+  // points land when it closes. Off, the button is not there.
+  const { on: loyaltyOn } = useFeature('loyalty')
   const { settings: business } = useBusinessSettings()
 
   const [drafts, setDrafts] = useState<DraftLine[]>([])
@@ -405,6 +409,7 @@ export default function CheckPage() {
   const [lineMenu, setLineMenu] = useState<CheckLine | null>(null)
   const [closing, setClosing] = useState(false)
   const [paying, setPaying] = useState(false)
+  const [addingCustomer, setAddingCustomer] = useState(false)
   const [moveTo, setMoveTo] = useState('')
 
   // ── An unsettled send ────────────────────────────────────────────────────
@@ -923,6 +928,17 @@ export default function CheckPage() {
               height: '1px', background: 'rgba(255,255,255,0.08)', margin: '1.2rem 0',
             }} />
 
+            {loyaltyOn && (
+              <button
+                onClick={() => { setActions(false); setAddingCustomer(true) }}
+                style={{
+                  ...tap, width: '100%', marginBottom: '0.6rem', backgroundColor: 'transparent',
+                  border: `1px solid ${check.loyalty ? 'var(--teal)' : 'rgba(255,255,255,0.14)'}`,
+                  color: check.loyalty ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.7)',
+                }}
+              >{check.loyalty ? `Loyalty: ${check.loyalty.name}` : 'Add loyalty customer'}</button>
+            )}
+
             <button
               onClick={() => { setActions(false); setMoving(true) }}
               style={{
@@ -978,6 +994,10 @@ export default function CheckPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {addingCustomer && (
+        <CustomerSheet check={check} onDone={() => setAddingCustomer(false)} />
       )}
 
       {paying && (

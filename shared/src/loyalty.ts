@@ -23,7 +23,8 @@ export interface Transaction {
   // One figure. This was pointsAmount + pointsAmount — two currencies awarded at
   // two different rates for the same purchase. See shared/src/loyaltyTiers.ts.
   pointsAmount: number
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled'
+  // 'reversed': a POS check's points, taken back when the check was refunded (Phase 04).
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'reversed'
   submittedBy: string
   approvedBy?: string | null
   rejectedBy?: string | null

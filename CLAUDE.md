@@ -270,11 +270,28 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
   - **The pilot.** One section of one branch, the old till still taking
     payment. That constraint is what makes v1 safe to ship badly.
 
-- **04 (POS v2): slices 1–4 of 7 built; payment is behind the `payments`
+- **04 (POS v2): slices 1–5 of 7 built; payment is behind the `payments`
   switch — off.** The plan, its order and the owner's decisions are in the
   Phase 04 note. Built: taking payment (cash USD / cash LBP / card, split
   tender, change), closing only when paid, payments on the receipt; VAT;
-  splitting a bill; the branch cash drawer; and End of Day fed by it.
+  splitting a bill; the branch cash drawer; End of Day fed by it; and
+  loyalty points credited at the till.
+  - **Loyalty at payment (slice 5), owner's decisions 12 Sep 2026: a QR in
+    the customer's app, and points land straight away.** The code is random
+    (`shared/src/memberCode.ts`), never the uid, and lives only server-side in
+    `memberCodes/{code}` + `memberCodeOwners/{uid}` — no Firestore rule, so no
+    browser reads or writes it; NOT a field on `users/{uid}`, which the owner
+    may edit. The till scans it (the browser's BarcodeDetector) or types it;
+    `setLoyaltyCustomer()` puts the customer on the open check; `closeCheck()`
+    credits `pointsForCheck(net, staffMeal)` INSIDE the close transaction as an
+    approved `check` transaction with `source: 'pos'`; a refund takes back
+    exactly `loyaltyPoints` and marks that transaction `reversed`. All gated by
+    the `loyalty` feature. The POS allows `camera=(self)` for the scanner;
+    `qrcode` draws the code on the customer site. The receipt-photo queue
+    stays until every branch is on the POS.
+  - **Test fixtures avoid the café's configured literals** (10% VAT and a
+    91,000 rate in the verifiers): `audit:branding` flags them anywhere in
+    code, fixtures included, and that is the rule working — not noise.
   - **End of Day's "system" figure comes from the day's drawers** when
     `payments` is on (`daySystem()` / `daySystemFor()`): the sum of each
     shift's expected cash, in LBP at the business rate. Owner's answers

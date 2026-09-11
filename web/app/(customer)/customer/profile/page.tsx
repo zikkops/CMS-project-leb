@@ -17,6 +17,7 @@ import { useUserTableReservations } from '@big-cms/shared/tableReservations'
 import { usePendingInvites, acceptInvite, declineInvite, type ParticipantInvite } from '@big-cms/shared/participantInvites'
 import Skeleton from '../../../components/Skeleton'
 import { getTier, tierColor as colorForTier } from '@big-cms/shared/loyaltyTiers'
+import MemberQr from './MemberQr'
 import { useTierPerks, TIER_ORDER } from '@big-cms/shared/tierPerks'
 import { resolveBranchName } from '@big-cms/shared/branches'
 import { PLACEHOLDER_AVATARS } from '@big-cms/shared/placeholderAssets'
@@ -43,7 +44,8 @@ interface Transaction {
   type: 'check' | 'event'
   userId: string[]
   pointsAmount: number
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled'
+  // 'reversed': a POS check's points, taken back when the check was refunded.
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'reversed'
   submittedBy: string
   approvedBy?: string
   checkPhotoUrl?: string
@@ -66,6 +68,7 @@ const STATUS_COLORS: Record<Transaction['status'], string> = {
   approved:  '#2ECC71',
   rejected:  'var(--red)',
   cancelled: 'rgba(var(--offwhite-rgb),0.35)',
+  reversed:  'rgba(var(--offwhite-rgb),0.35)',
 }
 
 const REDEMPTION_STATUS_COLORS: Record<Redemption['status'], string> = {
@@ -744,6 +747,10 @@ export default function CustomerProfilePage() {
               }}>
                 {profile.points} Points
               </p>
+
+              {/* Phase 04: the code the till scans to put a paid check's points
+                  straight on this account. Only on your own profile. */}
+              {isOwnProfile && <MemberQr />}
 
               <div style={{
                 display: 'flex',

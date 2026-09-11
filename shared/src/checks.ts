@@ -237,6 +237,16 @@ export interface Check {
    * receipts then print no VAT line rather than guess one.
    */
   vatRate?: number | null
+  /**
+   * Who collects this check's points (slice 5), attached by scanning their
+   * member code. The name is a snapshot for the waiter's screen. Absent or
+   * null: nobody collects.
+   */
+  loyalty?: { uid: string; name: string } | null
+  /** Points credited when the check closed — kept so a refund takes back exactly these. */
+  loyaltyPoints?: number
+  /** The approved transaction those points were written as, so a refund can mark it reversed. */
+  loyaltyTxId?: string
 }
 
 // ── Bounds ────────────────────────────────────────────────────────────────

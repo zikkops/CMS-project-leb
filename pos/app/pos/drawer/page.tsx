@@ -169,7 +169,9 @@ export default function DrawerPage() {
   if (checking) return null
 
   const counted: Money2 = countedCash(countLbp, countUsd)
-  const diffColour = (n: number) => n < 0 ? 'var(--red)' : n > 0 ? '#C9962C' : 'var(--teal)'
+  // Short is red, exact is teal, over is the palette's third colour — over is
+  // a question to answer, not a loss, so it should not share short's alarm.
+  const diffColour = (n: number) => n < 0 ? 'var(--red)' : n > 0 ? 'var(--purple)' : 'var(--teal)'
 
   return (
     <main style={{

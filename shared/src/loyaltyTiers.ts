@@ -37,6 +37,19 @@
 /** Points earned per $1 spent on a check. The programme's single earn rate. */
 export const POINTS_PER_DOLLAR = 10
 
+/**
+ * Points for a paid check — Phase 04, slice 5.
+ *
+ * Whole dollars of what the table was charged, at POINTS_PER_DOLLAR, rounded
+ * down: $12.90 earns 120, not 129. A staff meal earns nothing — its discount
+ * is already the staff member's benefit, and points on top would pay it
+ * twice. Nothing below zero, whatever a check says.
+ */
+export function pointsForCheck(netUsd: number, isStaffMeal: boolean): number {
+  if (isStaffMeal || !(netUsd > 0)) return 0
+  return Math.floor(netUsd + 1e-9) * POINTS_PER_DOLLAR
+}
+
 /** Flat awards where there is no bill to scale against. */
 export const EVENT_POINTS_PER_PERSON = 250
 export const TABLE_CHECKIN_POINTS = 150

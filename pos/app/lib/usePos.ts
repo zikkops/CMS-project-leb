@@ -644,6 +644,19 @@ export async function closeDrawer(
   return data as unknown as ZResult
 }
 
+/**
+ * Puts the customer whose member code was scanned or typed on a check, or
+ * takes them off with null. Their points are credited when the check closes.
+ */
+export async function setCheckCustomer(
+  checkId: string,
+  code: string | null,
+): Promise<{ name: string | null; tier: string | null }> {
+  const data = await unwrap(await authedFetch('/api/pos/checks', 'PATCH',
+    { checkId, action: 'customer', code: code ?? '' }, { timeoutMs: POS_TIMEOUT_MS }))
+  return data as unknown as { name: string | null; tier: string | null }
+}
+
 export async function closeCheck(checkId: string): Promise<void> {
   await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'close' }))
 }

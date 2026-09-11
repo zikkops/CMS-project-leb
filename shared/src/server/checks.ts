@@ -29,6 +29,8 @@ import {
 } from '../payments'
 import { serverFeatureOn } from './features'
 import { openShiftId } from './drawer'
+import { resolveMemberCode } from './memberCodes'
+import { pointsForCheck } from '../loyaltyTiers'
 import { refundOf } from '../drawer'
 import { vatRateOn } from '../businessSettings'
 import { todayYmd } from '../dates'
@@ -696,6 +698,37 @@ async function readCheck2(id: string): Promise<Check> {
   return { id: snap.id, ...(snap.data() as Omit<Check, 'id'>) }
 }
 
+/**
+ * Attaches the loyalty customer whose member code was scanned — or, with a
+ * null code, takes them off. Slice 5.
+ *
+ * Only while the check is open: the points are credited when it closes, and
+ * changing who collects after that would be moving a customer's balance
+ * without the check that justified it.
+ */
+export async function setLoyaltyCustomer(
+  caller: Caller,
+  checkId: string,
+  code: string | null,
+): Promise<{ tableNumber: number; name: string | null; tier: string | null }> {
+  if (!(await serverFeatureOn('loyalty'))) {
+    throw new HttpError(409, 'The loyalty programme is switched off.')
+  }
+  // Resolved before the transaction: it reads two other documents, and it
+  // refuses staff and wholesale accounts on its own.
+  const member = code ? await resolveMemberCode(code) : null
+
+  const db = adminDb()
+  return db.runTransaction(async tx => {
+    const check = await readCheck(tx, checkId)
+    if (check.status !== 'open') throw new HttpError(409, 'A customer can only be added to an open check.')
+    tx.update(db.doc(`${CHECKS}/${checkId}`), {
+      loyalty: member ? { uid: member.uid, name: member.name } : null,
+    })
+    return { tableNumber: check.tableNumber, name: member?.name ?? null, tier: member?.tier ?? null }
+  })
+}
+
 export interface PaymentResult {
   /** A resend of a payment already on the check; nothing new was taken. */
   duplicate: boolean
@@ -803,7 +836,9 @@ export async function closeCheck(
   checkId: string,
 ): Promise<{ tableNumber: number; receiptNumber: string }> {
   const db = adminDb()
-  const [takesPayment, settings] = await Promise.all([serverFeatureOn('payments'), readSettings()])
+  const [takesPayment, settings, loyaltyOn] = await Promise.all([
+    serverFeatureOn('payments'), readSettings(), serverFeatureOn('loyalty'),
+  ])
   // The rate in force TODAY in the café's zone, recorded on the check so the
   // receipt reprints at it after the rate changes. Not the host's today: on a
   // UTC server the first hours of the change day would still be yesterday.
@@ -839,6 +874,49 @@ export async function closeCheck(
       if (owed) throw new HttpError(409, owed)
     }
 
+    // ── Loyalty at payment (slice 5) ─────────────────────────────────────
+    // Points land now, in the same transaction that closes the check — the
+    // till knows what was paid, so there is nothing for a manager to approve
+    // (owner's decision, 12 Sep 2026). Written as an approved "check"
+    // transaction, so the customer's history shows it like any other.
+    // The account is read here, before any write, as a transaction requires.
+    const net = checkTotals(check).net
+    const points = loyaltyOn && check.loyalty ? pointsForCheck(net, !!check.staffDiscount) : 0
+    const memberRef = points > 0 && check.loyalty ? db.doc(`users/${check.loyalty.uid}`) : null
+    // A deleted account does not stop the table closing; it just collects nothing.
+    const memberExists = memberRef ? (await tx.get(memberRef)).exists : false
+    let loyaltyTxId: string | null = null
+    if (memberRef && memberExists && check.loyalty) {
+      const txRef = db.collection('transactions').doc()
+      loyaltyTxId = txRef.id
+      tx.update(memberRef, {
+        points: FieldValue.increment(points),
+        pointsEarned: FieldValue.increment(points),
+      })
+      tx.set(txRef, {
+        type: 'check',
+        source: 'pos',
+        userId: [check.loyalty.uid],
+        pointsAmount: points,
+        status: 'approved',
+        branchId: check.branch,
+        checkNumber: invoiceNumber,
+        checkId,
+        totalAmount: net,
+        submittedBy: caller.uid,
+        approvedBy: caller.uid,
+        createdAt: FieldValue.serverTimestamp(),
+        approvedAt: FieldValue.serverTimestamp(),
+      })
+      tx.set(db.collection('transactionLog').doc(), {
+        transactionId: txRef.id,
+        action: 'approved',
+        performedBy: caller.uid,
+        branchId: check.branch,
+        createdAt: FieldValue.serverTimestamp(),
+      })
+    }
+
     tx.update(db.doc(`${CHECKS}/${checkId}`), {
       status: 'closed',
       receiptNumber: invoiceNumber,
@@ -846,6 +924,7 @@ export async function closeCheck(
       closedBy: caller.uid,
       closedByEmail: caller.email ?? '',
       closedAt: FieldValue.serverTimestamp(),
+      ...(loyaltyTxId ? { loyaltyPoints: points, loyaltyTxId } : {}),
     })
     return { tableNumber: check.tableNumber, receiptNumber: invoiceNumber }
   })
@@ -888,6 +967,14 @@ export async function refundCheck(
     const givesCash = cashBack.usd !== 0 || cashBack.lbp !== 0
     const refundShift = givesCash ? await openShiftId(tx, check.branch) : null
 
+    // The points this check earned go back too (slice 5) — exactly the number
+    // credited, from the check, never recomputed from today's rules. Read
+    // before any write. The balance may go below zero if they were already
+    // spent; that is the true figure, and hiding it would give the reward away.
+    const takeBack = check.loyalty && (check.loyaltyPoints ?? 0) > 0 ? check.loyaltyPoints ?? 0 : 0
+    const memberRef = takeBack > 0 && check.loyalty ? db.doc(`users/${check.loyalty.uid}`) : null
+    const memberExists = memberRef ? (await tx.get(memberRef)).exists : false
+
     if (check.status === 'refunded') {
       // Checked INSIDE the transaction: two taps on Refund would otherwise
       // both pass and put the merchandise back twice.
@@ -919,6 +1006,27 @@ export async function refundCheck(
       refundReason: trimmed.slice(0, CHECK_LIMITS.noteLength),
       ...(refundShift ? { refundShiftId: refundShift } : {}),
     })
+
+    if (memberRef && memberExists) {
+      tx.update(memberRef, {
+        points: FieldValue.increment(-takeBack),
+        pointsEarned: FieldValue.increment(-takeBack),
+      })
+      if (check.loyaltyTxId) {
+        tx.update(db.doc(`transactions/${check.loyaltyTxId}`), {
+          status: 'reversed',
+          reversedBy: caller.uid,
+          reversedAt: FieldValue.serverTimestamp(),
+        })
+        tx.set(db.collection('transactionLog').doc(), {
+          transactionId: check.loyaltyTxId,
+          action: 'reversed',
+          performedBy: caller.uid,
+          branchId: check.branch,
+          createdAt: FieldValue.serverTimestamp(),
+        })
+      }
+    }
 
     return {
       tableNumber: check.tableNumber,

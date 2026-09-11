@@ -17,6 +17,7 @@ import { join } from 'node:path'
 const out = mkdtempSync(join(tmpdir(), 'payments-verify-'))
 execSync(
   `npx tsc shared/src/payments.ts shared/src/money.ts shared/src/businessSettings.ts shared/src/splits.ts shared/src/drawer.ts ` +
+  `shared/src/memberCode.ts shared/src/loyaltyTiers.ts ` +
   `--outDir ${out} --module esnext --target es2022 --skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' }
 )
@@ -122,13 +123,15 @@ const B = await import(`file://${join(out, 'businessSettings.js')}`)
 const M = await import(`file://${join(out, 'money.js')}`)
 
 console.log('\nVAT — included in the price, and in force from a day')
-eq('$10.00 at 11% carries $0.99 of VAT, not $1.10', M.vatIncluded(10, 0.11), 0.99)
+// 10% rather than the café's own rate: the branding audit rightly flags any
+// literal of the configured rate, and a fixture is no exception to that.
+eq('$10.00 at 10% carries $0.91 of VAT, not $1.00', M.vatIncluded(10, 0.1), 0.91)
 eq('zero-rated carries none', M.vatIncluded(10, 0), 0)
-const sched = { vatRate: 0.11, vatNext: { rate: 0.12, from: '2027-01-01' } }
-eq('the day before the change: 11%', B.vatRateOn(sched, '2026-12-31'), 0.11)
+const sched = { vatRate: 0.1, vatNext: { rate: 0.12, from: '2027-01-01' } }
+eq('the day before the change: 10%', B.vatRateOn(sched, '2026-12-31'), 0.1)
 eq('THE DAY the change starts: 12%', B.vatRateOn(sched, '2027-01-01'), 0.12)
 eq('after it: 12%', B.vatRateOn(sched, '2027-06-01'), 0.12)
-eq('nothing scheduled: the current rate', B.vatRateOn({ vatRate: 0.11, vatNext: null }, '2030-01-01'), 0.11)
+eq('nothing scheduled: the current rate', B.vatRateOn({ vatRate: 0.1, vatNext: null }, '2030-01-01'), 0.1)
 eq('a scheduled change is read back as stored', B.readVatNext({ rate: 0.12, from: '2027-01-01' }),
    { rate: 0.12, from: '2027-01-01' })
 eq('30 February is not a date', B.readVatNext({ rate: 0.12, from: '2027-02-30' }), null)
@@ -136,7 +139,7 @@ eq('a rate out of bounds is ignored, not billed', B.readVatNext({ rate: 12, from
 eq('a missing rate is ignored, not read as 0%', B.readVatNext({ from: '2027-01-01' }), null)
 eq('an empty-string rate is ignored, not read as 0%', B.readVatNext({ rate: '', from: '2027-01-01' }), null)
 eq('garbage is ignored', B.readVatNext('12% soon'), null)
-eq('a stored document without one parses to null', B.parseSettings({ vatRate: 0.11 }).vatNext, null)
+eq('a stored document without one parses to null', B.parseSettings({ vatRate: 0.1 }).vatNext, null)
 
 // ── Slice 3: splitting the bill ────────────────────────────────────────────
 const S = await import(`file://${join(out, 'splits.js')}`)
@@ -252,6 +255,33 @@ eq('no float at all: fine', D.floatProblem({ usd: 0, lbp: 0 }), null)
 eq('negative: refused', typeof D.floatProblem({ usd: -1, lbp: 0 }), 'string')
 eq('fractional lira: refused', typeof D.floatProblem({ usd: 0, lbp: 1000.5 }), 'string')
 eq('a fraction of a cent: refused', typeof D.floatProblem({ usd: 1.005, lbp: 0 }), 'string')
+
+// ── Slice 5: loyalty at payment ────────────────────────────────────────────
+const MC = await import(`file://${join(out, 'memberCode.js')}`)
+const LT = await import(`file://${join(out, 'loyaltyTiers.js')}`)
+
+console.log('\npoints for a paid check')
+eq('$12.90 earns 120, whole dollars only', LT.pointsForCheck(12.9, false), 120)
+eq('$10.00 exactly earns 100 (no float slip to 99)', LT.pointsForCheck(10, false), 100)
+eq('a staff meal earns nothing', LT.pointsForCheck(40, true), 0)
+eq('a free check earns nothing', LT.pointsForCheck(0, false), 0)
+eq('a negative total earns nothing, not negative points', LT.pointsForCheck(-5, false), 0)
+
+console.log('\nmember codes — random, readable, strict')
+let seq = 0
+const code = MC.newMemberCode(n => (seq++ * 7) % n)
+eq('a new code is 10 characters', code.length, 10)
+eq('...from the unambiguous alphabet only', [...code].every(c => MC.MEMBER_CODE_ALPHABET.includes(c)), true)
+eq('the alphabet has no 0, O, 1, I or L', /[01OIL]/.test(MC.MEMBER_CODE_ALPHABET), false)
+eq('it reads back through normalize', MC.normalizeMemberCode(code), code)
+eq('typed with dashes and lower case', MC.normalizeMemberCode(MC.formatMemberCode(code).toLowerCase()), code)
+eq('typed with spaces', MC.normalizeMemberCode(` ${code.slice(0, 4)} ${code.slice(4)} `), code)
+eq('a scanner that read a URL around it', MC.normalizeMemberCode(`https://example.test/m/${code}`), code)
+eq('THE LOOK-ALIKE: a code with an O is not a code', MC.normalizeMemberCode('ABCD0FGHJK'.replace('0', 'O')), null)
+eq('too short is not a code', MC.normalizeMemberCode(code.slice(0, 9)), null)
+eq('a uid is not a code', MC.normalizeMemberCode('xY3kP9qR2tL8mN4vB7cD'), null)
+eq('not a string is not a code', MC.normalizeMemberCode(12345), null)
+eq('grouped for reading aloud: XXXX-XXXX-XX', MC.formatMemberCode('ABCDEFGHJK'), 'ABCD-EFGH-JK')
 
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail > 0 ? 1 : 0)
