@@ -226,11 +226,23 @@ export default function CounterPage() {
     // worse: the till would have handed back change against a short bill, and
     // switching tables clears the drafts, so the items could vanish after the
     // money had gone.
-    const queued = lines
-      .filter(l => l.where === 'queued')
-      .reduce((s, l) => s + l.unitPrice * l.quantity, 0)
+    // Priced from what the queue itself carries, not from the menu. A device
+    // that reloads during an outage may have a cold or partial menu cache, and
+    // a line that prices at 0 because its item is missing understates the
+    // bill — the same money bug as counting the drafts, arriving by a quieter
+    // road. The menu is the fallback only for a batch queued before the
+    // price was carried.
+    const queued = outbox.queue.reduce((sum, a) => {
+      if (a.kind !== 'lines' || a.checkId !== table?.checkId) return sum
+      if (typeof a.displayUsd === 'number') return sum + a.displayUsd
+      return sum + a.lines.reduce((t, raw) => {
+        const item = priceOf(String((raw as { refId?: unknown }).refId ?? ''))
+        const quantity = Number((raw as { quantity?: unknown }).quantity ?? 0)
+        return t + (item?.price ?? 0) * quantity
+      }, 0)
+    }, 0)
     return Math.round((live + queued) * 100) / 100
-  }, [table, lines])
+  }, [table, outbox.queue, priceOf])
 
   /** Tapped, not yet rung up. Shown on the check, never charged for. */
   const draftTotal = useMemo(
@@ -334,7 +346,10 @@ export default function CounterPage() {
     }))
     const action: OutboxAction = {
       kind: 'lines', id: newKey(), checkId: table.checkId, batchKey,
-      lines: payload, at: new Date().toISOString(),
+      lines: payload,
+      // Carried so the total survives a reload with a cold menu cache.
+      displayUsd: draftTotal,
+      at: new Date().toISOString(),
     }
 
     if (mustQueue(table.checkId)) {

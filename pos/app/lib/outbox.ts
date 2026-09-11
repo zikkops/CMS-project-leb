@@ -39,6 +39,17 @@ export type OutboxAction =
       batchKey: string
       /** The line requests exactly as the route takes them. */
       lines: Record<string, unknown>[]
+      /**
+       * What this batch came to when it was rung up, in USD.
+       *
+       * Display only — the server prices every line from its id, as it does
+       * for a waiter's phone, and never reads this. It is here because the
+       * counter has to show a total while offline, and pricing a queued line
+       * by looking it up in the menu fails quietly on a device with a cold or
+       * partial menu cache: a missing item prices at 0 and the bill comes out
+       * short. Optional, because a batch queued before this existed has none.
+       */
+      displayUsd?: number
       /** Recorded as made at this time, with no kitchen ticket. */
       at: string
     }
