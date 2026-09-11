@@ -20,6 +20,7 @@
 // a page nobody looks at is three copies that drift apart unnoticed.
 
 import { useEffect } from 'react'
+import { reportError } from '../reportError'
 
 export function GlobalErrorPage({
   app,
@@ -38,6 +39,11 @@ export function GlobalErrorPage({
       stack: error.stack,
       at: new Date().toISOString(),
     })
+    // Worth reporting from here more than from anywhere else: the root layout
+    // failing means the person saw nothing at all, and the Firebase SDK went
+    // down with it — so there is no signed-in session to attach, which is
+    // precisely why /api/errors takes an unauthenticated POST.
+    reportError(app, error)
   }, [app, error])
 
   return (

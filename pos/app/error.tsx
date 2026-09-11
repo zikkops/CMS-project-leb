@@ -26,6 +26,7 @@
 // still need their own try/catch at the call site.
 
 import { useEffect } from 'react'
+import { reportError } from '@big-cms/shared/reportError'
 
 export default function PosError({
   error,
@@ -35,10 +36,7 @@ export default function PosError({
   reset: () => void
 }) {
   useEffect(() => {
-    // Console is not monitoring, and this is not a substitute for it. It is
-    // the seam: when an error service is wired up (Phase 05 lists it as the
-    // highest-leverage half-day in the whole plan) it reports from here, and
-    // the shape of what gets reported is already decided.
+    // The console keeps the whole thing for whoever is holding the device.
     console.error('[pos] render error', {
       message: error.message,
       digest: error.digest,
@@ -46,6 +44,12 @@ export default function PosError({
       at: new Date().toISOString(),
       url: typeof window === 'undefined' ? '' : window.location.pathname,
     })
+    // And this is the seam the comment here used to promise (Phase 05 lists it
+    // as the highest-leverage half-day in the plan): a scrubbed copy goes to
+    // /api/errors, where one document per distinct fault counts how often it
+    // happens. It never throws and is never awaited — a reporter that throws
+    // inside an error boundary turns a handled error into a blank page.
+    reportError('pos', error)
   }, [error])
 
   return (

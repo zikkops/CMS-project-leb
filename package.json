@@ -37,7 +37,8 @@
     "verify:printing": "node scripts/verify-printing.mjs",
     "verify:dates": "node scripts/verify-dates.mjs",
     "verify:payments": "node scripts/verify-payments.mjs",
-    "verify:offline": "node scripts/verify-offline.mjs"
+    "verify:offline": "node scripts/verify-offline.mjs",
+    "verify:errors": "node scripts/verify-errors.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

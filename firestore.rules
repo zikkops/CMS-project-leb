@@ -284,6 +284,20 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Client error reports, written ONLY by /api/errors on the Admin SDK.
+    //
+    // `write: if false` is doing real work here. The route that fills this
+    // collection deliberately takes an unauthenticated POST — a customer whose
+    // page breaks is signed out, and that is the error worth hearing about —
+    // so the temptation is to let the browser write the document directly and
+    // save a route. That would be an unauthenticated write endpoint with a
+    // friendlier name: anyone could choose the document id, and choosing the
+    // id is choosing which report to overwrite.
+    match /errorReports/{id} {
+      allow read:  if isStaff();
+      allow write: if false;
+    }
+
     // Per-user status notifications — reservation approvals/rejections written
     // by staff, read+dismissed by the recipient only.
     match /notifications/{id} {

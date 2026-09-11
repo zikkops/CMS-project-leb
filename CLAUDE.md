@@ -40,6 +40,7 @@ npm run verify:printing      # if you touched printers or the print seam
 npm run verify:dates         # if you touched an event date or what "today" means
 npm run verify:payments      # if you touched a payment, tender, change or the bill rate
 npm run verify:offline       # if you touched the counter device's outbox or what it sends
+npm run verify:errors        # if you touched what an error report may contain
 npm run verify:delivery-math # if you touched receiving or costing
 npm run audit:writes         # must stay at 0
 ```
@@ -81,6 +82,45 @@ Reads stay on live `onSnapshot` listeners — that's the part of Firestore worth
 keeping, don't "consistency-fix" them onto the server. Scope every one of them:
 an unscoped listener reads every document in the collection on first load, and
 that is the failure mode that gets expensive silently.
+
+## Error reporting (Phase 05 groundwork, Sep 2026)
+
+Every app's `error.tsx`, plus the shared `GlobalErrorPage`, reports through
+`reportError()` to `/api/errors`. **The sink is this project's own Firebase,
+not a third party** (owner's decision, 12 Sep 2026);
+`shared/src/reportError.ts` is a transport seam, so adding Sentry later means
+adding a transport there and changing no call site.
+
+- **One document per distinct fault, not per occurrence.** The id is a
+  fingerprint of app + normalised message + first stack frame
+  (`shared/src/errorReport.ts`); each occurrence increments `count`. A render
+  loop is one problem a hundred times, and a document per frame turns a bug
+  into a bill. Any word carrying a digit normalises to `#`, so `check abc123`
+  and `check def456` are one fault — and a new build hash in a chunk filename
+  does not split a fault in two after every deploy.
+- **`/api/errors` takes an UNAUTHENTICATED POST, and has to.** A customer whose
+  page breaks is signed out, and a root-layout failure takes the Firebase SDK
+  down with it, so there is no token to send even for staff. Everything
+  arriving is therefore hostile: the body is size-capped *before* it is parsed,
+  fields are whitelisted and truncated, and three things are never taken from
+  the caller — which app it was (the route knows), the document id (choosing
+  the id is choosing whose report to overwrite) and the count.
+- **Redaction happens before storage, never at display.** Emails, JWTs, bearer
+  tokens, long key-shaped strings, phone numbers and every query string go in
+  `redact()`. Scrubbing at display time is scrubbing after it was written down.
+- **The day's supply of NEW fingerprints is capped** (`MAX_NEW_PER_DAY`,
+  counted at `appSettings/errorBudget`). Faults already known keep counting
+  past the cap; unknown ones are dropped rather than allowed to write without
+  limit. The browser throttles as well — same fault once a minute, five per
+  page load — but a browser is exactly what an attacker is not obliged to use.
+- Read them at **`/admin/errors`**, admin-only through `useRequireRole(['admin'])`
+  — deliberately not a new `SECTION_ACCESS` key, because "can see the crash
+  reports" is not a permission anybody hands out for one shift.
+- `npm run verify:errors` asserts the lot. **The `errorReports` rule is written
+  but NOT yet deployed** — until somebody runs
+  `firebase deploy --only firestore:rules`, `/admin/errors` shows its "the rule
+  may not be live yet" message rather than an empty list, which is the whole
+  reason it says that instead of showing nothing.
 
 ## Firestore rules
 

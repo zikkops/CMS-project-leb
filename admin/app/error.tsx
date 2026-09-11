@@ -13,6 +13,7 @@
 // finds the error in a log.
 
 import { useEffect } from 'react'
+import { reportError } from '@big-cms/shared/reportError'
 
 export default function AdminError({
   error,
@@ -29,6 +30,9 @@ export default function AdminError({
       at: new Date().toISOString(),
       url: typeof window === 'undefined' ? '' : window.location.pathname,
     })
+    // A scrubbed copy to /api/errors, counted per distinct fault — see
+    // shared/src/errorReport.ts. Read them at /admin/errors.
+    reportError('admin', error)
   }, [error])
 
   return (

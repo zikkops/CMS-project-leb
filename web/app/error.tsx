@@ -11,6 +11,7 @@
 
 import { useEffect } from 'react'
 import { BRAND } from '@big-cms/shared/brand'
+import { reportError } from '@big-cms/shared/reportError'
 
 export default function WebError({
   error,
@@ -27,6 +28,11 @@ export default function WebError({
       at: new Date().toISOString(),
       url: typeof window === 'undefined' ? '' : window.location.pathname,
     })
+    // The console is no use at all here: this is a customer's phone, and
+    // nobody opens a browser console or phones to say a page went blank. Of
+    // the three apps this is the one that only ever reports — which is why
+    // /api/errors takes an unauthenticated POST.
+    reportError('web', error)
   }, [error])
 
   return (

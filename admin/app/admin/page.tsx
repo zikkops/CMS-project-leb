@@ -19,7 +19,7 @@ import {
   faClipboard, faThumbsUp, faGift, faTag, faTrophy, faUserShield,
   faFile, faPaperPlane, faTruck, faList, faImage, faScroll, faHandshake, faStore,
   faClockRotateLeft, faChair, faThumbtack, faGear, faXmark, faMoneyBill,
-  faClipboardCheck, faChartPie,
+  faClipboardCheck, faChartPie, faTriangleExclamation,
   type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
 import { BRAND } from '@big-cms/shared/brand'
@@ -217,6 +217,7 @@ export default function AdminPage() {
         { label: 'Media Library', icon: faImage,      daily: false, desc: 'View and delete previously uploaded images',          href: '/admin/media', access: ALL_ROLES },
         { label: 'Manage Users',  icon: faUserShield, daily: false, desc: 'Create accounts and set access levels',               href: '/admin/users', access: ['admin'] as Role[] },
         { label: 'Activity Log',  icon: faScroll,     daily: false, desc: 'See who created, edited, or deleted what, and when', href: '/admin/logs',  access: ['admin'] as Role[] },
+        { label: 'What Broke',    icon: faTriangleExclamation, daily: false, desc: 'Errors the three apps reported, and how often',   href: '/admin/errors', access: ['admin'] as Role[] },
       ],
     },
   ]
