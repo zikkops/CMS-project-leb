@@ -477,6 +477,34 @@ cloned there if you want to build there later, but not for this route.
 
 ---
 
+## Or: let Hostinger build from GitHub
+
+hPanel's Node.js deploy can build straight from the repo on every push, with
+no SSH. It needs four settings, and the obvious ones are wrong:
+
+| Field | Set to | Not |
+|---|---|---|
+| Framework preset | **Other** | Next.js — it runs `next build` inside the root directory, where a workspace has no Next |
+| Root directory | `./`, the repo itself | `pos` — that is what fails with `next: command not found` |
+| Build command | `npm run build` | it is a dropdown; there is nothing else to pick |
+| Entry file | `dist/pos/pos/server.js` | `server.js` — the app name repeats, see Step 6 |
+
+And one environment variable that picks the app: **`BUILD_APP=pos`** (or
+`admin`). With it, `npm run build` builds and packages that app alone into
+`dist/<app>/`, exactly as `npm run package -- pos` does; without it, it builds
+all three, which is what it does on your laptop. See `scripts/build.mjs`.
+
+`.env.local` is not in git, so every line from it goes into that site's
+**Environment Variables** instead, before the first deploy. The build refuses
+to run without the six `NEXT_PUBLIC_FIREBASE_*` values, and any `NEXT_PUBLIC_*`
+you add later needs a redeploy, not a restart.
+
+Every push to `main` redeploys. Settings are saved per site, so the admin site
+gets the same four settings with `BUILD_APP=admin` and
+`dist/admin/admin/server.js`.
+
+---
+
 ## Redeploying later
 
 ```bash
