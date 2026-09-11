@@ -110,6 +110,22 @@ console.log('\nthe change the counter handed over')
   eq('...whichever way round it is', O.changeDiffers({ changeUsd: 2, changeLbp: 6000 }, same), true)
 }
 
+console.log('\nthe service worker itself')
+{
+  // Nothing compiles public/ — it is copied as it stands — so a syntax error
+  // in the worker ships, and a worker that cannot parse simply never
+  // registers. The till carries on working, and quietly stops working
+  // offline, which is then discovered during an outage. One parse is cheap.
+  const swPath = 'pos/public/pos/sw.js'
+  let parses = true
+  try { execSync(`node --check ${swPath}`, { stdio: 'pipe' }) } catch { parses = false }
+  eq('it parses — nothing else in the build would tell us', parses, true)
+
+  const src = readFileSync(swPath, 'utf8')
+  eq('nothing under /api/ is ever cached', src.includes("url.pathname.startsWith('/api/')"), true)
+  eq('a GET is the only thing it answers for', src.includes("request.method !== 'GET'"), true)
+}
+
 console.log('\ncounting what is waiting')
 eq('table A has four things waiting', O.waitingFor(state, 'A'), 4)
 eq('table B has one', O.waitingFor(state, 'B'), 1)

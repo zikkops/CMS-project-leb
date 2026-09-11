@@ -412,10 +412,12 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
   - Owner's decisions (11 Sep 2026): prices include VAT; USD cash gets change
     in whole dollars and the rest in LBP; a split bill is one receipt with
     several payments; cards go through a separate machine, recorded only.
-  - Receipt numbers cannot collide yet: `closeCheck()` issues them on the
-    server at close. Block-reserved numbers are only needed once a till can
-    take payment OFFLINE, which is slice 7 — and offline today means cached
-    reads only, because every POS write is a route handler.
+  - **Receipt numbers still cannot collide, and slice 7 kept it that way.**
+    `closeCheck()` issues them on the server at close, and closing waits for
+    the connection (owner's decision), so the block-reserved ranges the plan
+    called for were never needed and 7d was dropped. A payment CAN now be
+    taken offline — it waits in the counter device's outbox — but a receipt
+    number cannot be issued there.
 
 - **05 (make it a product):** branding, the feature-flag registry and now the
   three-app split have landed. A client on the POS tier receives no admin code
