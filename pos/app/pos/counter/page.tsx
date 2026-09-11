@@ -218,11 +218,25 @@ export default function CounterPage() {
   // queue reaches it, exactly as it does for a waiter's phone.
   const due = useMemo(() => {
     const live = table?.check ? checkTotals(table.check).net : 0
-    const rest = lines
-      .filter(l => l.where !== 'live')
+    // NOT the drafts. An item tapped on screen and not yet rung up is not on
+    // anybody's bill, and this counted it — which was wrong about money in
+    // both directions. A card payment worked out against a total the server
+    // has never heard of is refused by it ("a card is charged what is owed,
+    // never more"), and a refusal sticks the whole queue. Cash was quieter and
+    // worse: the till would have handed back change against a short bill, and
+    // switching tables clears the drafts, so the items could vanish after the
+    // money had gone.
+    const queued = lines
+      .filter(l => l.where === 'queued')
       .reduce((s, l) => s + l.unitPrice * l.quantity, 0)
-    return Math.round((live + rest) * 100) / 100
+    return Math.round((live + queued) * 100) / 100
   }, [table, lines])
+
+  /** Tapped, not yet rung up. Shown on the check, never charged for. */
+  const draftTotal = useMemo(
+    () => Math.round(drafts.reduce((s, d) => s + d.unitPrice * d.quantity, 0) * 100) / 100,
+    [drafts],
+  )
 
   const rate = table?.check?.billRate ?? settings.exchangeRate
 
@@ -578,9 +592,18 @@ export default function CounterPage() {
                 borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '0.6rem', paddingTop: '0.6rem',
                 fontSize: '0.95rem',
               }}>
-                <span>Total</span>
+                <span>{draftTotal > 0 ? 'Rung up' : 'Total'}</span>
                 <span style={{ color: 'var(--teal)' }}>{usd(due)} · {lbpFmt(due * rate)}</span>
               </div>
+              {draftTotal > 0 && (
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  fontSize: '0.82rem', color: 'var(--brand-secondary)', marginTop: '0.3rem',
+                }}>
+                  <span>Not rung up yet</span>
+                  <span>+{usd(draftTotal)}</span>
+                </div>
+              )}
               {applied.length > 0 && (
                 <div style={{
                   display: 'flex', justifyContent: 'space-between',
@@ -679,16 +702,25 @@ export default function CounterPage() {
                     style={{ ...chip, flex: 1 }}
                   >Exact</button>
                   <button
-                    disabled={Boolean(busy) || !amount || bill.settled}
+                    disabled={Boolean(busy) || !amount || bill.settled || drafts.length > 0}
                     onClick={handlePay}
                     style={{
                       ...tap, flex: 2, border: 'none',
-                      backgroundColor: !amount || bill.settled ? 'rgba(var(--teal-rgb),0.25)' : 'var(--teal)',
+                      backgroundColor: !amount || bill.settled || drafts.length > 0 ? 'rgba(var(--teal-rgb),0.25)' : 'var(--teal)',
                       color: '#fff', letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: '0.8rem',
                     }}
                   >{busy || 'Take'}</button>
                 </div>
 
+                {drafts.length > 0 && (
+                  <p style={{
+                    fontSize: '0.78rem', color: 'var(--brand-secondary)',
+                    marginTop: '0.7rem', lineHeight: 1.6,
+                  }}>
+                    Ring the items up first. Money is taken against what is on the check, not
+                    what is on the screen.
+                  </p>
+                )}
                 {change && (
                   <p style={{ fontSize: '0.85rem', marginTop: '0.8rem', lineHeight: 1.6 }}>
                     Change: <strong>{usd(change.usd)} + {lbpFmt(change.lbp)}</strong>
