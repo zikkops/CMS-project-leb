@@ -11,8 +11,34 @@
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import { parseEodInput, saveEndOfDay, updateTips, saveBranchStaff } from '@big-cms/shared/server/endOfDay'
 import { logCreate, logUpdate } from '@big-cms/shared/server/activityLog'
+import { daySystemFor } from '@big-cms/shared/server/drawer'
+import { readSettings } from '@big-cms/shared/server/settings'
 
 export const runtime = 'nodejs'
+
+/**
+ * GET ?pos=1&branch=&date=  — the day's "system" cash from the POS drawer
+ * shifts (Phase 04), for the End of Day form to use instead of a figure typed
+ * from the old till. Same section and the same branch scoping as saving a
+ * report, and the rate is the business setting's, not one the browser names.
+ */
+export async function GET(request: Request): Promise<Response> {
+  try {
+    const caller: Caller = await requireSection(request, 'endOfDay')
+    const params = new URL(request.url).searchParams
+    if (params.get('pos') !== '1') throw new HttpError(400, 'Unknown request.')
+    const branch = params.get('branch') ?? ''
+    const date = params.get('date') ?? ''
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new HttpError(400, 'Date must be YYYY-MM-DD.')
+    if (caller.role !== 'admin' && caller.branchIds.length > 0 && !caller.branchIds.includes(branch)) {
+      throw new HttpError(403, 'That branch is not one of yours.')
+    }
+    const { exchangeRate } = await readSettings()
+    return Response.json({ ok: true, ...(await daySystemFor(branch, date, exchangeRate)) })
+  } catch (err) {
+    return toResponse(err)
+  }
+}
 
 async function readBody(request: Request): Promise<Record<string, unknown>> {
   try {

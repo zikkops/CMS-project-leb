@@ -25,10 +25,12 @@ import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
 import {
-  LBP_DENOMS, USD_DENOMS, countedCash, drawerDifference, drawerTotals, floatProblem, refundOf,
-  type DenomCount, type DrawerTotals, type Money2, type Refund, type DrawerPayment,
+  LBP_DENOMS, USD_DENOMS, countedCash, daySystem, drawerDifference, drawerTotals, floatProblem, refundOf,
+  type DaySystem, type DenomCount, type DrawerTotals, type Money2, type Refund, type DrawerPayment,
 } from '../drawer'
 import type { Check } from '../checks'
+import { BRAND } from '../brand'
+import { cashUpDay } from '../dates'
 
 export const SHIFTS = 'drawerShifts'
 const POINTER = 'branchDrawers'
@@ -101,6 +103,10 @@ export async function openShift(caller: Caller, branch: string, float: Money2): 
       branch,
       status: 'open' satisfies ShiftStatus,
       float,
+      // The End of Day this shift is counted in — the café's cash-up day, with
+      // the same before-10am rule the End of Day form uses, so a shift opened
+      // at 01:00 belongs to the night before, as its report does.
+      cashUpDay: cashUpDay(BRAND.locale.timezone),
       openedAt: FieldValue.serverTimestamp(),
       openedBy: caller.uid,
       openedByEmail: caller.email ?? '',
@@ -139,6 +145,25 @@ export async function shiftTotals(shiftId: string, float: Money2): Promise<Drawe
   }
   const refunds: Refund[] = refunded.docs.map(d => refundOf((d.data() as Check).payments ?? []))
   return drawerTotals(float, payments, refunds)
+}
+
+/**
+ * End of Day's "system" figure for one branch and day, from its drawer shifts.
+ *
+ * A closed shift contributes what its Z recorded; an open one its live
+ * figure, flagged, so the form can say the number will still move. Two
+ * equality filters, which Firestore serves without a composite index.
+ */
+export async function daySystemFor(branch: string, day: string, rate: number): Promise<DaySystem> {
+  assertBranch(branch)
+  const snap = await adminDb().collection(SHIFTS)
+    .where('branch', '==', branch).where('cashUpDay', '==', day).get()
+  const rows = await Promise.all(snap.docs.map(async d => {
+    const s = d.data() as StoredShift & { totals?: DrawerTotals }
+    if (s.status === 'closed' && s.totals) return { expected: s.totals.expected, open: false }
+    return { expected: (await shiftTotals(d.id, s.float)).expected, open: true }
+  }))
+  return daySystem(rows, rate)
 }
 
 /** An X reading: where the drawer stands now. Changes nothing. */

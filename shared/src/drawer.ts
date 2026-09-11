@@ -136,6 +136,41 @@ export function drawerDifference(expected: Money2, counted: Money2): Money2 {
   return { usd: cents(counted.usd - expected.usd), lbp: Math.round(counted.lbp - expected.lbp) }
 }
 
+export interface DaySystem {
+  shifts: number
+  /** Shifts not yet closed — their figure is live and will still move. */
+  open: number
+  /** What the day's drawers should hold, per currency. */
+  expected: Money2
+  /** The same, as End of Day's "system" figure: LBP at the report's rate. */
+  systemLbp: number
+}
+
+/**
+ * End of Day's "system" figure, from the day's drawer shifts.
+ *
+ * The owner's answers (12 Sep 2026) decide what goes in it: the figure typed
+ * from the old till was CASH sales only, and the end-of-day count is made
+ * with the float still in the drawer. So the matching figure is what the
+ * drawers should hold — float + cash − change − cash refunds, each shift's
+ * `expected` — summed across the day. Card takings are not in it; leaving
+ * the float out would have every day read "over" by exactly the float.
+ *
+ * In LBP at the rate given, because that is the unit the End of Day form has
+ * always compared in. The per-currency figure is returned alongside so the
+ * form can show what the drawers held, not just the conversion.
+ */
+export function daySystem(shifts: readonly { expected: Money2; open: boolean }[], rate: number): DaySystem {
+  const usd = shifts.reduce((s, x) => s + x.expected.usd, 0)
+  const lbp = shifts.reduce((s, x) => s + x.expected.lbp, 0)
+  return {
+    shifts: shifts.length,
+    open: shifts.filter(x => x.open).length,
+    expected: { usd: cents(usd), lbp: Math.round(lbp) },
+    systemLbp: Math.round(usd * rate + lbp),
+  }
+}
+
 /** Why this float is not one, or null. Checked on the server when a shift opens. */
 export function floatProblem(f: Money2): string | null {
   for (const [label, v, max] of [['USD', f.usd, 100_000], ['LBP', f.lbp, 10_000_000_000]] as const) {

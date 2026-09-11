@@ -8,10 +8,12 @@ import { useIsMobile } from '@big-cms/shared/useIsMobile'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { BRANCHES } from '@big-cms/shared/branches'
 import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
+import { useFeature } from '@big-cms/shared/useFeatures'
+import type { DaySystem } from '@big-cms/shared/drawer'
 import { BRAND } from '@big-cms/shared/brand'
 import {
   LBP_DENOMS, USD_DENOMS, SHIFT_LABELS,
-  computeTotals, emptyReport, getEndOfDayReport, saveEndOfDayReport,
+  computeTotals, emptyReport, getEndOfDayReport, saveEndOfDayReport, getPosSystem,
   getBranchStaff, listAllStaff, defaultEodDateStr, formatLbp, formatUsd,
   type AttendanceEntry, type EndOfDayReport, type StaffUser,
 } from '@big-cms/shared/endOfDay'
@@ -80,6 +82,11 @@ function EndOfDayInner() {
   // Live, so changing the rate at /admin/settings reaches a form already open
   // at a till. A report stores the rate it was submitted with regardless.
   const { settings: { exchangeRate } } = useBusinessSettings()
+  // Phase 04: once the till takes money, the "system" figure is the POS's own
+  // — the day's drawer shifts (daySystem() in drawer.ts) — not a number typed
+  // from the old till. Off, this form is exactly what it was.
+  const { on: fromPos } = useFeature('payments')
+  const [posState, setPosState] = useState<{ key: string; data: DaySystem | null; err: string } | null>(null)
 
   const branchOptions = role === 'admin' ? [...BRANCHES] : branchIds
 
@@ -170,9 +177,30 @@ function EndOfDayInner() {
     return () => { cancelled = true }
   }, [branch, date, resetForm])
 
+  // The POS figure for this branch and day. Keyed, so a stale answer for the
+  // branch just switched away from is never shown against the new one.
+  const posKey = `${branch}|${date}`
+  useEffect(() => {
+    if (!fromPos || !branch || !date) return
+    let cancelled = false
+    getPosSystem(branch, date)
+      .then(data => { if (!cancelled) setPosState({ key: posKey, data, err: '' }) })
+      .catch(e => {
+        if (!cancelled) setPosState({ key: posKey, data: null, err: e instanceof Error ? e.message : 'Could not read the POS figure.' })
+      })
+    return () => { cancelled = true }
+  }, [fromPos, branch, date, posKey])
+  const posNow = fromPos && posState?.key === posKey ? posState : null
+
   // System USD is derived from LBP at the configured rate — editable at
   // /admin/settings, and live, so a rate change reaches an open form.
-  const systemLbpNum = Number(systemLbp) || 0
+  //
+  // With the POS on, the figure is DERIVED from its answer rather than copied
+  // into the field: the saved report and the POS figure load in parallel, and
+  // whichever arrived second would otherwise overwrite the other.
+  const systemLbpNum = fromPos
+    ? posNow?.data?.systemLbp ?? 0
+    : Number(systemLbp) || 0
   const systemUsdDerived = systemLbpNum / exchangeRate
 
   // ── computed totals (live) ───────────────────────────────────────────────
@@ -439,10 +467,11 @@ function EndOfDayInner() {
                   <label style={labelStyle}>System LBP</label>
                   <input
                     type="number" min="0" step="1"
-                    value={systemLbp}
+                    value={fromPos ? (posNow?.data ? String(posNow.data.systemLbp) : '') : systemLbp}
                     onChange={e => setSystemLbp(e.target.value)}
-                    placeholder="0"
-                    style={inp}
+                    readOnly={fromPos}
+                    placeholder={fromPos ? 'From the POS…' : '0'}
+                    style={{ ...inp, ...(fromPos ? { opacity: 0.8, cursor: 'default' } : {}) }}
                   />
                 </div>
                 <div style={{ paddingBottom: '0.6rem' }}>
@@ -454,6 +483,25 @@ function EndOfDayInner() {
                   </p>
                 </div>
               </div>
+              {fromPos && (
+                <p style={{
+                  fontFamily: 'var(--font-inter)', fontSize: '0.75rem', lineHeight: 1.6, maxWidth: '62ch',
+                  marginTop: '0.7rem', color: posNow?.err ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.45)',
+                }}>
+                  {!posNow
+                    ? 'Reading the day’s drawer shifts…'
+                    : posNow.err
+                      ? posNow.err
+                      : !posNow.data || posNow.data.shifts === 0
+                        ? 'No drawer shift was opened at this branch for this day, so the POS figure is zero.'
+                        : `From the POS: ${posNow.data.shifts} drawer shift${posNow.data.shifts === 1 ? '' : 's'} should hold ` +
+                          `${formatUsd(posNow.data.expected.usd)} and ${formatLbp(posNow.data.expected.lbp)} — cash sales with ` +
+                          'the float, the way the drawer is counted. Card takings are not in it.' +
+                          (posNow.data.open > 0
+                            ? ` ${posNow.data.open} shift${posNow.data.open === 1 ? ' is' : 's are'} still open, so this will still move — close ${posNow.data.open === 1 ? 'it' : 'them'} before submitting.`
+                            : '')}
+                </p>
+              )}
             </div>
 
             {/* ── Expenses ─────────────────────────────────────────────────── */}

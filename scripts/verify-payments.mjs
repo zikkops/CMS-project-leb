@@ -231,6 +231,21 @@ eq('THE BUG this prevents: $20 short is still $20 short', diff.usd, -20)
 eq('...even when the lira are over by the same value', diff.lbp, 1_790_000)
 eq('the note lists are the end-of-day ones', [D.USD_DENOMS.length, D.LBP_DENOMS.at(-1)], [6, 1000])
 
+console.log('\nEnd of Day — the day\'s drawers as the "system" figure')
+const day = D.daySystem([
+  { expected: { usd: 60, lbp: 1_051_000 }, open: false },
+  { expected: { usd: 50, lbp: 200_000 }, open: true },
+], 89_500)
+eq('two shifts: $110 and 1,251,000 LBP should be in the drawers', day.expected, { usd: 110, lbp: 1_251_000 })
+eq('...which is 11,096,000 LBP at 89,500', day.systemLbp, 11_096_000)
+eq('...and it says one shift is still open', [day.shifts, day.open], [2, 1])
+eq('THE FLOAT is in it (the count includes the float): an empty shift is its float',
+   D.daySystem([{ expected: D.drawerTotals(float, []).expected, open: false }], 89_500).systemLbp,
+   50 * 89_500 + 200_000)
+eq('THE CARD is not in it: a card-only shift adds nothing beyond its float',
+   D.daySystem([{ expected: D.drawerTotals({ usd: 0, lbp: 0 }, [shiftPays[1]]).expected, open: false }], 89_500).systemLbp, 0)
+eq('no shifts: nothing from the POS', D.daySystem([], 89_500), { shifts: 0, open: 0, expected: { usd: 0, lbp: 0 }, systemLbp: 0 })
+
 console.log('\nthe float — refused before any shift opens')
 eq('a normal float: fine', D.floatProblem({ usd: 50, lbp: 200_000 }), null)
 eq('no float at all: fine', D.floatProblem({ usd: 0, lbp: 0 }), null)

@@ -23,7 +23,7 @@ import { cashUpDay, todayYmd } from './dates'
 // The note lists live in drawer.ts now — the shift count and the end-of-day
 // count must be the same notes, and this module imports the Firebase client,
 // which the drawer arithmetic cannot. Re-exported so every importer still works.
-import { LBP_DENOMS, USD_DENOMS } from './drawer'
+import { LBP_DENOMS, USD_DENOMS, type DaySystem } from './drawer'
 export { LBP_DENOMS, USD_DENOMS }
 
 export type ShiftType = 'none' | 'am' | 'pm' | 'double'
@@ -168,6 +168,16 @@ export function emptyReport(
     updatedAt:        null,
     updatedBy:        uid,
   }
+}
+
+/**
+ * The day's "system" cash from the POS drawer shifts (Phase 04) — see
+ * daySystem() in drawer.ts for what is in it and why. The server uses the
+ * business settings' rate, not one the browser names.
+ */
+export async function getPosSystem(branch: string, date: string): Promise<DaySystem> {
+  const q = `pos=1&branch=${encodeURIComponent(branch)}&date=${encodeURIComponent(date)}`
+  return await unwrap(await authedFetch(`/api/admin/end-of-day?${q}`, 'GET')) as unknown as DaySystem
 }
 
 export async function getEndOfDayReport(branch: string, date: string): Promise<EndOfDayReport | null> {
