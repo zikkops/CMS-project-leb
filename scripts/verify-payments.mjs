@@ -16,7 +16,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'payments-verify-'))
 execSync(
-  `npx tsc shared/src/payments.ts shared/src/money.ts ` +
+  `npx tsc shared/src/payments.ts shared/src/money.ts shared/src/businessSettings.ts ` +
   `--outDir ${out} --module esnext --target es2022 --skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' }
 )
@@ -116,6 +116,27 @@ eq('a new key is not', P.paymentAlreadyApplied([{ key: 'k-12345678' }], 'k-87654
 eq('a null key is never deduplicated', P.paymentAlreadyApplied([{ key: 'k-12345678' }], null), false)
 eq('a uuid is a valid key', P.PAYMENT_KEY_PATTERN.test('3f2c8a4e-9b1d-4e7a-8c2f-6d5e4a3b2c1d'), true)
 eq('a slash is not', P.PAYMENT_KEY_PATTERN.test('a/b/c/d/e/f/g/h'), false)
+
+// ── Slice 2: VAT ───────────────────────────────────────────────────────────
+const B = await import(`file://${join(out, 'businessSettings.js')}`)
+const M = await import(`file://${join(out, 'money.js')}`)
+
+console.log('\nVAT — included in the price, and in force from a day')
+eq('$10.00 at 11% carries $0.99 of VAT, not $1.10', M.vatIncluded(10, 0.11), 0.99)
+eq('zero-rated carries none', M.vatIncluded(10, 0), 0)
+const sched = { vatRate: 0.11, vatNext: { rate: 0.12, from: '2027-01-01' } }
+eq('the day before the change: 11%', B.vatRateOn(sched, '2026-12-31'), 0.11)
+eq('THE DAY the change starts: 12%', B.vatRateOn(sched, '2027-01-01'), 0.12)
+eq('after it: 12%', B.vatRateOn(sched, '2027-06-01'), 0.12)
+eq('nothing scheduled: the current rate', B.vatRateOn({ vatRate: 0.11, vatNext: null }, '2030-01-01'), 0.11)
+eq('a scheduled change is read back as stored', B.readVatNext({ rate: 0.12, from: '2027-01-01' }),
+   { rate: 0.12, from: '2027-01-01' })
+eq('30 February is not a date', B.readVatNext({ rate: 0.12, from: '2027-02-30' }), null)
+eq('a rate out of bounds is ignored, not billed', B.readVatNext({ rate: 12, from: '2027-01-01' }), null)
+eq('a missing rate is ignored, not read as 0%', B.readVatNext({ from: '2027-01-01' }), null)
+eq('an empty-string rate is ignored, not read as 0%', B.readVatNext({ rate: '', from: '2027-01-01' }), null)
+eq('garbage is ignored', B.readVatNext('12% soon'), null)
+eq('a stored document without one parses to null', B.parseSettings({ vatRate: 0.11 }).vatNext, null)
 
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail > 0 ? 1 : 0)

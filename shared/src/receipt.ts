@@ -18,13 +18,16 @@
 // the old till.
 //
 // ── What this is NOT ───────────────────────────────────────────────────────
-// Not a VAT invoice. VAT and service charge are Phase 04, and they are absent
-// rather than printed as zero: a document showing "VAT 0.00" is making a claim
-// about tax that this one is not entitled to make. When Phase 04 adds them,
-// they become rows here and the layout does not change.
+// VAT appears only when the check recorded the rate in force the day it
+// closed (Phase 04, check.vatRate). Prices include it, so it is printed as the
+// share of the total that was tax. A check closed before that has no VAT line
+// at all rather than one printed as zero or guessed from today's rate: a
+// document showing "VAT 0.00" is making a claim about tax it is not entitled
+// to make.
 //
-// Not a payment record either. Nothing here says how the bill was settled,
-// because in POS v1 the old till still takes the money.
+// How the bill was settled appears only when the till took the money
+// (check.payments). Under the old till there is nothing to say, and nothing
+// is said.
 //
 // No React and no Firebase import — the POS renders these rows on screen, a
 // print view lays them out for a browser, and a future route handler can hand
@@ -32,7 +35,7 @@
 
 import { checkTotals, grossLineTotal, type Check, type CheckLine } from './checks'
 import { describeSelections } from './modifiers'
-import { billTotals } from './money'
+import { billTotals, vatIncluded } from './money'
 import { timestampMs } from './timestamps'
 
 // ── The document ───────────────────────────────────────────────────────────
@@ -219,6 +222,15 @@ export function buildReceipt(check: Check, opts: ReceiptOptions): ReceiptRow[] {
     right: formatMoney(bill.lbp, opts.secondaryCurrency, opts.secondaryCurrency),
     strong: true,
   })
+
+  // The tax inside the total, at the rate the check recorded — never today's.
+  if (typeof check.vatRate === 'number') {
+    rows.push({
+      kind: 'pair',
+      left: `Incl. VAT ${+(check.vatRate * 100).toFixed(2)}%`,
+      right: money(vatIncluded(bill.usd, check.vatRate)),
+    })
+  }
 
   // How it was paid, when the till took the money (Phase 04). Absent on a
   // check closed while the old till still took payment, rather than printed

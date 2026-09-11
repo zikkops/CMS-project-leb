@@ -270,10 +270,18 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
   - **The pilot.** One section of one branch, the old till still taking
     payment. That constraint is what makes v1 safe to ship badly.
 
-- **04 (POS v2): slice 1 of 7 built, behind the `payments` switch — off.**
-  The plan, its order and the owner's decisions are in the Phase 04 note.
-  Built: taking payment (cash USD / cash LBP / card, split tender, change),
-  closing only when paid, payments on the receipt. The arithmetic is
+- **04 (POS v2): slices 1–2 of 7 built; payment is behind the `payments`
+  switch — off.** The plan, its order and the owner's decisions are in the
+  Phase 04 note. Built: taking payment (cash USD / cash LBP / card, split
+  tender, change), closing only when paid, payments on the receipt; and VAT.
+  - **VAT is read through `vatRateOn(settings, day)`, never `vatRate`.**
+    Settings hold the current rate plus an optional `vatNext` { rate, from };
+    on the `from` day (café zone) every caller switches at midnight together.
+    `closeCheck()` records the day's rate on the check, and the receipt prints
+    "Incl. VAT" from that — prices include VAT, so it is the share of the
+    total that was tax (`vatIncluded()`), never added on top. A check closed
+    before this has no `vatRate` and no VAT line; do not backfill one from
+    today's rate. The arithmetic is
   `shared/src/payments.ts`, asserted by `verify:payments`; the server is
   `addPayment()` in `shared/src/server/checks.ts`.
   - **The switch is the pilot's safety.** Off, a check closes exactly as in

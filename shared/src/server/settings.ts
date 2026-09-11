@@ -12,8 +12,8 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from './firebaseAdmin'
 import { HttpError } from './auth'
 import {
-  SETTINGS_DOC, SETTINGS_LIMITS, SETTINGS_DEFAULTS, readInvoicePrefix,
-  type BusinessSettings, type RateKey,
+  SETTINGS_DOC, SETTINGS_LIMITS, SETTINGS_DEFAULTS, readInvoicePrefix, readVatNext,
+  type BusinessSettings, type RateKey, type VatChange,
 } from '../businessSettings'
 import { INVOICE_PREFIX_PATTERN } from '../invoiceFormat'
 
@@ -31,6 +31,22 @@ function rate(raw: unknown, key: RateKey, label: string): number {
   return n
 }
 
+/**
+ * The scheduled VAT change, or null for none.
+ *
+ * A past date is accepted, deliberately. Once the day arrives the change is in
+ * force, and the settings form sends it back on every later save — refusing a
+ * past date would make every save after the change date fail.
+ */
+function parseVatNext(raw: unknown): VatChange | null {
+  if (raw === undefined || raw === null || raw === '') return null
+  if (typeof raw !== 'object') throw new HttpError(400, 'The next VAT rate must be a rate and a start date.')
+  const r = raw as { rate?: unknown; from?: unknown }
+  const parsed = readVatNext({ rate: rate(r.rate, 'vatRate', 'Next VAT rate'), from: r.from })
+  if (!parsed) throw new HttpError(400, 'The next VAT rate needs a real start date.')
+  return parsed
+}
+
 export function parseSettingsInput(body: Record<string, unknown>): BusinessSettings {
   const rawPrefix = String(body.invoicePrefix ?? '').trim().toUpperCase()
   if (!rawPrefix) throw new HttpError(400, 'An invoice prefix is required.')
@@ -45,6 +61,7 @@ export function parseSettingsInput(body: Record<string, unknown>): BusinessSetti
     // stray "11" here would be a 1100% VAT rate — which the bounds reject
     // rather than quietly bill.
     vatRate:           rate(body.vatRate, 'vatRate', 'VAT rate'),
+    vatNext:           parseVatNext(body.vatNext),
     exchangeRate:      rate(body.exchangeRate, 'exchangeRate', 'Exchange rate'),
     tipsDeductionRate: rate(body.tipsDeductionRate, 'tipsDeductionRate', 'Tips deduction'),
     staffDiscountFood:  rate(body.staffDiscountFood, 'staffDiscountFood', 'Staff discount on food'),
@@ -59,6 +76,7 @@ export async function readSettings(): Promise<BusinessSettings> {
   const d = snap.data() ?? {}
   return {
     vatRate:           Number(d.vatRate ?? SETTINGS_DEFAULTS.vatRate),
+    vatNext:           readVatNext(d.vatNext),
     exchangeRate:      Number(d.exchangeRate ?? SETTINGS_DEFAULTS.exchangeRate),
     tipsDeductionRate: Number(d.tipsDeductionRate ?? SETTINGS_DEFAULTS.tipsDeductionRate),
     staffDiscountFood:  Number(d.staffDiscountFood ?? SETTINGS_DEFAULTS.staffDiscountFood),
@@ -151,9 +169,17 @@ export async function writeSettings(
       'be changed. Changing it now would leave one numbered series with two different names on it.')
   }
 
+  // vatNext is an object, so `!==` would call every save a change and put a
+  // phantom "VAT schedule changed" in the audit log. Compared by value, and
+  // shown the way an accountant reads it: "12% from 2027-01-01", or "none".
+  const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
+  const shown = (v: BusinessSettings[keyof BusinessSettings]): number | string =>
+    v === null ? 'none'
+      : typeof v === 'object' ? `${+(v.rate * 100).toFixed(4)}% from ${v.from}`
+      : v
   const changes: SettingChange[] = (Object.keys(input) as (keyof BusinessSettings)[])
-    .filter(k => before[k] !== input[k])
-    .map(k => ({ field: k, before: before[k], after: input[k] }))
+    .filter(k => !same(before[k], input[k]))
+    .map(k => ({ field: k, before: shown(before[k]), after: shown(input[k]) }))
 
   // Nothing moved — don't stamp the document or write an audit entry saying a
   // change happened when none did.

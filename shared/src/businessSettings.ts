@@ -35,9 +35,25 @@ import { FALLBACK_INVOICE_PREFIX, INVOICE_PREFIX_PATTERN } from './invoiceFormat
 
 export const SETTINGS_DOC = 'appSettings/business'
 
+/**
+ * A VAT rate that takes effect on a day, not the moment somebody saves it.
+ *
+ * Rates change by decree with a start date — Lebanon approved 12% in early
+ * 2026 without it being in force by mid-year. Entering it the night before and
+ * hoping is how a day's receipts go out at the wrong rate either side of
+ * midnight. `from` is a calendar day in the café's timezone, compared as a
+ * 'YYYY-MM-DD' string like every other day in this codebase (dates.ts).
+ */
+export interface VatChange {
+  rate: number
+  from: string
+}
+
 export interface BusinessSettings {
-  /** As a fraction: 0.11 is 11%. */
+  /** As a fraction: 0.11 is 11%. The rate in force until `vatNext` starts. */
   vatRate: number
+  /** The next rate and the day it starts, or null. Read through vatRateOn(), never directly. */
+  vatNext: VatChange | null
   /** Units of the secondary currency per 1 of the main one. */
   exchangeRate: number
   /** Fraction deducted from tips before distribution. */
@@ -83,6 +99,7 @@ export type RateKey =
 /** What the app used before any of this was editable. */
 export const SETTINGS_DEFAULTS: BusinessSettings = {
   vatRate:           BRAND.locale.vatRate,
+  vatNext:           null,
   exchangeRate:      BRAND.locale.exchangeRate,
   tipsDeductionRate: BRAND.tipsDeductionRate,
   invoicePrefix:     FALLBACK_INVOICE_PREFIX,
@@ -134,9 +151,47 @@ export function readInvoicePrefix(raw: unknown): string {
   return INVOICE_PREFIX_PATTERN.test(s) ? s : SETTINGS_DEFAULTS.invoicePrefix
 }
 
+const YMD = /^(\d{4})-(\d{2})-(\d{2})$/
+
+/**
+ * Reads a stored next-rate, or null.
+ *
+ * Same fail-safe as readRate(): anything unusable is treated as absent, so a
+ * hand-edited document degrades to "no change scheduled" rather than billing
+ * at a nonsense rate. The day must be a real one — 2027-02-30 matches the
+ * pattern and is not a date.
+ */
+export function readVatNext(raw: unknown): VatChange | null {
+  if (!raw || typeof raw !== 'object') return null
+  const { rate, from } = raw as { rate?: unknown; from?: unknown }
+  const n = Number(rate)
+  const { min, max } = SETTINGS_LIMITS.vatRate
+  if (rate === null || rate === '' || !Number.isFinite(n) || n < min || n > max) return null
+  const day = String(from ?? '')
+  const m = YMD.exec(day)
+  if (!m) return null
+  // UTC here only to ask whether the day exists — no timezone decides anything.
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))
+  if (d.getUTCFullYear() !== +m[1] || d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[3]) return null
+  return { rate: n, from: day }
+}
+
+/**
+ * The VAT rate in force on a day.
+ *
+ * The one place that answers it. A check closing, a delivery being received
+ * and the settings page all ask this rather than reading vatRate, so on the
+ * start day every one of them changes at the café's midnight together — not
+ * whenever somebody remembers to edit a number.
+ */
+export function vatRateOn(s: Pick<BusinessSettings, 'vatRate' | 'vatNext'>, ymd: string): number {
+  return s.vatNext && ymd >= s.vatNext.from ? s.vatNext.rate : s.vatRate
+}
+
 export function parseSettings(data: Record<string, unknown> | undefined): BusinessSettings {
   return {
     vatRate:           readRate(data?.vatRate, 'vatRate'),
+    vatNext:           readVatNext(data?.vatNext),
     exchangeRate:      readRate(data?.exchangeRate, 'exchangeRate'),
     tipsDeductionRate: readRate(data?.tipsDeductionRate, 'tipsDeductionRate'),
     staffDiscountFood:  readRate(data?.staffDiscountFood, 'staffDiscountFood'),

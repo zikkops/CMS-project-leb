@@ -28,6 +28,9 @@ import {
   type Payment, type PaymentRequest, type Tender, type PayCurrency,
 } from '../payments'
 import { serverFeatureOn } from './features'
+import { vatRateOn } from '../businessSettings'
+import { todayYmd } from '../dates'
+import { BRAND } from '../brand'
 import { validateSelection, toSelections, type ModifierGroup } from '../modifiers'
 import { effectivePrice } from '../productPricing'
 import { toTicketLines } from '../tickets'
@@ -782,7 +785,11 @@ export async function closeCheck(
   checkId: string,
 ): Promise<{ tableNumber: number; receiptNumber: string }> {
   const db = adminDb()
-  const takesPayment = await serverFeatureOn('payments')
+  const [takesPayment, settings] = await Promise.all([serverFeatureOn('payments'), readSettings()])
+  // The rate in force TODAY in the café's zone, recorded on the check so the
+  // receipt reprints at it after the rate changes. Not the host's today: on a
+  // UTC server the first hours of the change day would still be yesterday.
+  const vatRate = vatRateOn(settings, todayYmd(BRAND.locale.timezone))
 
   // Refused here, before a number is issued, as well as inside the
   // transaction. Refusing only inside would burn a receipt number every time
@@ -817,6 +824,7 @@ export async function closeCheck(
     tx.update(db.doc(`${CHECKS}/${checkId}`), {
       status: 'closed',
       receiptNumber: invoiceNumber,
+      vatRate,
       closedBy: caller.uid,
       closedByEmail: caller.email ?? '',
       closedAt: FieldValue.serverTimestamp(),

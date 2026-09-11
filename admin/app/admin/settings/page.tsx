@@ -14,6 +14,7 @@ import { useRequireRole } from '@big-cms/shared/adminAuth'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
 import { SETTINGS_LIMITS } from '@big-cms/shared/businessSettings'
+import { todayYmd } from '@big-cms/shared/dates'
 import { BRAND } from '@big-cms/shared/brand'
 import { quarterOf } from '@big-cms/shared/invoiceFormat'
 import type { Role } from '@big-cms/shared/roles'
@@ -75,6 +76,60 @@ function RateField({
           fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           color: 'rgba(var(--offwhite-rgb),0.45)', whiteSpace: 'nowrap',
         }}>{suffix}</span>
+      </div>
+      <p style={{
+        fontFamily: 'var(--font-inter)', fontSize: '0.68rem',
+        color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.35rem', lineHeight: 1.6, maxWidth: '46ch',
+      }}>{hint}</p>
+    </div>
+  )
+}
+
+/**
+ * The next VAT rate and the day it starts.
+ *
+ * A rate changes by decree on a date. Entered here in advance, it takes
+ * effect at the café's midnight on that day for tills and receiving together
+ * (vatRateOn() in businessSettings.ts) — nobody has to be at a keyboard at
+ * midnight, and no receipt goes out at the wrong rate either side of it.
+ */
+function NextVatField({
+  rate, from, onRate, onFrom, current, isMobile,
+}: {
+  rate: string
+  from: string
+  onRate: (v: string) => void
+  onFrom: (v: string) => void
+  /** The current rate, as a fraction, for the hint. */
+  current: number
+  isMobile: boolean
+}) {
+  const today = todayYmd(BRAND.locale.timezone)
+  const hint = rate === '' || from === ''
+    ? 'Leave empty when no change is coming. When one is decreed, enter it with its start date: it takes effect at midnight that day, for checks and deliveries together.'
+    : from <= today
+      ? `In force since ${from} — checks closing now record ${rate}%. You can move it into the VAT rate above and clear this whenever convenient; it changes nothing either way.`
+      : `From ${from}, checks and deliveries use ${rate}% instead of ${+(current * 100).toFixed(4)}%. Everything recorded before then keeps its own rate.`
+  return (
+    <div>
+      <label style={labelStyle}>Next VAT rate — optional</label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+        <input
+          type="number" min="0" step="0.1" inputMode="decimal"
+          value={rate}
+          onChange={e => onRate(e.target.value)}
+          style={{ ...inp, width: isMobile ? '35%' : '120px', textAlign: 'right', fontWeight: 600 }}
+        />
+        <span style={{
+          fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
+          color: 'rgba(var(--offwhite-rgb),0.45)', whiteSpace: 'nowrap',
+        }}>% from</span>
+        <input
+          type="date"
+          value={from}
+          onChange={e => onFrom(e.target.value)}
+          style={{ ...inp, width: isMobile ? '100%' : '180px' }}
+        />
       </div>
       <p style={{
         fontFamily: 'var(--font-inter)', fontSize: '0.68rem',
@@ -154,6 +209,8 @@ export default function BusinessSettingsPage() {
   const [prefix, setPrefix] = useState('')
   const [staffFood, setStaffFood] = useState('')
   const [staffDrink, setStaffDrink] = useState('')
+  const [nextVat, setNextVat] = useState('')
+  const [nextVatFrom, setNextVatFrom] = useState('')
 
   // Whether the prefix can still be chosen. Not in the settings document —
   // it's a fact about the invoice counter, which is server-only — so it comes
@@ -176,6 +233,8 @@ export default function BusinessSettingsPage() {
     setPrefix(settings.invoicePrefix)
     setStaffFood(String(+(settings.staffDiscountFood * 100).toFixed(4)))
     setStaffDrink(String(+(settings.staffDiscountDrink * 100).toFixed(4)))
+    setNextVat(settings.vatNext ? String(+(settings.vatNext.rate * 100).toFixed(4)) : '')
+    setNextVatFrom(settings.vatNext?.from ?? '')
   }, [loading, settings])
 
   useEffect(() => {
@@ -190,15 +249,27 @@ export default function BusinessSettingsPage() {
     return () => { cancelled = true }
   }, [])
 
+  const nextVatPayload = nextVat !== '' && nextVatFrom !== ''
+    ? { rate: Number(nextVat) / 100, from: nextVatFrom }
+    : null
+
   const dirty =
     Number(vat)  / 100 !== settings.vatRate ||
     Number(rate)        !== settings.exchangeRate ||
     Number(tips) / 100 !== settings.tipsDeductionRate ||
     prefix !== settings.invoicePrefix ||
     Number(staffFood) / 100 !== settings.staffDiscountFood ||
-    Number(staffDrink) / 100 !== settings.staffDiscountDrink
+    Number(staffDrink) / 100 !== settings.staffDiscountDrink ||
+    JSON.stringify(nextVatPayload) !== JSON.stringify(settings.vatNext)
 
   async function save() {
+    // Half a schedule is refused rather than quietly dropped: a rate with no
+    // date would otherwise vanish on save, and the person who typed it would
+    // believe a change was scheduled.
+    if ((nextVat === '') !== (nextVatFrom === '')) {
+      setErr('Enter both the next VAT rate and the day it starts, or leave both empty.')
+      return
+    }
     setSaving(true); setErr(''); setDone('')
     try {
       const r = await unwrap(
@@ -209,6 +280,7 @@ export default function BusinessSettingsPage() {
           invoicePrefix:     prefix,
           staffDiscountFood:  Number(staffFood) / 100,
           staffDiscountDrink: Number(staffDrink) / 100,
+          vatNext:           nextVatPayload,
         })
       )
       const changed = Number(r.changed ?? 0)
@@ -257,7 +329,12 @@ export default function BusinessSettingsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.9rem', marginBottom: '2.5rem' }}>
           <RateField
             label="VAT rate" suffix="%" step="0.1" value={vat} onChange={setVat} isMobile={isMobile}
-            hint={`Applied per line when receiving, to items marked as taxable. Between ${SETTINGS_LIMITS.vatRate.min * 100}% and ${SETTINGS_LIMITS.vatRate.max * 100}%.`}
+            hint={`The rate in force now. Recorded on every check when it closes — prices include it, so the receipt shows the share of the total that was VAT — and applied per line when receiving, to items marked as taxable. Between ${SETTINGS_LIMITS.vatRate.min * 100}% and ${SETTINGS_LIMITS.vatRate.max * 100}%.`}
+          />
+          <NextVatField
+            rate={nextVat} from={nextVatFrom}
+            onRate={setNextVat} onFrom={setNextVatFrom}
+            current={settings.vatRate} isMobile={isMobile}
           />
           <RateField
             label={`Exchange rate`} suffix={`${BRAND.locale.secondaryCurrency} per 1 ${BRAND.locale.currency}`}

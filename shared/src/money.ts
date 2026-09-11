@@ -61,6 +61,18 @@ export interface BillTotals {
   rounding: number
 }
 
+/**
+ * The VAT inside a total that already includes it.
+ *
+ * Prices include VAT (owner's decision, 11 Sep 2026), so VAT is never added
+ * on top: it is the share of what the customer paid that was tax. At 11%,
+ * $10.00 carries $0.99 — 10 × 0.11 / 1.11 — not $1.10.
+ */
+export function vatIncluded(total: number, vatRate: number): number {
+  if (!(vatRate > 0)) return 0
+  return Math.round(total * vatRate / (1 + vatRate) * 100) / 100
+}
+
 export function billTotals(usd: number, rate: number): BillTotals {
   const lbpExact = usdToLbp(usd, rate)
   const lbp = roundLbpTotal(lbpExact)

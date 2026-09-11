@@ -25,6 +25,9 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '@big-cms/shared/firebase'
 import { branchColor } from '@big-cms/shared/branches'
 import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
+import { vatRateOn } from '@big-cms/shared/businessSettings'
+import { todayYmd } from '@big-cms/shared/dates'
+import { BRAND } from '@big-cms/shared/brand'
 import { supplyCategoryColor } from '@big-cms/shared/departments'
 import {
   DELIVERY_BRANCHES, DELIVERY_DEPARTMENTS, DEFAULT_VAT_RATE,
@@ -281,7 +284,11 @@ function ReceivingInner() {
   // The configured VAT rate, live. The server recomputes totals with the rate
   // it is sent and stores it on the delivery, so this only decides what the
   // form shows while someone is typing.
-  const { settings: { vatRate, exchangeRate }, loading: settingsLoading } = useBusinessSettings()
+  const { settings: businessSettings, loading: settingsLoading } = useBusinessSettings()
+  // The rate in force TODAY in the café's zone, not the stored current rate:
+  // on the day a scheduled change starts, deliveries switch with the tills.
+  const vatRate = vatRateOn(businessSettings, todayYmd(BRAND.locale.timezone))
+  const exchangeRate = businessSettings.exchangeRate
 
   const isMobile = useIsMobile()
 

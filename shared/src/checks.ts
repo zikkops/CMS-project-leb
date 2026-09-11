@@ -231,6 +231,12 @@ export interface Check {
   payments?: Payment[]
   /** The rate every payment on this check is valued at — fixed by the first. */
   billRate?: number | null
+  /**
+   * The VAT rate in force the day the check closed (vatRateOn()). Prices
+   * include it. Absent on checks closed before it was recorded, whose
+   * receipts then print no VAT line rather than guess one.
+   */
+  vatRate?: number | null
 }
 
 // ── Bounds ────────────────────────────────────────────────────────────────

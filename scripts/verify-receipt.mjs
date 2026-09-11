@@ -178,6 +178,18 @@ eq('no change line when none was given',
    find(R.buildReceipt(check({ billRate: 89500, payments: [payment({ amount: 4 })] }), opts), 'Change LBP'),
    undefined)
 
+console.log('\nVAT — included in the total, at the rate the check recorded')
+const ten = (over = {}) => check({ lines: [line({ unitPrice: 10 })], ...over })
+const vat = R.buildReceipt(ten({ vatRate: 0.11 }), opts)
+eq('prices include VAT: $10.00 shows $0.99 of it', find(vat, 'Incl. VAT 11%').right, '0.99')
+eq('...and the total does not move', find(vat, 'Total USD').right, '10.00')
+eq('the check\'s own rate: a 12% check shows $1.07',
+   find(R.buildReceipt(ten({ vatRate: 0.12 }), opts), 'Incl. VAT 12%').right, '1.07')
+eq('no VAT line on a check that never recorded a rate',
+   rows.some(r => r.kind === 'pair' && r.left.startsWith('Incl. VAT')), false)
+eq('a zero-rated day says so rather than hiding it',
+   find(R.buildReceipt(ten({ vatRate: 0 }), opts), 'Incl. VAT 0%').right, '0.00')
+
 console.log('\nthe secondary currency')
 eq('LBP total is rounded to the nearest 100',
    find(rows, 'Total LBP').right, (Math.round(4 * 89500 / 100) * 100).toLocaleString('en-US'))
