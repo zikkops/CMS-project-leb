@@ -270,12 +270,27 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
   - **The pilot.** One section of one branch, the old till still taking
     payment. That constraint is what makes v1 safe to ship badly.
 
-- **04 (POS v2): slices 1–5 of 7 built; payment is behind the `payments`
+- **04 (POS v2): slices 1–6 of 7 built; payment is behind the `payments`
   switch — off.** The plan, its order and the owner's decisions are in the
   Phase 04 note. Built: taking payment (cash USD / cash LBP / card, split
   tender, change), closing only when paid, payments on the receipt; VAT;
-  splitting a bill; the branch cash drawer; End of Day fed by it; and
-  loyalty points credited at the till.
+  splitting a bill; the branch cash drawer; End of Day fed by it; loyalty
+  points credited at the till; and managers' discounts. Left: offline.
+  - **Discounts (slice 6), owner's decisions 12 Sep 2026: managers and
+    admins only, from their own phone** — the signed-in session IS the
+    approval; no PIN. Four kinds: an item comped (`line.discount`, kind
+    `comp`) or given % off (`percent`); % or a dollar amount off the whole
+    check (`check.discount`). Each carries a reason from `DISCOUNT_REASONS`
+    and who gave it, and is logged. Refused once any payment is on the check.
+  - **The stacking order is the arithmetic, in `lineTotal()` /
+    `checkTotals()`:** staff-meal rate first, then the item discount on what
+    is left, then the whole-check discount on the subtotal, capped so a check
+    never goes below zero. `checkTotals()` keeps `gross`, `discount` (STILL the
+    staff meal — the v1 name) and `net`, and adds `itemDiscounts`, `subtotal`
+    and `checkDiscount`. Everything reads `net`, so payments, the drawer, VAT
+    and loyalty points follow without knowing discounts exist. Seat shares
+    spread a whole-check discount by largest remainder so they still sum to
+    `net`.
   - **Loyalty at payment (slice 5), owner's decisions 12 Sep 2026: a QR in
     the customer's app, and points land straight away.** The code is random
     (`shared/src/memberCode.ts`), never the uid, and lives only server-side in

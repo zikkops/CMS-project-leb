@@ -127,6 +127,50 @@ export function voidReason(key: string): VoidReasonDef | undefined {
   return VOID_REASONS.find(r => r.key === key)
 }
 
+// ── Discounts (Phase 04, slice 6) ──────────────────────────────────────────
+// Owner's decisions, 12 Sep 2026: four kinds — % off the whole check, a fixed
+// amount off it, an item comped, % off one item. Managers and admins only; a
+// barista gives nothing. The manager applies it from their own phone, so
+// their login IS the approval. Every one carries a reason from this list.
+
+export interface DiscountReasonDef { key: string; label: string }
+
+export const DISCOUNT_REASONS: DiscountReasonDef[] = [
+  { key: 'complaint', label: 'Complaint — something went wrong' },
+  { key: 'regular', label: 'Regular or friend of the house' },
+  { key: 'promotion', label: 'Promotion' },
+  { key: 'wait', label: 'Long wait' },
+  { key: 'other', label: 'Other' },
+]
+
+export function discountReason(key: string): DiscountReasonDef | undefined {
+  return DISCOUNT_REASONS.find(r => r.key === key)
+}
+
+/** On one line: made free, or a percentage off that item. */
+export interface LineDiscount {
+  kind: 'comp' | 'percent'
+  /** Fraction off, 0–1. A comp is 1. */
+  percent: number
+  reasonKey: string
+  note: string
+  by: string
+  byEmail: string
+}
+
+/** On the whole check: a percentage, or a fixed amount in the main currency. */
+export interface CheckDiscount {
+  kind: 'percent' | 'amount'
+  /** A fraction 0–1 for 'percent'; dollars for 'amount'. */
+  value: number
+  reasonKey: string
+  note: string
+  by: string
+  byEmail: string
+}
+
+const clamp01 = (n: number) => (Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0)
+
 export interface CheckLine {
   /** Stable for the life of the check — edits, voids and tickets all cite it. */
   id: string
@@ -178,6 +222,8 @@ export interface CheckLine {
   /** Copied from the reason, so a later change to the list cannot re-classify
    *  a void that already happened. */
   voidWasWaste: boolean | null
+  /** A manager's comp or percentage off this one item (slice 6). Absent: none. */
+  discount?: LineDiscount | null
 }
 
 /**
@@ -247,6 +293,12 @@ export interface Check {
   loyaltyPoints?: number
   /** The approved transaction those points were written as, so a refund can mark it reversed. */
   loyaltyTxId?: string
+  /**
+   * A manager's discount on the whole check (slice 6), taken off after any
+   * item discounts. Kept separate from staffDiscount, which is a fixed policy
+   * rate rather than somebody's discretion, and keeps its own meaning.
+   */
+  discount?: CheckDiscount | null
 }
 
 // ── Bounds ────────────────────────────────────────────────────────────────
@@ -306,7 +358,24 @@ export function grossLineTotal(line: CheckLine): number {
  * silently the wrong one.
  */
 export function lineTotal(line: CheckLine, discount: StaffDiscount | null = null): number {
-  return Math.round((grossLineTotal(line) - lineDiscount(line, discount)) * 100) / 100
+  const afterStaff = Math.round((grossLineTotal(line) - lineDiscount(line, discount)) * 100) / 100
+  // A manager's item discount comes off what is left after the staff rate, so
+  // the two never add up to more than the line (slice 6). A comp is free.
+  const d = line.discount
+  if (!d || line.status === 'void') return afterStaff
+  if (d.kind === 'comp') return 0
+  return Math.round(afterStaff * (1 - clamp01(d.percent)) * 100) / 100
+}
+
+/**
+ * What a whole-check discount takes off a subtotal: a percentage of it, or a
+ * fixed amount — never more than the subtotal, so a check cannot go below
+ * zero and nobody is handed money back for eating.
+ */
+export function checkDiscountAmount(subtotal: number, d: CheckDiscount | null | undefined): number {
+  if (!d || !(subtotal > 0)) return 0
+  const raw = d.kind === 'percent' ? subtotal * clamp01(d.value) : Math.max(0, Number(d.value) || 0)
+  return Math.round(Math.min(raw, subtotal) * 100) / 100
 }
 
 /**
@@ -321,11 +390,17 @@ export function orderedTotal(lines: CheckLine[], discount: StaffDiscount | null 
 }
 
 export interface CheckTotals {
-  /** Before any staff discount. */
+  /** Before any discount. */
   gross: number
-  /** What the discount took off. Zero on an ordinary check. */
+  /** What the STAFF MEAL took off. Zero on an ordinary check. Name kept from v1. */
   discount: number
-  /** What is owed, before VAT and service — those are Phase 04. */
+  /** What managers' comps and item percentages took off (slice 6). */
+  itemDiscounts: number
+  /** After the staff meal and item discounts: the sum of lineTotal(). */
+  subtotal: number
+  /** What a manager's whole-check discount took off the subtotal (slice 6). */
+  checkDiscount: number
+  /** What is owed. VAT is inside it — prices include VAT. */
   net: number
 }
 
@@ -371,11 +446,16 @@ export function reconcilePendingBatch(
   return mine.some(l => l.status === 'draft') ? 'landed' : 'sent'
 }
 
-export function checkTotals(check: Pick<Check, 'lines' | 'staffDiscount'>): CheckTotals {
-  const gross = Math.round(check.lines.reduce((s, l) => s + grossLineTotal(l), 0) * 100) / 100
-  const discount = Math.round(
-    check.lines.reduce((s, l) => s + lineDiscount(l, check.staffDiscount), 0) * 100) / 100
-  return { gross, discount, net: Math.round((gross - discount) * 100) / 100 }
+export function checkTotals(
+  check: Pick<Check, 'lines' | 'staffDiscount'> & Partial<Pick<Check, 'discount'>>,
+): CheckTotals {
+  const r2 = (n: number) => Math.round(n * 100) / 100
+  const gross = r2(check.lines.reduce((s, l) => s + grossLineTotal(l), 0))
+  const discount = r2(check.lines.reduce((s, l) => s + lineDiscount(l, check.staffDiscount), 0))
+  const subtotal = r2(check.lines.reduce((s, l) => s + lineTotal(l, check.staffDiscount), 0))
+  const itemDiscounts = r2(gross - discount - subtotal)
+  const checkDiscount = checkDiscountAmount(subtotal, check.discount)
+  return { gross, discount, itemDiscounts, subtotal, checkDiscount, net: r2(subtotal - checkDiscount) }
 }
 
 // ── Reading a check ────────────────────────────────────────────────────────

@@ -29,6 +29,7 @@ import { useFeature } from '@big-cms/shared/useFeatures'
 import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
 import PaySheet from './PaySheet'
 import CustomerSheet from './CustomerSheet'
+import DiscountSheet from './DiscountSheet'
 import {
   validateSelection, selectionLabel, lineUnitPrice, describeSelections,
   type ModifierGroup,
@@ -375,7 +376,10 @@ function ModifierSheet({
 }
 
 export default function CheckPage() {
-  const { checking, blocked } = useRequireRole(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
+  const { checking, blocked, role } = useRequireRole(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
+  // Discounts are a manager's or an admin's (owner's decision, 12 Sep 2026).
+  // Hiding the buttons is courtesy; the server refuses anyone else regardless.
+  const canDiscount = role === 'admin' || role === 'manager'
   const isMobile = useIsMobile()
   const router = useRouter()
   const params = useParams<{ id: string }>()
@@ -410,6 +414,7 @@ export default function CheckPage() {
   const [closing, setClosing] = useState(false)
   const [paying, setPaying] = useState(false)
   const [addingCustomer, setAddingCustomer] = useState(false)
+  const [discounting, setDiscounting] = useState<null | { mode: 'check' } | { mode: 'line'; lineId: string }>(null)
   const [moveTo, setMoveTo] = useState('')
 
   // ── An unsettled send ────────────────────────────────────────────────────
@@ -847,6 +852,20 @@ export default function CheckPage() {
                 : 'Not sent yet.'}
             </p>
 
+            {/* A manager's comp or item discount — before any payment only. */}
+            {canDiscount && (check.payments ?? []).length === 0 && (
+              <button
+                onClick={() => { const id = lineMenu.id; setLineMenu(null); setDiscounting({ mode: 'line', lineId: id }) }}
+                style={{
+                  ...tap, width: '100%', marginBottom: '1.1rem', backgroundColor: 'transparent',
+                  border: `1px solid ${lineMenu.discount ? 'var(--teal)' : 'rgba(255,255,255,0.14)'}`,
+                  color: lineMenu.discount ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.8)',
+                }}
+              >{lineMenu.discount
+                ? `${lineMenu.discount.kind === 'comp' ? 'On the house' : `${Math.round(lineMenu.discount.percent * 100)}% off`} — change`
+                : 'Comp or discount this item'}</button>
+            )}
+
             <p style={{
               fontSize: '0.64rem', letterSpacing: '0.14em', textTransform: 'uppercase',
               color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.5rem',
@@ -928,6 +947,21 @@ export default function CheckPage() {
               height: '1px', background: 'rgba(255,255,255,0.08)', margin: '1.2rem 0',
             }} />
 
+            {canDiscount && (check.payments ?? []).length === 0 && (
+              <button
+                onClick={() => { setActions(false); setDiscounting({ mode: 'check' }) }}
+                style={{
+                  ...tap, width: '100%', marginBottom: '0.6rem', backgroundColor: 'transparent',
+                  border: `1px solid ${check.discount ? 'var(--teal)' : 'rgba(255,255,255,0.14)'}`,
+                  color: check.discount ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.7)',
+                }}
+              >{check.discount
+                ? `${check.discount.kind === 'percent'
+                    ? `${Math.round(check.discount.value * 100)}% off the check`
+                    : `$${check.discount.value.toFixed(2)} off the check`} — change`
+                : 'Discount the check'}</button>
+            )}
+
             {loyaltyOn && (
               <button
                 onClick={() => { setActions(false); setAddingCustomer(true) }}
@@ -995,6 +1029,21 @@ export default function CheckPage() {
           </div>
         </div>
       )}
+
+      {discounting && (() => {
+        // Read from the live check, so the sheet shows the discount as it is
+        // now — another manager may have changed it a moment ago.
+        const line = discounting.mode === 'line' ? check.lines.find(l => l.id === discounting.lineId) : undefined
+        if (discounting.mode === 'line' && !line) return null
+        return (
+          <DiscountSheet
+            target={line
+              ? { mode: 'line', checkId, line }
+              : { mode: 'check', checkId, current: check.discount ?? null }}
+            onDone={() => setDiscounting(null)}
+          />
+        )
+      })()}
 
       {addingCustomer && (
         <CustomerSheet check={check} onDone={() => setAddingCustomer(false)} />

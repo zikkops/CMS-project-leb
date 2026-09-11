@@ -229,6 +229,46 @@ console.log('\ncheckTotals — the discount is its own figure, not folded in')
   eq('gross minus discount is net', +(staff.gross - staff.discount).toFixed(2), staff.net)
 }
 
+console.log('\ndiscounts — a manager\'s, each its own figure (slice 6)')
+{
+  const who = { reasonKey: 'complaint', note: '', by: 'm', byEmail: 'm@x' }
+  const comp = { kind: 'comp', percent: 1, ...who }
+  const half = { kind: 'percent', percent: 0.5, ...who }
+  eq('a comped line costs nothing', C.lineTotal(line({ unitPrice: 9, discount: comp })), 0)
+  eq('50% off one $9 item is $4.50', C.lineTotal(line({ unitPrice: 9, discount: half })), 4.5)
+  eq('a voided line stays zero, discount or not',
+     C.lineTotal(line({ unitPrice: 9, status: 'void', voidReason: 'x', discount: half })), 0)
+  const staffDisc = { food: 0.7, drink: 0.5, appliedBy: 'u', appliedByEmail: 'u@x' }
+  // $3 drink: the staff meal's 50% leaves $1.50, then the manager's 50% of
+  // what is left — $0.75. The two can never add up to more than the line.
+  eq('THE STACK: an item discount comes off what the staff meal left',
+     C.lineTotal(line({ station: 'Bar', unitPrice: 3, discount: half }), staffDisc), 0.75)
+
+  const lines = [
+    line({ id: 'a', unitPrice: 10 }),
+    line({ id: 'b', unitPrice: 6, discount: comp }),
+    line({ id: 'c', unitPrice: 4, discount: half }),
+  ]
+  const t = C.checkTotals({ lines, staffDiscount: null, discount: { kind: 'percent', value: 0.1, ...who } })
+  eq('gross is before every discount', t.gross, 20)
+  eq('item discounts: the $6 comp and $2 off', t.itemDiscounts, 8)
+  eq('subtotal after items', t.subtotal, 12)
+  eq('10% off the check comes off the subtotal', t.checkDiscount, 1.2)
+  eq('net is what is owed', t.net, 10.8)
+  eq('THE SUM: every discount is accounted for',
+     +(t.gross - t.discount - t.itemDiscounts - t.checkDiscount).toFixed(2), t.net)
+  const big = C.checkTotals({ lines: [line({ unitPrice: 4 })], staffDiscount: null, discount: { kind: 'amount', value: 50, ...who } })
+  eq('a fixed amount never takes a check below zero', [big.checkDiscount, big.net], [4, 0])
+  eq('$5 off a $20 check',
+     C.checkTotals({ lines: [line({ unitPrice: 20 })], staffDiscount: null, discount: { kind: 'amount', value: 5, ...who } }).net, 15)
+  eq('a percentage over 100% is read as 100%, not a refund',
+     C.checkDiscountAmount(10, { kind: 'percent', value: 3, ...who }), 10)
+  eq('no discount: nothing off', C.checkDiscountAmount(10, null), 0)
+  eq('an ordinary check: no discount figures at all',
+     (({ itemDiscounts, checkDiscount }) => [itemDiscounts, checkDiscount])(C.checkTotals({ lines: [line()], staffDiscount: null })), [0, 0])
+  eq('every reason has a key and a label', C.DISCOUNT_REASONS.every(r => r.key && r.label), true)
+}
+
 // ── The same order twice ───────────────────────────────────────────────────
 // A Send whose reply is lost had an unknown outcome, and resending blind put
 // the lines on the check twice — the kitchen cooked the order twice.

@@ -14,6 +14,7 @@ import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/sha
 import {
   parseLineRequests, parseBatchKey, openCheck, addLines, sendCheck, voidLine, moveCheck, closeCheck,
   setStaffMeal, refundCheck, addPayment, parsePaymentRequest, parsePaymentKey, setLoyaltyCustomer,
+  setLineDiscount, setCheckDiscount, parseDiscountInput,
 } from '@big-cms/shared/server/checks'
 import { logActivity } from '@big-cms/shared/server/activityLog'
 
@@ -109,6 +110,19 @@ export async function PATCH(request: Request): Promise<Response> {
         await logActivity(caller, 'update', 'POS', on
           ? `Staff meal on a check — ${Math.round(r.food * 100)}% off food, ${Math.round(r.drink * 100)}% off drinks`
           : 'Staff meal removed from a check')
+        return Response.json({ ok: true, ...r })
+      }
+      case 'lineDiscount':
+      case 'checkDiscount': {
+        // Logged, every one, with its reason: a discount is somebody's
+        // discretion over the café's money, and it is the entry a manager's
+        // manager asks about. Managers and admins only — checked inside.
+        const input = parseDiscountInput(body)
+        const r = body.action === 'lineDiscount'
+          ? await setLineDiscount(caller, checkId, String(body.lineId ?? ''), input)
+          : await setCheckDiscount(caller, checkId, input)
+        await logActivity(caller, 'update', 'POS',
+          `${r.label} — table ${r.tableNumber}` + (input ? ` — ${input.reasonKey}${input.note ? `: ${input.note}` : ''}` : ''))
         return Response.json({ ok: true, ...r })
       }
       case 'customer': {

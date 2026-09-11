@@ -192,6 +192,19 @@ eq('no VAT line on a check that never recorded a rate',
 eq('a zero-rated day says so rather than hiding it',
    find(R.buildReceipt(ten({ vatRate: 0 }), opts), 'Incl. VAT 0%').right, '0.00')
 
+console.log('\ndiscounts on the receipt — each its own line (slice 6)')
+const mgr = { reasonKey: 'complaint', note: '', by: 'm', byEmail: 'm@x' }
+const discounted = R.buildReceipt(check({
+  lines: [line({ unitPrice: 10 }), line({ id: 'l2', name: 'Cake', unitPrice: 5, discount: { kind: 'comp', percent: 1, ...mgr } })],
+  discount: { kind: 'percent', value: 0.2, ...mgr },
+}), opts)
+eq('the subtotal is the full price', find(discounted, 'Subtotal').right, '15.00')
+eq('the comp is its own line', find(discounted, 'Item discounts').right, '-5.00')
+eq('...and is named under the item', discounted.some(r => r.kind === 'left' && r.text.includes('On the house')), true)
+eq('20% off the check is its own line', find(discounted, 'Discount 20%').right, '-2.00')
+eq('the total is what is owed', find(discounted, 'Total USD').right, '8.00')
+eq('no discount lines on an ordinary check', ['Item discounts', 'Discount'].map(l => find(rows, l)), [undefined, undefined])
+
 console.log('\nthe secondary currency')
 eq('LBP total is rounded to the nearest 100',
    find(rows, 'Total LBP').right, (Math.round(4 * 89500 / 100) * 100).toLocaleString('en-US'))

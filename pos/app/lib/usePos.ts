@@ -657,6 +657,30 @@ export async function setCheckCustomer(
   return data as unknown as { name: string | null; tier: string | null }
 }
 
+/** What a manager asks for. Checked on the server, which also decides who may. */
+export interface DiscountRequest {
+  kind: 'comp' | 'percent' | 'amount'
+  /** A fraction 0–1 for a percentage; dollars for an amount; ignored for a comp. */
+  value: number
+  reasonKey: string
+  note: string
+}
+
+/**
+ * Comps an item or takes a percentage off it; null takes the discount off.
+ * Safe to repeat: it sets a value, so a retry after a lost reply is the same state.
+ */
+export async function discountLine(checkId: string, lineId: string, d: DiscountRequest | null): Promise<void> {
+  await unwrap(await authedFetch('/api/pos/checks', 'PATCH',
+    { checkId, action: 'lineDiscount', lineId, discount: d }, { timeoutMs: POS_TIMEOUT_MS }))
+}
+
+/** A percentage or an amount off the whole check; null takes it off. */
+export async function discountCheck(checkId: string, d: DiscountRequest | null): Promise<void> {
+  await unwrap(await authedFetch('/api/pos/checks', 'PATCH',
+    { checkId, action: 'checkDiscount', discount: d }, { timeoutMs: POS_TIMEOUT_MS }))
+}
+
 export async function closeCheck(checkId: string): Promise<void> {
   await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'close' }))
 }

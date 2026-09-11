@@ -198,6 +198,19 @@ eq('nothing to fill on a settled check', P.fillAmount(5, P.balance(10, applied(8
 const fill = P.fillAmount(S.splitEvenly(10, 3)[0], owed10, { tender: 'card', currency: 'USD' }, RATE)
 eq('an even share filled on a card is accepted by applyPayment', pay(10, [], card('USD', fill)).ok, true)
 
+console.log('\nsplit with a whole-check discount — still sums to the bill (slice 6)')
+const mgr = { reasonKey: 'regular', note: '', by: 'm', byEmail: 'm@x' }
+const discTable = { ...table, discount: { kind: 'percent', value: 0.1, ...mgr } }
+const dSeats = S.sharesBySeat(discTable)
+eq('THE SUM of the seat shares is the discounted bill', sum(dSeats.map(s => s.usd)), C.checkTotals(discTable).net)
+eq('each seat carries its share of it: seat 2\'s $12 is $10.80', dSeats.find(s => s.seat === 2).usd, 10.8)
+eq('by item, the chosen lines carry the same proportion: $4 is $3.60', S.shareForLines(discTable, ['a']), 3.6)
+const oddTable = {
+  staffDiscount: null, discount: { kind: 'amount', value: 1, ...mgr },
+  lines: [ln({ id: 'x', seat: 1, unitPrice: 1 }), ln({ id: 'y', seat: 2, unitPrice: 1 }), ln({ id: 'z', seat: 3, unitPrice: 1 })],
+}
+eq('$1 off three $1 seats still sums to exactly $2.00', sum(S.sharesBySeat(oddTable).map(s => s.usd)), 2)
+
 // ── Slice 4: the branch drawer ─────────────────────────────────────────────
 const D = await import(`file://${join(out, 'drawer.js')}`)
 const float = { usd: 50, lbp: 200_000 }

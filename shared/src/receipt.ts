@@ -180,16 +180,39 @@ export function buildReceipt(check: Check, opts: ReceiptOptions): ReceiptRow[] {
     })
     const detail = lineDetail(line)
     if (detail) rows.push({ kind: 'left', text: `  ${detail}` })
+    // A manager's comp or item discount, named under the line it applies to.
+    // The line still shows its price: what was taken off is the next block.
+    if (line.discount) {
+      rows.push({
+        kind: 'left',
+        text: line.discount.kind === 'comp'
+          ? '  On the house'
+          : `  ${+(line.discount.percent * 100).toFixed(2)}% off`,
+      })
+    }
   }
 
   rows.push({ kind: 'rule' })
 
+  // Every discount is its own line, never folded into the total — the same
+  // reasoning checkTotals() gives for returning them separately. A discount
+  // that quietly prints a smaller number is a discount nobody can audit.
+  if (totals.discount > 0 || totals.itemDiscounts > 0 || totals.checkDiscount > 0) {
+    rows.push({ kind: 'pair', left: 'Subtotal', right: money(totals.gross) })
+  }
   if (totals.discount > 0) {
-    // Shown as its own line, never folded into the total — the same reasoning
-    // checkTotals() gives for returning it separately. A staff meal that
-    // quietly prints a smaller number is a staff meal nobody can audit.
-    rows.push({ kind: 'pair', left: 'Subtotal',      right: money(totals.gross) })
     rows.push({ kind: 'pair', left: 'Staff discount', right: `-${money(totals.discount)}` })
+  }
+  if (totals.itemDiscounts > 0) {
+    rows.push({ kind: 'pair', left: 'Item discounts', right: `-${money(totals.itemDiscounts)}` })
+  }
+  if (totals.checkDiscount > 0) {
+    const d = check.discount
+    rows.push({
+      kind: 'pair',
+      left: d?.kind === 'percent' ? `Discount ${+(d.value * 100).toFixed(2)}%` : 'Discount',
+      right: `-${money(totals.checkDiscount)}`,
+    })
   }
 
   rows.push({

@@ -11,13 +11,30 @@
 // that nobody was asked for.
 
 import {
-  lineTotal, linesForSeat, seatsUsed,
+  checkTotals, lineTotal, linesForSeat, seatsUsed,
   type Check,
 } from './checks'
 
-type Priced = Pick<Check, 'lines' | 'staffDiscount'>
+type Priced = Pick<Check, 'lines' | 'staffDiscount'> & Partial<Pick<Check, 'discount'>>
 
 const toCents = (n: number) => Math.round(n * 100)
+
+/**
+ * Shares (in cents) scaled so they sum to exactly `targetCents` — a whole-check
+ * discount spread over them in proportion (slice 6). Largest remainder, so the
+ * cents that do not divide go to the shares that lost most to rounding, and
+ * the seat shares still add up to the bill.
+ */
+function spreadTo(cents: number[], targetCents: number): number[] {
+  const total = cents.reduce((a, b) => a + b, 0)
+  if (total <= 0 || total === targetCents) return cents
+  const exact = cents.map(c => (c * targetCents) / total)
+  const floors = exact.map(Math.floor)
+  let left = targetCents - floors.reduce((a, b) => a + b, 0)
+  const order = exact.map((e, i) => ({ i, frac: e - floors[i] })).sort((a, b) => b.frac - a.frac)
+  for (const { i } of order) { if (left <= 0) break; floors[i]++; left-- }
+  return floors
+}
 
 /**
  * A total divided N ways, to the cent, adding up to exactly the total.
@@ -61,13 +78,21 @@ export function sharesBySeat(check: Priced): SeatShare[] {
   const out = seatsUsed(check.lines).map(share)
   const table = share(null)
   if (table.items > 0) out.push(table)
-  return out
+  // A whole-check discount belongs to everyone at the table, in proportion.
+  const net = toCents(checkTotals(check).net)
+  const spread = spreadTo(out.map(s => toCents(s.usd)), net)
+  return out.map((s, i) => ({ ...s, usd: spread[i] / 100 }))
 }
 
 /** What a chosen set of lines comes to, after any staff discount. Voided and unknown lines count for nothing. */
 export function shareForLines(check: Priced, lineIds: readonly string[]): number {
   const chosen = new Set(lineIds)
-  return check.lines
+  const cents = check.lines
     .filter(l => chosen.has(l.id) && l.status !== 'void')
-    .reduce((c, l) => c + toCents(lineTotal(l, check.staffDiscount)), 0) / 100
+    .reduce((c, l) => c + toCents(lineTotal(l, check.staffDiscount)), 0)
+  // The same proportion of any whole-check discount the chosen items carry.
+  const t = checkTotals(check)
+  return t.subtotal > 0 && t.checkDiscount > 0
+    ? Math.round(cents * (t.net / t.subtotal)) / 100
+    : cents / 100
 }

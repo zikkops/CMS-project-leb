@@ -20,8 +20,8 @@ import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
 import {
   CHECK_LIMITS, stationForSection, voidReason, BATCH_KEY_PATTERN, batchAlreadyApplied,
-  checkTotals, closeBlockedReason,
-  type Check, type CheckLine, type LineSource,
+  checkTotals, closeBlockedReason, discountReason,
+  type Check, type CheckLine, type LineSource, type LineDiscount, type CheckDiscount,
 } from '../checks'
 import {
   applyPayment, balance, PAYMENT_KEY_PATTERN,
@@ -726,6 +726,134 @@ export async function setLoyaltyCustomer(
       loyalty: member ? { uid: member.uid, name: member.name } : null,
     })
     return { tableNumber: check.tableNumber, name: member?.name ?? null, tier: member?.tier ?? null }
+  })
+}
+
+// ── Discounts (slice 6) ────────────────────────────────────────────────────
+// Owner's decisions, 12 Sep 2026: managers and admins only, applied from the
+// manager's own phone — their signed-in session IS the approval, so there is
+// no PIN and no second step. Every discount names a reason and who gave it.
+
+export interface DiscountInput {
+  kind: string
+  /** A fraction 0–1 for a percentage; dollars for an amount; ignored for a comp. */
+  value: number
+  reasonKey: string
+  note: string
+}
+
+/** The discount in the request, or null to take one off. Shape only — the functions below judge it. */
+export function parseDiscountInput(body: Record<string, unknown>): DiscountInput | null {
+  const raw = body.discount
+  if (raw === null || raw === undefined || raw === '') return null
+  if (typeof raw !== 'object') throw new HttpError(400, 'Invalid discount.')
+  const r = raw as Record<string, unknown>
+  return {
+    kind: String(r.kind ?? ''),
+    value: Number(r.value),
+    reasonKey: String(r.reasonKey ?? ''),
+    note: String(r.note ?? '').trim().slice(0, CHECK_LIMITS.noteLength),
+  }
+}
+
+function assertCanDiscount(caller: Caller): void {
+  if (caller.role !== 'admin' && caller.role !== 'manager') {
+    throw new HttpError(403, 'Only a manager or an admin can give a discount — ask one to do it from their phone.')
+  }
+}
+
+function assertReason(key: string): void {
+  if (!discountReason(key)) throw new HttpError(400, 'Choose a reason for the discount.')
+}
+
+/**
+ * Only an open check, and only before any payment: a discount after money has
+ * been taken would leave the check paid more than it now owes, with nothing
+ * in the till's model to hand the difference back.
+ */
+function assertDiscountable(check: Check): void {
+  if (check.status !== 'open') throw new HttpError(409, 'A discount can only go on an open check.')
+  if ((check.payments ?? []).length > 0) {
+    throw new HttpError(409, 'Give discounts before taking payment — this check already has one.')
+  }
+}
+
+/** Comps one item, or takes a percentage off it; null takes the discount off. */
+export async function setLineDiscount(
+  caller: Caller,
+  checkId: string,
+  lineId: string,
+  input: DiscountInput | null,
+): Promise<{ tableNumber: number; label: string }> {
+  assertCanDiscount(caller)
+  let discount: LineDiscount | null = null
+  if (input) {
+    assertReason(input.reasonKey)
+    const who = { reasonKey: input.reasonKey, note: input.note, by: caller.uid, byEmail: caller.email ?? '' }
+    if (input.kind === 'comp') {
+      discount = { kind: 'comp', percent: 1, ...who }
+    } else if (input.kind === 'percent') {
+      if (!(input.value > 0 && input.value <= 1)) {
+        throw new HttpError(400, 'A percentage off must be more than 0% and at most 100%.')
+      }
+      discount = { kind: 'percent', percent: Math.round(input.value * 10_000) / 10_000, ...who }
+    } else {
+      throw new HttpError(400, 'An item can be comped or given a percentage off.')
+    }
+  }
+
+  const db = adminDb()
+  return db.runTransaction(async tx => {
+    const check = await readCheck(tx, checkId)
+    assertDiscountable(check)
+    const line = check.lines.find(l => l.id === lineId)
+    if (!line) throw new HttpError(404, 'That item is no longer on the check.')
+    if (line.status === 'void') throw new HttpError(409, 'That item was voided — there is nothing to discount.')
+    tx.update(db.doc(`${CHECKS}/${checkId}`), {
+      lines: check.lines.map(l => (l.id === lineId ? { ...l, discount } : l)),
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+    const what = !discount ? 'Discount removed from' : discount.kind === 'comp' ? 'Comped' : `${Math.round(discount.percent * 100)}% off`
+    return { tableNumber: check.tableNumber, label: `${what} ${line.name}` }
+  })
+}
+
+/** A percentage or a fixed amount off the whole check; null takes it off. */
+export async function setCheckDiscount(
+  caller: Caller,
+  checkId: string,
+  input: DiscountInput | null,
+): Promise<{ tableNumber: number; label: string }> {
+  assertCanDiscount(caller)
+  let discount: CheckDiscount | null = null
+  if (input) {
+    assertReason(input.reasonKey)
+    const who = { reasonKey: input.reasonKey, note: input.note, by: caller.uid, byEmail: caller.email ?? '' }
+    if (input.kind === 'percent') {
+      if (!(input.value > 0 && input.value <= 1)) {
+        throw new HttpError(400, 'A percentage off must be more than 0% and at most 100%.')
+      }
+      discount = { kind: 'percent', value: Math.round(input.value * 10_000) / 10_000, ...who }
+    } else if (input.kind === 'amount') {
+      const v = input.value
+      if (!(v > 0) || v > 100_000 || Math.abs(v * 100 - Math.round(v * 100)) > 1e-6) {
+        throw new HttpError(400, 'An amount off must be a real amount of dollars, to the cent.')
+      }
+      discount = { kind: 'amount', value: v, ...who }
+    } else {
+      throw new HttpError(400, 'A check can have a percentage or an amount taken off.')
+    }
+  }
+
+  const db = adminDb()
+  return db.runTransaction(async tx => {
+    const check = await readCheck(tx, checkId)
+    assertDiscountable(check)
+    tx.update(db.doc(`${CHECKS}/${checkId}`), { discount, updatedAt: FieldValue.serverTimestamp() })
+    const what = !discount ? 'Discount removed from the check'
+      : discount.kind === 'percent' ? `${Math.round(discount.value * 100)}% off the check`
+      : `$${discount.value.toFixed(2)} off the check`
+    return { tableNumber: check.tableNumber, label: what }
   })
 }
 
