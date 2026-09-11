@@ -160,8 +160,33 @@ export function useAdminUser() {
       }
       setAdminSessionCookie()
       setUser(u)
-      const snap = await getDoc(doc(db, 'users', u.uid))
-      const data = snap.exists() ? snap.data() : null
+      let data: Record<string, unknown> | null = null
+      try {
+        const snap = await getDoc(doc(db, 'users', u.uid))
+        data = snap.exists() ? (snap.data() as Record<string, unknown>) : null
+      } catch (err) {
+        // One read, and it can fail: offline with this document not in the
+        // cache, getDoc REJECTS rather than resolving to nothing. Unhandled,
+        // that left `loading` true for the life of the page — so every guarded
+        // page rendered nothing at all, forever, with no error on screen and
+        // nothing in the console anybody would look at. The counter device
+        // (Phase 04, slice 7) is the one that meets this on purpose.
+        //
+        // "Could not read it" is not "not provisioned": that path signs the
+        // user out, and failing to read a document is no grounds for that.
+        // So it stays provisioned, with no role — pages say the person has no
+        // access, which is at least an answer somebody can act on.
+        console.error('[useAdminUser] could not read the staff record:', err)
+        setRole(null)
+        setBranchIds([])
+        setOrderDepts([])
+        setSectionGrants([])
+        setSectionRevocations([])
+        setSuperadmin(false)
+        setProvisioned(true)
+        setLoading(false)
+        return
+      }
       await refreshStaleClaims(u, data)
       if (data?.isStaff === true) {
         const roleVal = (data.role as Role) ?? null

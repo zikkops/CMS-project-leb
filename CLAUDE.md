@@ -39,6 +39,7 @@ npm run verify:brand         # if you touched a colour, a variable or brand.ts
 npm run verify:printing      # if you touched printers or the print seam
 npm run verify:dates         # if you touched an event date or what "today" means
 npm run verify:payments      # if you touched a payment, tender, change or the bill rate
+npm run verify:offline       # if you touched the counter device's outbox or what it sends
 npm run verify:delivery-math # if you touched receiving or costing
 npm run audit:writes         # must stay at 0
 ```
@@ -270,12 +271,65 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
   - **The pilot.** One section of one branch, the old till still taking
     payment. That constraint is what makes v1 safe to ship badly.
 
-- **04 (POS v2): slices 1–6 of 7 built; payment is behind the `payments`
-  switch — off.** The plan, its order and the owner's decisions are in the
-  Phase 04 note. Built: taking payment (cash USD / cash LBP / card, split
-  tender, change), closing only when paid, payments on the receipt; VAT;
+- **04 (POS v2): all seven slices built, none piloted; payment is behind the
+  `payments` switch — off.** The plan, its order and the owner's decisions are
+  in the Phase 04 note. Built: taking payment (cash USD / cash LBP / card,
+  split tender, change), closing only when paid, payments on the receipt; VAT;
   splitting a bill; the branch cash drawer; End of Day fed by it; loyalty
-  points credited at the till; and managers' discounts. Left: offline.
+  points credited at the till; managers' discounts; and a counter device that
+  keeps trading through an outage.
+  - **Offline is one device and one screen (slice 7), owner's decisions 12 Sep
+    2026: only the counter device**, so there is one queue per branch and never
+    two phones disagreeing about a table; **orders taken offline are recorded
+    as already made**, never fired at the kitchen, because during an outage the
+    kitchen cooked them from a spoken order; and **closing waits for the
+    connection**, so a receipt number is still only ever issued by the server
+    and block reservation is not needed.
+  - **`/pos/counter` is a single screen on purpose.** Tables, the check, the
+    menu and the money, with no navigation anywhere: App Router navigation to
+    `/pos/check/[id]` asks the server for a page, so every other POS screen is
+    a spinner during an outage. It is a client page with no dynamic segment, so
+    it prerenders and the service worker can keep it.
+  - **The offline path is only used when it has to be.** With a connection and
+    nothing already queued for that table, the counter takes the ordinary route
+    — `addLines()` then `sendCheck()` — so the kitchen gets its ticket exactly
+    as from a waiter's phone. A call that gets NO answer falls into the queue
+    carrying the same key it was sent with, so it is neither lost nor applied
+    twice. Anything queued for a check keeps everything after it queued too:
+    going around would put a payment on the server before the items it paid for.
+  - **The outbox is two files, and the split is the point.**
+    `pos/app/lib/outbox.ts` is pure — queue, replay, what a refusal does — with
+    no browser in it, and `npm run verify:offline` asserts it (28 cases,
+    including that a dropped connection resumes where it stopped and that a
+    refusal stops the queue rather than pressing on). `pos/app/lib/useOutbox.ts`
+    is the plumbing: localStorage, the routes, when to retry. Logic that drifts
+    into the second file is logic nothing tests.
+  - **A refusal stops the queue and names itself**, because what follows it is
+    usually for the same table. A person chooses: try again, or drop it —
+    dropping a refused *open* drops everything for that check, dropping a
+    refused payment drops only the payment, since the items are still real.
+  - **The change is worked out twice, and the difference is told.** A device
+    that was offline may not have had the check's rate, so the payment carries
+    the change the counter actually handed over; if the server makes it
+    different, the money has already gone and the screen says the drawer will
+    be short by that much (`changeDiffers()`).
+  - **The service worker is hand-written** — `pos/public/pos/sw.js`, scope
+    `/pos/`, which its location is what buys. HTML network-first (a till
+    showing a stale page is the failure this prevents, not causes),
+    `/_next/static` cache-first, and **nothing from `/api/` ever cached**: a
+    stale answer about money reads exactly like a fresh one. Next's own PWA
+    guide suggests Serwist for offline, which needs webpack; this builds with
+    Turbopack. Bump `VERSION` when changing it — and the no-store header on
+    `/pos/sw.js` in `next.config.ts` is load-bearing, because a device that
+    caches the worker keeps serving old code from it forever.
+  - **`useAdminUser()` reads the staff record with a one-shot `getDoc`, and
+    that can reject** — offline with the document not cached. Nothing caught
+    it, so `loading` stayed true and every guarded page rendered nothing,
+    forever, with no error anywhere. It is caught now, and treated as "no role
+    known", never as "not provisioned", which signs the user out. The counter
+    screen does not use that gate at all: it checks only that somebody is
+    signed in, because every route it calls is behind `requireSection('pos')`
+    on the server, which is where access has always actually been decided.
   - **Discounts (slice 6), owner's decisions 12 Sep 2026: managers and
     admins only, from their own phone** — the signed-in session IS the
     approval; no PIN. Four kinds: an item comped (`line.discount`, kind

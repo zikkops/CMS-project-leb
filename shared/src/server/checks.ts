@@ -335,10 +335,26 @@ async function resolveTable(
   return { tableId: onPlan ? onPlan.id : `n:${tableNumber}`, tableNumber }
 }
 
+/**
+ * A phone-made id for a check being opened, if one was sent (Phase 04, 7b).
+ *
+ * The counter device opens tables while offline, and everything it queues
+ * after that — items, payments — has to name the check before the server has
+ * ever seen it. Letting the phone choose the id means those queued actions
+ * need no remapping, and a replayed open is recognised rather than refused.
+ * Same shape and same refusal rule as a batch or payment key.
+ */
+export function parseOpenId(body: Record<string, unknown>): string | null {
+  const raw = body.openId
+  if (raw === undefined || raw === null || raw === '') return null
+  if (typeof raw !== 'string' || !BATCH_KEY_PATTERN.test(raw)) throw new HttpError(400, 'Invalid check id.')
+  return raw
+}
+
 export async function openCheck(
   caller: Caller,
-  input: { branch: string; tableNumber: number; guestCount: number },
-): Promise<{ id: string }> {
+  input: { branch: string; tableNumber: number; guestCount: number; openId?: string | null },
+): Promise<{ id: string; replayed: boolean }> {
   const db = adminDb()
 
   if (!(BRANCHES as readonly string[]).includes(input.branch)) {
@@ -349,6 +365,19 @@ export async function openCheck(
   const table = await resolveTable(input.branch, number)
 
   return db.runTransaction(async tx => {
+    // A replay of an open that already happened returns the same check. Read
+    // first, before the open-table query, and before any write.
+    if (input.openId) {
+      const existing = await tx.get(db.doc(`${CHECKS}/${input.openId}`))
+      if (existing.exists) {
+        const d = existing.data() ?? {}
+        if (d.branch !== input.branch || d.tableId !== table.tableId) {
+          throw new HttpError(409, 'That check id is already in use for another table.')
+        }
+        return { id: existing.id, replayed: true }
+      }
+    }
+
     const open = await tx.get(db.collection(CHECKS)
       .where('branch', '==', input.branch)
       .where('tableId', '==', table.tableId)
@@ -358,7 +387,7 @@ export async function openCheck(
       throw new HttpError(409, `Table ${table.tableNumber} already has an open check.`)
     }
 
-    const ref = db.collection(CHECKS).doc()
+    const ref = input.openId ? db.doc(`${CHECKS}/${input.openId}`) : db.collection(CHECKS).doc()
     tx.set(ref, {
       branch: input.branch,
       tableId: table.tableId,
@@ -374,16 +403,45 @@ export async function openCheck(
       openedAt: FieldValue.serverTimestamp(),
       closedAt: null,
     })
-    return { id: ref.id }
+    return { id: ref.id, replayed: false }
   })
 }
 
-/** Adds priced lines to an open check. They start as drafts. */
+/**
+ * When items were taken during an outage, if the counter device says they
+ * were (Phase 04, 7c) — or null for an ordinary add.
+ *
+ * Only a real instant from the last two days and not from the future: the
+ * time is recorded as when the items were sent, and a check should not be
+ * able to claim it was served next week.
+ */
+export function parseMadeOffline(body: Record<string, unknown>): string | null {
+  const raw = body.madeOfflineAt
+  if (raw === undefined || raw === null || raw === '') return null
+  const t = typeof raw === 'string' ? Date.parse(raw) : Number.NaN
+  const now = Date.now()
+  if (!Number.isFinite(t) || t > now + 5 * 60_000 || t < now - 48 * 3_600_000) {
+    throw new HttpError(400, 'Items taken offline need the time they were taken, within the last two days.')
+  }
+  return new Date(t).toISOString()
+}
+
+/**
+ * Adds priced lines to an open check. They start as drafts — unless they were
+ * taken during an outage.
+ *
+ * `madeOfflineAt` is the owner's decision of 12 Sep 2026: the kitchen made
+ * those orders from spoken or paper tickets while the connection was down, so
+ * on reconnect they are recorded as already made — marked sent at the time
+ * they were taken, with NO kitchen ticket, which would have them cooked twice.
+ * Merchandise still leaves the shelf, exactly as sendCheck() does it.
+ */
 export async function addLines(
   caller: Caller,
   checkId: string,
   requests: LineRequest[],
   batchKey: string | null = null,
+  madeOfflineAt: string | null = null,
 ): Promise<{ added: number; lines: CheckLine[]; duplicate: boolean }> {
   // Priced BEFORE the transaction: it reads menu items, categories and
   // modifier groups, and a transaction may not read after its first write.
@@ -403,8 +461,22 @@ export async function addLines(
     if (check.lines.length + built.length > CHECK_LIMITS.linesPerCheck) {
       throw new HttpError(400, `A check can hold at most ${CHECK_LIMITS.linesPerCheck} items.`)
     }
+    const stamped = built.map(l => ({
+      ...l,
+      ...(batchKey ? { batchKey } : {}),
+      ...(madeOfflineAt ? { status: 'sent' as const, sentAt: madeOfflineAt, madeOffline: true } : {}),
+    }))
+    if (madeOfflineAt) {
+      // Off the shelf now, as a Send would have taken it — see sendCheck().
+      for (const l of stamped) {
+        if (l.source !== 'product') continue
+        tx.update(adminDb().doc(`products/${l.refId}`), {
+          [`stock.${check.branch}`]: FieldValue.increment(-l.quantity),
+        })
+      }
+    }
     tx.update(adminDb().doc(`${CHECKS}/${checkId}`), {
-      lines: [...check.lines, ...(batchKey ? built.map(l => ({ ...l, batchKey })) : built)],
+      lines: [...check.lines, ...stamped],
       updatedAt: FieldValue.serverTimestamp(),
     })
   })

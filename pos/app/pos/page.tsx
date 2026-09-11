@@ -255,6 +255,14 @@ export default function FloorPage() {
                 display: 'inline-block', marginTop: '0.35rem', marginRight: '0.8rem',
               }}>Drawer →</a>
             )}
+            {/* The counter till (slice 7). One screen, and the only one that
+                keeps working through an outage — so it is worth reaching from
+                here rather than only from a home-screen icon. */}
+            <a href="/pos/counter" style={{
+              fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase',
+              color: 'rgba(var(--offwhite-rgb),0.35)', textDecoration: 'none',
+              display: 'inline-block', marginTop: '0.35rem', marginRight: '0.8rem',
+            }}>Counter →</a>
             <a href="/pos/closed" style={{
               fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase',
               color: 'rgba(var(--offwhite-rgb),0.35)', textDecoration: 'none',

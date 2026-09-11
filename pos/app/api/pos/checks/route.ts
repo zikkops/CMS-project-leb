@@ -14,7 +14,7 @@ import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/sha
 import {
   parseLineRequests, parseBatchKey, openCheck, addLines, sendCheck, voidLine, moveCheck, closeCheck,
   setStaffMeal, refundCheck, addPayment, parsePaymentRequest, parsePaymentKey, setLoyaltyCustomer,
-  setLineDiscount, setCheckDiscount, parseDiscountInput,
+  setLineDiscount, setCheckDiscount, parseDiscountInput, parseOpenId, parseMadeOffline,
 } from '@big-cms/shared/server/checks'
 import { logActivity } from '@big-cms/shared/server/activityLog'
 
@@ -47,21 +47,30 @@ export async function POST(request: Request): Promise<Response> {
       throw new HttpError(400, 'Missing check id — items can only be added to an open check.')
     }
     if (checkId) {
-      const result = await addLines(caller, checkId, parseLineRequests(body), parseBatchKey(body))
-      // Deliberately not logged. A service is hundreds of these, and an audit
-      // entry per item would bury every other thing that happened that day.
-      // The check itself is the record of what was ordered.
+      const madeOfflineAt = parseMadeOffline(body)
+      const result = await addLines(caller, checkId, parseLineRequests(body), parseBatchKey(body), madeOfflineAt)
+      // Deliberately not logged, as a rule: a service is hundreds of these, and
+      // an audit entry per item would bury everything else that happened.
+      // The exception is items recorded as made during an outage — the one
+      // path that goes around the kitchen, so the one worth an entry.
+      if (madeOfflineAt && !result.duplicate) {
+        await logActivity(caller, 'create', 'POS',
+          `Recorded ${result.added} item${result.added === 1 ? '' : 's'} taken during an outage at ${madeOfflineAt}`)
+      }
       return Response.json({ ok: true, ...result })
     }
 
-    const { id } = await openCheck(caller, {
+    const { id, replayed } = await openCheck(caller, {
       branch: String(body.branch ?? ''),
       // A number, not an id. A waiter types "7"; whether table 7 is on the
       // floor plan is the server's problem, not the phone's.
       tableNumber: Number(body.tableNumber ?? 0),
       guestCount: Number(body.guestCount ?? 1),
+      // Optional: the counter device names the check itself, so an open
+      // queued offline and replayed later is recognised, not refused (7b).
+      openId: parseOpenId(body),
     })
-    return Response.json({ ok: true, id })
+    return Response.json({ ok: true, id, replayed })
   } catch (err) {
     return toResponse(err)
   }

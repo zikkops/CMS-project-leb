@@ -224,6 +224,12 @@ export interface CheckLine {
   voidWasWaste: boolean | null
   /** A manager's comp or percentage off this one item (slice 6). Absent: none. */
   discount?: LineDiscount | null
+  /**
+   * Taken on the counter device during an outage and recorded on reconnect
+   * as already made (7c) — the kitchen worked from a spoken or paper order,
+   * so no ticket was fired for it. sentAt is when it was taken.
+   */
+  madeOffline?: boolean
 }
 
 /**

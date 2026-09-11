@@ -68,6 +68,18 @@ const nextConfig: NextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
         ],
       },
+      {
+        // The counter device's service worker (Phase 04, slice 7a). Never
+        // cached, and this is load-bearing rather than tidy: a device that
+        // keeps an old copy of this file keeps serving old code from it
+        // forever, and no deploy reaches that till again. It is the one file
+        // that decides what all the others get.
+        source: '/pos/sw.js',
+        headers: [
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+        ],
+      },
     ]
   },
 };
