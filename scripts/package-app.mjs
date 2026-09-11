@@ -26,7 +26,7 @@
 // So the entry point is `admin/server.js`, not `server.js`. Point a host's
 // "startup file" field at the wrong one and it fails with MODULE_NOT_FOUND.
 
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { createRequire } from 'node:module'
@@ -113,6 +113,48 @@ rmSync(out, { recursive: true, force: true })
 mkdirSync(out, { recursive: true })
 
 cpSync(standalone, out, { recursive: true })
+
+// ── Externals Next links to by absolute path ───────────────────────────────
+// serverExternalPackages (firebase-admin, in next.config.ts) are loaded by a
+// hashed alias — `firebase-admin-a14c8a5423a75469/app` — and standalone output
+// provides that alias as a SYMLINK in <app>/.next/node_modules, pointing by
+// absolute path at the repo's own node_modules/firebase-admin. Outside this
+// folder. That works wherever the repo still sits where it was built, which is
+// every laptop, and nowhere else: Hostinger builds in one directory and runs
+// from another, and every API route answered a bare "Internal Server Error"
+// with ERR_MODULE_NOT_FOUND in its runtime log while the pages looked fine.
+//
+// The folder already carries a traced copy of the real package in its own
+// node_modules, so each alias becomes a plain copy of that — no link left for
+// a host's copy step to break, and nothing reaching outside the folder.
+const aliasDir = join(out, app, '.next', 'node_modules')
+if (existsSync(aliasDir)) {
+  const aliases = []
+  for (const entry of readdirSync(aliasDir)) {
+    if (entry.startsWith('@')) {
+      for (const inner of readdirSync(join(aliasDir, entry))) aliases.push(`${entry}/${inner}`)
+    } else {
+      aliases.push(entry)
+    }
+  }
+  for (const alias of aliases) {
+    const name = alias.replace(/-[0-9a-f]{16}$/, '')
+    const real = join(out, 'node_modules', name)
+    if (name === alias || !existsSync(real)) {
+      console.error(`Cannot resolve ${app}/.next/node_modules/${alias} to a package in dist/${app}/node_modules.`)
+      console.error('Refusing to package a folder whose API routes would fail on the server.')
+      process.exit(1)
+    }
+    const dest = join(aliasDir, alias)
+    // unlink, never a recursive delete, when it is a link: on Windows these
+    // can be junctions, and a recursive delete through one empties the
+    // repo's own node_modules/firebase-admin.
+    if (lstatSync(dest).isSymbolicLink()) unlinkSync(dest)
+    else rmSync(dest, { recursive: true, force: true })
+    cpSync(real, dest, { recursive: true, dereference: true })
+  }
+  if (aliases.length) console.log(`Replaced ${aliases.length} external alias link(s) with copies: ${aliases.join(', ')}`)
+}
 
 // The two directories standalone leaves behind. Paths mirror the nesting
 // above: both live under dist/<app>/<app>/, not dist/<app>/.
