@@ -182,6 +182,27 @@ export function applyPayment(
   }
 }
 
+/**
+ * The amount to enter for one person's share, in the money they are paying with.
+ *
+ * Capped at what is still owed: shares are worked out from the whole bill,
+ * and after some have been paid a later one can be larger than what is left —
+ * charging it to a card would be the over-charge applyPayment() refuses.
+ * Lira cash rounds UP to a note, the same as the Exact button; the difference
+ * comes back as change.
+ */
+export function fillAmount(
+  shareUsd: number,
+  b: Balance,
+  pay: Pick<PaymentRequest, 'tender' | 'currency'>,
+  rate: number,
+): number {
+  if (b.settled || !(shareUsd > 0) || !(rate > 0)) return 0
+  if (pay.currency === 'USD') return Math.min(Math.round(shareUsd * 100) / 100, b.remainingUsd)
+  const lbp = Math.min(roundLbpTotal(shareUsd * rate), b.remainingLbp)
+  return pay.tender === 'cash' ? Math.ceil(lbp / CASH_LBP_STEP) * CASH_LBP_STEP : lbp
+}
+
 /** Whether this payment is already on the check. A null key is never deduplicated. */
 export function paymentAlreadyApplied(
   payments: readonly { key: string }[],

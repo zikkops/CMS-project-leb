@@ -270,10 +270,17 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
   - **The pilot.** One section of one branch, the old till still taking
     payment. That constraint is what makes v1 safe to ship badly.
 
-- **04 (POS v2): slices 1–2 of 7 built; payment is behind the `payments`
+- **04 (POS v2): slices 1–3 of 7 built; payment is behind the `payments`
   switch — off.** The plan, its order and the owner's decisions are in the
   Phase 04 note. Built: taking payment (cash USD / cash LBP / card, split
-  tender, change), closing only when paid, payments on the receipt; and VAT.
+  tender, change), closing only when paid, payments on the receipt; VAT; and
+  splitting a bill.
+  - **A split is never stored.** One receipt, several payments (owner's
+    decision), so `shared/src/splits.ts` only works out each person's share —
+    evenly to the cent, by seat, by item — from `lineTotal()`, the same figure
+    the bill adds up, so the shares always sum to the bill. The panel fills
+    the amount via `fillAmount()`, capped at what is still owed; the waiter
+    still presses Take.
   - **VAT is read through `vatRateOn(settings, day)`, never `vatRate`.**
     Settings hold the current rate plus an optional `vatNext` { rate, from };
     on the `from` day (café zone) every caller switches at midnight together.
@@ -281,9 +288,10 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
     "Incl. VAT" from that — prices include VAT, so it is the share of the
     total that was tax (`vatIncluded()`), never added on top. A check closed
     before this has no `vatRate` and no VAT line; do not backfill one from
-    today's rate. The arithmetic is
-  `shared/src/payments.ts`, asserted by `verify:payments`; the server is
-  `addPayment()` in `shared/src/server/checks.ts`.
+    today's rate.
+  - **Payments:** the arithmetic is `shared/src/payments.ts`, asserted by
+    `verify:payments`; the server is `addPayment()` in
+    `shared/src/server/checks.ts`.
   - **The switch is the pilot's safety.** Off, a check closes exactly as in
     v1 while the old till takes the money. Do not make closing depend on
     payment anywhere that does not ask `serverFeatureOn('payments')`.

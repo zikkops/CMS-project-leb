@@ -16,7 +16,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'payments-verify-'))
 execSync(
-  `npx tsc shared/src/payments.ts shared/src/money.ts shared/src/businessSettings.ts ` +
+  `npx tsc shared/src/payments.ts shared/src/money.ts shared/src/businessSettings.ts shared/src/splits.ts ` +
   `--outDir ${out} --module esnext --target es2022 --skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' }
 )
@@ -137,6 +137,63 @@ eq('a missing rate is ignored, not read as 0%', B.readVatNext({ from: '2027-01-0
 eq('an empty-string rate is ignored, not read as 0%', B.readVatNext({ rate: '', from: '2027-01-01' }), null)
 eq('garbage is ignored', B.readVatNext('12% soon'), null)
 eq('a stored document without one parses to null', B.parseSettings({ vatRate: 0.11 }).vatNext, null)
+
+// ── Slice 3: splitting the bill ────────────────────────────────────────────
+const S = await import(`file://${join(out, 'splits.js')}`)
+const C = await import(`file://${join(out, 'checks.js')}`)
+const sum = xs => Math.round(xs.reduce((a, b) => a + b, 0) * 100) / 100
+
+console.log('\nsplit evenly — to the cent, adding up to the bill')
+eq('$10.00 three ways: 3.34 + 3.33 + 3.33', S.splitEvenly(10, 3), [3.34, 3.33, 3.33])
+eq('...adds up to exactly $10.00', sum(S.splitEvenly(10, 3)), 10)
+eq('$0.05 four ways leaves nobody a negative share', S.splitEvenly(0.05, 4), [0.02, 0.01, 0.01, 0.01])
+eq('one way is the whole bill', S.splitEvenly(12.34, 1), [12.34])
+eq('zero ways is no split', S.splitEvenly(10, 0), [])
+eq('a fractional count is whole people', S.splitEvenly(10, 2.9), [5, 5])
+
+const ln = (over = {}) => ({
+  id: 'l1', source: 'menu', refId: 'm1', name: 'Item', unitPrice: 4, modifiers: [],
+  quantity: 1, seat: null, course: null, station: 'Bar', status: 'sent', note: '',
+  addedBy: 'u', addedByEmail: 'u@x', sentAt: null,
+  voidReason: null, voidReasonKey: null, voidWasWaste: null, ...over,
+})
+const table = {
+  staffDiscount: null,
+  lines: [
+    ln({ id: 'a', seat: 1, unitPrice: 4 }),
+    ln({ id: 'b', seat: 2, unitPrice: 6, quantity: 2 }),
+    ln({ id: 'c', seat: null, unitPrice: 5, station: 'Kitchen' }),
+    ln({ id: 'd', seat: 1, unitPrice: 100, status: 'void' }),
+  ],
+}
+console.log('\nsplit by seat — what each seat ordered')
+const seats = S.sharesBySeat(table)
+eq('seat 1: $4, the voided $100 not counted', seats.find(s => s.seat === 1).usd, 4)
+eq('seat 2: two at $6', seats.find(s => s.seat === 2).usd, 12)
+eq('unseated lines are the table\'s, not divided', seats.find(s => s.seat === null).usd, 5)
+eq('THE SUM of the seat shares is the bill', sum(seats.map(s => s.usd)), C.checkTotals(table).net)
+const staffTable = { ...table, staffDiscount: { food: 0.7, drink: 0.5, appliedBy: 'm', appliedByEmail: 'm@x' } }
+eq('a staff meal is discounted seat by seat too, and still adds up',
+   sum(S.sharesBySeat(staffTable).map(s => s.usd)), C.checkTotals(staffTable).net)
+eq('no seats used: only the table share', S.sharesBySeat({ staffDiscount: null, lines: [ln()] }).map(s => s.seat), [null])
+
+console.log('\nsplit by item — what the chosen lines come to')
+eq('seat 1 and the shared plate', S.shareForLines(table, ['a', 'c']), 9)
+eq('a voided line counts for nothing', S.shareForLines(table, ['d']), 0)
+eq('an unknown line counts for nothing', S.shareForLines(table, ['zzz']), 0)
+
+console.log('\nfill — a share becomes the amount to enter, capped at what is owed')
+const owed10 = P.balance(10, [], RATE)
+eq('a $5 share in dollars is $5', P.fillAmount(5, owed10, { tender: 'cash', currency: 'USD' }, RATE), 5)
+eq('a share bigger than what is left is capped at what is left',
+   P.fillAmount(12, owed10, { tender: 'card', currency: 'USD' }, RATE), 10)
+eq('a $5 share on a card in lira: 447,500', P.fillAmount(5, owed10, { tender: 'card', currency: 'LBP' }, RATE), 447_500)
+eq('a $5 share in lira cash rounds up to a note: 448,000',
+   P.fillAmount(5, owed10, { tender: 'cash', currency: 'LBP' }, RATE), 448_000)
+eq('nothing to fill on a settled check', P.fillAmount(5, P.balance(10, applied(895_000), RATE),
+   { tender: 'cash', currency: 'USD' }, RATE), 0)
+const fill = P.fillAmount(S.splitEvenly(10, 3)[0], owed10, { tender: 'card', currency: 'USD' }, RATE)
+eq('an even share filled on a card is accepted by applyPayment', pay(10, [], card('USD', fill)).ok, true)
 
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail > 0 ? 1 : 0)

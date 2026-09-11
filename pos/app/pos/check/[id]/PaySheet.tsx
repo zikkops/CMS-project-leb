@@ -14,11 +14,12 @@
 // own — once a payment carrying the key appears, it was taken.
 
 import { useEffect, useState } from 'react'
-import { checkTotals, type Check } from '@big-cms/shared/checks'
+import { checkTotals, describeLine, lineTotal, type Check } from '@big-cms/shared/checks'
 import {
-  applyPayment, balance, CASH_LBP_STEP,
+  applyPayment, balance, fillAmount, CASH_LBP_STEP,
   type PayCurrency, type Tender,
 } from '@big-cms/shared/payments'
+import { splitEvenly, sharesBySeat, shareForLines } from '@big-cms/shared/splits'
 import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import { payCheck } from '../../../lib/usePos'
 
@@ -46,6 +47,122 @@ const TENDERS: { tender: Tender; currency: PayCurrency; label: string }[] = [
 const tap: React.CSSProperties = {
   minHeight: '48px', padding: '0.7rem 1rem', borderRadius: '6px',
   fontFamily: 'var(--font-inter)', fontSize: '0.9rem', cursor: 'pointer',
+}
+
+const chip: React.CSSProperties = {
+  ...tap, minHeight: '40px', padding: '0.45rem 0.8rem', fontSize: '0.82rem',
+  backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.14)',
+  color: 'rgba(var(--offwhite-rgb),0.75)',
+}
+
+type SplitMode = 'none' | 'even' | 'seat' | 'item'
+
+/**
+ * Working out one person's share — slice 3.
+ *
+ * Module scope, not declared inside PaySheet: a component defined in another
+ * component's render body remounts on every state change (CLAUDE.md), which
+ * here would reset the ticked items on every keystroke in the amount field.
+ *
+ * It only ever fills the amount. The waiter still chooses the money and
+ * presses Take, so a split can never take a payment by itself.
+ */
+function SplitPanel({ check, onFill, disabled }: {
+  check: Check
+  onFill: (usd: number) => void
+  disabled: boolean
+}) {
+  const [mode, setMode] = useState<SplitMode>('none')
+  const [ways, setWays] = useState(Math.max(2, Math.min(check.guestCount || 2, 12)))
+  const [picked, setPicked] = useState<string[]>([])
+
+  const total = checkTotals(check).net
+  const seats = sharesBySeat(check)
+  const hasSeats = seats.some(s => s.seat !== null)
+  const live = check.lines.filter(l => l.status !== 'void')
+
+  const tab = (m: SplitMode, label: string) => (
+    <button
+      key={m}
+      disabled={disabled}
+      onClick={() => setMode(mode === m ? 'none' : m)}
+      style={{
+        ...chip,
+        borderColor: mode === m ? 'var(--teal)' : 'rgba(255,255,255,0.14)',
+        color: mode === m ? 'var(--offwhite)' : chip.color,
+        backgroundColor: mode === m ? 'rgba(var(--teal-rgb),0.15)' : 'transparent',
+      }}
+    >{label}</button>
+  )
+
+  return (
+    <div style={{ marginTop: '1.1rem' }}>
+      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginRight: '0.2rem' }}>
+          Split
+        </span>
+        {tab('even', 'Evenly')}
+        {hasSeats && tab('seat', 'By seat')}
+        {tab('item', 'By item')}
+      </div>
+
+      {mode === 'even' && (
+        <div style={{ marginTop: '0.6rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button disabled={disabled || ways <= 2} onClick={() => setWays(w => w - 1)} style={chip}>−</button>
+            <span style={{ fontSize: '0.9rem', minWidth: '4.5rem', textAlign: 'center' }}>{ways} ways</span>
+            <button disabled={disabled || ways >= 20} onClick={() => setWays(w => w + 1)} style={chip}>+</button>
+          </div>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+            {splitEvenly(total, ways).map((s, i) => (
+              <button key={i} disabled={disabled} onClick={() => onFill(s)} style={chip}>
+                {i + 1}: {usd(s)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {mode === 'seat' && (
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.6rem' }}>
+          {seats.map(s => (
+            <button key={s.seat ?? 'table'} disabled={disabled || s.usd <= 0} onClick={() => onFill(s.usd)} style={chip}>
+              {s.seat === null ? 'Shared' : `Seat ${s.seat}`}: {usd(s.usd)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {mode === 'item' && (
+        <div style={{ marginTop: '0.6rem' }}>
+          {live.map(l => {
+            const on = picked.includes(l.id)
+            return (
+              <button
+                key={l.id}
+                disabled={disabled}
+                onClick={() => setPicked(p => on ? p.filter(x => x !== l.id) : [...p, l.id])}
+                style={{
+                  ...chip, width: '100%', display: 'flex', justifyContent: 'space-between',
+                  marginBottom: '0.3rem', textAlign: 'left',
+                  borderColor: on ? 'var(--teal)' : 'rgba(255,255,255,0.14)',
+                  backgroundColor: on ? 'rgba(var(--teal-rgb),0.12)' : 'transparent',
+                }}
+              >
+                <span>{on ? '✓ ' : ''}{describeLine(l)}</span>
+                <span>{usd(lineTotal(l, check.staffDiscount))}</span>
+              </button>
+            )
+          })}
+          <button
+            disabled={disabled || picked.length === 0}
+            onClick={() => onFill(shareForLines(check, picked))}
+            style={{ ...chip, width: '100%', marginTop: '0.2rem', opacity: picked.length === 0 ? 0.5 : 1 }}
+          >Fill {usd(shareForLines(check, picked))}</button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function PaySheet({
@@ -105,6 +222,14 @@ export default function PaySheet({
       : String(tender === 'cash'
         ? Math.ceil(b.remainingLbp / CASH_LBP_STEP) * CASH_LBP_STEP
         : b.remainingLbp))
+  }
+
+  // One person's share, from the split panel, in the money currently chosen.
+  function fillShare(shareUsd: number) {
+    if (locked) return
+    const v = fillAmount(shareUsd, b, { tender, currency }, rate)
+    setAmount(v > 0 ? (currency === 'USD' ? v.toFixed(2) : String(v)) : '')
+    setError('')
   }
 
   async function take() {
@@ -209,6 +334,8 @@ export default function PaySheet({
 
         {!b.settled && (
           <>
+            <SplitPanel check={check} onFill={fillShare} disabled={locked} />
+
             <div style={{
               display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '1.1rem',
             }}>
