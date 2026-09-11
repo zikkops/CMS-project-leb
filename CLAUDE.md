@@ -270,11 +270,25 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
   - **The pilot.** One section of one branch, the old till still taking
     payment. That constraint is what makes v1 safe to ship badly.
 
-- **04 (POS v2): slices 1–3 of 7 built; payment is behind the `payments`
-  switch — off.** The plan, its order and the owner's decisions are in the
-  Phase 04 note. Built: taking payment (cash USD / cash LBP / card, split
-  tender, change), closing only when paid, payments on the receipt; VAT; and
-  splitting a bill.
+- **04 (POS v2): slices 1–3 and the drawer half of 4 built; payment is
+  behind the `payments` switch — off.** The plan, its order and the owner's
+  decisions are in the Phase 04 note. Built: taking payment (cash USD / cash
+  LBP / card, split tender, change), closing only when paid, payments on the
+  receipt; VAT; splitting a bill; and the branch cash drawer.
+  - **One drawer per branch, one open shift at a time** (owner's decision:
+    staff use their own phones, and a phone is not a drawer). `shared/src/drawer.ts`
+    is the arithmetic — float + cash in − change − cash refunds, compared with
+    the count PER CURRENCY and never netted at a rate. `shared/src/server/drawer.ts`
+    owns open/X/Z; a server-only pointer `branchDrawers/{branch}` names the open
+    shift and is checked inside the transaction that sets it.
+  - **With `payments` on, a payment needs an open shift** and records
+    `shiftId`; its check lists it in `shiftIds`. A refund that gives cash back
+    needs one too and records `refundShiftId`. The Z close marks the shift
+    `closing` and clears the pointer BEFORE adding up, so no payment can land
+    in a shift while it is being counted.
+  - **The `drawerShifts` rule is written and NOT deployed.** Until it is, the
+    Drawer screen cannot read the open shift. Still to do in slice 4: End of
+    Day taking its "system" figures from the day's shifts.
   - **A split is never stored.** One receipt, several payments (owner's
     decision), so `shared/src/splits.ts` only works out each person's share —
     evenly to the cent, by seat, by item — from `lineTotal()`, the same figure

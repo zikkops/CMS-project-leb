@@ -28,6 +28,8 @@ import {
   type Payment, type PaymentRequest, type Tender, type PayCurrency,
 } from '../payments'
 import { serverFeatureOn } from './features'
+import { openShiftId } from './drawer'
+import { refundOf } from '../drawer'
 import { vatRateOn } from '../businessSettings'
 import { todayYmd } from '../dates'
 import { BRAND } from '../brand'
@@ -728,6 +730,8 @@ export async function addPayment(
 
   return db.runTransaction(async tx => {
     const check = await readCheck(tx, checkId)
+    // Read with the check, before any write, as a transaction requires.
+    const shiftId = await openShiftId(tx, check.branch)
     const payments = check.payments ?? []
     const rate = check.billRate ?? exchangeRate
     const due = checkTotals(check).net
@@ -750,6 +754,13 @@ export async function addPayment(
     const blocked = closeBlockedReason(check)
     if (blocked) throw new HttpError(409, blocked)
 
+    // Money goes into a drawer, and one drawer per branch is the owner's
+    // model — so no open shift, no payment. Otherwise the cash would belong
+    // to no shift, and no close would ever account for it.
+    if (!shiftId) {
+      throw new HttpError(409, `Open the drawer at ${check.branch} before taking payment — Drawer, on the POS home screen.`)
+    }
+
     const outcome = applyPayment(due, payments, rate, req)
     if (!outcome.ok) throw new HttpError(400, outcome.reason)
 
@@ -766,9 +777,16 @@ export async function addPayment(
       at: Timestamp.now(),
       by: caller.uid,
       byEmail: caller.email ?? '',
+      shiftId,
     }
     const next = [...payments, payment]
-    tx.update(db.doc(`${CHECKS}/${checkId}`), { payments: next, billRate: rate })
+    tx.update(db.doc(`${CHECKS}/${checkId}`), {
+      payments: next,
+      billRate: rate,
+      // What a Z close queries by: array-contains on one field needs no
+      // composite index. A check paid across a shift change lists both.
+      shiftIds: FieldValue.arrayUnion(shiftId),
+    })
     return result(payment, next, false)
   })
 }
@@ -862,6 +880,14 @@ export async function refundCheck(
   return db.runTransaction(async tx => {
     const check = await readCheck(tx, checkId)
 
+    // Cash handed back comes out of a drawer, so a refund that returns cash
+    // needs one open, and records it — the Z close of that shift then counts
+    // the refund. A card refund, or a v1 check with no payments, needs none.
+    // Read here, before any write, as a transaction requires.
+    const cashBack = refundOf(check.payments ?? []).cash
+    const givesCash = cashBack.usd !== 0 || cashBack.lbp !== 0
+    const refundShift = givesCash ? await openShiftId(tx, check.branch) : null
+
     if (check.status === 'refunded') {
       // Checked INSIDE the transaction: two taps on Refund would otherwise
       // both pass and put the merchandise back twice.
@@ -869,6 +895,9 @@ export async function refundCheck(
     }
     if (check.status !== 'closed') {
       throw new HttpError(409, 'Only a closed check can be refunded. Close it first.')
+    }
+    if (givesCash && !refundShift) {
+      throw new HttpError(409, `Open the drawer at ${check.branch} first — a cash refund comes out of it.`)
     }
 
     // Merchandise goes back on the shelf. Food does not — it was made and it
@@ -888,6 +917,7 @@ export async function refundCheck(
       refundedAt: FieldValue.serverTimestamp(),
       refundedBy: caller.email ?? caller.uid,
       refundReason: trimmed.slice(0, CHECK_LIMITS.noteLength),
+      ...(refundShift ? { refundShiftId: refundShift } : {}),
     })
 
     return {

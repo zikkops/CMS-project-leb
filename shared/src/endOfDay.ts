@@ -20,8 +20,11 @@ import { cashUpDay, todayYmd } from './dates'
 // A report stores the rate it was written with, so changing the live value
 // never re-values an old one.
 
-export const LBP_DENOMS = [100000, 50000, 20000, 10000, 5000, 1000] as const
-export const USD_DENOMS  = [100, 50, 20, 10, 5, 1] as const
+// The note lists live in drawer.ts now — the shift count and the end-of-day
+// count must be the same notes, and this module imports the Firebase client,
+// which the drawer arithmetic cannot. Re-exported so every importer still works.
+import { LBP_DENOMS, USD_DENOMS } from './drawer'
+export { LBP_DENOMS, USD_DENOMS }
 
 export type ShiftType = 'none' | 'am' | 'pm' | 'double'
 export const SHIFT_LABELS: Record<ShiftType, string> = {

@@ -27,6 +27,7 @@ import { auth, db } from '@big-cms/shared/firebase'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import type { Check, Station } from '@big-cms/shared/checks'
 import type { PaymentRequest } from '@big-cms/shared/payments'
+import type { DenomCount, DrawerTotals, Money2 } from '@big-cms/shared/drawer'
 import { ACTIVE_TICKET_STATUSES, type Ticket } from '@big-cms/shared/tickets'
 import { effectivePrice, saleIsActive } from '@big-cms/shared/productPricing'
 import { timestampMs } from '@big-cms/shared/timestamps'
@@ -573,6 +574,74 @@ export async function payCheck(
   const data = await unwrap(await authedFetch('/api/pos/checks', 'PATCH',
     { checkId, action: 'pay', paymentKey, ...req }, { timeoutMs: POS_TIMEOUT_MS }))
   return data as unknown as PayResult
+}
+
+// ── The branch drawer (slice 4) ────────────────────────────────────────────
+
+export interface OpenShift {
+  id: string
+  branch: string
+  /** 'closing' for the moment between a Z starting and it being written. */
+  status: 'open' | 'closing'
+  float: Money2
+  openedByEmail: string
+  openedAt: unknown
+}
+
+/**
+ * The drawer shift open at a branch, live, or null.
+ *
+ * Scoped by branch and status, so it reads one document, not every shift the
+ * branch has ever had. Waits for a signed-in user like every listener here.
+ */
+export function useOpenShift(branch: string): { shift: OpenShift | null; loading: boolean; error: string } {
+  const [state, setState] = useState<{ key: string; shift: OpenShift | null; error: string } | null>(null)
+  const { ready, signedIn } = useAuthReady()
+
+  useEffect(() => {
+    if (!branch || !ready || !signedIn) return
+    const q = query(
+      collection(db, 'drawerShifts'),
+      where('branch', '==', branch),
+      where('status', 'in', ['open', 'closing']),
+    )
+    return onSnapshot(q,
+      snap => {
+        const d = snap.docs[0]
+        setState({ key: branch, shift: d ? ({ id: d.id, ...d.data() } as OpenShift) : null, error: '' })
+      },
+      err => {
+        console.error('[useOpenShift] listener failed:', err)
+        setState({ key: branch, shift: null, error: listenerMessage(err) })
+      },
+    )
+  }, [branch, ready, signedIn])
+
+  const current = state?.key === branch ? state : null
+  return { shift: current?.shift ?? null, loading: !current, error: current?.error ?? '' }
+}
+
+export async function openDrawer(branch: string, float: Money2): Promise<{ id: string }> {
+  const data = await unwrap(await authedFetch('/api/pos/drawer', 'POST',
+    { branch, floatUsd: float.usd, floatLbp: float.lbp }, { timeoutMs: POS_TIMEOUT_MS }))
+  return data as unknown as { id: string }
+}
+
+/** An X reading: where the drawer stands. Changes nothing. */
+export async function readDrawer(shiftId: string): Promise<{ totals: DrawerTotals }> {
+  const data = await unwrap(await authedFetch(
+    `/api/pos/drawer?shiftId=${encodeURIComponent(shiftId)}`, 'GET', undefined, { timeoutMs: POS_TIMEOUT_MS }))
+  return data as unknown as { totals: DrawerTotals }
+}
+
+export interface ZResult { totals: DrawerTotals; counted: Money2; difference: Money2 }
+
+export async function closeDrawer(
+  shiftId: string, countLbp: DenomCount, countUsd: DenomCount, note: string,
+): Promise<ZResult> {
+  const data = await unwrap(await authedFetch('/api/pos/drawer', 'PATCH',
+    { shiftId, countLbp, countUsd, note }, { timeoutMs: POS_TIMEOUT_MS }))
+  return data as unknown as ZResult
 }
 
 export async function closeCheck(checkId: string): Promise<void> {

@@ -15,6 +15,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { useFeature } from '@big-cms/shared/useFeatures'
 import { BRAND } from '@big-cms/shared/brand'
 import { orderedTotal, type Check, type CheckLine } from '@big-cms/shared/checks'
 import { minutesWaiting, urgency } from '@big-cms/shared/tickets'
@@ -160,6 +161,10 @@ export default function FloorPage() {
   // till still taking payment, precisely so a waiter who cannot send an order
   // walks ten steps to it.
   const [branch] = useState(BRAND.branches[0] ?? '')
+  // The drawer only matters once the till takes money (Phase 04). During the
+  // pilot the old till has the cash, and a Drawer link would be a screen with
+  // nothing to do on it.
+  const { on: takesPayment } = useFeature('payments')
   const { checks, error: liveError } = useOpenChecks(branch)
 
   const [adding, setAdding] = useState(false)
@@ -243,6 +248,13 @@ export default function FloorPage() {
             {/* The pass, for whoever is carrying the phone that is also the
                 kitchen screen. Gated separately — a waiter without the KDS
                 section lands on its own explanation, not a blank page. */}
+            {takesPayment && (
+              <a href="/pos/drawer" style={{
+                fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase',
+                color: 'rgba(var(--offwhite-rgb),0.35)', textDecoration: 'none',
+                display: 'inline-block', marginTop: '0.35rem', marginRight: '0.8rem',
+              }}>Drawer →</a>
+            )}
             <a href="/pos/closed" style={{
               fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase',
               color: 'rgba(var(--offwhite-rgb),0.35)', textDecoration: 'none',

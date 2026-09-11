@@ -268,6 +268,15 @@ service cloud.firestore {
       allow read: if canKds() || canPos();
       allow write: if false;
     }
+    // Phase 04: the branch cash drawer's shifts — float, X readings, Z count.
+    // Read by anyone on the till, because anyone on the till opens and closes
+    // it (owner's decision, 11 Sep 2026). Written only by /api/pos/drawer:
+    // an expected-cash figure a browser could write is a figure anyone short
+    // at close could make agree with the count.
+    match /drawerShifts/{id} {
+      allow read: if canPos();
+      allow write: if false;
+    }
 
     match /activityLog/{id} {
       allow read:   if isStaff();

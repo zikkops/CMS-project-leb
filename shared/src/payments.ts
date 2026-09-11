@@ -57,6 +57,11 @@ export interface Payment extends PaymentRequest {
   at: unknown
   by: string
   byEmail: string
+  /**
+   * The branch drawer shift this was taken into (slice 4). Absent on
+   * payments taken before drawers existed, which no shift then claims.
+   */
+  shiftId?: string
 }
 
 export interface Balance {

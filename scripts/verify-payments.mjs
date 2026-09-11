@@ -16,7 +16,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'payments-verify-'))
 execSync(
-  `npx tsc shared/src/payments.ts shared/src/money.ts shared/src/businessSettings.ts shared/src/splits.ts ` +
+  `npx tsc shared/src/payments.ts shared/src/money.ts shared/src/businessSettings.ts shared/src/splits.ts shared/src/drawer.ts ` +
   `--outDir ${out} --module esnext --target es2022 --skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' }
 )
@@ -194,6 +194,49 @@ eq('nothing to fill on a settled check', P.fillAmount(5, P.balance(10, applied(8
    { tender: 'cash', currency: 'USD' }, RATE), 0)
 const fill = P.fillAmount(S.splitEvenly(10, 3)[0], owed10, { tender: 'card', currency: 'USD' }, RATE)
 eq('an even share filled on a card is accepted by applyPayment', pay(10, [], card('USD', fill)).ok, true)
+
+// ── Slice 4: the branch drawer ─────────────────────────────────────────────
+const D = await import(`file://${join(out, 'drawer.js')}`)
+const float = { usd: 50, lbp: 200_000 }
+const shiftPays = [
+  { tender: 'cash', currency: 'USD', amount: 20, changeUsd: 10, changeLbp: 45_000 },
+  { tender: 'card', currency: 'USD', amount: 15, changeUsd: 0, changeLbp: 0 },
+  { tender: 'cash', currency: 'LBP', amount: 1_000_000, changeUsd: 0, changeLbp: 104_000 },
+]
+
+console.log('\nthe drawer — what should be in it')
+const dt = D.drawerTotals(float, shiftPays)
+eq('cash in: $20 and 1,000,000 LBP', dt.cashIn, { usd: 20, lbp: 1_000_000 })
+eq('change out: $10 and 149,000 LBP', dt.change, { usd: 10, lbp: 149_000 })
+eq('expected USD: 50 + 20 − 10', dt.expected.usd, 60)
+eq('expected LBP: 200,000 + 1,000,000 − 149,000', dt.expected.lbp, 1_051_000)
+eq('THE CARD is in the report, not the drawer', [dt.card.usd, dt.expected.usd], [15, 60])
+eq('an empty shift expects exactly its float', D.drawerTotals(float, []).expected, float)
+
+console.log('\nrefunds — the drawer goes back to where it was')
+const ref = D.refundOf([shiftPays[0]])
+eq('refunding $20 paid, $10 + 45,000 back: $10 out', ref.cash.usd, 10)
+eq('...and the 45,000 LBP change comes back in (negative out)', ref.cash.lbp, -45_000)
+eq('a card refund goes on the card, not out of the drawer', D.refundOf([shiftPays[1]]), { cash: { usd: 0, lbp: 0 }, card: { usd: 15, lbp: 0 } })
+eq('sale then refund in one shift: the drawer is back to its float',
+   D.drawerTotals(float, [shiftPays[0]], [ref]).expected, float)
+
+console.log('\nthe count — per currency, never netted')
+eq('2 × $20 + 1 × $10 = $50', D.countedCash({}, { '20': 2, '10': 1 }).usd, 50)
+eq('2 × 100,000 LBP = 200,000', D.countedCash({ '100000': 2 }, {}).lbp, 200_000)
+eq('a negative or fractional count is not money', D.countedCash({ '1000': -3 }, { '1': 1.5 }), { usd: 0, lbp: 0 })
+eq('a note that does not exist is not counted', D.countedCash({ '250': 4 }, { '3': 2 }), { usd: 0, lbp: 0 })
+const diff = D.drawerDifference({ usd: 60, lbp: 1_051_000 }, { usd: 40, lbp: 2_841_000 })
+eq('THE BUG this prevents: $20 short is still $20 short', diff.usd, -20)
+eq('...even when the lira are over by the same value', diff.lbp, 1_790_000)
+eq('the note lists are the end-of-day ones', [D.USD_DENOMS.length, D.LBP_DENOMS.at(-1)], [6, 1000])
+
+console.log('\nthe float — refused before any shift opens')
+eq('a normal float: fine', D.floatProblem({ usd: 50, lbp: 200_000 }), null)
+eq('no float at all: fine', D.floatProblem({ usd: 0, lbp: 0 }), null)
+eq('negative: refused', typeof D.floatProblem({ usd: -1, lbp: 0 }), 'string')
+eq('fractional lira: refused', typeof D.floatProblem({ usd: 0, lbp: 1000.5 }), 'string')
+eq('a fraction of a cent: refused', typeof D.floatProblem({ usd: 1.005, lbp: 0 }), 'string')
 
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail > 0 ? 1 : 0)
