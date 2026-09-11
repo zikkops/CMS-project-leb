@@ -133,7 +133,12 @@ export function buildReceipt(check: Check, opts: ReceiptOptions): ReceiptRow[] {
   const issuedAt = opts.issuedAt ?? new Date(timestampMs(check.closedAt, Date.now()))
 
   const totals = checkTotals(check)
-  const bill = billTotals(totals.net, opts.exchangeRate)
+  // The rate the check was settled at, once there is one. The option is
+  // today's setting, and a reprint after the rate moves must show the lira the
+  // customer was actually asked for — which is why the first payment fixes it
+  // on the check (payments.ts).
+  const rate = check.billRate ?? opts.exchangeRate
+  const bill = billTotals(totals.net, rate)
   const money = (n: number) => formatMoney(n, opts.currency, opts.secondaryCurrency)
 
   const rows: ReceiptRow[] = []
@@ -194,7 +199,7 @@ export function buildReceipt(check: Check, opts: ReceiptOptions): ReceiptRow[] {
   rows.push({ kind: 'blank' })
   rows.push({
     kind: 'left',
-    text: `At ${formatMoney(opts.exchangeRate, opts.secondaryCurrency, opts.secondaryCurrency)} ` +
+    text: `At ${formatMoney(rate, opts.secondaryCurrency, opts.secondaryCurrency)} ` +
       `${opts.secondaryCurrency} / 1 ${opts.currency}`,
   })
   if (bill.rounding !== 0) {
@@ -214,6 +219,36 @@ export function buildReceipt(check: Check, opts: ReceiptOptions): ReceiptRow[] {
     right: formatMoney(bill.lbp, opts.secondaryCurrency, opts.secondaryCurrency),
     strong: true,
   })
+
+  // How it was paid, when the till took the money (Phase 04). Absent on a
+  // check closed while the old till still took payment, rather than printed
+  // as "Paid: nothing" — the receipt would be making a claim it cannot back.
+  const payments = check.payments ?? []
+  if (payments.length > 0) {
+    rows.push({ kind: 'rule' })
+    for (const p of payments) {
+      rows.push({
+        kind: 'pair',
+        left: `${p.tender === 'cash' ? 'Cash' : 'Card'} ${p.currency === 'USD' ? opts.currency : opts.secondaryCurrency}`,
+        right: p.currency === 'USD'
+          ? money(p.amount)
+          : formatMoney(p.amount, opts.secondaryCurrency, opts.secondaryCurrency),
+      })
+    }
+    // Totalled, not per payment: a customer counts the change in their hand
+    // once. Each currency on its own line because they were handed over as
+    // two separate things.
+    const changeUsd = payments.reduce((s, p) => s + p.changeUsd, 0)
+    const changeLbp = payments.reduce((s, p) => s + p.changeLbp, 0)
+    if (changeUsd > 0) rows.push({ kind: 'pair', left: `Change ${opts.currency}`, right: money(changeUsd) })
+    if (changeLbp > 0) {
+      rows.push({
+        kind: 'pair',
+        left: `Change ${opts.secondaryCurrency}`,
+        right: formatMoney(changeLbp, opts.secondaryCurrency, opts.secondaryCurrency),
+      })
+    }
+  }
 
   if (opts.footer) {
     rows.push({ kind: 'blank' })

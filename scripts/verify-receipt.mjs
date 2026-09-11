@@ -147,6 +147,37 @@ eq('discounted: gross shown as subtotal', find(staff, 'Subtotal').right, '10.00'
 eq('discounted: the discount is its own line', find(staff, 'Staff discount').right, '-7.00')
 eq('discounted: total is net', find(staff, 'Total USD').right, '3.00')
 
+// ── Phase 04: how it was paid ──────────────────────────────────────────────
+console.log('\npayments — the rate the check was settled at, and the tender')
+const payment = (over = {}) => ({
+  key: 'k-12345678', tender: 'cash', currency: 'USD', amount: 20,
+  appliedLbp: 0, changeUsd: 0, changeLbp: 0, changeRounding: 0,
+  at: null, by: 'u', byEmail: 'u@x', ...over,
+})
+// $4.00 at the check's own 90,000 is 360,000; at today's 89,500 it would be 358,000.
+const settled = R.buildReceipt(check({ billRate: 90000 }), opts)
+eq('THE BUG: the lira total uses the check\'s rate, not today\'s', find(settled, 'Total LBP').right, '360,000')
+eq('...and says which rate it used',
+   settled.some(r => r.kind === 'left' && r.text.startsWith('At 90,000 LBP')), true)
+eq('a check with no rate of its own uses today\'s', find(rows, 'Total LBP').right, '358,000')
+
+const paid = R.buildReceipt(check({
+  billRate: 89500,
+  payments: [
+    payment({ amount: 20, changeUsd: 10, changeLbp: 45000 }),
+    payment({ key: 'k-87654321', tender: 'card', currency: 'LBP', amount: 123456 }),
+  ],
+}), opts)
+eq('cash in dollars is its own line', find(paid, 'Cash USD').right, '20.00')
+eq('a card in lira prints without decimals', find(paid, 'Card LBP').right, '123,456')
+eq('change in dollars', find(paid, 'Change USD').right, '10.00')
+eq('change in lira', find(paid, 'Change LBP').right, '45,000')
+eq('no payment lines on a check the old till settled', find(rows, 'Cash USD'), undefined)
+eq('...and no change line either', find(rows, 'Change USD'), undefined)
+eq('no change line when none was given',
+   find(R.buildReceipt(check({ billRate: 89500, payments: [payment({ amount: 4 })] }), opts), 'Change LBP'),
+   undefined)
+
 console.log('\nthe secondary currency')
 eq('LBP total is rounded to the nearest 100',
    find(rows, 'Total LBP').right, (Math.round(4 * 89500 / 100) * 100).toLocaleString('en-US'))
