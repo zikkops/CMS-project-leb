@@ -43,6 +43,9 @@ import {
   type DraftLine, type PosMenuItem,
 } from '../../lib/usePos'
 import { useOutbox, useCounterDevice, newKey } from '../../lib/useOutbox'
+import {
+  checkDue, draftsUsd, queuedUsd, replayApplied, takeBlocked,
+} from '../../lib/counterTotals'
 import type { OutboxAction } from '../../lib/outbox'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
@@ -216,57 +219,55 @@ export default function CounterPage() {
   // The bill. Priced from the menu for anything the server has not seen —
   // which is display only: the server prices every line from its id when the
   // queue reaches it, exactly as it does for a waiter's phone.
-  const due = useMemo(() => {
-    const live = table?.check ? checkTotals(table.check).net : 0
-    // NOT the drafts. An item tapped on screen and not yet rung up is not on
-    // anybody's bill, and this counted it — which was wrong about money in
-    // both directions. A card payment worked out against a total the server
-    // has never heard of is refused by it ("a card is charged what is owed,
-    // never more"), and a refusal sticks the whole queue. Cash was quieter and
-    // worse: the till would have handed back change against a short bill, and
-    // switching tables clears the drafts, so the items could vanish after the
-    // money had gone.
-    // Priced from what the queue itself carries, not from the menu. A device
-    // that reloads during an outage may have a cold or partial menu cache, and
-    // a line that prices at 0 because its item is missing understates the
-    // bill — the same money bug as counting the drafts, arriving by a quieter
-    // road. The menu is the fallback only for a batch queued before the
-    // price was carried.
-    const queued = outbox.queue.reduce((sum, a) => {
-      if (a.kind !== 'lines' || a.checkId !== table?.checkId) return sum
-      if (typeof a.displayUsd === 'number') return sum + a.displayUsd
-      return sum + a.lines.reduce((t, raw) => {
-        const item = priceOf(String((raw as { refId?: unknown }).refId ?? ''))
-        const quantity = Number((raw as { quantity?: unknown }).quantity ?? 0)
-        return t + (item?.price ?? 0) * quantity
-      }, 0)
-    }, 0)
-    return Math.round((live + queued) * 100) / 100
-  }, [table, outbox.queue, priceOf])
+  // The money decisions live in counterTotals.ts, which is pure and asserted
+  // by npm run verify:counter. They were inline here, and two bugs that took
+  // real money in the wrong direction went through every check this repo has
+  // before anybody read them back. Keep them out there.
+  const queuedTotal = useMemo(
+    () => queuedUsd(outbox.queue, table?.checkId ?? '', refId => priceOf(refId)?.price ?? null),
+    [outbox.queue, table, priceOf],
+  )
+
+  /** What the check will actually come to. Never the drafts. */
+  const due = useMemo(
+    () => checkDue(table?.check ? checkTotals(table.check).net : 0, queuedTotal),
+    [table, queuedTotal],
+  )
 
   /** Tapped, not yet rung up. Shown on the check, never charged for. */
-  const draftTotal = useMemo(
-    () => Math.round(drafts.reduce((s, d) => s + d.unitPrice * d.quantity, 0) * 100) / 100,
-    [drafts],
-  )
+  const draftTotal = useMemo(() => draftsUsd(drafts), [drafts])
 
   const rate = table?.check?.billRate ?? settings.exchangeRate
 
   // Payments already on the check, plus any still queued — replayed through
   // the same function the server uses, so what this screen says is owed is
   // what the server will say when the queue lands.
-  const applied = useMemo(() => {
-    const list: { appliedLbp: number }[] = (table?.check?.payments ?? []).map(p => ({ appliedLbp: p.appliedLbp }))
-    if (!table) return list
-    for (const a of outbox.queue) {
-      if (a.kind !== 'pay' || a.checkId !== table.checkId) continue
-      const r = applyPayment(due, list, rate, a.payment)
-      if (r.ok) list.push({ appliedLbp: r.appliedLbp })
-    }
-    return list
-  }, [table, outbox.queue, due, rate])
+  // Payments on the check plus the ones still queued, replayed through the
+  // same function the server settles with — so what this screen says is owed
+  // is what the server will say when the queue lands.
+  const applied = useMemo(
+    () => replayApplied(
+      (table?.check?.payments ?? []).map(p => ({ appliedLbp: p.appliedLbp })),
+      outbox.queue,
+      table?.checkId ?? '',
+      due,
+      rate,
+      (d, list, r, payment) => {
+        const outcome = applyPayment(d, list, r, payment)
+        return outcome.ok ? { ok: true, appliedLbp: outcome.appliedLbp } : { ok: false }
+      },
+    ),
+    [table, outbox.queue, due, rate],
+  )
 
   const bill = balance(due, applied, rate)
+
+  // Why this till will not take money right now, in words, or null.
+  const blocked = takeBlocked({
+    draftCount: drafts.length,
+    totalUnknown: queuedTotal.unknown,
+    settled: bill.settled,
+  })
 
   const categories = useMemo(
     () => menu.categories.filter(c => menu.items.some(i => i.categoryId === c.id)),
@@ -378,6 +379,9 @@ export default function CounterPage() {
 
   async function handlePay() {
     if (!table) return
+    // The button is disabled for every one of these. The guard is here as
+    // well because a disabled button is a UI state, and this is money.
+    if (blocked) { setError(blocked); return }
     const value = Number(amount)
     const req: PaymentRequest = { tender, currency, amount: value }
     const outcome = applyPayment(due, applied, rate, req)
@@ -717,24 +721,21 @@ export default function CounterPage() {
                     style={{ ...chip, flex: 1 }}
                   >Exact</button>
                   <button
-                    disabled={Boolean(busy) || !amount || bill.settled || drafts.length > 0}
+                    disabled={Boolean(busy) || !amount || blocked !== null}
                     onClick={handlePay}
                     style={{
                       ...tap, flex: 2, border: 'none',
-                      backgroundColor: !amount || bill.settled || drafts.length > 0 ? 'rgba(var(--teal-rgb),0.25)' : 'var(--teal)',
+                      backgroundColor: !amount || blocked !== null ? 'rgba(var(--teal-rgb),0.25)' : 'var(--teal)',
                       color: '#fff', letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: '0.8rem',
                     }}
                   >{busy || 'Take'}</button>
                 </div>
 
-                {drafts.length > 0 && (
+                {blocked && (
                   <p style={{
                     fontSize: '0.78rem', color: 'var(--brand-secondary)',
                     marginTop: '0.7rem', lineHeight: 1.6,
-                  }}>
-                    Ring the items up first. Money is taken against what is on the check, not
-                    what is on the screen.
-                  </p>
+                  }}>{blocked}</p>
                 )}
                 {change && (
                   <p style={{ fontSize: '0.85rem', marginTop: '0.8rem', lineHeight: 1.6 }}>

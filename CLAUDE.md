@@ -40,6 +40,7 @@ npm run verify:printing      # if you touched printers or the print seam
 npm run verify:dates         # if you touched an event date or what "today" means
 npm run verify:payments      # if you touched a payment, tender, change or the bill rate
 npm run verify:offline       # if you touched the counter device's outbox or what it sends
+npm run verify:counter       # if you touched what the counter till charges for
 npm run verify:errors        # if you touched what an error report may contain
 npm run verify:delivery-math # if you touched receiving or costing
 npm run audit:writes         # must stay at 0
@@ -344,6 +345,22 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
     refusal stops the queue rather than pressing on). `pos/app/lib/useOutbox.ts`
     is the plumbing: localStorage, the routes, when to retry. Logic that drifts
     into the second file is logic nothing tests.
+  - **The counter's money decisions are a pure module too** —
+    `pos/app/lib/counterTotals.ts`, asserted by `npm run verify:counter`. It
+    was written after two money bugs in a row got through tsc, three builds,
+    five verifiers and a look in a browser. Both were the same shape: the
+    arithmetic in `payments.ts` was right, and the wrong FIGURE was handed to
+    it from code inline in a React component, where nothing can assert on
+    anything. The first counted DRAFT lines — tapped, never sent — in the total
+    it took payment against; a card worked out that way is refused on arrival
+    and a refusal stops the whole queue, while cash quietly handed back change
+    against a short bill. The second priced queued lines from the menu, which
+    on that device is a cache that can be cold after a mid-outage reload, so a
+    missing item priced at 0 and the bill came out short. Now a queued batch
+    carries what it came to, an unpriceable line makes the total `unknown`
+    rather than cheap, and `takeBlocked()` refuses the payment with a reason a
+    person can act on. `checkDue()` does not take the drafts as a parameter at
+    all — the bug cannot be reintroduced without changing its signature.
   - **A refusal stops the queue and names itself**, because what follows it is
     usually for the same table. A person chooses: try again, or drop it —
     dropping a refused *open* drops everything for that check, dropping a
