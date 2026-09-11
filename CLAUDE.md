@@ -38,6 +38,7 @@ npm run verify:receipt       # if you touched what a customer is handed
 npm run verify:brand         # if you touched a colour, a variable or brand.ts
 npm run verify:printing      # if you touched printers or the print seam
 npm run verify:dates         # if you touched an event date or what "today" means
+npm run verify:payments      # if you touched a payment, tender, change or the bill rate
 npm run verify:delivery-math # if you touched receiving or costing
 npm run audit:writes         # must stay at 0
 ```
@@ -269,12 +270,27 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
   - **The pilot.** One section of one branch, the old till still taking
     payment. That constraint is what makes v1 safe to ship badly.
 
-- **04 (POS v2): not started.** Payments, split tender, dual currency, shifts,
-  X/Z. The bill-total rounding rule (nearest 100, lines exact) is already in
-  `shared/src/money.ts` waiting for it. Note that Firestore offline gives
-  cached reads and queued writes and does NOT solve two terminals issuing the
-  same receipt number — that needs block-reserved numbers and it is 04's
-  problem.
+- **04 (POS v2): slice 1 of 7 built, behind the `payments` switch — off.**
+  The plan, its order and the owner's decisions are in the Phase 04 note.
+  Built: taking payment (cash USD / cash LBP / card, split tender, change),
+  closing only when paid, payments on the receipt. The arithmetic is
+  `shared/src/payments.ts`, asserted by `verify:payments`; the server is
+  `addPayment()` in `shared/src/server/checks.ts`.
+  - **The switch is the pilot's safety.** Off, a check closes exactly as in
+    v1 while the old till takes the money. Do not make closing depend on
+    payment anywhere that does not ask `serverFeatureOn('payments')`.
+  - **Settled is judged in lira** by the bill rounding rule
+    (`roundLbpTotal`), never in exact dollars — a lira-paid check would
+    otherwise sit a fraction of a cent short and never close.
+  - **One rate per check**, fixed by the first payment (`billRate`). The
+    receipt reads it, not today's setting.
+  - Owner's decisions (11 Sep 2026): prices include VAT; USD cash gets change
+    in whole dollars and the rest in LBP; a split bill is one receipt with
+    several payments; cards go through a separate machine, recorded only.
+  - Receipt numbers cannot collide yet: `closeCheck()` issues them on the
+    server at close. Block-reserved numbers are only needed once a till can
+    take payment OFFLINE, which is slice 7 — and offline today means cached
+    reads only, because every POS write is a route handler.
 
 - **05 (make it a product):** branding, the feature-flag registry and now the
   three-app split have landed. A client on the POS tier receives no admin code
