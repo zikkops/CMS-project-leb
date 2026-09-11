@@ -239,9 +239,11 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
     cloud host — it is Epson ePOS-Print from the browser over the café wifi,
     or Star CloudPRNT with the printer polling out.
 
-    **The `appSettings/printing` rule is written and NOT deployed.** Until
-    it is, the settings are unreadable, every printer reads as off, and the
-    Print here toggle does not appear.
+    **The `appSettings/printing` rule is deployed** — 11 Sep 2026, by the
+    owner; the CLI reported "released rules firestore.rules". Before that the
+    settings were unreadable, every printer read as off and the Print here
+    toggle did not appear, so if those symptoms come back, check the live
+    ruleset before the code.
   - **Timestamps.** A `serverTimestamp()` field arrives as a Firestore
     `Timestamp`, and `new Date(timestamp)` is Invalid Date — it printed
     "NaN-NaN-NaN NaN:NaN" on every real receipt while the verifier passed on
