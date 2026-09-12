@@ -5,6 +5,8 @@ import { useIsMobile } from '@big-cms/shared/useIsMobile'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { BRANCHES } from '@big-cms/shared/branches'
 import { listEndOfDayReports, formatUsd, type EndOfDayReport } from '@big-cms/shared/endOfDay'
+import { todayYmd } from '@big-cms/shared/dates'
+import { BRAND } from '@big-cms/shared/brand'
 import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
 import { distributeTips } from '@big-cms/shared/tips'
 
@@ -94,27 +96,46 @@ export default function TipsCalculatorPage() {
 
   const branchOptions = role === 'admin' ? [...BRANCHES] : branchIds
 
-  const now = new Date()
-  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  // The café's month, not the viewer's. getFullYear()/getMonth() read whoever
+  // is looking — a manager abroad, or anybody at all just after midnight on the
+  // first — and this page divides a month into two pay periods, so landing on
+  // the wrong one is not cosmetic. Same rule as everywhere else in the repo.
+  const defaultMonth = todayYmd(BRAND.locale.timezone).slice(0, 7)
 
-  const [branch,  setBranch]  = useState('')
+  const [chosenBranch, setChosenBranch] = useState('')
   const [month,   setMonth]   = useState(defaultMonth)
   const [reports, setReports] = useState<EndOfDayReport[]>([])
   const [loading, setLoading] = useState(false)
   const [err,     setErr]     = useState('')
 
-  useEffect(() => {
-    if (checking) return
-    if (role !== 'admin' && branchIds.length === 1) setBranch(branchIds[0])
-  }, [checking, role, branchIds])
+  // Derived, not seeded by an effect. Setting state during an effect to supply
+  // a default renders once with nothing selected and again with the default —
+  // and React flags it, because that is a cascading render for a value that
+  // was always computable.
+  const branch = chosenBranch || (role !== 'admin' && branchIds.length === 1 ? branchIds[0] : '')
 
   useEffect(() => {
     if (!branch) return
-    setLoading(true); setErr('')
-    // Load up to 400 reports for the branch, filter by month client-side
-    listEndOfDayReports(branch, 400)
-      .then(data => { setReports(data); setLoading(false) })
-      .catch(() => { setErr('Failed to load reports.'); setLoading(false) })
+    // `alive` is not ceremony. Switching branch twice quickly can land the
+    // first answer after the second, and the screen would then show one
+    // branch's reports under another branch's name — with tips computed from
+    // them. The guard drops any answer that arrives after its question stopped
+    // being the question.
+    let alive = true
+    void (async () => {
+      setLoading(true)
+      setErr('')
+      try {
+        // Up to 400 reports for the branch; the month is filtered below.
+        const data = await listEndOfDayReports(branch, 400)
+        if (alive) setReports(data)
+      } catch {
+        if (alive) setErr('Failed to load reports.')
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
+    return () => { alive = false }
   }, [branch])
 
   if (checking) return null
@@ -163,7 +184,7 @@ export default function TipsCalculatorPage() {
             {branchOptions.length === 1 ? (
               <div style={{ ...inp, display: 'inline-block' }}>{branch || branchOptions[0]}</div>
             ) : (
-              <select value={branch} onChange={e => setBranch(e.target.value)} style={selStyle}>
+              <select value={branch} onChange={e => setChosenBranch(e.target.value)} style={selStyle}>
                 <option value="">— Select —</option>
                 {branchOptions.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
