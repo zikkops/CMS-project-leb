@@ -125,6 +125,15 @@ adding a transport there and changing no call site.
   rule may not be live yet" message as the failure path rather than an empty
   list, because an empty list reads as "nothing has broken", which is the most
   reassuring possible way to be wrong.
+- **Exercised end to end against the real route, 12 Sep 2026** — not just in
+  units. Five reports posted at `/api/errors` unauthenticated, as a broken page
+  would: the email arrived as `[email]`, the JWT as `[token]`, and the path lost
+  its query string before storage. The same fault twice incremented one
+  document to `count: 2` instead of writing a second. `Cannot close check
+  abc123` and `Cannot close check def456` folded into ONE document, and so did
+  the same fault after a simulated redeploy with a new chunk hash — three
+  occurrences, one row. A different sentence got its own document, and a 200KB
+  body was refused 413 before it was parsed.
 
 ## Data export (Phase 05, Sep 2026)
 
