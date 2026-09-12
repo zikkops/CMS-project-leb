@@ -1,0 +1,176 @@
+// Assertions over the accountant's export — shared/src/salesExport.ts.
+//
+//   node scripts/verify-export.mjs
+//   npm run verify:export
+//
+// Same shape as the other verifiers: transpile the real module with the
+// project's own TypeScript and assert against it. Nothing is re-implemented.
+//
+// ── What this is really guarding ───────────────────────────────────────────
+// An export is the one artefact that leaves the building. It goes to an
+// accountant who cannot check it against a drawer, in a month when nobody
+// remembers the service, and it is believed. Every case below is a way a
+// figure could be quietly wrong and still look completely ordinary:
+//
+//   the day    judged in the HOST's zone, a sale at 01:30 in Beirut files
+//              itself under yesterday — and yesterday may be last month
+//   the VAT    added to a total instead of extracted from one, on menu
+//              prices that already include it
+//   the rate   today's rate applied to last year's lira figure, so the same
+//              export never produces the same numbers twice
+//   refunds    netted into sales, hiding both halves
+
+import { execSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, writeFileSync, readdirSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+const out = mkdtempSync(join(tmpdir(), 'export-verify-'))
+execSync(
+  `npx tsc shared/src/salesExport.ts --outDir ${out} --module esnext --target es2022 ` +
+  `--skipLibCheck --moduleResolution bundler --strict`,
+  { stdio: 'pipe' },
+)
+for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
+  const p = join(out, file)
+  writeFileSync(p, readFileSync(p, 'utf8').replace(/from '(\.\.?\/[^']+?)'/g, "from '$1.js'"))
+}
+
+const X = await import(`file://${join(out, 'salesExport.js')}`)
+
+let pass = 0, fail = 0
+const eq = (name, got, want) => {
+  const ok = JSON.stringify(got) === JSON.stringify(want)
+  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(62)} got=${JSON.stringify(got)}`)
+  ok ? pass++ : fail++
+}
+
+// Beirut, and a zone that is deliberately NOT the machine's, so a case cannot
+// pass by accident on a developer's laptop.
+const BEIRUT = 'Asia/Beirut'
+const OPTS = { timeZone: BEIRUT, fallbackRate: 100_000 }
+
+const line = (over = {}) => ({
+  id: 'l1', source: 'menu', refId: 'm1', name: 'Flat White',
+  unitPrice: 10, modifiers: [], quantity: 1, seat: null, course: null,
+  station: 'Bar', status: 'sent', note: '',
+  addedBy: 'u', addedByEmail: 'u@x', sentAt: null,
+  voidReason: null, voidReasonKey: null, voidWasWaste: null, ...over,
+})
+
+const check = (over = {}) => ({
+  id: 'c1', branch: 'Main', tableId: 't1', tableNumber: 4, status: 'closed',
+  guestCount: 2, lines: [line()], openedBy: 'u', openedByEmail: 'u@x',
+  closedAt: '2026-09-12T20:00:00.000Z', receiptNumber: '1041',
+  staffDiscount: null, vatRate: 0.1, billRate: 91_000, ...over,
+})
+
+const pay = (over = {}) => ({
+  key: 'p1', tender: 'cash', currency: 'USD', amount: 10,
+  appliedLbp: 910_000, changeUsd: 0, changeLbp: 0, changeRounding: 0,
+  at: null, by: 'u', byEmail: 'u@x', ...over,
+})
+
+console.log('\nthe day belongs to the café, not to the server')
+{
+  // 22:30 UTC is 01:30 the NEXT day in Beirut. A host in UTC files this sale
+  // under the 12th; the café closed it on the 13th, and in three weeks' time
+  // that is the difference between one month's takings and another's.
+  const late = X.checkRow(check({ closedAt: '2026-09-12T22:30:00.000Z' }), OPTS)
+  eq('THE TRAP: a sale after midnight is the next café day', late.day, '2026-09-13')
+  eq('...and the time is local too', late.time, '01:30')
+
+  const evening = X.checkRow(check({ closedAt: '2026-09-12T20:00:00.000Z' }), OPTS)
+  eq('an evening sale stays on its own day', evening.day, '2026-09-12')
+
+  eq('a check with no close time has no day', X.checkRow(check({ closedAt: null }), OPTS).day, '')
+}
+
+console.log('\nVAT comes out of the price, never on top of it')
+{
+  const row = X.checkRow(check(), OPTS)
+  eq('net is the menu price, unchanged', row.net, 10)
+  eq('THE TRAP: VAT is extracted from it', row.vat, 0.91)
+  eq('...so it is less than the price times the rate', row.vat < row.net * 0.1 + 0.0001, true)
+  eq('the rate is recorded beside it', row.vatRate, 0.1)
+
+  const old = X.checkRow(check({ vatRate: undefined }), OPTS)
+  eq('a check from before VAT was recorded gets none', old.vat, 0)
+  eq('...and says so rather than guessing', old.vatRate, null)
+}
+
+console.log('\nlira figures use the rate that check was settled at')
+{
+  eq('the check’s own rate', X.checkRow(check(), OPTS).netLbp, 910_000)
+  eq('...which is not the rate passed in', X.checkRow(check(), OPTS).rate, 91_000)
+  const unsettled = X.checkRow(check({ billRate: null }), OPTS)
+  eq('only a check that never had one falls back', unsettled.netLbp, 1_000_000)
+}
+
+console.log('\nwhat was taken, split the way a drawer is counted')
+{
+  const row = X.checkRow(check({
+    payments: [
+      pay({ amount: 4 }),
+      pay({ key: 'p2', currency: 'LBP', amount: 500_000 }),
+      pay({ key: 'p3', tender: 'card', amount: 2 }),
+    ],
+  }), OPTS)
+  eq('cash dollars', row.cashUsd, 4)
+  eq('cash lira, never converted into the dollar column', row.cashLbp, 500_000)
+  eq('card', row.card, 2)
+
+  const rows = X.paymentRows(check({ payments: [pay(), pay({ key: 'p2', currency: 'LBP', amount: 910_000 })] }), OPTS)
+  eq('one row per payment', rows.length, 2)
+  eq('...carrying the check’s rate, not today’s', rows[0].rate, 91_000)
+  eq('...and the day it was taken', rows[1].day, '2026-09-12')
+}
+
+console.log('\nwhat is in an export at all')
+{
+  eq('an open check is not', X.isExportable({ status: 'open', receiptNumber: null }), false)
+  eq('a closed one is', X.isExportable({ status: 'closed', receiptNumber: '1041' }), true)
+  eq('a refunded one is — it still happened', X.isExportable({ status: 'refunded', receiptNumber: '1041' }), true)
+  eq('a closed check with no number is not', X.isExportable({ status: 'closed', receiptNumber: null }), false)
+}
+
+console.log('\nthe day summary')
+{
+  // Beirut is UTC+3 in September, so 21:00Z is already midnight on the 13th.
+  // Getting that wrong while WRITING this test is the same mistake the test
+  // exists to catch — which is the argument for pinning an explicit zone.
+  const built = X.buildExport([
+    check({ id: 'a', receiptNumber: '1', closedAt: '2026-09-12T20:00:00.000Z' }),   // 23:00 on the 12th
+    check({ id: 'b', receiptNumber: '2', closedAt: '2026-09-12T21:00:00.000Z' }),   // 00:00 on the 13th
+    // Same instant, other branch — a day row is per branch, because a drawer is.
+    check({ id: 'c', receiptNumber: '3', branch: 'Second', closedAt: '2026-09-12T21:00:00.000Z' }),
+    check({ id: 'd', receiptNumber: '4', closedAt: '2026-09-12T22:30:00.000Z' }),   // 01:30 on the 13th
+    check({ id: 'e', receiptNumber: '5', status: 'refunded', closedAt: '2026-09-12T20:30:00.000Z' }),
+    check({ id: 'f', receiptNumber: null, status: 'open' }),
+  ], OPTS)
+
+  eq('the open check is left out', built.checks.length, 5)
+  eq('rows read in the order they happened', built.checks.map(c => c.receipt), ['1', '5', '2', '3', '4'])
+  eq('three day-and-branch rows', built.days.map(d => `${d.day} ${d.branch}`),
+    ['2026-09-12 Main', '2026-09-13 Main', '2026-09-13 Second'])
+
+  const main12 = built.days[0]
+  eq('one sale on the 12th — the refund is not one', main12.checks, 1)
+  eq('...its net', main12.net, 10)
+  eq('...its VAT', main12.vat, 0.91)
+  eq('THE TRAP: the refund is its own column, not netted off', [main12.refunds, main12.refundedChecks], [10, 1])
+
+  eq('THE TRAP: sales after midnight land on the next café day', built.days[1].checks, 2)
+  eq('...and the other branch keeps its own row', built.days[2].branch, 'Second')
+}
+
+console.log('\nthe sheets are declared once, for the UI and the file both')
+{
+  eq('every check column names a real field', X.SHEETS.checks.every(([k]) => k in X.checkRow(check(), OPTS)), true)
+  eq('every day column names a real field', X.SHEETS.days.every(([k]) => k in X.dayRows([X.checkRow(check(), OPTS)])[0]), true)
+  eq('every payment column names a real field',
+    X.SHEETS.payments.every(([k]) => k in X.paymentRows(check({ payments: [pay()] }), OPTS)[0]), true)
+}
+
+console.log(`\n${pass} passed, ${fail} failed`)
+process.exit(fail > 0 ? 1 : 0)

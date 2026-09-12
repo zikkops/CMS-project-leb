@@ -19,7 +19,7 @@ import {
   faClipboard, faThumbsUp, faGift, faTag, faTrophy, faUserShield,
   faFile, faPaperPlane, faTruck, faList, faImage, faScroll, faHandshake, faStore,
   faClockRotateLeft, faChair, faThumbtack, faGear, faXmark, faMoneyBill,
-  faClipboardCheck, faChartPie, faTriangleExclamation,
+  faClipboardCheck, faChartPie, faTriangleExclamation, faFileExport,
   type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
 import { BRAND } from '@big-cms/shared/brand'
@@ -208,6 +208,7 @@ export default function AdminPage() {
         { label: 'EOD History',       icon: faClockRotateLeft, daily: true,  desc: 'Browse past end-of-day reports by branch',                                   href: '/admin/end-of-day/history',  access: SECTION_ACCESS.endOfDayHistory },
         { label: 'Daily Summary',     icon: faReceipt,         daily: true,  desc: 'View daily totals and add tips — mobile-friendly for screenshots',           href: '/admin/end-of-day/summary',  access: SECTION_ACCESS.endOfDayHistory },
         { label: 'Staff Roster',      icon: faUsers,           daily: false, desc: 'Configure the default staff list per branch for EOD attendance tracking',    href: '/admin/end-of-day/staff',    access: ['admin'] as Role[] },
+        { label: 'Sales Export',      icon: faFileExport,      daily: false, desc: 'Closed checks for a date range, with VAT and both currencies, for your accountant', href: '/admin/exports',             access: SECTION_ACCESS.endOfDay },
       ],
     },
     {

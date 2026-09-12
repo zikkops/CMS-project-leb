@@ -41,6 +41,7 @@ npm run verify:dates         # if you touched an event date or what "today" mean
 npm run verify:payments      # if you touched a payment, tender, change or the bill rate
 npm run verify:offline       # if you touched the counter device's outbox or what it sends
 npm run verify:counter       # if you touched what the counter till charges for
+npm run verify:export        # if you touched what leaves the building for an accountant
 npm run verify:errors        # if you touched what an error report may contain
 npm run verify:delivery-math # if you touched receiving or costing
 npm run audit:writes         # must stay at 0
@@ -123,6 +124,39 @@ adding a transport there and changing no call site.
   rule may not be live yet" message as the failure path rather than an empty
   list, because an empty list reads as "nothing has broken", which is the most
   reassuring possible way to be wrong.
+
+## Data export (Phase 05, Sep 2026)
+
+`/admin/exports` hands an accountant the closed checks for a date range: what
+each day took, every check, and how each was paid. Gated on `endOfDay` — the
+same people who do the cash-up — and deliberately NOT a new `SECTION_ACCESS`
+key, because "can export the books" is not a permission handed out for a shift.
+
+- **The arithmetic is `shared/src/salesExport.ts`: pure, and asserted by
+  `npm run verify:export`.** An export is the one artefact that leaves the
+  building — read a month later by somebody who cannot check it against a
+  drawer, and believed. Four things it has to get right, three of which have
+  bitten this repo already:
+  - **The day is the café's.** A sale at 01:30 belongs to the night it was
+    made, judged in `BRAND.locale.timezone`, never the host clock: 21:00 UTC
+    is already tomorrow in Beirut. The test fixture got this wrong before the
+    code did.
+  - **VAT is extracted, never added** — prices include it, and each check
+    carries the rate it closed at. A check from before that was recorded
+    contributes no VAT rather than a guess at today's.
+  - **Lira figures use the check's own `billRate`**, so re-running last
+    quarter's export produces last quarter's numbers.
+  - **Refunds are their own column**, never netted into sales. Netting hides
+    both halves, and the question being asked reconciles with a drawer.
+- **The query is ranged on `closedAt` alone**, padded a day at each end, and
+  then narrowed by the same pure function that builds the rows. Date maths
+  stays in one place, and it needs no composite index. `MAX_RANGE_DAYS` caps a
+  request at 100 days: a quarter covers a VAT filing, and an export that can
+  read the whole history by accident eventually will.
+- The browser names a date range and a branch, and nothing else — no rate, no
+  VAT percentage, no total. `admin/app/admin/exports/workbook.ts` only arranges
+  rows into sheets; the moment it does arithmetic there are two answers to what
+  a day took.
 
 ## Firestore rules
 
