@@ -165,15 +165,12 @@ key, because "can export the books" is not a permission handed out for a shift.
   request at 100 days: a quarter covers a VAT filing, and an export that can
   read the whole history by accident eventually will.
 - **It has been run against real documents**, which until now nothing built on
-  a closed check had been. `npm run seed:pos` writes a café history — closed
-  checks with payments in both currencies, a few refunds, each carrying the VAT
-  and exchange rate the settings hold — because seed-demo.mjs predates the POS
-  and writes no checks at all. Against 30 days of it: 418 documents queried,
-  414 in range, 387 sales totalling $8,895.75 with $879.85 of VAT extracted at
-  11%, 26 refunds kept separate, and **92 checks that closed after local
-  midnight filed on the next café day** — the trap, met on real data rather
-  than only in a fixture. The seed is idempotent, marks every check
-  `seeded: true`, and `--clear` removes exactly those.
+  a closed check had been. `npm run seed:pos` writes a café history, because
+  seed-demo.mjs predates the POS and writes no checks at all. Against 30 days
+  of it: 418 documents queried, 414 in range, 397 sales totalling $8,976.50
+  with $887.88 of VAT extracted, 16 refunds kept separate, and **101 checks
+  that closed after local midnight filed on the next café day** — the trap,
+  met on real data rather than only in a fixture.
 - **The points ledger is the other half** (`shared/src/loyaltyExport.ts`, same
   verifier). Points are a liability, so this answers what was issued, taken
   back and spent over a range. **The trap it exists for: `pointsAmount` is
@@ -251,6 +248,35 @@ writing needs `--apply`**.
 - `npm run verify:tips` — 26 cases. The period carries the rate it was worked
   out at, so a card can never label a total with a rate that did not produce
   it.
+
+## Seeding a POS history (Sep 2026)
+
+`npm run seed:pos` writes closed checks, their payments, and the drawer shifts
+they were taken in. `--clear` removes exactly what it wrote; `--days=` and
+`--base=` set the span and the receipt-number block.
+
+- **It borrows the application’s arithmetic rather than imitating it.** Change,
+  the receipt-number format, the drawer totals, the note-by-note count and the
+  cash-up day all come from `applyPayment()`, `formatInvoiceNumber()`,
+  `drawerTotals()`, `countedCash()` and `cashUpDay()`, transpiled and called.
+  A seed that reimplements any of them writes figures the application never
+  produced — worse than no data, because it looks like evidence.
+- **The model decides the tender.** USD notes stop at $1 and lira at 1,000, so
+  cash is handed over in whole notes and the change falls out of applyPayment.
+  That is what lets a seeded drawer be counted exactly, and it is why the
+  counts are a real breakdown rather than a number.
+- **The shifts reconcile against a query, not against the seed.** Checked by
+  recomputing all 90 the way `shiftTotals()` does — `checks where shiftIds
+  array-contains` — and comparing: 90 agreed, 0 did not. Four are counted one
+  $5 note short on purpose so the over/short display has something real, and
+  each says so in its note.
+- **Receipt numbers are burnt, even by a seed.** The block starts at `--base=`
+  and the counter is pushed past it, so a real close can never be handed one.
+  After a `--clear` the old numbers are NOT given back: re-seeding needs a
+  fresh base above the counter, and the script says which.
+- Everything it writes carries `seeded: true` — demo data you cannot find
+  again is demo data you cannot remove, and it sits in the same collections as
+  real sales.
 
 ## Firestore rules
 
