@@ -40,8 +40,8 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 20 checks, 14 verifiers, 777
-assertions, about 35 seconds of work across four lanes. It deliberately does
+is the only thing that shows it. Currently 20 checks, 14 verifiers, 796
+assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
 
@@ -489,6 +489,29 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
     `todayYmd()` with `BRAND.locale.timezone`. All of it looked right in
     development only because the development machine is in Beirut, which is
     why `verify:dates` pins every case to an explicit zone.
+
+    **A sweep for this on 12 Sep found three more**, so treat it as live
+    rather than closed. The receipt printed `getHours()` off whatever machine
+    drew it — correct only on a device standing in the café with its clock
+    set right, and the KDS prints from whichever device has "Print here" on.
+    `ReceiptOptions.timeZone` is **required**, not optional with a fallback:
+    optional leaves the old path reachable, required makes tsc refuse a caller
+    that omits it. `getCurrentWeek()` had it too, and there the day is an
+    identity — `weekStart` is what a weekly order is filed under — so the
+    arithmetic moved to `cafeWeek()` in `dates.ts`, because `weeklyOrders.ts`
+    imports Firestore and nothing in it can be asserted. `/pos/closed` grouped
+    by the device's day while `/admin/exports` groups the same checks by the
+    café's.
+
+    **A Date used only to carry a calendar date should be noon UTC, never
+    midnight.** Formatted in a host zone, a UTC midnight reads as the day
+    before on every host west of Greenwich. Noon narrows that rather than
+    curing it — UTC+12 and east still roll forward — so an explicit
+    `timeZone: 'UTC'` on the formatter is the actual fix and noon is the
+    smaller blast radius when somebody drops it. That one word was dropped as
+    a mutation and **every test still passed**, Beirut being east of UTC and
+    Node on Windows ignoring `TZ`: some cases in this class cannot be caught
+    from this machine at all, only reasoned about and pinned with named zones.
   - **The pilot.** One section of one branch, the old till still taking
     payment. That constraint is what makes v1 safe to ship badly.
     **[docs/pilot.md](./docs/pilot.md) is the runbook** — what to confirm the
