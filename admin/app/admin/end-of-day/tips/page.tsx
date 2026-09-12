@@ -1,12 +1,17 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useIsMobile } from '@big-cms/shared/useIsMobile'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { BRANCHES } from '@big-cms/shared/branches'
 import { listEndOfDayReports, formatUsd, type EndOfDayReport } from '@big-cms/shared/endOfDay'
+import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
+import { distributeTips } from '@big-cms/shared/tips'
 
-const DEDUCTION = 0.11  // 11% taken off the top before distribution
+// The deduction is a SETTING. It used to be `const DEDUCTION = 0.11` right
+// here, which meant the rate on the Business Settings form did nothing at all:
+// a manager could change it, see it saved, and every payout would still come
+// out at 11%. See the note at the top of shared/src/tips.ts.
 
 const inp: React.CSSProperties = {
   backgroundColor: 'rgba(255,255,255,0.04)',
@@ -39,30 +44,40 @@ interface PeriodResult {
   netTipsUsd: number
   totalShiftPoints: number
   tipsPerPoint: number
+  /** The rate this period was actually worked out at — it travels with the
+   *  figures rather than being read again where they are displayed, so a card
+   *  can never label a total with a rate that did not produce it. */
+  deductionRate: number
   staff: StaffTip[]
 }
 
-function buildPeriod(label: string, dateRange: string, reports: EndOfDayReport[]): PeriodResult {
-  const totalTipsUsd = reports.reduce((s, r) => s + (Number(r.tipsUsd) || 0), 0)
-  const netTipsUsd   = totalTipsUsd * (1 - DEDUCTION)
+function buildPeriod(
+  label: string,
+  dateRange: string,
+  reports: EndOfDayReport[],
+  deductionRate: number,
+): PeriodResult {
+  // The arithmetic is shared/src/tips.ts, asserted by npm run verify:tips —
+  // including that the shares add up to the pot to the cent, which this page's
+  // version did not: it multiplied an unrounded per-point figure per person
+  // and let the remainder evaporate.
+  const d = distributeTips(
+    reports.reduce((s, r) => s + (Number(r.tipsUsd) || 0), 0),
+    deductionRate,
+    reports.flatMap(r => r.attendance.map(a => ({ name: a.name, shift: a.shift }))),
+  )
 
-  const map = new Map<string, number>()
-  for (const r of reports) {
-    for (const a of r.attendance) {
-      if (a.shift === 'none') continue
-      const pts = a.shift === 'double' ? 2 : 1
-      map.set(a.name, (map.get(a.name) ?? 0) + pts)
-    }
+  return {
+    label,
+    dateRange,
+    reportCount: reports.length,
+    totalTipsUsd: d.totalTipsUsd,
+    netTipsUsd: d.netTipsUsd,
+    totalShiftPoints: d.totalShiftPoints,
+    tipsPerPoint: d.perPoint,
+    deductionRate: d.deductionRate,
+    staff: d.staff,
   }
-
-  const totalShiftPoints = [...map.values()].reduce((s, v) => s + v, 0)
-  const tipsPerPoint = totalShiftPoints > 0 ? netTipsUsd / totalShiftPoints : 0
-
-  const staff = [...map.entries()]
-    .map(([name, shiftPoints]) => ({ name, shiftPoints, earned: shiftPoints * tipsPerPoint }))
-    .sort((a, b) => b.earned - a.earned)
-
-  return { label, dateRange, reportCount: reports.length, totalTipsUsd, netTipsUsd, totalShiftPoints, tipsPerPoint, staff }
 }
 
 // ─── page ─────────────────────────────────────────────────────────────────────
@@ -70,6 +85,12 @@ function buildPeriod(label: string, dateRange: string, reports: EndOfDayReport[]
 export default function TipsCalculatorPage() {
   const isMobile = useIsMobile()
   const { checking, role, branchIds } = useRequireRole(SECTION_ACCESS.endOfDay)
+  // The configured deduction, not a constant. useBusinessSettings falls back
+  // to the brand defaults while it loads or if the document is unreadable, so
+  // this is never undefined — see shared/src/businessSettings.ts.
+  const { settings } = useBusinessSettings()
+  const deductionRate = settings.tipsDeductionRate
+  const deductionPct = `${+(deductionRate * 100).toFixed(2)}%`
 
   const branchOptions = role === 'admin' ? [...BRANCHES] : branchIds
 
@@ -111,8 +132,8 @@ export default function TipsCalculatorPage() {
 
   const lastDay = new Date(parseInt(yearStr), parseInt(monthNumStr), 0).getDate()
 
-  const p1 = buildPeriod('Period 1', `1–15 ${monthLabel}`, period1Reports)
-  const p2 = buildPeriod('Period 2', `16–${lastDay} ${monthLabel}`, period2Reports)
+  const p1 = buildPeriod('Period 1', `1–15 ${monthLabel}`, period1Reports, deductionRate)
+  const p2 = buildPeriod('Period 2', `16–${lastDay} ${monthLabel}`, period2Reports, deductionRate)
 
   const hasTipsData = monthReports.some(r => (r.tipsUsd || 0) > 0)
 
@@ -131,7 +152,7 @@ export default function TipsCalculatorPage() {
             Tips Calculator
           </h1>
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
-            Monthly tip distribution by shift — 11% deducted, remainder split by shift points
+            Monthly tip distribution by shift — {deductionPct} deducted, remainder split by shift points
           </p>
         </div>
 
@@ -239,7 +260,7 @@ function PeriodCard({ period }: { period: PeriodResult }) {
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
         <SummaryCell label="Total tips" value={formatUsd(period.totalTipsUsd)} dim={period.totalTipsUsd === 0} />
-        <SummaryCell label="After 11% deduction" value={formatUsd(period.netTipsUsd)} highlight />
+        <SummaryCell label={`After ${+(period.deductionRate * 100).toFixed(2)}% deduction`} value={formatUsd(period.netTipsUsd)} highlight />
         <SummaryCell label="Total shift points" value={String(period.totalShiftPoints)} dim={period.totalShiftPoints === 0} />
         <SummaryCell label="Tips per shift point" value={formatUsd(period.tipsPerPoint)} highlight={period.tipsPerPoint > 0} />
       </div>

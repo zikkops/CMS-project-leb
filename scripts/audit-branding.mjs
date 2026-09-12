@@ -166,7 +166,11 @@ const allowedFor = (file, label) => ALLOWED.find(a => a.file === file && a.label
 
 // Above which the medium/low code count may not rise. Lower it as hex codes
 // move to CSS variables; never raise it to make a run pass.
-const BASELINE = 43
+// 43 → 40 on 12 Sep 2026: the tips calculator's hardcoded 11% went, and with
+// it the two lines of copy that quoted the same figure. That was never only a
+// branding hit — the constant meant the configured tips deduction did nothing
+// — which is the argument for ratcheting this down rather than leaving room.
+const BASELINE = 40
 
 // Which of a file's lines are prose rather than shipped code, as a parallel
 // array. Imperfect on purpose: a branded string sharing a line with a trailing

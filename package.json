@@ -45,7 +45,8 @@
     "seed:pos": "node --env-file=.env.local scripts/seed-pos.mjs",
     "verify:backup": "node scripts/verify-backup.mjs",
     "backup": "node --env-file=.env.local scripts/backup.mjs",
-    "restore": "node --env-file=.env.local scripts/restore.mjs"
+    "restore": "node --env-file=.env.local scripts/restore.mjs",
+    "verify:tips": "node scripts/verify-tips.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

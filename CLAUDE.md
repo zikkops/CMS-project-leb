@@ -43,6 +43,7 @@ npm run verify:offline       # if you touched the counter device's outbox or wha
 npm run verify:counter       # if you touched what the counter till charges for
 npm run verify:export        # if you touched what leaves the building for an accountant
 npm run verify:backup        # if you touched how a document is copied out or put back
+npm run verify:tips          # if you touched how tips are split
 npm run verify:errors        # if you touched what an error report may contain
 npm run verify:delivery-math # if you touched receiving or costing
 npm run audit:writes         # must stay at 0
@@ -226,6 +227,30 @@ writing needs `--apply`**.
   dataset between projects, and for the drill.
 - It sees TOP-LEVEL collections only, via `listCollections()`. The schema is
   flat today; a subcollection would need that line changed.
+
+## Tips (Sep 2026)
+
+`shared/src/tips.ts` splits the pot; `/admin/end-of-day/tips` displays it.
+
+- **The deduction is a setting, and it was not.** The page carried
+  `const DEDUCTION = 0.11` while Business Settings offered an editable
+  `tipsDeductionRate` on a form that implies it matters. Changing the setting
+  changed nothing — every payout stayed at 11%, with no symptom beyond a
+  number being slightly wrong on its way to staff. `audit:branding` had been
+  flagging that line for weeks as a hardcoded 11%; it was read as a branding
+  smell, and nobody noticed it meant the setting was dead. **When the audit
+  points at a constant, ask what reads it.**
+- **The shares add up to the pot, to the cent.** The old version multiplied an
+  unrounded per-point figure per person and let the remainder evaporate; the
+  odd cent now lands on somebody by largest remainder, the same rule seat
+  shares follow. Money quietly going missing is the same class of bug as
+  netting a refund into sales.
+- **A rate that is not a sensible fraction takes nothing off.** A missing or
+  misconfigured setting must not be able to take 100% of the tips: paying
+  staff too much is noticed, paying them nothing looks like an empty pot.
+- `npm run verify:tips` — 26 cases. The period carries the rate it was worked
+  out at, so a card can never label a total with a rate that did not produce
+  it.
 
 ## Firestore rules
 
