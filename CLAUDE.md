@@ -476,6 +476,12 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
     why `verify:dates` pins every case to an explicit zone.
   - **The pilot.** One section of one branch, the old till still taking
     payment. That constraint is what makes v1 safe to ship badly.
+    **[docs/pilot.md](./docs/pilot.md) is the runbook** — what to confirm the
+    week before (`rules:live`, a backup and its compare, clearing the seeded
+    history, who needs which section), what to watch on the night, what to
+    check the same evening, and what a pass actually is. Its first line is the
+    decision nobody should discover halfway through a Friday: which Firebase
+    project the pilot runs against, given this repo points at a demo one.
 
 - **04 (POS v2): all seven slices built, none piloted; payment is behind the
   `payments` switch — off.** The plan, its order and the owner's decisions are
