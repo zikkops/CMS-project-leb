@@ -34,6 +34,7 @@
 // the same rows to a device.
 
 import { checkTotals, grossLineTotal, type Check, type CheckLine } from './checks'
+import { zonedParts } from './dates'
 import { describeSelections } from './modifiers'
 import { billTotals, vatIncluded } from './money'
 import { timestampMs } from './timestamps'
@@ -70,6 +71,22 @@ export interface ReceiptOptions {
    * settled at belongs on the check and comes from there.
    */
   exchangeRate: number
+  /**
+   * The café's timezone, e.g. 'Asia/Beirut'.
+   *
+   * Required, not optional, and that is the point. This used to be absent and
+   * the printed time came from `getHours()` on whichever machine drew the
+   * receipt — right only by luck, on a device standing in the café with its
+   * clock set correctly. A cheap tablet with the wrong zone printed a wrong
+   * time on every receipt a customer took home, and nothing anywhere would
+   * have said so. The kitchen ticket next door already took a `timeZone`;
+   * the document that leaves the building was the one that did not.
+   *
+   * Optional with a fallback would have left the old path reachable. Required
+   * means the device clock cannot decide this again without someone changing
+   * this signature on purpose.
+   */
+  timeZone: string
   /** Defaults to the check's closedAt, then to now. */
   issuedAt?: Date
   footer?: string
@@ -104,10 +121,10 @@ function formatMoney(amount: number, currency: string, secondary: string): strin
   })
 }
 
-function formatIssuedAt(date: Date): string {
+function formatIssuedAt(date: Date, timeZone: string): string {
   const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
-    `${pad(date.getHours())}:${pad(date.getMinutes())}`
+  const p = zonedParts(date, timeZone)
+  return `${p.year}-${pad(p.month)}-${pad(p.day)} ${pad(p.hour)}:${pad(p.minute)}`
 }
 
 /** The line's own description, minus the quantity the pair already shows. */
@@ -156,7 +173,7 @@ export function buildReceipt(check: Check, opts: ReceiptOptions): ReceiptRow[] {
   if (check.guestCount > 0) {
     rows.push({ kind: 'pair', left: 'Guests', right: String(check.guestCount) })
   }
-  rows.push({ kind: 'pair', left: 'Date', right: formatIssuedAt(issuedAt) })
+  rows.push({ kind: 'pair', left: 'Date', right: formatIssuedAt(issuedAt, opts.timeZone) })
   // The local part only. A customer does not need the café's mail domain, and
   // a full address on a receipt left on a table is a staff member's contact
   // detail handed to a stranger.

@@ -22,6 +22,11 @@ export function receiptOptionsFor(exchangeRate: number): ReceiptOptions {
     currency: BRAND.locale.currency,
     secondaryCurrency: BRAND.locale.secondaryCurrency,
     exchangeRate,
+    // The café's zone, not the printing device's. A receipt drawn on a tablet
+    // whose clock was never set right would otherwise carry a wrong time home
+    // with the customer, and the KDS prints it from whichever device has
+    // "Print here" on — not necessarily the phone that closed the check.
+    timeZone: BRAND.locale.timezone,
     footer: 'Thank you',
   }
 }

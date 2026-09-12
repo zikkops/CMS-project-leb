@@ -1,7 +1,9 @@
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore'
 import { db } from './firebase'
 import { authedFetch, unwrap, postOnce } from './apiClient'
+import { BRAND } from './brand'
 import { BRANCHES } from './branches'
+import { cafeWeek } from './dates'
 // Re-exported below so existing import sites keep working; defined in a
 // module with no imports so route handlers can validate against it.
 import { DEPARTMENTS, type Department } from './departments'
@@ -396,23 +398,16 @@ export async function listWeeklyOrderLogs(limitCount = 150): Promise<WeeklyOrder
 
 // ---- Date helpers ----
 
+/**
+ * The café's current week. The arithmetic is `cafeWeek()` in dates.ts, which
+ * is pure and asserted; this only names the zone.
+ *
+ * It used to read the submitting device's `getDay()`/`getDate()`, which is
+ * right only on a machine standing in the café with its clock set correctly.
+ * `weekStart` is what a report is filed under, so the wrong week is a
+ * misfiled order rather than a cosmetic slip.
+ */
 export function getCurrentWeek(): { startStr: string; label: string } {
-  const now = new Date()
-  const day = now.getDay()
-  const diffToMonday = day === 0 ? -6 : 1 - day
-  const monday = new Date(now)
-  monday.setDate(now.getDate() + diffToMonday)
-  monday.setHours(0, 0, 0, 0)
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-
-  const fmt = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-  const label = `${fmt(monday)} – ${fmt(sunday)} ${sunday.getFullYear()}`
-  const startStr = [
-    monday.getFullYear(),
-    String(monday.getMonth() + 1).padStart(2, '0'),
-    String(monday.getDate()).padStart(2, '0'),
-  ].join('-')
-
-  return { startStr, label }
+  const week = cafeWeek(BRAND.locale.timezone)
+  return { startStr: week.start, label: week.label }
 }

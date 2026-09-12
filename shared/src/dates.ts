@@ -119,3 +119,53 @@ export function zonedParts(at: Date, timeZone: string): ZonedParts {
     minute: n('minute'),
   }
 }
+
+/**
+ * The Monday-to-Sunday week an instant falls in, in the café's timezone.
+ *
+ * `start` is an identity, not a label: a weekly order is filed under it and
+ * the fulfilment bar matches receipts against it. This used to be `getDay()`
+ * and `getDate()` on the submitting device, so a manager ordering from abroad
+ * — or from a laptop whose clock had drifted a day — filed the order under the
+ * wrong week, where it reads as a week nobody ordered for and a week ordered
+ * for twice.
+ *
+ * It lives here rather than in weeklyOrders.ts because that module imports
+ * Firestore, so nothing there can be asserted. This is pure, and
+ * `verify:dates` covers it.
+ *
+ * The stepping is calendar arithmetic on a UTC date built from the café's own
+ * Y-M-D, the same technique cashUpDay() uses: no zone and no daylight-saving
+ * change can move a week boundary by an hour.
+ */
+export function cafeWeek(timeZone: string, now: Date = new Date()): { start: string; label: string } {
+  const p = zonedParts(now, timeZone)
+  // NOON UTC, not midnight. These Dates are only carriers for a calendar
+  // date, but anything that formats one in the host's zone shifts a UTC
+  // midnight back a day on every host west of Greenwich, and the label would
+  // name the day before the one it was built from. Noon does not make that
+  // safe — UTC+12 and east still roll it forward, so `timeZone: 'UTC'` below
+  // is the correction and this is only a narrower blast radius if it is ever
+  // dropped. Both, because the guard is one word and easy to lose: the
+  // mutation that removed it passed every test here, Beirut being east of
+  // UTC, which is exactly how this class of bug keeps reaching production.
+  const today = new Date(Date.UTC(p.year, p.month - 1, p.day, 12))
+  const dow = today.getUTCDay()                        // 0 Sunday … 6 Saturday
+  const monday = new Date(today)
+  // Sunday belongs to the week that has just ended, not the one starting.
+  monday.setUTCDate(today.getUTCDate() + (dow === 0 ? -6 : 1 - dow))
+  const sunday = new Date(monday)
+  sunday.setUTCDate(monday.getUTCDate() + 6)
+
+  const pad = (n: number) => String(n).padStart(2, '0')
+  // timeZone: 'UTC' is load-bearing. These Dates are UTC-midnight carriers for
+  // a calendar date; formatted without it, the host's zone would shift them
+  // and a label could name the day before the one it was built from.
+  const fmt = (d: Date) =>
+    d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+
+  return {
+    start: `${monday.getUTCFullYear()}-${pad(monday.getUTCMonth() + 1)}-${pad(monday.getUTCDate())}`,
+    label: `${fmt(monday)} – ${fmt(sunday)} ${sunday.getUTCFullYear()}`,
+  }
+}

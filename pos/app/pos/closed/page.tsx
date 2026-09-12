@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { BRAND } from '@big-cms/shared/brand'
 import { checkTotals, type Check } from '@big-cms/shared/checks'
+import { ymdInZone } from '@big-cms/shared/dates'
 import { useClosedChecks, refundCheck } from '../../lib/usePos'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
@@ -33,25 +34,31 @@ function useIsMobile(breakpoint = 768) {
 const money = (n: number) => `$${n.toFixed(2)}`
 
 /**
- * Local calendar day for a closed check, as YYYY-MM-DD.
+ * The café's calendar day for a closed check, as YYYY-MM-DD.
  *
  * closedAt is a Firestore timestamp, so it arrives with a seconds field.
- * Grouping by the LOCAL day rather than UTC matters here: a café closing at
- * one in the morning would otherwise have its last two hours filed under
- * tomorrow.
+ * Grouping by a calendar day rather than UTC was always the point — a café
+ * closing at one in the morning would otherwise have its last two hours filed
+ * under tomorrow — but "local" meant the DEVICE's day, which is only the
+ * café's by luck. /admin/exports groups the very same checks by the café's
+ * zone, so the two screens could head the same night differently.
  */
 function dayOf(check: Check): string {
   const raw = check as unknown as { closedAt?: { seconds?: number } }
   const ms = raw.closedAt?.seconds ? raw.closedAt.seconds * 1000 : Date.now()
-  const d = new Date(ms)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return ymdInZone(new Date(ms), BRAND.locale.timezone)
 }
 
 function timeOf(check: Check): string {
   const raw = check as unknown as { closedAt?: { seconds?: number } }
   if (!raw.closedAt?.seconds) return ''
+  // The café's clock, like the day heading above it. A time in one zone
+  // under a date in another is the kind of disagreement nobody reads as a
+  // bug — they read it as the check being an hour out.
   return new Date(raw.closedAt.seconds * 1000)
-    .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    .toLocaleTimeString([], {
+      hour: '2-digit', minute: '2-digit', timeZone: BRAND.locale.timezone,
+    })
 }
 
 /** Date and time together, for the expanded view and for a refund record. */
@@ -59,7 +66,7 @@ function stampOf(seconds: number | undefined): string {
   if (!seconds) return ''
   return new Date(seconds * 1000).toLocaleString([], {
     year: 'numeric', month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
+    hour: '2-digit', minute: '2-digit', timeZone: BRAND.locale.timezone,
   })
 }
 

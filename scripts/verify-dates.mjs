@@ -195,5 +195,54 @@ eq('03:00 on the 11th in Asia/Beirut is the 10th\'s night',
 eq('THE BUG: 15:00 in Asia/Beirut is the 11th, even on a device in New York',
    D.cashUpDay(BEIRUT, new Date('2026-09-11T12:00:00Z')), '2026-09-11')
 
+console.log('\ncafeWeek — the week an order is filed under')
+// Friday 11 Sep 2026. The week runs Mon 7th to Sun 13th.
+const wk = (iso, tz = BEIRUT) => D.cafeWeek(tz, new Date(iso))
+eq('a midweek day gives its Monday', wk('2026-09-11T12:00:00Z').start, '2026-09-07')
+eq('Monday itself is the start, not the week before',
+   wk('2026-09-07T09:00:00Z').start, '2026-09-07')
+eq('Sunday belongs to the week ending, not the one starting',
+   wk('2026-09-13T09:00:00Z').start, '2026-09-07')
+eq('and Monday after that moves on', wk('2026-09-14T09:00:00Z').start, '2026-09-14')
+
+// The label names the week a human reads on the order, so it has to agree
+// with the identity it is printed beside.
+// en-GB abbreviates September as "Sept", not "Sep" — four letters, unlike
+// every other month. Unchanged from the old label; pinned so a locale-data
+// change is a failure here rather than a surprise on a supplier's order.
+eq('the label spans Monday to Sunday',
+   wk('2026-09-11T12:00:00Z').label, '7 Sept – 13 Sept 2026')
+eq('a week spanning a month says both months',
+   wk('2026-09-30T09:00:00Z').label, '28 Sept – 4 Oct 2026')
+eq('a week spanning a year takes the Sunday\'s year',
+   wk('2026-12-31T09:00:00Z').label, '28 Dec – 3 Jan 2027')
+eq('and its start is still in the old year',
+   wk('2026-12-31T09:00:00Z').start, '2026-12-28')
+
+// THE BUG. 21:30 UTC on Sunday the 13th is already 00:30 Monday the 14th in
+// Beirut: the café's new week has begun. A device reading its own clock files
+// the order under the week that has just ended — where it reads as a week
+// nobody ordered for and a week ordered for twice.
+eq('THE BUG: just after café midnight on Monday is the NEW week',
+   wk('2026-09-13T21:30:00Z').start, '2026-09-14')
+eq('the same instant in UTC is still the old week',
+   wk('2026-09-13T21:30:00Z', 'UTC').start, '2026-09-07')
+
+// Why the label is formatted with an explicit timeZone, asserted rather than
+// only commented. A Date carrying a calendar date, formatted in a host zone
+// instead of UTC, names a different day — and the machine this suite runs on
+// cannot show it, because Node on Windows ignores TZ and Beirut is east of
+// UTC. Naming the zones explicitly is the only way to test it at all.
+{
+  const label = (d, tz) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: tz })
+  const midnight = new Date(Date.UTC(2026, 8, 7))
+  const noon = new Date(Date.UTC(2026, 8, 7, 12))
+  eq('a UTC-midnight carrier reads as the 6th in New York', label(midnight, 'America/New_York'), '6 Sept')
+  eq('a UTC-noon carrier survives it', label(noon, 'America/New_York'), '7 Sept')
+  // …but noon is a narrower blast radius, not a fix: UTC+14 still rolls it on.
+  eq('noon is NOT safe east of UTC+12', label(noon, 'Pacific/Kiritimati'), '8 Sept')
+  eq('only an explicit UTC formats it right everywhere', label(noon, 'UTC'), '7 Sept')
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail > 0 ? 1 : 0)

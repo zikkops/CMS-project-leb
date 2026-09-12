@@ -56,12 +56,18 @@ const check = (over = {}) => ({
   id: 'c1', branch: 'Main', tableId: 't1', tableNumber: 12,
   status: 'closed', guestCount: 2, lines: [line()],
   openedBy: 'u1', openedByEmail: 'sara@cafe.example.com',
-  closedAt: '2026-09-07T15:30:00', receiptNumber: 'INV-Q3-092026-0007',
+  // An explicit instant, not a floating one. '2026-09-07T15:30:00' without the
+  // Z parses in the HOST's zone, so this file used to pass for the wrong
+  // reason: the fixture and the formatter read the same machine, and agreed
+  // with each other wherever it stood. Pinned here, with the options below
+  // pinned to UTC, every expectation means the same thing in Beirut and on CI.
+  closedAt: '2026-09-07T15:30:00Z', receiptNumber: 'INV-Q3-092026-0007',
   staffDiscount: null, ...over,
 })
 const opts = {
   businessName: 'Placeholder Cafe', address: '1 Example Street', phone: '+000 00 000 000',
   currency: 'USD', secondaryCurrency: 'LBP', exchangeRate: 89500,
+  timeZone: 'UTC',
 }
 const find = (rows, left) => rows.find(r => r.kind === 'pair' && r.left === left)
 
@@ -85,6 +91,34 @@ eq('table', find(rows, 'Table').right, '12')
 eq('guests', find(rows, 'Guests').right, '2')
 eq('date comes from closedAt', find(rows, 'Date').right, '2026-09-07 15:30')
 
+// ── The printed time is the café's, not the machine's ──────────────────────
+// It used to be getHours() on whoever drew the receipt. That is right only on
+// a device standing in the café with its clock set correctly, and a cheap
+// tablet with the wrong zone would have printed a wrong time on every receipt
+// a customer took home — with nothing anywhere to say so. The kitchen ticket
+// already took a timeZone; the document that leaves the building did not.
+{
+  const dateIn = timeZone => find(R.buildReceipt(check(), { ...opts, timeZone }), 'Date').right
+
+  eq('the zone decides the printed time', dateIn('Asia/Beirut'), '2026-09-07 18:30')
+  eq('and a different zone prints a different one', dateIn('UTC'), '2026-09-07 15:30')
+
+  // 21:30 UTC on the 7th is already half past midnight on the 8th in Beirut.
+  // The same trap the sales export was built around, on the document a
+  // customer keeps: a late check must not carry yesterday's date home.
+  const late = () => check({ closedAt: '2026-09-07T21:30:00Z' })
+  const lateIn = timeZone => find(R.buildReceipt(late(), { ...opts, timeZone }), 'Date').right
+  eq('a check closed after café midnight prints the next day',
+     lateIn('Asia/Beirut'), '2026-09-08 00:30')
+  eq('and the host zone cannot drag it back', lateIn('UTC'), '2026-09-07 21:30')
+
+  // Hours and minutes both pad, in a zone whose offset is not a whole hour —
+  // half the world's date bugs are an assumption that offsets are integers.
+  eq('a half-hour offset is honoured',
+     find(R.buildReceipt(check({ closedAt: '2026-09-07T21:30:00Z' }),
+       { ...opts, timeZone: 'Asia/Kolkata' }), 'Date').right, '2026-09-08 03:00')
+}
+
 // ── closedAt as Firestore actually delivers it ─────────────────────────────
 // The fixture above passes a string, which is the one shape Firestore never
 // sends. The server writes serverTimestamp(), so a real closed check carries a
@@ -93,7 +127,7 @@ eq('date comes from closedAt', find(rows, 'Date').right, '2026-09-07 15:30')
 {
   const { createRequire } = await import('node:module')
   const { Timestamp } = createRequire(join(process.cwd(), 'package.json'))('firebase/firestore')
-  const at = new Date('2026-09-07T15:30:00')   // local, like the fixture
+  const at = new Date('2026-09-07T15:30:00Z')   // the same instant as the fixture
   const dateFor = closedAt => find(R.buildReceipt(check({ closedAt }), opts), 'Date').right
 
   eq('a real Timestamp dates the receipt', dateFor(Timestamp.fromDate(at)), '2026-09-07 15:30')
