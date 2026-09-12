@@ -41,7 +41,8 @@
     "verify:errors": "node scripts/verify-errors.mjs",
     "verify:counter": "node scripts/verify-counter.mjs",
     "rules:live": "node --env-file=.env.local scripts/check-rules.mjs",
-    "verify:export": "node scripts/verify-export.mjs"
+    "verify:export": "node scripts/verify-export.mjs",
+    "seed:pos": "node --env-file=.env.local scripts/seed-pos.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
