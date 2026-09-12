@@ -153,6 +153,16 @@ key, because "can export the books" is not a permission handed out for a shift.
   stays in one place, and it needs no composite index. `MAX_RANGE_DAYS` caps a
   request at 100 days: a quarter covers a VAT filing, and an export that can
   read the whole history by accident eventually will.
+- **It has been run against real documents**, which until now nothing built on
+  a closed check had been. `npm run seed:pos` writes a café history — closed
+  checks with payments in both currencies, a few refunds, each carrying the VAT
+  and exchange rate the settings hold — because seed-demo.mjs predates the POS
+  and writes no checks at all. Against 30 days of it: 418 documents queried,
+  414 in range, 387 sales totalling $8,895.75 with $879.85 of VAT extracted at
+  11%, 26 refunds kept separate, and **92 checks that closed after local
+  midnight filed on the next café day** — the trap, met on real data rather
+  than only in a fixture. The seed is idempotent, marks every check
+  `seeded: true`, and `--clear` removes exactly those.
 - The browser names a date range and a branch, and nothing else — no rate, no
   VAT percentage, no total. `admin/app/admin/exports/workbook.ts` only arranges
   rows into sheets; the moment it does arithmetic there are two answers to what
