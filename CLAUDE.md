@@ -31,8 +31,23 @@ copies it.
 ## Verification ritual — every change, no exceptions
 
 ```bash
-npx tsc --noEmit -p pos      # or web, or admin — whichever you touched
-npm run build                # all three
+npm run verify:all           # type-checks, every verifier, every audit
+npm run build                # all three — before a commit that touches an app
+```
+
+**`verify:all` discovers the checks from package.json**, so a verifier added
+tomorrow is in the run without anybody updating a list. That matters because
+this list had already drifted: `verify:features` and `verify:hosts` existed for
+weeks without appearing in it. It prints the assertion count per verifier,
+because a verifier that silently asserts nothing still exits 0, and the count
+is the only thing that shows it. Currently 20 checks, 14 verifiers, 777
+assertions, about 35 seconds of work across four lanes. It deliberately does
+not run the builds — three Next builds take minutes to prove compilation that
+tsc proves faster.
+
+When you want one of them on its own:
+
+```bash
 npm run verify:checks        # if you touched money, stock or tickets
 npm run verify:receipt       # if you touched what a customer is handed
 npm run verify:brand         # if you touched a colour, a variable or brand.ts
