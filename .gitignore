@@ -66,3 +66,6 @@ pos/.next/
 
 # Scratch patch scripts — written, run, deleted. Never committed.
 .patch.mjs
+
+# Local data copies from scripts/backup.mjs — never committed.
+backups/

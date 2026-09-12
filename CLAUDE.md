@@ -42,6 +42,7 @@ npm run verify:payments      # if you touched a payment, tender, change or the b
 npm run verify:offline       # if you touched the counter device's outbox or what it sends
 npm run verify:counter       # if you touched what the counter till charges for
 npm run verify:export        # if you touched what leaves the building for an accountant
+npm run verify:backup        # if you touched how a document is copied out or put back
 npm run verify:errors        # if you touched what an error report may contain
 npm run verify:delivery-math # if you touched receiving or costing
 npm run audit:writes         # must stay at 0
@@ -167,6 +168,42 @@ key, because "can export the books" is not a permission handed out for a shift.
   VAT percentage, no total. `admin/app/admin/exports/workbook.ts` only arranges
   rows into sheets; the moment it does arithmetic there are two answers to what
   a day took.
+
+## Backups (Phase 05, Sep 2026)
+
+`npm run backup` copies every collection to newline-delimited JSON under
+`backups/` (gitignored), one file per collection plus a manifest.
+`npm run restore -- <dir>` puts it back — but **compare is the default and
+writing needs `--apply`**.
+
+- **A Firestore document is not JSON, and that is the whole risk.** Timestamps,
+  GeoPoints, references, bytes, NaN and Infinity all lose themselves in
+  `JSON.stringify` — a Timestamp becomes `{_seconds,_nanoseconds}` and restores
+  as a plain map, so every date in the system silently stops being a date. The
+  tagging lives in `shared/src/backupCodec.ts`, pure, with `npm run
+  verify:backup` on it (33 cases, four mutations checked). It escapes the tag
+  key too: a café will never have a field called `$fs` until an import brings
+  one, and an unescaped codec decodes it as a native and mangles the document.
+- **Compare is the drill you can actually run.** "Backups, with a restore you
+  have actually run" is on the Phase 05 list because an unexercised backup is a
+  rumour — but nobody rehearses a destructive restore on a whim. So the default
+  mode reads every document back and compares it with the backup THROUGH the
+  codec (two Timestamps for one instant are different objects; only the encoded
+  forms compare). Run 12 Sep 2026 against the demo project: 790 documents, 790
+  identical. `--apply` was then run for real on one collection, and the compare
+  repeated: still identical.
+- **It refuses to restore into a project the backup did not come from** without
+  `--allow-different-project`, and refuses to write into a project that does not
+  look like a demo unless `SEED_ALLOW_PROJECT` names it exactly. It never
+  deletes: a document created after the backup is reported and left alone.
+- **It is NOT a substitute for `gcloud firestore export`** once there is a
+  paying customer. A managed export is a consistent point-in-time snapshot taken
+  by the database; this reads collection by collection while the café may still
+  be trading, so two collections can disagree by seconds. Managed export for
+  disaster recovery; this for "send me a copy of that café’s data", for moving a
+  dataset between projects, and for the drill.
+- It sees TOP-LEVEL collections only, via `listCollections()`. The schema is
+  flat today; a subcollection would need that line changed.
 
 ## Firestore rules
 
