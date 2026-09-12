@@ -1011,7 +1011,7 @@ export default function CustomerProfilePage() {
 
             {privateTab === 'history' ? (
               fullHistory.length === 0 ? (
-                <div style={emptyStateStyle}>Your adventure hasn&apos;t started yet</div>
+                <div style={emptyStateStyle}>You haven&apos;t earned any points yet</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                   {fullHistory.map(tx => (

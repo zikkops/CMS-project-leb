@@ -197,7 +197,7 @@ export default function RedeemPage() {
             Your Balance
           </span>
           <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.6rem', color: 'var(--teal)' }}>
-            {points.toLocaleString()} coins
+            {points.toLocaleString()} points
           </span>
         </div>
 
@@ -235,18 +235,18 @@ export default function RedeemPage() {
                       <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', color: 'var(--offwhite)', marginBottom: '0.3rem' }}>{item.name}</p>
                       <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>{item.description}</p>
                     </div>
-                    <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', color: 'var(--teal)', whiteSpace: 'nowrap' }}>{item.coinCost} coins</span>
+                    <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', color: 'var(--teal)', whiteSpace: 'nowrap' }}>{item.coinCost} points</span>
                   </div>
 
                   {isConfirming ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.9rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-inter)', fontSize: '0.82rem' }}>
                         <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)' }}>Current Balance</span>
-                        <span style={{ color: 'var(--offwhite)' }}>{points.toLocaleString()} coins</span>
+                        <span style={{ color: 'var(--offwhite)' }}>{points.toLocaleString()} points</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-inter)', fontSize: '0.82rem' }}>
                         <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)' }}>Remaining After Redemption</span>
-                        <span style={{ color: 'var(--teal)' }}>{(points - item.coinCost).toLocaleString()} coins</span>
+                        <span style={{ color: 'var(--teal)' }}>{(points - item.coinCost).toLocaleString()} points</span>
                       </div>
 
                       <div>

@@ -94,7 +94,7 @@ export default function Navbar() {
     if (!customerUser) { setCustomerName(null); return }
     const unsub = onSnapshot(doc(db, 'users', customerUser.uid), snap => {
       const data = snap.data() as { displayName?: string; username?: string } | undefined
-      setCustomerName(data?.username || data?.displayName || customerUser.displayName || 'Adventurer')
+      setCustomerName(data?.username || data?.displayName || customerUser.displayName || 'there')
     }, err => console.error('[Navbar] users/{uid} listener failed:', err))
     return unsub
   }, [customerUser])

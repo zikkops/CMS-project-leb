@@ -269,7 +269,7 @@ export default function RedemptionsQueuePage() {
 
                   <div style={fieldRowStyle}>
                     <span style={fieldLabelStyle}>Coin Cost</span>
-                    <span style={{ ...fieldValueStyle, color: 'var(--teal)' }}>{r.coinCost} coins</span>
+                    <span style={{ ...fieldValueStyle, color: 'var(--teal)' }}>{r.coinCost} points</span>
                   </div>
 
                   {errorById[r.id] && (

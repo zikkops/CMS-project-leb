@@ -141,7 +141,7 @@ export default function RedemptionItemsPage() {
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
                   <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.95rem', color: 'var(--offwhite)' }}>{item.name}</p>
-                  <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--teal)', whiteSpace: 'nowrap' }}>{item.coinCost} coins</span>
+                  <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--teal)', whiteSpace: 'nowrap' }}>{item.coinCost} points</span>
                 </div>
                 <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>{item.description}</p>
 

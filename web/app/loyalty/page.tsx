@@ -12,7 +12,10 @@ import { useIsMobile } from '@big-cms/shared/useIsMobile'
 import { useRedemptionItems, type RedemptionItem } from '@big-cms/shared/redemptions'
 import { PLACEHOLDER } from '@big-cms/shared/placeholderAssets'
 import { useTierPerks } from '@big-cms/shared/tierPerks'
-import { TIERS, tierColor } from '@big-cms/shared/loyaltyTiers'
+import {
+  TIERS, tierColor,
+  POINTS_PER_DOLLAR, EVENT_POINTS_PER_PERSON, TABLE_CHECKIN_POINTS,
+} from '@big-cms/shared/loyaltyTiers'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faGoogle } from '@fortawesome/free-brands-svg-icons'
 import {
@@ -21,13 +24,17 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 import { BRAND } from '@big-cms/shared/brand'
 
+// The figures come from loyaltyTiers.ts, never typed here. A page that states
+// an earn rate is making a promise, and the till is what keeps it — the same
+// mistake the tips page made by carrying its own copy of a rate that Business
+// Settings thought it owned.
 const EARN_CARDS = [
   {
     icon: faReceipt,
     color: 'var(--teal)',
     title: 'Order at any branch',
     desc: 'Every dollar you spend earns you points. Submit your check through your profile after your visit.',
-    pointsEarned: 10, coins: 1, unit: 'per $1 spent',
+    points: POINTS_PER_DOLLAR, unit: 'per $1 spent',
     note: 'Tip — split the bill and share the reward',
   },
   {
@@ -35,7 +42,14 @@ const EARN_CARDS = [
     color: 'var(--red)',
     title: 'Attend an event',
     desc: `Come to any ${BRAND.name} event — tastings, launches, themed evenings — and earn a big point bonus just for showing up.`,
-    pointsEarned: 250, coins: 50, unit: 'per event',
+    points: EVENT_POINTS_PER_PERSON, unit: 'per event',
+  },
+  {
+    icon: faCalendarDay,
+    color: 'var(--purple)',
+    title: 'Book a table and turn up',
+    desc: 'Reserve a table through the site and collect your points when the staff check you in.',
+    points: TABLE_CHECKIN_POINTS, unit: 'per check-in',
   },
 ]
 
@@ -169,7 +183,7 @@ export default function LoyaltyPage() {
               color: 'var(--teal)',
               marginBottom: '1.5rem',
             }}>
-              Every visit, every product, every adventure — rewarded.
+              Every visit, every order, every event — rewarded.
             </p>
 
             <p style={{
@@ -323,12 +337,12 @@ export default function LoyaltyPage() {
                     <FontAwesomeIcon icon={faChartLine} style={{ width: '20px', color: 'var(--teal)' }} />
                   </div>
                   <h3 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.3rem', color: 'var(--offwhite)', marginBottom: '0.9rem' }}>
-                    points — Experience Points
+                    Your balance
                   </h3>
                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: isMobile ? '0.85rem' : '0.9rem', color: 'rgba(var(--offwhite-rgb),0.55)', lineHeight: 1.8 }}>
-                    points is your progression currency. It accumulates as you visit, play, and attend
-                    events. It never gets spent — it only grows and levels you up, unlocking
-                    permanent perks along the way.
+                    The points you have not spent yet. This is the part you actually
+                    hand over — for a free coffee, a pastry, a ticket to an event —
+                    so it goes up when you earn and down when you redeem.
                   </p>
                 </div>
 
@@ -348,11 +362,12 @@ export default function LoyaltyPage() {
                     <FontAwesomeIcon icon={faCoins} style={{ width: '20px', color: 'var(--purple)' }} />
                   </div>
                   <h3 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.3rem', color: 'var(--offwhite)', marginBottom: '0.9rem' }}>
-                    Points
+                    Your lifetime total
                   </h3>
                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: isMobile ? '0.85rem' : '0.9rem', color: 'rgba(var(--offwhite-rgb),0.55)', lineHeight: 1.8 }}>
-                    Points are your reward currency. Earn them alongside points and spend them on
-                    free coffees, drinks, burgers, event tickets, and D&amp;D sessions at any branch.
+                    Every point you have ever earned, counted up and never reduced.
+                    Your tier comes from this number, not from your balance — so
+                    spending your points never costs you the standing you built.
                   </p>
                 </div>
               </div>
@@ -362,7 +377,7 @@ export default function LoyaltyPage() {
           {/* 3. How to earn */}
           <Reveal>
             <section style={{ marginBottom: isMobile ? '4rem' : '7rem' }}>
-              <SectionHeading eyebrow="Earn As You Go" title="Two ways to earn" isMobile={isMobile} color="var(--teal)" />
+              <SectionHeading eyebrow="Earn As You Go" title="Three ways to earn" isMobile={isMobile} color="var(--teal)" />
 
               <div style={{
                 display: 'grid',
@@ -398,11 +413,7 @@ export default function LoyaltyPage() {
 
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', marginTop: 'auto' }}>
                       <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem', color: card.color }}>
-                        +{card.pointsEarned} points
-                      </span>
-                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>+</span>
-                      <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem', color: card.color }}>
-                        {card.coins} Coins
+                        +{card.points.toLocaleString('en-US')} points
                       </span>
                     </div>
                     <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.4rem' }}>
@@ -598,7 +609,7 @@ export default function LoyaltyPage() {
                         {item.description}
                       </p>
                       <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.15rem', color: 'var(--teal)' }}>
-                        {item.coinCost} coins
+                        {item.coinCost} points
                       </p>
                     </div>
                   ))}
@@ -688,7 +699,7 @@ export default function LoyaltyPage() {
                 color: 'var(--offwhite)',
                 marginBottom: '1rem',
               }}>
-                Ready to start your adventure?
+                Ready to start earning?
               </h2>
               <p style={{
                 fontFamily: 'var(--font-inter)',
