@@ -27,8 +27,8 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'export-verify-'))
 execSync(
-  `npx tsc shared/src/salesExport.ts --outDir ${out} --module esnext --target es2022 ` +
-  `--skipLibCheck --moduleResolution bundler --strict`,
+  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts --outDir ${out} ` +
+  `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
 for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
@@ -37,6 +37,7 @@ for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
 }
 
 const X = await import(`file://${join(out, 'salesExport.js')}`)
+const L = await import(`file://${join(out, 'loyaltyExport.js')}`)
 
 let pass = 0, fail = 0
 const eq = (name, got, want) => {
@@ -170,6 +171,96 @@ console.log('\nthe sheets are declared once, for the UI and the file both')
   eq('every day column names a real field', X.SHEETS.days.every(([k]) => k in X.dayRows([X.checkRow(check(), OPTS)])[0]), true)
   eq('every payment column names a real field',
     X.SHEETS.payments.every(([k]) => k in X.paymentRows(check({ payments: [pay()] }), OPTS)[0]), true)
+}
+
+// ── The other half of what leaves the building: points ─────────────────────
+// Points are a liability, so the figures below are somebody's promise to give
+// something away. The first case is the one that would have been wrong.
+
+const tx = (over = {}) => ({
+  id: 't1', type: 'event', status: 'approved', branchId: 'Main',
+  userId: ['u1'], pointsAmount: 10, submittedBy: 'u', approvedBy: 'm',
+  createdAt: '2026-09-12T20:00:00.000Z', ...over,
+})
+
+const red = (over = {}) => ({
+  id: 'r1', userId: 'u1', itemName: 'Free coffee', coinCost: 50,
+  status: 'redeemed', branchId: 'Main',
+  createdAt: '2026-09-12T20:00:00.000Z', confirmedAt: '2026-09-12T20:30:00.000Z', ...over,
+})
+
+console.log('\npoints are credited per person, not per transaction')
+{
+  // shared/src/server/loyalty.ts increments EVERY user in the array by the
+  // full pointsAmount. A report that sums the field says 10 where the café
+  // gave away 50.
+  const party = L.pointsRow(tx({ userId: ['u1', 'u2', 'u3', 'u4', 'u5'] }), OPTS)
+  eq('THE TRAP: five attendees at ten points is fifty', party.issued, 50)
+  eq('...and the per-person figure is kept beside it', party.perPerson, 10)
+  eq('...with the headcount', party.people, 5)
+  eq('one attendee is just the amount', L.pointsRow(tx(), OPTS).issued, 10)
+  eq('nobody attached issues nothing', L.pointsRow(tx({ userId: [] }), OPTS).issued, 0)
+}
+
+console.log('\nonly what actually moved a balance counts')
+{
+  eq('a pending submission is a request, not a liability', L.pointsRow(tx({ status: 'pending' }), OPTS).issued, 0)
+  eq('a rejected one issues nothing', L.pointsRow(tx({ status: 'rejected' }), OPTS).issued, 0)
+  eq('a cancelled one issues nothing', L.pointsRow(tx({ status: 'cancelled' }), OPTS).issued, 0)
+
+  const back = L.pointsRow(tx({ status: 'reversed', userId: ['u1', 'u2'] }), OPTS)
+  eq('a refunded check reverses, in its own column', [back.issued, back.reversed], [0, 20])
+}
+
+console.log('\na redemption counts when it is handed over')
+{
+  eq('redeemed spends the cost', L.redemptionRow(red(), OPTS).spent, 50)
+  eq('pending spends nothing', L.redemptionRow(red({ status: 'pending', confirmedAt: null }), OPTS).spent, 0)
+  eq('rejected spends nothing', L.redemptionRow(red({ status: 'rejected' }), OPTS).spent, 0)
+  eq('...but the cost is still shown', L.redemptionRow(red({ status: 'rejected' }), OPTS).cost, 50)
+  eq('dated by when it was handed over', L.redemptionRow(red(), OPTS).day, '2026-09-12')
+  // 21:00Z is already the 13th in Beirut — the same boundary the sales export
+  // has, and the reason both take an explicit zone.
+  eq('THE TRAP: dated in the café’s zone', L.redemptionRow(red({ confirmedAt: '2026-09-12T21:00:00.000Z' }), OPTS).day, '2026-09-13')
+  eq('a request never confirmed falls back to when it was asked for',
+    L.redemptionRow(red({ status: 'pending', confirmedAt: null }), OPTS).day, '2026-09-12')
+}
+
+console.log('\nwhat the liability did, by day and branch')
+{
+  const built = L.buildLoyaltyExport(
+    [
+      tx({ id: 'a', userId: ['u1', 'u2'] }),                                   // +20
+      tx({ id: 'b', status: 'pending' }),                                      // nothing
+      tx({ id: 'c', status: 'reversed' }),                                     // −10
+      tx({ id: 'd', branchId: 'Second' }),                                     // +10, other branch
+      tx({ id: 'e', createdAt: '2026-09-12T21:00:00.000Z' }),                  // next café day
+    ],
+    [red({ id: 'r1' }), red({ id: 'r2', status: 'pending', confirmedAt: null })],
+    OPTS,
+  )
+
+  eq('a day row per branch', built.days.map(d => `${d.day} ${d.branch}`),
+    ['2026-09-12 Main', '2026-09-12 Second', '2026-09-13 Main'])
+
+  const main = built.days[0]
+  eq('issued on the 12th at Main', main.issued, 20)
+  eq('...reversed', main.reversed, 10)
+  eq('...spent', main.spent, 50)
+  eq('net is issued minus reversed minus spent', main.net, -40)
+  eq('every transaction is counted, even the ones that moved nothing', main.transactions, 3)
+  eq('and both redemptions are listed', main.redemptions, 2)
+  eq('the after-midnight one is its own day', built.days[2].issued, 10)
+}
+
+console.log('\nthe loyalty sheets are declared once')
+{
+  const p = L.pointsRow(tx(), OPTS)
+  const r = L.redemptionRow(red(), OPTS)
+  const d = L.loyaltyDayRows([p], [r])[0]
+  eq('every points column names a real field', L.LOYALTY_SHEETS.points.every(([k]) => k in p), true)
+  eq('every redemption column names a real field', L.LOYALTY_SHEETS.redemptions.every(([k]) => k in r), true)
+  eq('every day column names a real field', L.LOYALTY_SHEETS.days.every(([k]) => k in d), true)
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

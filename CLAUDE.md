@@ -173,6 +173,19 @@ key, because "can export the books" is not a permission handed out for a shift.
   midnight filed on the next café day** — the trap, met on real data rather
   than only in a fixture. The seed is idempotent, marks every check
   `seeded: true`, and `--clear` removes exactly those.
+- **The points ledger is the other half** (`shared/src/loyaltyExport.ts`, same
+  verifier). Points are a liability, so this answers what was issued, taken
+  back and spent over a range. **The trap it exists for: `pointsAmount` is
+  credited to EVERY user in a transaction’s `userId` array, not divided
+  between them** — an event with five attendees at ten points each issues
+  fifty, and a report that sums the field says ten. The neighbouring
+  `splitCount` actively misleads: it is `attendeeUids.length`, a headcount,
+  and the approvals screen labels it "split between N people". Only
+  `approved` issues and only `redeemed` spends; a pending submission is a
+  request, not a liability. A redemption is dated by when it was handed over,
+  which is why the server queries `createdAt` AND `confirmedAt` and unions —
+  one asked for last month and collected this month is exactly the movement
+  being asked about. Gated on `loyalty`, not `endOfDay`.
 - The browser names a date range and a branch, and nothing else — no rate, no
   VAT percentage, no total. `admin/app/admin/exports/workbook.ts` only arranges
   rows into sheets; the moment it does arithmetic there are two answers to what

@@ -9,6 +9,7 @@
 // moment it does, there are two answers to what a day took.
 
 import { SHEETS, type SalesExport } from '@big-cms/shared/salesExport'
+import { LOYALTY_SHEETS, type LoyaltyExport } from '@big-cms/shared/loyaltyExport'
 
 type Row = Record<string, unknown>
 
@@ -31,6 +32,13 @@ const WIDTH: Record<string, number> = {
   card: 12, server: 26, tender: 10, currency: 10, amount: 14, appliedLbp: 16,
   changeUsd: 13, changeLbp: 14, checks: 10, discounts: 12, refunds: 14,
   refundedChecks: 16,
+  // Loyalty
+  // `net` is not repeated here — the sales sheets already set it above, and a
+  // duplicate key is a type error rather than a merge.
+  type: 10, perPerson: 12, people: 9, issued: 13, reversed: 14, spent: 12,
+  transactions: 13, redemptions: 13, item: 24, cost: 10,
+  eventName: 22, checkNumber: 14, submittedBy: 26, approvedBy: 26,
+  confirmedBy: 26, userId: 26, id: 24,
 }
 
 /**
@@ -63,6 +71,33 @@ export async function downloadSalesWorkbook(data: SalesExport, from: string, to:
   download(
     new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
     `sales-${from}-to-${to}.xlsx`,
+  )
+}
+
+/**
+ * The points ledger, in the same three-sheet shape: what the liability did
+ * each day, every transaction, every redemption.
+ */
+export async function downloadLoyaltyWorkbook(data: LoyaltyExport, from: string, to: string): Promise<void> {
+  const { default: ExcelJS } = await import('exceljs/dist/exceljs.min.js')
+  const workbook = new ExcelJS.Workbook()
+
+  const sheets: [string, readonly (readonly [string, string])[], readonly Row[]][] = [
+    ['By day', LOYALTY_SHEETS.days, data.days as unknown as Row[]],
+    ['Points', LOYALTY_SHEETS.points, data.points as unknown as Row[]],
+    ['Redemptions', LOYALTY_SHEETS.redemptions, data.redemptions as unknown as Row[]],
+  ]
+  for (const [name, spec, rows] of sheets) {
+    const sheet = workbook.addWorksheet(name)
+    sheet.columns = spec.map(([key, header]) => ({ header, key, width: WIDTH[key] ?? 14 }))
+    sheet.getRow(1).font = { bold: true }
+    for (const row of rows) sheet.addRow(row)
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  download(
+    new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+    `loyalty-${from}-to-${to}.xlsx`,
   )
 }
 
