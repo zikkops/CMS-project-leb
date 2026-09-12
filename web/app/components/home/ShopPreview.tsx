@@ -7,6 +7,7 @@ import { db } from '@big-cms/shared/firebase'
 import Skeleton from '../Skeleton'
 import { totalStock } from '@big-cms/shared/branches'
 import { PLACEHOLDER } from '@big-cms/shared/placeholderAssets'
+import { formatUsd } from '@big-cms/shared/money'
 
 interface Product {
   id: string
@@ -211,7 +212,7 @@ export default function ShopPreview() {
                             fontFamily: 'var(--font-cinzel)',
                             fontSize: isMobile ? '1rem' : '1.2rem',
                             color: 'var(--purple)',
-                          }}>${price}</span>
+                          }}>{formatUsd(price)}</span>
                         )}
                         <span style={{
                           fontFamily: 'var(--font-inter)',

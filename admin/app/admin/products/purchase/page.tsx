@@ -7,6 +7,7 @@ import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { BRANCHES, normalizeStock } from '@big-cms/shared/branches'
 import { type PurchaseItem, createPurchaseOrder } from '@big-cms/shared/productPurchases'
+import { formatUsd } from '@big-cms/shared/money'
 
 interface Product {
   id: string
@@ -335,7 +336,7 @@ export default function RecordSalePage() {
                           </p>
                           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                             {product.category} · ${product.price}
-                            {product.wholesalePrice != null && ` · WS: $${product.wholesalePrice}`}
+                            {product.wholesalePrice != null && ` · WS: ${formatUsd(product.wholesalePrice)}`}
                             {' · '}
                             <span style={{ color: stock > 0 ? 'var(--teal)' : 'var(--red)' }}>
                               {stock} at {branch}

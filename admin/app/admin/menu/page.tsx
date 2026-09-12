@@ -6,6 +6,7 @@ import { db } from '@big-cms/shared/firebase'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { recordMediaUpload, uploadImage } from '@big-cms/shared/media'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
+import { formatUsd } from '@big-cms/shared/money'
 import MediaPickerModal from '../../components/admin/MediaPickerModal'
 import {
   DndContext, closestCenter, KeyboardSensor,
@@ -125,7 +126,7 @@ function SortableItem({ item, onEdit, onDelete, isMobile }: {
         color: 'var(--teal)',
         fontWeight: 600,
         whiteSpace: 'nowrap',
-      }}>${item.price}</span>
+      }}>{formatUsd(item.price)}</span>
 
       <span style={{
         fontSize: '0.65rem',

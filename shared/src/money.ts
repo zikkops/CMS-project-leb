@@ -27,6 +27,28 @@
  */
 export const LBP_ROUNDING = 100
 
+/**
+ * A price, as a customer should read it: `$8.50`, never `$8.5`.
+ *
+ * Found by looking at the menu rather than by any test. Every price on the
+ * customer site and in the admin was a bare `${item.price}`, so a coffee at
+ * 4.5 read `$4.5` and one at 11 read `$11` — sitting in a column beside
+ * `$9.25`, which only looked right because it happened to have two decimals.
+ * Nothing was wrong with the number; a price is a rendered thing, and half a
+ * rendered price is a typo on a menu.
+ *
+ * It lives here rather than in each page for the same reason the conversion
+ * does: one answer to what a figure looks like. The POS carries its own
+ * one-line `money()` per screen and is correct; new code should use this.
+ */
+export function formatUsd(amount: number): string {
+  // Not Number.isFinite(amount) ? '—' : … as a silent fallback. A price that
+  // cannot be rendered is a data problem, and an em dash where a figure
+  // belongs is how a menu quietly stops selling something.
+  if (!Number.isFinite(amount)) return '$0.00'
+  return `$${amount.toFixed(2)}`
+}
+
 /** Exact conversion, no rounding. What a line is worth. */
 export function usdToLbp(usd: number, rate: number): number {
   return usd * rate

@@ -13,6 +13,7 @@ import { faArrowLeft } from '@fortawesome/free-solid-svg-icons'
 import { totalStock } from '@big-cms/shared/branches'
 import { BRAND } from '@big-cms/shared/brand'
 import { PLACEHOLDER } from '@big-cms/shared/placeholderAssets'
+import { formatUsd } from '@big-cms/shared/money'
 
 // The board-product-era players/duration/age fields are still written by Manage
 // Products but are no longer surfaced here, so they're left off the interface.
@@ -311,7 +312,7 @@ export default function ProductPage() {
                     fontFamily: 'var(--font-cinzel)',
                     fontSize: '2rem',
                     color: 'var(--purple)',
-                  }}>${product.price}</span>
+                  }}>{formatUsd(product.price)}</span>
                   <span style={{
                     fontFamily: 'var(--font-inter)',
                     fontSize: '0.75rem',

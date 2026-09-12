@@ -19,6 +19,7 @@ import { collection, onSnapshot } from 'firebase/firestore'
 import {
   MODIFIER_LIMITS, selectionLabel, type ModifierGroup, type ModifierOption,
 } from '@big-cms/shared/modifiers'
+import { formatUsd } from '@big-cms/shared/money'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -393,7 +394,7 @@ export default function ModifiersPage() {
                     color: 'rgba(var(--offwhite-rgb),0.4)', marginTop: '0.2rem',
                   }}>
                     {selectionLabel(g)} · {g.options.map((o: ModifierOption) =>
-                      o.priceDelta > 0 ? `${o.name} +$${o.priceDelta}` : o.name).join(', ')}
+                      o.priceDelta > 0 ? `${o.name} +${formatUsd(o.priceDelta)}` : o.name).join(', ')}
                   </p>
                   <p style={{
                     fontFamily: 'var(--font-inter)', fontSize: '0.7rem',

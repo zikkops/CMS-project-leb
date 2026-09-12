@@ -8,6 +8,7 @@ import { categoryImage } from '@big-cms/shared/menuCategoryImages'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
 import { PLACEHOLDER } from '@big-cms/shared/placeholderAssets'
+import { formatUsd } from '@big-cms/shared/money'
 import Skeleton from '../components/Skeleton'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faList } from '@fortawesome/free-solid-svg-icons'
@@ -535,7 +536,7 @@ export default function MenuPage() {
                                     color: sectionColors[s],
                                     fontWeight: 600,
                                     whiteSpace: 'nowrap',
-                                  }}>${item.price}</span>
+                                  }}>{formatUsd(item.price)}</span>
                                 </div>
                               ))}
                             </div>

@@ -8,6 +8,7 @@ import { BRANCHES, emptyStock, totalStock } from '@big-cms/shared/branches'
 import { recordMediaUpload, uploadImage } from '@big-cms/shared/media'
 import { exportGamesCSV } from '@big-cms/shared/productPurchases'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
+import { formatUsd } from '@big-cms/shared/money'
 import MediaPickerModal from '../../components/admin/MediaPickerModal'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faSearch } from '@fortawesome/free-solid-svg-icons'
@@ -526,7 +527,7 @@ export default function AdminGamesPage() {
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                       <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'var(--teal)' }}>
-                        {product.price > 0 ? `$${product.price}` : '—'}
+                        {product.price > 0 ? formatUsd(product.price) : "—"}
                       </span>
                       <span style={{
                         fontSize: '0.68rem',
@@ -614,10 +615,10 @@ export default function AdminGamesPage() {
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>{product.category}</td>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>{product.players}</td>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'var(--teal)' }}>
-                      {product.price > 0 ? `$${product.price}` : '—'}
+                      {product.price > 0 ? formatUsd(product.price) : "—"}
                     </td>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>
-                      {product.wholesalePrice != null ? `$${product.wholesalePrice}` : '—'}
+                      {product.wholesalePrice != null ? formatUsd(product.wholesalePrice) : "—"}
                     </td>
                     <td style={{ padding: '1rem 1.2rem' }}>
                       {(() => {

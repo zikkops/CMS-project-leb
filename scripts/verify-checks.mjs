@@ -162,6 +162,29 @@ eq('rounds down to the nearest 100', M.roundLbpTotal(328420), 328400)
 eq('exactly halfway goes up', M.roundLbpTotal(328450), 328500)
 eq('already round is untouched', M.roundLbpTotal(328500), 328500)
 eq('zero stays zero', M.roundLbpTotal(0), 0)
+
+console.log('\nformatUsd — a price is a rendered thing, and half of one is a typo')
+// The exact figures that were wrong on the menu, read off the screen: a
+// coffee at 4.5 printed "$4.5" beside a salad at 9.25 printing "$9.25", so
+// the column looked fine until you noticed the short one.
+eq('one decimal place gets its second', M.formatUsd(4.5), '$4.50')
+eq('a whole number gets both', M.formatUsd(11), '$11.00')
+eq('and a small one', M.formatUsd(2), '$2.00')
+eq('two decimals are left alone', M.formatUsd(9.25), '$9.25')
+eq('zero is a price, not nothing', M.formatUsd(0), '$0.00')
+// A third decimal cannot survive to the screen: a menu price that rounds at
+// render time is a price nobody can reconcile against a till.
+eq('a third decimal rounds', M.formatUsd(3.336), '$3.34')
+// NOT half-up, and pinned so nobody assumes it is: 3.335 has no exact binary
+// form and the nearest double sits just below it, so toFixed rounds DOWN.
+// Fine for display — this is the last step before a screen — and precisely
+// why it must never be the rounding in a total. That lives in money's own
+// arithmetic, where a half cent is decided deliberately.
+eq('a half cent is not reliably half-up', M.formatUsd(3.335), '$3.33')
+// NaN reaches a price when a field is missing, and "$NaN" on a menu is worse
+// than a wrong number because it cannot even be misread as one.
+eq('NaN never reaches the page', M.formatUsd(Number.NaN), '$0.00')
+eq('nor does Infinity', M.formatUsd(Number.POSITIVE_INFINITY), '$0.00')
 // The rule is 100, not 1 — rounding to the nearest unit would be no rule.
 eq('does not round to the nearest 1', M.roundLbpTotal(328401), 328400)
 
