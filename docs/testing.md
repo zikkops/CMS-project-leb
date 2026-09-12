@@ -58,6 +58,12 @@ The one with the most behind it.
 
 ### What broke — `/admin/errors`
 - Five demo faults, one row each, with counts. One should read `count: 2`.
+- **There may be a sixth, and it is a real one.** A `formatUsd is not defined`
+  from `/menu` was recorded on 12 Sep while the price fix was mid-edit — a
+  genuine render failure caught by the error boundary and reported without
+  anybody asking it to. Unlike the five demo faults, nothing posted that on
+  purpose, so it is the best evidence in the system that the pipeline works.
+  Safe to leave or delete.
 - Open a stack. Confirm no email address, token or query string appears
   anywhere — they are scrubbed before storage, not at display.
 

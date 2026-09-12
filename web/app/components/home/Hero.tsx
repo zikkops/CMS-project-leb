@@ -214,8 +214,11 @@ export default function Hero() {
         lineHeight: 1.9,
         marginBottom: '2.5rem',
       }}>
-        Where every meal comes with a story and every story begins with a product.
-        {`${BRAND.branches.length} branches.`}
+        Where every meal comes with a story and every story begins at the table.
+        {/* The leading space is inside the literal on purpose. JSX joins two
+            text lines with a space but strips the newline before an
+            expression, so without it the hero read "…the table.3 branches." */}
+        {` ${BRAND.branches.length} branches.`}
       </p>
 
       {/* Buttons */}
