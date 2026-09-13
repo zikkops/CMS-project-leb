@@ -185,7 +185,7 @@ export default function RedemptionItemsPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                  {['Name', 'Description', 'Coins', 'Status', 'Actions'].map(h => (
+                  {['Name', 'Description', 'Points', 'Status', 'Actions'].map(h => (
                     <th key={h} style={{
                       padding: '1rem 1.2rem', textAlign: 'left', fontSize: '0.65rem', letterSpacing: '0.2em',
                       textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', fontWeight: 400,
@@ -276,7 +276,7 @@ export default function RedemptionItemsPage() {
               </div>
 
               <div>
-                <label style={labelStyle}>Coin Cost</label>
+                <label style={labelStyle}>Point Cost</label>
                 <input type="number" value={form.coinCost} required min={1}
                   onChange={e => setForm(f => ({ ...f, coinCost: +e.target.value }))}
                   style={inputStyle} />

@@ -385,7 +385,12 @@ export default function ManageCustomersPage() {
               </p>
 
               <div>
-                <label style={labelStyle}>XP</label>
+                {/* pointsEarned. This said "XP" — the retired currency's name —
+                    on the screen staff use to change a customer's standing.
+                    The qualifier is not decoration: "Reset to 0" beside this
+                    field demotes the customer's tier, and beside the next one
+                    it only empties what they can spend. */}
+                <label style={labelStyle}>Lifetime total (sets tier)</label>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <input type="number" min={0} value={xpInput} onChange={e => setXpInput(e.target.value)} style={{ ...inputStyle, flex: 1 }} />
                   <button type="button" onClick={() => setXpInput('0')} style={{ ...actionBtnStyle, flexShrink: 0 }}>Reset to 0</button>
@@ -393,7 +398,7 @@ export default function ManageCustomersPage() {
               </div>
 
               <div>
-                <label style={labelStyle}>Points</label>
+                <label style={labelStyle}>Balance (spendable)</label>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <input type="number" min={0} value={coinsInput} onChange={e => setCoinsInput(e.target.value)} style={{ ...inputStyle, flex: 1 }} />
                   <button type="button" onClick={() => setCoinsInput('0')} style={{ ...actionBtnStyle, flexShrink: 0 }}>Reset to 0</button>
