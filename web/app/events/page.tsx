@@ -231,7 +231,7 @@ function EventCard({ ev, dimmed = false, isMobile, hoveredEventId, onHover, onSe
           paddingTop: isMobile ? '0.6rem' : '0.8rem',
           borderTop: '1px solid rgba(255,255,255,0.05)',
         }}>
-          <span>👥 {ev.minPlayers}–{ev.maxPlayers} players</span>
+          <span>👥 {ev.minPlayers}–{ev.maxPlayers} participants</span>
           <span style={{ color: dimmed ? 'rgba(var(--offwhite-rgb),0.3)' : 'var(--teal)' }}>
             {ev.price === 0 ? 'Free' : `$${ev.price}/person`}
           </span>
@@ -341,7 +341,7 @@ export default function EventsPage() {
               fontSize: isMobile ? '2.2rem' : '3.5rem',
               color: 'var(--offwhite)',
               lineHeight: 1.2,
-            }}>Events & Tournaments</h1>
+            }}>Events</h1>
           </div>
         </section>
 
@@ -614,7 +614,7 @@ export default function EventsPage() {
                   { label: 'Branch',  value: selected.branch },
                   { label: 'Date',    value: ymdToLocalDate(selected.date).toLocaleDateString('en', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) },
                   { label: 'Time',    value: `${selected.timeStart} – ${selected.timeEnd}` },
-                  { label: 'Players', value: `${selected.minPlayers}–${selected.maxPlayers} players` },
+                  { label: 'Participants', value: `${selected.minPlayers}–${selected.maxPlayers} participants` },
                   { label: 'Price',   value: selected.price === 0 ? 'Free entry' : `$${selected.price} per person` },
                   // Was the original café's own phone number, hardcoded, and shown
                   // to the public on any event that carried none of its own.

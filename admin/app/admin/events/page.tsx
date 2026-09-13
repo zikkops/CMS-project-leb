@@ -518,7 +518,7 @@ export default function AdminEventsPage() {
                       color: 'rgba(var(--offwhite-rgb),0.4)',
                       fontFamily: 'var(--font-inter)',
                       marginBottom: '0.5rem',
-                    }}>👥 {ev.minPlayers}–{ev.maxPlayers} players</div>
+                    }}>👥 {ev.minPlayers}–{ev.maxPlayers} participants</div>
 
                     {ev.contactNumber && (
                       <div style={{
@@ -683,13 +683,13 @@ export default function AdminEventsPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={labelStyle}>Min Players</label>
+                  <label style={labelStyle}>Min Participants</label>
                   <input type="number" min={1} value={form.minPlayers} required
                     onChange={e => setForm(f => ({ ...f, minPlayers: +e.target.value }))}
                     style={inputStyle} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Max Players</label>
+                  <label style={labelStyle}>Max Participants</label>
                   <input type="number" min={1} value={form.maxPlayers} required
                     onChange={e => setForm(f => ({ ...f, maxPlayers: +e.target.value }))}
                     style={inputStyle} />

@@ -92,7 +92,7 @@ export default function EventReservationModal({ event, onClose }: {
     if (!user) return
     setError('')
     if (partySize < event.minPlayers || partySize > event.maxPlayers) {
-      setError(`This event needs between ${event.minPlayers} and ${event.maxPlayers} players per team — you currently have ${partySize}.`)
+      setError(`This event needs between ${event.minPlayers} and ${event.maxPlayers} participants per booking — you currently have ${partySize}.`)
       return
     }
     setSubmitting(true)
@@ -114,7 +114,7 @@ export default function EventReservationModal({ event, onClose }: {
       setSuccess(true)
     } catch (err) {
       if (err instanceof Error && err.message === 'party-size-out-of-range') {
-        setError(`This event needs between ${event.minPlayers} and ${event.maxPlayers} players per team — you currently have ${partySize}.`)
+        setError(`This event needs between ${event.minPlayers} and ${event.maxPlayers} participants per booking — you currently have ${partySize}.`)
       } else {
         setError('Something went wrong submitting your reservation. Please try again.')
       }
@@ -199,7 +199,7 @@ export default function EventReservationModal({ event, onClose }: {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
-                This event needs {event.minPlayers === event.maxPlayers ? `exactly ${event.minPlayers}` : `${event.minPlayers}–${event.maxPlayers}`} players per team.
+                This event needs {event.minPlayers === event.maxPlayers ? `exactly ${event.minPlayers}` : `${event.minPlayers}–${event.maxPlayers}`} participants per booking.
               </p>
 
               <div>

@@ -235,7 +235,7 @@ export default function AboutPage() {
                 },
                 {
                   icon: faTrophy,
-                  title: 'Events & Tournaments',
+                  title: 'Events',
                   text: 'Tastings, launches, family days and special evenings, across every branch throughout the year.',
                   color: 'var(--navy)',
                 },
