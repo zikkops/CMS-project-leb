@@ -72,7 +72,13 @@ export default function Footer() {
               maxWidth: isMobile ? '100%' : '240px',
               fontFamily: 'var(--font-inter)',
             }}>
-              Lebanon's favourite board product café and restaurant. Where every table tells a story.
+              {/* BRAND.description, not a sentence typed here. This line was the
+                  original café's own boast — "Lebanon's favourite board game
+                  café" — which the fork's game-to-product replacement turned
+                  into "board product café", on every page of every tenant's
+                  site. A description is the business's to write, so it comes
+                  from NEXT_PUBLIC_BRAND_DESCRIPTION like the name does. */}
+              {BRAND.description}
             </p>
           </div>
 

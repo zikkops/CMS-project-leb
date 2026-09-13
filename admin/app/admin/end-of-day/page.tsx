@@ -534,7 +534,7 @@ function EndOfDayInner() {
                 color="var(--teal)"
               />
               <HintBox color="var(--teal)" hints={[
-                'Any boardgame sale or any sale recorded',
+                'Any retail sale or any other sale recorded',
                 'Any money added to the cash from anyone that is not a receipt',
               ]} />
             </div>
