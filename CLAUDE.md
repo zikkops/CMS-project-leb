@@ -636,6 +636,17 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
     (`cashUpDay`, stored on the shift). The form derives the figure from the
     server's answer rather than copying it into the field, and is read-only
     while payment is on.
+  - **The cash handling is USD + LBP by construction, whatever `BRAND.locale`
+    says.** `LBP_DENOMS` and `USD_DENOMS` are literal constants in
+    `shared/src/drawer.ts`, shared by this drawer and End of Day; stored
+    reports persist `totalCashLbp`/`totalCashUsd`; change is whole dollars with
+    the remainder in lira. `secondaryCurrency` renames a currency, it does not
+    change one. So **do not make End of Day's "Lebanese Pound (LBP)" label
+    read from config on its own** — it looks like the tips-deduction bug and is
+    the opposite: a configurable label over hardwired lira notes is a screen
+    that lies. Currency-generic cash is per-tenant denominations plus new
+    stored fields, which is a data-model change and belongs with
+    multi-tenancy (13 Sep 2026).
   - **One drawer per branch, one open shift at a time** (owner's decision:
     staff use their own phones, and a phone is not a drawer). `shared/src/drawer.ts`
     is the arithmetic — float + cash in − change − cash refunds, compared with
