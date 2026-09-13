@@ -145,6 +145,39 @@ testing end to end with the loyalty feature on: scan it at
 
 ---
 
+## Changed on 13 Sep and never seen in a browser — look at these
+
+Everything else changed that week was checked in a running page. These were
+not, because each renders only for somebody signed in, and nobody signed in
+to check. They compiled and passed every verifier; that is not the same as
+having been looked at.
+
+**As a signed-in customer:**
+- **`/customer/submit-check`** — submit a check and read the confirmation
+  card. It should show **one** "Points Pending" row. It used to show two — the
+  same award under two names.
+- **`/customer/redeem`** — the success message should say points will be
+  deducted, not coins; with a balance below an item's cost, the button should
+  read "Not enough points".
+- **The profile page's empty points history** should say "You haven't earned
+  any points yet".
+
+**As admin, under Loyalty:**
+- **Customers → edit a customer's balance** — the two fields should read
+  **"Lifetime total (sets tier)"** and **"Balance (spendable)"**. This is the
+  one worth a careful look: "Reset to 0" beside the first demotes a customer's
+  tier, and it used to be labelled "XP".
+- **Redemption items** — the column says "Points" and the form says "Point
+  Cost".
+- **Redemptions** — each request shows "Point Cost".
+
+**As a signed-in customer with no username or display name** (a fresh
+email/password sign-up is the easy way to get one): the navbar should read
+"Welcome, " followed by the part of their email before the @. It used to say
+"Welcome, Adventurer".
+
+---
+
 ## Known gaps — not bugs
 
 - **The counter screen has no modifiers and no retail.** It is the fast path;

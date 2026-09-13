@@ -94,7 +94,14 @@ export default function Navbar() {
     if (!customerUser) { setCustomerName(null); return }
     const unsub = onSnapshot(doc(db, 'users', customerUser.uid), snap => {
       const data = snap.data() as { displayName?: string; username?: string } | undefined
-      setCustomerName(data?.username || data?.displayName || customerUser.displayName || 'there')
+      // Rendered as "Welcome, {name}", so the fallback has to read after a
+      // comma. It was "Adventurer" (a games café's word), then briefly "there",
+      // which made "Welcome, there". The customer's own email handle is theirs
+      // to see, and "friend" covers an account with no email at all.
+      setCustomerName(
+        data?.username || data?.displayName || customerUser.displayName
+        || customerUser.email?.split('@')[0] || 'friend'
+      )
     }, err => console.error('[Navbar] users/{uid} listener failed:', err))
     return unsub
   }, [customerUser])
