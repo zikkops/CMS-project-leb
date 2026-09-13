@@ -254,8 +254,12 @@ export default function SubmitCheckPage() {
               ['Check Number', result.checkNumber],
               ['Amount', `$${result.totalAmount.toFixed(2)}`],
               ['People in Split', String(result.splitCount)],
+              // One row, one currency. There were two — the old "XP" and "OB
+              // Coins" awards — and the de-brand renamed the first to Points
+              // and left the second as "Coins Pending", so the card promised
+              // the same pointsAmount twice under two names. Renaming the
+              // second made the duplicate visible; this removes it.
               ['Points Pending', `+${result.pointsAmount} points`],
-              ['Coins Pending', `+${result.pointsAmount} Points`],
             ].map(([label, value]) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
                 <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>{label}</span>

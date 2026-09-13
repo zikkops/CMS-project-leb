@@ -109,7 +109,7 @@ export default function RedeemPage() {
           </h1>
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.6)', lineHeight: 1.6, marginBottom: '2rem' }}>
             Show this to the manager at <strong style={{ color: 'var(--offwhite)' }}>{success.branchName}</strong> to claim your{' '}
-            <strong style={{ color: 'var(--offwhite)' }}>{success.itemName}</strong>. Coins will be deducted on confirmation.
+            <strong style={{ color: 'var(--offwhite)' }}>{success.itemName}</strong>. Points will be deducted on confirmation.
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
@@ -323,7 +323,7 @@ export default function RedeemPage() {
                         boxShadow: canAfford && hoveredBtn === `redeem-${item.id}` ? '0 6px 14px rgba(var(--purple-rgb),0.4)' : 'none',
                         transition: 'all 0.2s ease',
                       }}
-                    >{canAfford ? 'Redeem' : 'Not enough coins'}</button>
+                    >{canAfford ? 'Redeem' : 'Not enough points'}</button>
                   )}
                 </div>
               )
