@@ -2,12 +2,16 @@
 
 // The customer site's 404.
 //
-// This was a rolling D20 that landed on 1: "Critical Miss — you rolled a 1 on
-// your perception check — Return to Base Camp". Lovingly built, and pure
-// Dungeons & Dragons, surviving on every mistyped URL in a product whose D&D
-// modules were removed entirely. It outlived every grep for "D&D" because
-// nothing in it says D&D; it just is one. The animation is in git history if a
-// games café ever wants it back — that is a brand decision, not a default.
+// Deliberately generic. This was a rolling D20 that landed on 1 — "Critical
+// Miss, you rolled a 1 on your perception check, Return to Base Camp" — pure
+// Dungeons & Dragons in a product whose D&D modules were removed entirely, and
+// it outlived every grep for "D&D" because nothing in it says D&D. The first
+// replacement said "Not on the menu" and linked to the menu, which was still a
+// theme, and still assumed a feature every tenant might not have switched on.
+//
+// So: no pun, no feature, one way home. A tenant who wants personality here
+// can add it knowing what they are choosing; the default should not choose
+// for them. The die is in git history.
 
 import { useState } from 'react'
 import Link from 'next/link'
@@ -16,7 +20,6 @@ import Footer from './components/layout/Footer'
 
 export default function NotFound() {
   const [hoverHome, setHoverHome] = useState(false)
-  const [hoverMenu, setHoverMenu] = useState(false)
 
   return (
     <>
@@ -30,40 +33,25 @@ export default function NotFound() {
         justifyContent: 'center',
         padding: '8rem 2rem 4rem',
         textAlign: 'center',
-        position: 'relative',
-        overflow: 'hidden',
       }}>
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '600px', height: '600px',
-          background: 'radial-gradient(circle, rgba(var(--teal-rgb),0.07) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }} />
-
         <h1 style={{
           fontFamily: 'var(--font-cinzel)',
           fontSize: 'clamp(5rem, 18vw, 10rem)',
           fontWeight: 900,
           lineHeight: 1,
           letterSpacing: '-0.02em',
-          background: 'linear-gradient(135deg, var(--teal) 0%, rgba(var(--teal-rgb),0.4) 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-          marginBottom: '0.2rem',
+          color: 'var(--teal)',
+          marginBottom: '0.5rem',
           userSelect: 'none',
-          position: 'relative',
         }}>404</h1>
 
         <p style={{
           fontFamily: 'var(--font-cinzel)',
           fontSize: 'clamp(1rem, 3vw, 1.45rem)',
-          color: 'rgba(var(--offwhite-rgb),0.55)',
-          letterSpacing: '0.35em',
+          color: 'rgba(var(--offwhite-rgb),0.7)',
+          letterSpacing: '0.2em',
           textTransform: 'uppercase',
-          position: 'relative',
-        }}>Not on the menu</p>
+        }}>Page not found</p>
 
         <p style={{
           fontFamily: 'var(--font-inter)',
@@ -71,65 +59,28 @@ export default function NotFound() {
           color: 'rgba(var(--offwhite-rgb),0.5)',
           lineHeight: 1.75,
           maxWidth: '480px',
-          margin: '2rem auto',
-          position: 'relative',
+          margin: '1.5rem auto 2rem',
         }}>
-          This page doesn&apos;t exist, or has been moved somewhere else.
+          The page you were looking for doesn&apos;t exist or has moved.
         </p>
 
-        <div style={{
-          display: 'flex',
-          gap: '1rem',
-          flexWrap: 'wrap',
-          justifyContent: 'center',
-          position: 'relative',
-        }}>
-          <Link href="/"
-            onMouseEnter={() => setHoverHome(true)}
-            onMouseLeave={() => setHoverHome(false)}
-            style={{
-              backgroundColor: hoverHome ? 'rgba(var(--teal-rgb),0.15)' : 'var(--teal)',
-              color: '#fff',
-              padding: '0.8rem 2rem',
-              borderRadius: '2px',
-              fontSize: '0.78rem',
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              textDecoration: 'none',
-              fontFamily: 'var(--font-inter)',
-              border: '1px solid var(--teal)',
-              transition: 'all 0.25s ease',
-              boxShadow: hoverHome ? '0 0 20px rgba(var(--teal-rgb),0.4)' : 'none',
-            }}
-          >Back to the home page</Link>
-
-          <Link href="/menu"
-            onMouseEnter={() => setHoverMenu(true)}
-            onMouseLeave={() => setHoverMenu(false)}
-            style={{
-              backgroundColor: 'transparent',
-              color: hoverMenu ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.55)',
-              padding: '0.8rem 2rem',
-              borderRadius: '2px',
-              fontSize: '0.78rem',
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              textDecoration: 'none',
-              fontFamily: 'var(--font-inter)',
-              border: `1px solid ${hoverMenu ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.12)'}`,
-              transition: 'all 0.25s ease',
-            }}
-          >See the menu</Link>
-        </div>
-
-        <p style={{
-          position: 'absolute', bottom: '2rem',
-          fontFamily: 'var(--font-inter)',
-          fontSize: '0.68rem',
-          color: 'rgba(var(--offwhite-rgb),0.15)',
-          letterSpacing: '0.1em',
-          userSelect: 'none',
-        }}>Error 404 · Page Not Found</p>
+        <Link href="/"
+          onMouseEnter={() => setHoverHome(true)}
+          onMouseLeave={() => setHoverHome(false)}
+          style={{
+            backgroundColor: hoverHome ? 'rgba(var(--teal-rgb),0.15)' : 'var(--teal)',
+            color: '#fff',
+            padding: '0.8rem 2rem',
+            borderRadius: '2px',
+            fontSize: '0.78rem',
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            textDecoration: 'none',
+            fontFamily: 'var(--font-inter)',
+            border: '1px solid var(--teal)',
+            transition: 'all 0.25s ease',
+          }}
+        >Back to the home page</Link>
       </main>
       <Footer />
     </>

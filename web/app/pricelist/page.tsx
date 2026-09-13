@@ -74,7 +74,7 @@ function ProductCard({ product }: { product: Product }) {
             />
           ) : (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '2.5rem' }}>🎲</span>
+              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)' }}>No photo</span>
             </div>
           )}
 

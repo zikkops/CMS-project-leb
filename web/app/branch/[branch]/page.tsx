@@ -86,7 +86,8 @@ function ProductCard({ product }: { product: Product }) {
           />
         ) : (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '2.5rem' }}>🎲</span>
+            {/* Was a 🎲 — a board-game café's placeholder on a café's shelf. */}
+            <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)' }}>No photo</span>
           </div>
         )}
 
@@ -95,10 +96,12 @@ function ProductCard({ product }: { product: Product }) {
           {/* The wholesale badge that used to sit here showed the trade price
               on a page with no auth guard at all. Trade prices live in
               productWholesale now, which the rules gate to wholesale accounts
-              and staff — so this page could not render one even if it tried. */}
+              and staff — so this page could not render one even if it tried.
+              That also left "RP" (retail price) with nothing to be told apart
+              from, so it is a plain price now, as on the price list. */}
           {product.retailPrice > 0 && (
             <div style={{ background: 'var(--brand-secondary)', color: '#000', padding: '0.22rem 0.55rem', borderRadius: '3px', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-inter)', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
-              RP ${product.retailPrice.toFixed(2)}
+              ${product.retailPrice.toFixed(2)}
             </div>
           )}
         </div>
