@@ -8,7 +8,7 @@ import Footer from '../components/layout/Footer'
 import Skeleton from '../components/Skeleton'
 import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUsers, faClock, faCakeCandles, faSearch, faXmark } from '@fortawesome/free-solid-svg-icons'
+import { faSearch, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { totalStock } from '@big-cms/shared/branches'
 import { BRAND } from '@big-cms/shared/brand'
 import { effectivePrice, saleIsActive } from '@big-cms/shared/productPricing'
@@ -18,9 +18,6 @@ interface Product {
   name: string
   category: string
   description: string
-  players: string
-  duration: string
-  age: string
   price: number
   stock: Record<string, number> | number
   image: string
@@ -133,27 +130,6 @@ function ProductCard({ product }: { product: Product }) {
             color: 'var(--purple)',
           }}>{product.category}</span>
         )}
-
-        <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '0.5rem' }}>
-          {product.players && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
-              <FontAwesomeIcon icon={faUsers} style={{ width: '11px' }} />
-              {product.players}
-            </span>
-          )}
-          {product.duration && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
-              <FontAwesomeIcon icon={faClock} style={{ width: '11px' }} />
-              {product.duration}
-            </span>
-          )}
-          {product.age && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
-              <FontAwesomeIcon icon={faCakeCandles} style={{ width: '11px' }} />
-              {product.age}+
-            </span>
-          )}
-        </div>
       </div>
     </Link>
   )
@@ -178,7 +154,10 @@ export default function RetailPage() {
       const retail = all.filter(g => (g.price ?? 0) > 0)
       const cats = catSnap.docs.map(d => (d.data() as { name: string }).name)
       setGames(retail)
-      setCategories(cats.length > 0 ? cats : ['Strategy', 'Party', 'Family', 'Cooperative', 'Card', 'Trivia', 'RPG', 'Puzzle'])
+      // The client's own categories, or none. With none, this used to offer
+      // board-game genres — Strategy, Party, Cooperative, RPG — as filters
+      // that matched nothing a café sells. No categories means just "All".
+      setCategories(cats)
       setLoading(false)
     }
     load()

@@ -90,7 +90,7 @@ export default function AboutPage() {
                 color: 'var(--offwhite)',
                 lineHeight: 1.2,
                 marginBottom: '1.5rem',
-              }}>More than a café.<br />A place to play.</h2>
+              }}>More than a café.<br />A place to stay.</h2>
               <div style={{
                 width: '60px', height: '2px',
                 backgroundColor: 'var(--teal)',

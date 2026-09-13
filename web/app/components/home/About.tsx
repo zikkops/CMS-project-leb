@@ -160,7 +160,7 @@ export default function About() {
             lineHeight: 1.2,
             marginBottom: '1.5rem',
           }}>
-            More than a café.<br />A place to play.
+            More than a café.<br />A place to stay.
           </h2>
 
           <div style={{

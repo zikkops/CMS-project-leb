@@ -28,9 +28,6 @@ export interface ImportRow {
   name: string
   category: string
   description: string
-  players: string
-  duration: string
-  age: string
   price: number
   wholesalePrice: number | null
   /** Only the branches the CSV actually mapped — see applyStock below. */
@@ -95,9 +92,6 @@ export function parseImportRows(body: Record<string, unknown>): ImportRow[] {
       name: str(row.name),
       category: str(row.category, 100),
       description: str(row.description, 4000),
-      players: str(row.players, 50),
-      duration: str(row.duration, 50),
-      age: str(row.age, 20),
       price: price(row.price, 'price', n),
       wholesalePrice: wholesaleRaw === null || wholesaleRaw === undefined || wholesaleRaw === ''
         ? null
@@ -183,7 +177,6 @@ export async function runImport(rows: ImportRow[]): Promise<ImportResult> {
     const row = creates[i]
     const ref = await db.collection('products').add({
       name: row.name, category: row.category, description: row.description,
-      players: row.players, duration: row.duration, age: row.age,
       price: row.price, salePrice: null, saleEndsAt: null, image: row.image,
       stock: row.stock ?? {},
       sku: skus[i],
@@ -199,7 +192,7 @@ export async function runImport(rows: ImportRow[]): Promise<ImportResult> {
     const existing = byId.get(id) ?? {}
     const patch: Record<string, unknown> = {}
 
-    for (const key of ['name', 'category', 'description', 'players', 'duration', 'age', 'image'] as const) {
+    for (const key of ['name', 'category', 'description', 'image'] as const) {
       if (row[key] && row[key] !== existing[key]) patch[key] = row[key]
     }
     if (row.price !== existing.price) patch.price = row.price

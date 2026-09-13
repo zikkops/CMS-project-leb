@@ -11,7 +11,7 @@ import { parseCSV } from '@big-cms/shared/csv'
 
 type StaticFieldKey =
   | 'sku' | 'name' | 'description' | 'category' | 'price' | 'wholesalePrice'
-  | 'stock' | 'image' | 'players' | 'duration' | 'age'
+  | 'stock' | 'image'
 
 // Per-branch stock columns are generated from BRANCHES, so adding a branch
 // there gives it an import column for free.
@@ -39,9 +39,6 @@ const FIELD_DEFS: FieldDef[] = [
   })),
   { key: 'stock',          label: 'Stock (fallback)',          guesses: ['stock', 'quantity', 'in stock?'] },
   { key: 'image',          label: 'Image URL',                 guesses: ['images', 'image', 'image url'] },
-  { key: 'players',        label: 'Players',                   guesses: ['players', 'number of players'] },
-  { key: 'duration',       label: 'Duration',                  guesses: ['duration', 'play time', 'playing time'] },
-  { key: 'age',            label: 'Min Age',                   guesses: ['min age', 'minimum age', 'age'] },
 ]
 
 // Only used when no per-branch column is mapped — keeps the single-stock-column
@@ -258,9 +255,6 @@ export default function ImportGamesPage() {
         name,
         category: normalizeCategory(mapping.category ? row[mapping.category] : ''),
         description: cell(row, mapping.description) ?? '',
-        players: cell(row, mapping.players) ?? '',
-        duration: cell(row, mapping.duration) ?? '',
-        age: cell(row, mapping.age) ?? '',
         price: priceCell !== null ? parsePrice(priceCell) : 0,
         wholesalePrice: wholesaleCell !== null ? parseOptionalPrice(wholesaleCell) : null,
         stock,

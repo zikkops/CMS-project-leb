@@ -9,7 +9,7 @@ import Footer from '../components/layout/Footer'
 import Skeleton from '../components/Skeleton'
 import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUsers, faClock, faCakeCandles, faSearch, faXmark } from '@fortawesome/free-solid-svg-icons'
+import { faSearch, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { totalStock } from '@big-cms/shared/branches'
 import {
   useWholesaleAccount, submitWholesaleOrder,
@@ -22,9 +22,6 @@ interface Product {
   id: string
   name: string
   category: string
-  players: string
-  duration: string
-  age: string
   wholesalePrice: number
   retailPrice: number
   stock: Record<string, number> | number
@@ -134,24 +131,6 @@ function ProductCard({
           </p>
         )}
 
-        <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '0.4rem' }}>
-          {product.players && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
-              <FontAwesomeIcon icon={faUsers} style={{ width: '11px' }} />{product.players}
-            </span>
-          )}
-          {product.duration && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
-              <FontAwesomeIcon icon={faClock} style={{ width: '11px' }} />{product.duration}
-            </span>
-          )}
-          {product.age && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
-              <FontAwesomeIcon icon={faCakeCandles} style={{ width: '11px' }} />{product.age}+
-            </span>
-          )}
-        </div>
-
         {/* Order quantity. Stock is shown but not enforced here — staff confirm
             availability when they approve, and a hard block would hide demand
             for titles worth restocking. */}
@@ -244,9 +223,6 @@ export default function WholesalePage() {
           id: d.id,
           name:        (data.name as string) ?? '',
           category:    (data.category as string) ?? '',
-          players:     (data.players as string) ?? '',
-          duration:    (data.duration as string) ?? '',
-          age:         (data.age as string) ?? '',
           wholesalePrice: wholesaleById[d.id] ?? 0,
           retailPrice: (data.price as number) ?? 0,
           stock:       data.stock,

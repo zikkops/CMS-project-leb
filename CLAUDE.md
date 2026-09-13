@@ -696,6 +696,19 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
     taken offline — it waits in the counter device's outbox — but a receipt
     number cannot be issued there.
 
+- **What this product is (owner's decision, 13 Sep 2026): a pure coffee and
+  restaurant POS.** Nothing in the defaults may assume gaming. BIG CMS was
+  forked from a board-game café, and that café kept surfacing in places no
+  grep for "D&D" reached: a D20 on the 404, "players" on every event, board-game
+  genres as the fallback product categories, and three *required* product
+  fields — Players, Duration, Min Age — so a café could not save a mug without
+  inventing a player count. All removed: events have "participants", the
+  product model has no players/duration/age (older documents may still carry
+  them; nothing reads or writes them). **Anything a particular client needs
+  that is not generic café/restaurant belongs in that client's configuration,
+  not in the defaults** — and per-client custom product attributes do not
+  exist yet, so a client who sells something with real attributes of its own
+  is a feature request, not a reason to put fields back.
 - **05 (make it a product):** branding, the feature-flag registry and now the
   three-app split have landed. A client on the POS tier receives no admin code
   at all, and `pos`/`kds` are feature flags like everything else.

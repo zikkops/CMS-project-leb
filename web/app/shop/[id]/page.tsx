@@ -15,8 +15,8 @@ import { BRAND } from '@big-cms/shared/brand'
 import { PLACEHOLDER } from '@big-cms/shared/placeholderAssets'
 import { formatUsd } from '@big-cms/shared/money'
 
-// The board-product-era players/duration/age fields are still written by Manage
-// Products but are no longer surfaced here, so they're left off the interface.
+// Older product documents may still carry the board-game-era players/duration/
+// age fields. Nothing writes or reads them now, so they are left off the interface.
 interface Product {
   id: string
   name: string

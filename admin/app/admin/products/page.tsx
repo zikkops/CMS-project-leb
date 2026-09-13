@@ -18,9 +18,6 @@ interface Product {
   name: string
   category: string
   description: string
-  players: string
-  duration: string
-  age: string
   price: number
   wholesalePrice?: number | null
   salePrice?: number | null
@@ -36,9 +33,6 @@ const EMPTY = {
   name: '',
   category: '',
   description: '',
-  players: '',
-  duration: '',
-  age: '',
   price: 0,
   wholesalePrice: null as number | null,
   salePrice: null as number | null,
@@ -46,7 +40,10 @@ const EMPTY = {
   image: '',
 }
 
-const FALLBACK_CATEGORIES = ['Strategy', 'Party', 'Family', 'Cooperative', 'Card', 'Trivia', 'RPG', 'Puzzle']
+// Used only before a client has created any categories of their own. These
+// were board-game genres — Strategy, Party, Cooperative, RPG — so a café's
+// first product was filed under "Strategy". Categories are the client's.
+const FALLBACK_CATEGORIES = ['General']
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false)
@@ -144,9 +141,6 @@ export default function AdminGamesPage() {
       name:           product.name,
       category:       product.category,
       description:    product.description,
-      players:        product.players,
-      duration:       product.duration,
-      age:            product.age,
       price:          product.price,
       wholesalePrice: product.wholesalePrice ?? null,
       salePrice:      product.salePrice ?? null,
@@ -523,7 +517,7 @@ export default function AdminGamesPage() {
                       </p>
                     )}
                     <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
-                      {product.category} · {product.players}
+                      {product.category}
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                       <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'var(--teal)' }}>
@@ -579,7 +573,7 @@ export default function AdminGamesPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                  {['Image', 'Name', 'Category', 'Players', 'Retail', 'Wholesale', 'Stock', 'Actions'].map(h => (
+                  {['Image', 'Name', 'Category', 'Retail', 'Wholesale', 'Stock', 'Actions'].map(h => (
                     <th key={h} style={{
                       padding: '1rem 1.2rem',
                       textAlign: 'left',
@@ -613,7 +607,6 @@ export default function AdminGamesPage() {
                       )}
                     </td>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>{product.category}</td>
-                    <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>{product.players}</td>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'var(--teal)' }}>
                       {product.price > 0 ? formatUsd(product.price) : "—"}
                     </td>
@@ -757,34 +750,16 @@ export default function AdminGamesPage() {
                   style={{ ...inputStyle, resize: 'none' }} />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label style={labelStyle}>Players (e.g. 2–4)</label>
-                  <input type="text" value={form.players} required
-                    onChange={e => setForm(f => ({ ...f, players: e.target.value }))}
-                    style={inputStyle} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Duration</label>
-                  <input type="text" value={form.duration} required
-                    onChange={e => setForm(f => ({ ...f, duration: e.target.value }))}
-                    style={inputStyle} />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label style={labelStyle}>Min Age (e.g. 8+)</label>
-                  <input type="text" value={form.age} required
-                    onChange={e => setForm(f => ({ ...f, age: e.target.value }))}
-                    style={inputStyle} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Retail Price ($)</label>
-                  <input type="number" value={form.price} required min={0} step="0.01"
-                    onChange={e => setForm(f => ({ ...f, price: +e.target.value }))}
-                    style={inputStyle} />
-                </div>
+              {/* Players, Duration and Min Age used to sit here, all three
+                  required: board-game specs, so a café could not save a mug
+                  without inventing a player count. The server never required
+                  them. A client that sells something with real attributes of
+                  its own should get them as configuration, not inherit these. */}
+              <div>
+                <label style={labelStyle}>Retail Price ($)</label>
+                <input type="number" value={form.price} required min={0} step="0.01"
+                  onChange={e => setForm(f => ({ ...f, price: +e.target.value }))}
+                  style={inputStyle} />
               </div>
 
               {/* On offer. A blank sale price means not on offer; the route

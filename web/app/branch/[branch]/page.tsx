@@ -9,7 +9,7 @@ import Skeleton from '../../components/Skeleton'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUsers, faClock, faCakeCandles, faSearch, faXmark } from '@fortawesome/free-solid-svg-icons'
+import { faSearch, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { normalizeStock } from '@big-cms/shared/branches'
 import { BRAND } from '@big-cms/shared/brand'
 
@@ -27,9 +27,6 @@ interface Product {
   id: string
   name: string
   category: string
-  players: string
-  duration: string
-  age: string
   retailPrice: number
   stock: unknown
   image: string
@@ -137,27 +134,6 @@ function ProductCard({ product }: { product: Product }) {
         {/* A margin line lived here — retail minus trade cost — on the same
             unguarded page. Anyone with the URL could read what the business
             makes on every product. */}
-
-        <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '0.4rem' }}>
-          {product.players && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
-              <FontAwesomeIcon icon={faUsers} style={{ width: '11px' }} />
-              {product.players}
-            </span>
-          )}
-          {product.duration && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
-              <FontAwesomeIcon icon={faClock} style={{ width: '11px' }} />
-              {product.duration}
-            </span>
-          )}
-          {product.age && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
-              <FontAwesomeIcon icon={faCakeCandles} style={{ width: '11px' }} />
-              {product.age}+
-            </span>
-          )}
-        </div>
       </div>
     </Link>
   )
@@ -193,9 +169,6 @@ export default function BranchCataloguePage() {
           id: d.id,
           name:           (d.data().name as string) ?? '',
           category:       (d.data().category as string) ?? '',
-          players:        (d.data().players as string) ?? '',
-          duration:       (d.data().duration as string) ?? '',
-          age:            (d.data().age as string) ?? '',
           retailPrice:    (d.data().price as number) ?? 0,
           stock:          d.data().stock,
           image:          (d.data().image as string) ?? '',
@@ -205,7 +178,9 @@ export default function BranchCataloguePage() {
       const inStock = all.filter(g => g.branchStock > 0)
       const cats = catSnap.docs.map(d => (d.data() as { name: string }).name)
       setGames(inStock)
-      setCategories(cats.length > 0 ? cats : ['Strategy', 'Party', 'Family', 'Cooperative', 'Card', 'Trivia', 'RPG', 'Puzzle'])
+      // The client's own categories, or none — never board-game genres
+      // (Strategy, Party, Cooperative, RPG) standing in for a café's shelf.
+      setCategories(cats)
       setLoading(false)
     }
     load()

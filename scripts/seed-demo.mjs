@@ -656,9 +656,6 @@ PRODUCTS.forEach(([slug, name, category, price, description], i) => {
     // The board-product-era fields. Written empty rather than omitted: Manage
     // Products still renders inputs for them, and an absent field there shows as
     // `undefined` in a controlled input and warns.
-    players: '',
-    duration: '',
-    age: '',
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   }, `product · ${name}`)

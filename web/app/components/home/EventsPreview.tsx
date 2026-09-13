@@ -99,7 +99,7 @@ export default function EventsPreview() {
               color: 'var(--offwhite)',
               lineHeight: 1.2,
             }}>
-              Always Something<br />On the Board
+              Always Something<br />Coming Up
             </h2>
           </div>
           <Link href="/events"

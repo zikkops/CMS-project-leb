@@ -15,10 +15,10 @@ import { searchItems, highlight, snippet } from '@big-cms/shared/productSearch'
 import { PLACEHOLDER } from '@big-cms/shared/placeholderAssets'
 import { effectivePrice, saleIsActive, discountPercent } from '@big-cms/shared/productPricing'
 
-// The stored documents still carry the board-product-era `players`, `duration`
-// and `age` fields (Manage Products still writes them). This page no longer reads
-// them, so they're left off the interface rather than declared and ignored —
-// anything that isn't rendered here shouldn't look like it might be.
+// Older product documents may still carry the board-game-era `players`,
+// `duration` and `age` fields. Nothing writes them any more and nothing reads
+// them, so they are left off the interface — anything not rendered here
+// shouldn't look like it might be.
 interface Product {
   id: string
   name: string

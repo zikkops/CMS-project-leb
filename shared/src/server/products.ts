@@ -34,9 +34,6 @@ export interface ProductInput {
   name: string
   category: string
   description: string
-  players: string
-  duration: string
-  age: string
   price: number
   salePrice: number | null
   saleEndsAt: string | null
@@ -76,9 +73,6 @@ export function parseProductInput(body: Record<string, unknown>): ProductInput {
     name: text(body.name, 'Product name', { required: true }),
     category: text(body.category, 'Category', { maxLen: 100 }),
     description: text(body.description, 'Description', { maxLen: 4000 }),
-    players: text(body.players, 'Players', { maxLen: 50 }),
-    duration: text(body.duration, 'Duration', { maxLen: 50 }),
-    age: text(body.age, 'Age', { maxLen: 20 }),
     price,
     salePrice,
     saleEndsAt,
