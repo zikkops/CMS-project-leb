@@ -33,6 +33,9 @@ export const ADMIN_NAV: AdminNavSection[] = [
       { label: 'Manage Products',       href: '/admin/products',             access: SECTION_ACCESS.products },
       { label: 'Manage Menu',        href: '/admin/menu',              access: SECTION_ACCESS.menu },
       { label: 'Item Options',       href: '/admin/menu/modifiers',    access: SECTION_ACCESS.menu },
+      // Admin only, reading as well as writing: a recipe is what a dish costs,
+      // which is margin (owner's decision, 14 Sep 2026).
+      { label: 'Recipes & Costing',  href: '/admin/menu/recipes',      access: ['admin'] as Role[] },
       { label: 'Manage Events',      href: '/admin/events',            access: SECTION_ACCESS.events },
       { label: 'Event Reservations', href: '/admin/events/reservations', access: SECTION_ACCESS.events },
     ],

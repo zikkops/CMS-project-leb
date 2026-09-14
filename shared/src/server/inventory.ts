@@ -50,6 +50,24 @@ export interface SupplyInput {
   // from it and lets the line override, because the same item can arrive taxed
   // from one supplier and untaxed from another.
   vatable: boolean
+  // Recipes (Sep 2026). Stock stays counted in `unit` — what receiving and the
+  // daily count already use. A recipe measures in `recipeUnit`, and
+  // `recipeUnitsPerPurchaseUnit` converts: 3785.41 ml to the gallon. Null means
+  // not set, and a recipe using this supply in another unit cannot be saved
+  // until it is — a guessed factor is silently a thousand times wrong
+  // (shared/src/recipes.ts).
+  recipeUnit: string | null
+  recipeUnitsPerPurchaseUnit: number | null
+  /** Usable share of what is bought, above 0 and at most 100. Null means all of it. */
+  yieldPercent: number | null
+}
+
+/** Blank clears an optional number; anything else must be a real one in range. */
+function optionalNumber(raw: unknown, label: string, test: (n: number) => boolean, rule: string): number | null {
+  if (raw === null || raw === undefined || raw === '') return null
+  const n = Number(raw)
+  if (!Number.isFinite(n) || !test(n)) throw new HttpError(400, `${label} ${rule}`)
+  return n
 }
 
 export function parseSupplyInput(body: Record<string, unknown>): SupplyInput {
@@ -61,7 +79,16 @@ export function parseSupplyInput(body: Record<string, unknown>): SupplyInput {
     throw new HttpError(400, 'Threshold must be a whole number of at least 1.')
   }
 
+  const recipeFields = {
+    recipeUnit: body.recipeUnit ? String(body.recipeUnit).trim().slice(0, 50) || null : null,
+    recipeUnitsPerPurchaseUnit: optionalNumber(body.recipeUnitsPerPurchaseUnit, 'The recipe conversion',
+      n => n > 0 && n <= 1_000_000, 'must be a number above zero.'),
+    yieldPercent: optionalNumber(body.yieldPercent, 'Usable share',
+      n => n > 0 && n <= 100, 'must be above 0% and at most 100%.'),
+  }
+
   return {
+    ...recipeFields,
     name: name.slice(0, 200),
     nameAr: body.nameAr ? String(body.nameAr).trim().slice(0, 200) : null,
     category: String(body.category ?? '').trim().slice(0, 100),

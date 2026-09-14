@@ -8,6 +8,7 @@ import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { listTemplateItems, listProviders, UNIT_LABELS, translateToArabic } from '@big-cms/shared/weeklyOrders'
 import { STOCKED_BRANCHES, PRIMARY_BRANCH, branchColor, emptyStock } from '@big-cms/shared/branches'
 import { SUPPLY_CATEGORY_COLOR as CAT_COLOR, type SupplyCategory as Category } from '@big-cms/shared/departments'
+import { suggestedFactor, describeQty, normalizeUnit } from '@big-cms/shared/recipes'
 
 
 // The branches that hold consumable stock, from configuration. This was a
@@ -34,6 +35,10 @@ interface Supply {
   // reads as taxable, which is what the single whole-invoice rate did to
   // every line at the time.
   vatable?: boolean
+  // How recipes measure this item — see the form below and shared/src/recipes.ts.
+  recipeUnit?: string | null
+  recipeUnitsPerPurchaseUnit?: number | null
+  yieldPercent?: number | null
 }
 
 const CATEGORIES: Category[] = ['Kitchen', 'Bar', 'Cleaning', 'Other']
@@ -58,7 +63,11 @@ const S_BG     = { ok: 'rgba(var(--teal-rgb),0.06)',   low: 'rgba(var(--brand-se
 const S_BORDER = { ok: 'rgba(var(--teal-rgb),0.18)',   low: 'rgba(var(--brand-secondary-rgb),0.26)',  out: 'rgba(var(--red-rgb),0.32)'  }
 const S_LABEL  = { ok: 'OK', low: 'Low', out: 'Out' }
 
-const EMPTY_FORM = { name: '', nameAr: '', category: 'Kitchen' as Category, unit: 'pieces', threshold: 5, provider: '', vatable: true }
+const EMPTY_FORM = {
+  name: '', nameAr: '', category: 'Kitchen' as Category, unit: 'pieces', threshold: 5, provider: '', vatable: true,
+  // Strings while being typed; the route turns blank into "not set".
+  recipeUnit: '', recipeUnitsPerPurchaseUnit: '', yieldPercent: '',
+}
 
 const inp: React.CSSProperties = {
   background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
@@ -70,6 +79,29 @@ const sel: React.CSSProperties = { ...inp, background: '#1c1c1c', cursor: 'point
 const lbl: React.CSSProperties = {
   display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase',
   color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.3rem', fontFamily: 'var(--font-inter)',
+}
+
+/**
+ * What the recipe measurement fields mean, in words, for the hint beneath them.
+ *
+ * The example line is the defence against a wrong factor: a conversion that is
+ * a thousand times out reads as obvious nonsense once it is written as
+ * "100 g = 100 kg". The figure comes from recipes.ts, not from arithmetic here.
+ */
+function recipeMeasurement(form: { unit: string; recipeUnit: string; recipeUnitsPerPurchaseUnit: string; yieldPercent: string }): { needsFactor: boolean; hint: string } {
+  const needsFactor = !!form.recipeUnit && normalizeUnit(form.recipeUnit) !== normalizeUnit(form.unit)
+  if (!form.recipeUnit) return { needsFactor, hint: `Recipes will measure this in ${form.unit}.` }
+  if (!needsFactor) return { needsFactor, hint: `${form.recipeUnit} is the same unit as ${form.unit}, so no conversion is needed.` }
+  const factor = Number(form.recipeUnitsPerPurchaseUnit)
+  if (form.recipeUnitsPerPurchaseUnit === '' || !Number.isFinite(factor) || factor <= 0) {
+    return { needsFactor, hint: `How many ${form.recipeUnit} are in one ${form.unit}? A recipe using this item cannot be saved until this is set.` }
+  }
+  const y = form.yieldPercent === '' ? null : Number(form.yieldPercent)
+  if (y !== null && !(Number.isFinite(y) && y > 0 && y <= 100)) {
+    return { needsFactor, hint: 'Usable share must be above 0% and at most 100%.' }
+  }
+  const example = describeQty(100, { id: '', unit: form.unit, recipeUnit: form.recipeUnit, recipeUnitsPerPurchaseUnit: factor, yieldPercent: y })
+  return { needsFactor, hint: `1 ${form.unit} = ${factor} ${form.recipeUnit}. In a recipe, ${example}.` }
 }
 
 export default function SuppliesPage() {
@@ -113,7 +145,12 @@ export default function SuppliesPage() {
 
   function openAdd() { setForm(EMPTY_FORM); setFormQty(EMPTY_QTY); setEditing(null); setModal('add') }
   function openEdit(s: Supply) {
-    setForm({ name: s.name, nameAr: s.nameAr ?? '', category: s.category, unit: s.unit, threshold: s.threshold, provider: s.provider ?? '', vatable: s.vatable !== false })
+    setForm({
+      name: s.name, nameAr: s.nameAr ?? '', category: s.category, unit: s.unit, threshold: s.threshold, provider: s.provider ?? '', vatable: s.vatable !== false,
+      recipeUnit: s.recipeUnit ?? '',
+      recipeUnitsPerPurchaseUnit: s.recipeUnitsPerPurchaseUnit != null ? String(s.recipeUnitsPerPurchaseUnit) : '',
+      yieldPercent: s.yieldPercent != null ? String(s.yieldPercent) : '',
+    })
     setFormQty({ ...EMPTY_QTY, ...s.quantity })
     setEditing(s); setModal('edit')
   }
@@ -133,6 +170,12 @@ export default function SuppliesPage() {
     const data = {
       name: form.name, nameAr: form.nameAr.trim() || null, category: form.category, unit: form.unit, threshold: form.threshold,
       provider: form.provider.trim() || null, vatable: form.vatable, updatedAt: serverTimestamp(),
+      // Sent on every save, blank included. The route replaces the whole item,
+      // so a form that left these out would quietly wipe a conversion somebody
+      // set — and every recipe using it would stop being costable.
+      recipeUnit: form.recipeUnit || null,
+      recipeUnitsPerPurchaseUnit: form.recipeUnit ? form.recipeUnitsPerPurchaseUnit : '',
+      yieldPercent: form.yieldPercent,
     }
     // Quantity is deliberately not sent on an edit — it is only ever set by
     // a submitted Daily Inventory Count or a received delivery, and the route
@@ -421,6 +464,53 @@ export default function SuppliesPage() {
                     {UNITS.map(u => <option key={u} value={u} style={{ background: '#1c1c1c', color: 'var(--offwhite)' }}>{u}</option>)}
                   </select>
                 </div>
+              </div>
+
+              {/* How recipes measure this item (Sep 2026). Stock stays counted in the
+                  unit above — receiving and the daily count use it. A recipe can
+                  measure in something smaller, and the conversion turns 200 ml
+                  into a fraction of a gallon. Blank means recipes use the unit
+                  above. */}
+              {(() => {
+                const m = recipeMeasurement(form)
+                const units = form.recipeUnit && !UNITS.includes(form.recipeUnit) ? [...UNITS, form.recipeUnit] : UNITS
+                return (
+                  <div>
+                    <label style={lbl}>Recipes measure it in</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: m.needsFactor ? '1fr 1fr' : '1fr', gap: '0.75rem' }}>
+                      <select style={sel} value={form.recipeUnit} onChange={e => {
+                        const next = e.target.value
+                        setForm(f => ({
+                          ...f,
+                          recipeUnit: next,
+                          // Offer the known factor (kg to g is 1000) only when none is set;
+                          // never overwrite one somebody typed.
+                          recipeUnitsPerPurchaseUnit: f.recipeUnitsPerPurchaseUnit
+                            || (next ? String(suggestedFactor(f.unit, next) ?? '') : ''),
+                        }))
+                      }}>
+                        <option value="" style={{ background: '#1c1c1c', color: 'var(--offwhite)' }}>Same as the unit above</option>
+                        {units.map(u => <option key={u} value={u} style={{ background: '#1c1c1c', color: 'var(--offwhite)' }}>{u}</option>)}
+                      </select>
+                      {m.needsFactor && (
+                        <input style={inp} type="number" min={0} step="any"
+                          placeholder={`${form.recipeUnit} in one ${form.unit}`}
+                          value={form.recipeUnitsPerPurchaseUnit}
+                          onChange={e => setForm(f => ({ ...f, recipeUnitsPerPurchaseUnit: e.target.value }))} />
+                      )}
+                    </div>
+                    <p style={{ fontSize: '0.62rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.25rem' }}>{m.hint}</p>
+                  </div>
+                )
+              })()}
+
+              <div>
+                <label style={lbl}>Usable Share After Trim (%)</label>
+                <input style={inp} type="number" min={1} max={100} step="any" placeholder="100"
+                  value={form.yieldPercent} onChange={e => setForm(f => ({ ...f, yieldPercent: e.target.value }))} />
+                <p style={{ fontSize: '0.62rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.25rem' }}>
+                  Onions trimmed to 85% usable: enter 85, and recipes buy enough to allow for it. Blank means all of it is used.
+                </p>
               </div>
 
               {/* Per-branch initial quantities — add-only; existing items' quantities
