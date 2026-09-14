@@ -220,7 +220,7 @@ function startHub(config, { onReady, onStopped, onFailed }) {
     const started = Date.now()
     const current = utilityProcess.fork(serverPath, [], {
       cwd: path.dirname(serverPath),
-      env: hubServerEnv(process.env, { port: config.hubPort, dbFile }),
+      env: hubServerEnv(process.env, { port: config.hubPort, dbFile, cloudUrl: config.cloudUrl }),
       stdio: 'pipe',
       serviceName: 'BIG CMS hub',
     })

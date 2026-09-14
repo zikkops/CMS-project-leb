@@ -37,6 +37,39 @@ const field: React.CSSProperties = {
   fontFamily: 'var(--font-inter)', fontSize: '1rem', outline: 'none', width: '100%',
 }
 
+/**
+ * On a café hub, one line under the form: which branch it serves, or that it
+ * is not paired yet and where to pair it (POS software, stage 4). A hub that
+ * is not paired has no menu, and this is the first screen somebody setting it
+ * up sees.
+ */
+function HubNotice() {
+  const [status, setStatus] = useState<{ paired: boolean; revoked: boolean; branch: string | null } | null>(null)
+
+  useEffect(() => {
+    if (backend().kind !== 'hub') return
+    let live = true
+    fetch('/api/hub/pairing', { cache: 'no-store' })
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => { if (live && data) setStatus(data) })
+      .catch(() => { /* the hub is this PC; nothing to add */ })
+    return () => { live = false }
+  }, [])
+
+  if (!status) return null
+  const link = (text: string) => <a href="/pos/hub" style={{ color: 'var(--teal)' }}>{text}</a>
+  return (
+    <p style={{ marginTop: '1.4rem', textAlign: 'center', fontSize: '0.8rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.5)' }}>
+      {!status.paired
+        ? <>This café hub is not paired, so it has no menu yet. {link('Pair it')}</>
+        // Unpaired by an admin, it still has what it took; it just takes nothing new.
+        : status.revoked
+          ? <>An admin unpaired this café hub. It keeps its menu but takes no updates. {link('Pair it again')}</>
+          : <>Café hub for {status.branch} · {link('status')}</>}
+    </p>
+  )
+}
+
 export default function PosLoginPage() {
   const router = useRouter()
   const isMobile = useIsMobile()
@@ -128,6 +161,8 @@ export default function PosLoginPage() {
             }}
           >{busy ? 'Signing in…' : 'Sign in'}</button>
         </form>
+
+        <HubNotice />
       </div>
     </main>
   )

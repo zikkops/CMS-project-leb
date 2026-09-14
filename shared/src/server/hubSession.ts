@@ -11,9 +11,11 @@
 //   the same claims every cloud route already trusts first.
 // - A session is stored under a hash of its token, so a copy of the hub's
 //   database is not a handful of live sessions.
-// - The honest limit: a role changed or an account locked during the night
-//   reaches a hub session when it ends, not at once. Stage 4's sync can end
-//   sessions early.
+// - Revocation cannot be checked without the key. So once the hub is paired,
+//   the staff records it pulls every two minutes overrule the token (stage 4,
+//   callerFromHubToken below): an account locked in the cloud is refused at the
+//   next pull. A hub that has never pulled has only the token's claims, which
+//   stand until the session ends.
 
 import { createHash, randomBytes } from 'node:crypto'
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
@@ -106,12 +108,21 @@ export async function callerFromHubToken(token: string, now = Date.now()): Promi
   const expiresAt = timestampMs(d.expiresAt, 0)
   if (!(expiresAt > now)) return null
   if (typeof d.uid !== 'string' || !isRole(d.role)) return null
+
+  // The staff record pulled from the cloud (stage 4) overrules what the token
+  // said at sign-in: an account locked, or a role changed, in the cloud reaches
+  // this session at the hub's next pull rather than at 05:00. Before the first
+  // pull there is no record, and the token's claims stand.
+  const staff = (await adminDb().doc(`users/${d.uid}`).get()).data()
+  if (staff && (staff.isStaff !== true || !isRole(staff.role))) return null
   return {
     uid: d.uid,
     email: typeof d.email === 'string' ? d.email : null,
-    role: d.role,
-    branchIds: branchList(d.branchIds),
-    superadmin: d.superadmin === true,
+    role: staff ? staff.role : d.role,
+    branchIds: staff
+      ? branchList(Array.isArray(staff.branchIds) ? staff.branchIds : typeof staff.branchId === 'string' ? [staff.branchId] : [])
+      : branchList(d.branchIds),
+    superadmin: staff ? staff.superadmin === true : d.superadmin === true,
     isStaff: true,
     expiresAt,
   }

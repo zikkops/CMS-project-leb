@@ -735,6 +735,11 @@ export class HubStore {
     return decode(JSON.parse(raw), this.revive) as Data
   }
 
+  /** A value tagged as a backup line is (a pulled snapshot), rebuilt with this store's Timestamps and references. */
+  decodeValue(value: unknown): unknown {
+    return decode(value, this.revive)
+  }
+
   doc(path: string): LocalDocumentReference {
     const { collection, id } = docParts(path)
     return new LocalDocumentReference(this, collection, id)

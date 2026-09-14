@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 26 checks, 20 verifiers, 1330
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1396
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -733,9 +733,11 @@ wraps the same React screens.
       staff records yet, so the role decides and there are no grants.
     - Sessions are stored under a SHA-256 of the token, so a copy of the hub
       file holds no live sessions.
-    - **The honest limit:** revocation cannot be checked without the key. A
-      role changed or an account locked during the night reaches a hub session
-      when it ends. Stage 4's sync can end sessions early.
+    - **Revocation cannot be checked without the key**, so the token alone
+      would keep a locked account signed in until 05:00. Once the hub is
+      paired, the staff records it pulls every two minutes overrule the
+      session (stage 4, below). On a hub that has never pulled, the token's
+      claims still stand until the session ends.
     - The till keeps the session in localStorage. **POS pages gate on
       `useTillAccess()`** (`pos/app/lib/useTillAccess.ts`), not
       `useRequireRole()`. Online it is `useRequireRole()`; on a hub it reads the
@@ -841,9 +843,90 @@ wraps the same React screens.
     `.exe` started the server, saw it answer as the hub (17 s from start on a
     cold first run), loaded the POS at `localhost:3100/pos`, and the server
     exited with the app. It has not been installed on a clean PC.
+- **Stage 4 starts with pairing a hub and pulling from the cloud.** The rules
+  are `shared/src/hubSync.ts`, pure, asserted by `npm run verify:hub-sync`. The
+  cloud's side is `shared/src/server/hubDevices.ts`; the hub's side is
+  `shared/src/server/hubSync.ts`.
+  - **Pairing.** An admin makes a one-time code at `/admin/settings/hubs`
+    (Café Hubs, admin only) for a branch. Somebody at the counter PC types it
+    at `/pos/hub`, which the hub's sign-in page links to while unpaired.
+    - The hub sends it to the cloud's `POST /api/hub-sync/pair` and gets its
+      own credential back: a device id and a 43-character secret.
+    - The code is ten letters from a 32-letter alphabet with no I, O, 0 or 1,
+      so 50 bits. It works once, for fifteen minutes.
+    - Used, expired and never-made codes get ONE refusal, so a guesser learns
+      nothing.
+    - The cloud stores codes and secrets only as SHA-256
+      (`hubPairingCodes/{hash}`, `hubDevices/{id}`, server-only, no rule, so no
+      rules deploy). The code is never logged.
+    - The hub keeps its credential in its own database (`hubMeta/device`), so
+      it is still never the Admin key.
+  - **The credential header is `Hub <id>.<secret>`, never `Bearer`**, so a
+    person's token and a hub's credential cannot be mistaken for each other.
+    The cloud checks it in constant time. An unpaired hub is refused and told
+    so, and marks itself unpaired rather than asking in vain.
+  - **Pulling.** `pos/instrumentation.ts` starts it on a hub: every two
+    minutes, and straight after pairing. `GET /api/hub-sync/pull` returns
+    exactly `pullSpec()`:
+    - menu categories, items, modifier groups and products
+    - this branch's table layout
+    - the three settings the till reads
+    - staff accounts cut to `STAFF_FIELDS`: role, branches, grants and
+      revocations, never name, email, phone or points
+    - never a check, a customer, another branch, or `appSettings/invoiceCounter`
+
+    A digest makes an unchanged snapshot one line.
+  - **`planPull()` decides what the hub writes.**
+    - The cloud's version, except `keepLocal` fields of a document the hub
+      already holds: **a product's stock stays the hub's**, because the hub
+      counts what it sells.
+    - A document gone from the snapshot is deleted from the hub, within the
+      named ids only.
+    - An unchanged document is not written, so a quiet pull is no commit and
+      wakes no screen.
+    - Anything the spec does not name is ignored, so the cloud cannot write
+      the hub's receipt counter or its checks.
+  - **Pulled staff records overrule a hub session** (`callerFromHubToken()`).
+    An account locked or a role changed in the cloud reaches the till at the
+    next pull, not at 05:00. Before the first pull the token's claims stand.
+  - **The Windows app passes the cloud's address** (`cloudUrl` in
+    `config.json`, default the hosted POS), https or localhost only, origin
+    only, through the environment allowlist. `npm run dev:pos-hub` points a dev
+    hub at the POS dev server on 3002.
+  - `verify:hub-sync` has 62 assertions; 23 mutations are caught by name,
+    together with `verify:desktop`. They include:
+    - the receipt counter pulled
+    - a pairing code working twice or never running out
+    - the secret not checked
+    - a Bearer token read as a hub's credential
+    - staff sent whole
+    - a locked account keeping its hub session
+    - the cloud allowed on plain http across a network
+  - **Exercised end to end, 14 Sep 2026**, between the POS dev server on the
+    demo project (the cloud, port 3002) and a production build running as a
+    hub with no Admin key in its environment (port 3004). The code came from a
+    script, not the admin page, because nobody's password is typed here.
+    - **Refusals:** the cloud's pull route refused no credential and a
+      person's Bearer token (401). Each side answered 404 to the other side's
+      routes.
+    - **Pairing:** the hub paired with a real code. Its first pull, about a
+      second later, wrote 54 documents: 4 categories, 16 items, 3 option
+      groups, 26 products, 2 staff records, the features and business
+      settings, and Main's table layout. That matches the cloud exactly. The
+      same code again was refused (409).
+    - **Unchanged pull:** after a restart the first pull sent the digest and
+      came back unchanged, 0 written.
+    - **Unpairing:** the test hub was unpaired in the cloud and the hub
+      restarted. It marked itself unpaired with the admin's message, kept every
+      document, and `/pos/hub` offered pairing again.
+    - **Left in the demo project:** the test hub "E2E test hub" (unpaired),
+      its used code and one activity log entry.
+    - **Not yet run:** the admin page signed in, and pairing from the Windows
+      app's own hub.
   - **Not built yet:**
-    - menu and settings pulled from the cloud by the hub itself (stage 4's
-      device credential; `hub:seed` is the developer's stand-in)
+    - the hub's sales, tickets and shifts going up to the cloud, with stock as
+      movements rather than counts
+    - receipt number blocks for closing offline
     - reaching the hub from a phone on the café wifi (the server listens on
       this PC only)
 

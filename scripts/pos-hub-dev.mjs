@@ -18,6 +18,8 @@ console.log(`[hub] POS on http://localhost:3004 with its data in ${db}`)
 const child = spawn('npm', ['run', 'dev', '--workspace', 'pos', '--', '-p', '3004'], {
   stdio: 'inherit',
   shell: true,
-  env: { ...process.env, BIG_CMS_HUB_DB: db },
+  // The "cloud" a dev hub pairs with and pulls from is the ordinary POS dev
+  // server (npm run dev:pos, port 3002), which has this machine's Admin key.
+  env: { ...process.env, BIG_CMS_HUB_DB: db, BIG_CMS_CLOUD_URL: process.env.BIG_CMS_CLOUD_URL || 'http://localhost:3002' },
 })
 child.on('exit', code => process.exit(code ?? 0))

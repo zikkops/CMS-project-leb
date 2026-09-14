@@ -7,8 +7,9 @@
 // has to prevent: being pointed at an unencrypted address (staff passwords on
 // the café network), navigating away from the POS (another site on the
 // counter screen), and granting a permission nothing asked for. A typo in its
-// settings must not switch any of that off. On a hub, one more: the Firebase
-// Admin key on the PC must never reach the server it starts.
+// settings must not switch any of that off. On a hub, two more: the Firebase
+// Admin key on the PC must never reach the server it starts, and the hub's own
+// credential must never be sent to the cloud over plain http.
 
 import { createRequire } from 'node:module'
 
@@ -23,7 +24,8 @@ const eq = (name, got, want) => {
 }
 
 const POS = 'https://pos.cms-projectlb.com/pos'
-const DEFAULTS = { posUrl: POS, kiosk: true, startWithWindows: true, mode: 'online', hubPort: 3100 }
+const CLOUD = 'https://pos.cms-projectlb.com'
+const DEFAULTS = { posUrl: POS, kiosk: true, startWithWindows: true, mode: 'online', hubPort: 3100, cloudUrl: CLOUD }
 
 console.log('\nthe address the till opens')
 {
@@ -70,7 +72,7 @@ console.log('\nwhat it may be granted')
   eq('USB and serial are refused', [P.isAllowedPermission('usb', POS, POS), P.isAllowedPermission('serial', POS, POS)], [false, false])
 }
 
-console.log('\nthe café hub (stage 3)')
+console.log('\nthe café hub (stages 3 and 4)')
 {
   eq('online unless a PC is set up as the hub', P.readConfig(null, {}).mode, 'online')
   eq('hub mode from the settings file', P.readConfig('{"mode": "hub"}', {}).mode, 'hub')
@@ -84,19 +86,26 @@ console.log('\nthe café hub (stage 3)')
   eq('...an address the till is allowed to open', P.readPosUrl(P.hubAddress(3100)), 'http://localhost:3100/pos')
   eq('...and the hub\'s pages are the POS\'s own', P.isAllowedNavigation('http://localhost:3100/pos/kds', P.hubAddress(3100)), true)
 
+  eq('the cloud a hub pairs with defaults to the hosted POS', P.readConfig(null, {}).cloudUrl, CLOUD)
+  eq('a cloud address is kept as its origin, never a path', P.readConfig('{"cloudUrl": "https://pos.other.cafe/api/anything"}', {}).cloudUrl, 'https://pos.other.cafe')
+  eq('THE TRAP: a cloud on plain http across a network falls back: the hub sends its secret there',
+    P.readConfig('{"cloudUrl": "http://192.168.1.10:3002"}', {}).cloudUrl, CLOUD)
+  eq('the environment can point a development hub at a local cloud', P.readConfig(null, { BIG_CMS_CLOUD_URL: 'http://localhost:3002' }).cloudUrl, 'http://localhost:3002')
+
   const pcEnv = {
     Path: 'C:\\Windows\\system32', SystemRoot: 'C:\\Windows', TEMP: 'C:\\Temp',
     FIREBASE_SERVICE_ACCOUNT: 'eyJ0eXBlIjoic2VydmljZV9hY2NvdW50In0=', GOOGLE_APPLICATION_CREDENTIALS: 'C:\\keys\\sa.json',
     IMGBB_API_KEY: 'k', CRON_SECRET: 's', NODE_OPTIONS: '--require C:\\evil.js', BIG_CMS_HUB_DB: 'C:\\somewhere-else.db',
+    BIG_CMS_CLOUD_URL: 'http://evil.example',
   }
-  const env = P.hubServerEnv(pcEnv, { port: 3100, dbFile: 'C:\\Users\\till\\AppData\\Roaming\\BIG CMS POS\\hub\\pos.db' })
+  const env = P.hubServerEnv(pcEnv, { port: 3100, dbFile: 'C:\\Users\\till\\AppData\\Roaming\\BIG CMS POS\\hub\\pos.db', cloudUrl: CLOUD })
   eq('THE TRAP: the Admin key on this PC never reaches the hub server',
     ['FIREBASE_SERVICE_ACCOUNT', 'GOOGLE_APPLICATION_CREDENTIALS'].filter(k => k in env), [])
   eq('nor other secrets, nor code loaded through NODE_OPTIONS',
     ['IMGBB_API_KEY', 'CRON_SECRET', 'NODE_OPTIONS'].filter(k => k in env), [])
-  eq('the hub server gets its port, its own database, this PC only, production',
-    [env.PORT, env.BIG_CMS_HUB_DB, env.HOSTNAME, env.NODE_ENV],
-    ['3100', 'C:\\Users\\till\\AppData\\Roaming\\BIG CMS POS\\hub\\pos.db', '127.0.0.1', 'production'])
+  eq('the hub server gets its port, its own database, this PC only, production, and the app\'s cloud',
+    [env.PORT, env.BIG_CMS_HUB_DB, env.HOSTNAME, env.NODE_ENV, env.BIG_CMS_CLOUD_URL],
+    ['3100', 'C:\\Users\\till\\AppData\\Roaming\\BIG CMS POS\\hub\\pos.db', '127.0.0.1', 'production', CLOUD])
   eq('Windows still has what it needs to run it', [env.Path, env.SystemRoot, env.TEMP], ['C:\\Windows\\system32', 'C:\\Windows', 'C:\\Temp'])
 
   eq('our hub answers 401 as JSON: ready', P.classifyHubProbe(401, '{"error":"Not signed in."}'), 'ready')

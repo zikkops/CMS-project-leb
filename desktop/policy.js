@@ -17,6 +17,8 @@ const DEFAULT_CONFIG = Object.freeze({
   // hub (POS software, stage 3): it keeps trading with no internet.
   mode: 'online',
   hubPort: 3100,
+  // Where a hub pairs and takes the menu from (stage 4): the hosted POS.
+  cloudUrl: 'https://pos.cms-projectlb.com',
 })
 
 const MODES = new Set(['online', 'hub'])
@@ -34,6 +36,16 @@ function readPosUrl(raw) {
   const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1'
   if (url.protocol === 'https:' || (url.protocol === 'http:' && local)) return url.toString()
   return null
+}
+
+/**
+ * Where the hub pairs and syncs: the same rule as the POS address, and only
+ * its origin. A hub sends its credential there, so plain http across a network
+ * is refused, and a path cannot aim that credential at some other route.
+ */
+function readCloudUrl(raw) {
+  const url = readPosUrl(raw)
+  return url ? new URL(url).origin : null
 }
 
 const readMode = raw => (typeof raw === 'string' && MODES.has(raw) ? raw : null)
@@ -62,6 +74,7 @@ function readConfig(raw, env) {
     startWithWindows: typeof src.startWithWindows === 'boolean' ? src.startWithWindows : DEFAULT_CONFIG.startWithWindows,
     mode: readMode(env?.BIG_CMS_DESKTOP_MODE) ?? readMode(src.mode) ?? DEFAULT_CONFIG.mode,
     hubPort: readPort(src.hubPort) ?? DEFAULT_CONFIG.hubPort,
+    cloudUrl: readCloudUrl(env?.BIG_CMS_CLOUD_URL) ?? readCloudUrl(src.cloudUrl) ?? DEFAULT_CONFIG.cloudUrl,
   }
 }
 
@@ -122,7 +135,7 @@ const HUB_ENV_KEEP = [
  * NODE_OPTIONS, which could load any code into the server that takes money.
  * A list of what to keep cannot miss a name nobody thought of.
  */
-function hubServerEnv(baseEnv, { port, dbFile }) {
+function hubServerEnv(baseEnv, { port, dbFile, cloudUrl }) {
   const env = {}
   for (const key of HUB_ENV_KEEP) {
     if (typeof baseEnv?.[key] === 'string') env[key] = baseEnv[key]
@@ -134,6 +147,7 @@ function hubServerEnv(baseEnv, { port, dbFile }) {
     PORT: String(port),
     HOSTNAME: '127.0.0.1',
     BIG_CMS_HUB_DB: dbFile,
+    BIG_CMS_CLOUD_URL: cloudUrl,
   }
 }
 
@@ -163,6 +177,6 @@ function hubRestartDelay(attempt) {
 }
 
 module.exports = {
-  DEFAULT_CONFIG, readPosUrl, readConfig, isAllowedNavigation, isAllowedPermission,
+  DEFAULT_CONFIG, readPosUrl, readCloudUrl, readConfig, isAllowedNavigation, isAllowedPermission,
   hubAddress, hubServerEnv, classifyHubProbe, hubRestartDelay,
 }

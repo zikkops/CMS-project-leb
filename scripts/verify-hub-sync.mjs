@@ -1,0 +1,308 @@
+// Assertions over pairing a café hub and pulling from the cloud — POS software, stage 4.
+//
+//   node scripts/verify-hub-sync.mjs
+//   npm run verify:hub-sync
+//
+// Three parts:
+//   1. The pure rules (shared/src/hubSync.ts): codes, the hub's credential,
+//      what a staff record may carry, and what a pull writes.
+//   2. The cloud's side (shared/src/server/hubDevices.ts) over a Firestore-shaped
+//      store: a code works once, a credential is checked, an unpaired hub is
+//      refused, and a snapshot carries exactly what the cloud is master for.
+//   3. The hub's side (shared/src/server/hubSync.ts): a snapshot taken into a
+//      second database, where the hub's own stock and receipt counter survive
+//      every pull — and hub sessions obeying the staff records pulled.
+//
+// Fixture contact details are placeholders that are not shaped like an email
+// or a phone number. The tests only care that those FIELDS never reach a hub,
+// and audit:branding rightly flags anything that looks like a real one.
+
+import { execSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, writeFileSync, readdirSync, rmSync, statSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { DatabaseSync } from 'node:sqlite'
+import { FieldValue, Timestamp } from 'firebase-admin/firestore'
+
+const out = join('node_modules', '.cache', `verify-hub-sync-${process.pid}`)
+rmSync(out, { recursive: true, force: true })
+try {
+  execSync(
+    'npx tsc shared/src/hubSync.ts shared/src/server/hubDevices.ts shared/src/server/hubSync.ts shared/src/server/hubSession.ts ' +
+    `--outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
+    '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
+    { stdio: 'pipe' },
+  )
+} catch (err) {
+  console.error(String(err.stdout ?? err))
+  process.exit(1)
+}
+const fixImports = dir => {
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name)
+    if (statSync(p).isDirectory()) { fixImports(p); continue }
+    if (!p.endsWith('.js')) continue
+    writeFileSync(p, readFileSync(p, 'utf8')
+      .replace(/(from\s+|import\s*\()'(\.\.?\/[^']+?)'/g, (_, lead, spec) => `${lead}'${spec.endsWith('.js') ? spec : `${spec}.js`}'`))
+  }
+}
+fixImports(out)
+writeFileSync(join(out, 'package.json'), '{ "type": "module" }')
+const url = rel => pathToFileURL(resolve(out, rel)).href
+
+const tmp = mkdtempSync(join(tmpdir(), 'hub-sync-verify-'))
+// The "cloud" in parts 2 and 3 is a Firestore-shaped store: the cloud code
+// uses nothing else of Firestore, and verify:hub holds the store to Firestore.
+process.env.BIG_CMS_HUB_DB = join(tmp, 'cloud.db')
+
+const P = await import(url('hubSync.js'))
+const H = await import(url('server/hubStore.js'))
+const FA = await import(url('server/firebaseAdmin.js'))
+const D = await import(url('server/hubDevices.js'))
+const S = await import(url('server/hubSync.js'))
+const HS = await import(url('server/hubSession.js'))
+const { BRAND } = await import(url('brand.js'))
+const branch = BRAND.branches[0]
+const otherBranch = BRAND.branches[1]
+
+let pass = 0, fail = 0
+const eq = (name, got, want) => {
+  const ok = JSON.stringify(got) === JSON.stringify(want)
+  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(80)} got=${JSON.stringify(got)}`)
+  ok ? pass++ : fail++
+}
+const rejects = async (name, fn, fits) => {
+  let err = null
+  try { await fn() } catch (e) { err = e }
+  const ok = err !== null && (fits instanceof RegExp ? fits.test(String(err.message)) : fits(err))
+  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(80)} got=${err ? JSON.stringify(err.message) : 'no refusal'}`)
+  ok ? pass++ : fail++
+}
+
+try {
+
+console.log('\npairing codes')
+{
+  eq('ten letters from ten bytes', P.pairingCodeFromBytes([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), 'ABCDEFGHJK')
+  eq('each byte picks one of 32 letters fairly: 31 is the last, 32 wraps to the first',
+    [P.pairingCodeFromBytes(Array(10).fill(31))[0], P.pairingCodeFromBytes(Array(10).fill(32))[0], P.pairingCodeFromBytes(Array(10).fill(255))[0]], ['9', 'A', '9'])
+  eq('shown in two groups of five', P.formatPairingCode('ABCDEFGHJK'), 'ABCDE-FGHJK')
+  eq('typed in any case, with a dash or spaces', [P.normalizePairingCode('abcde-fghjk'), P.normalizePairingCode(' ABCDE FGHJK ')], ['ABCDEFGHJK', 'ABCDEFGHJK'])
+  eq('THE TRAP: a letter a code never has makes it not a code (0, O, 1, I)',
+    ['ABCDEFGHJ0', 'ABCDEFGHJO', 'ABCDEFGHJ1', 'ABCDEFGHJI'].map(P.normalizePairingCode), [null, null, null, null])
+  eq('too short, too long, or not text', [P.normalizePairingCode('ABCDEFGHJ'), P.normalizePairingCode('ABCDEFGHJKL'), P.normalizePairingCode(1234567890)], [null, null, null])
+  let threw = false
+  try { P.pairingCodeFromBytes([1, 2, 3]) } catch { threw = true }
+  eq('too few random bytes is refused, never a short code', threw, true)
+}
+
+console.log('\nthe hub\'s credential')
+{
+  const id = 'AbCdEfGhIjKlMnOpQrSt'
+  const secret = 'a'.repeat(43)
+  eq('read back from the header a hub sends', P.parseDeviceAuth(P.deviceAuthHeader(id, secret)), { deviceId: id, secret })
+  eq('THE TRAP: a staff member\'s Bearer token is not a hub\'s credential', P.parseDeviceAuth(`Bearer ${id}.${secret}`), null)
+  eq('a missing or short secret is not a credential', [P.parseDeviceAuth(`Hub ${id}`), P.parseDeviceAuth(`Hub ${id}.${'a'.repeat(42)}`)], [null, null])
+  eq('an id that is not a device id is not a credential', [P.parseDeviceAuth(`Hub short.${secret}`), P.parseDeviceAuth(`Hub ${id}/x.${secret}`)], [null, null])
+  eq('a third part is not a credential', P.parseDeviceAuth(`Hub ${id}.${secret}.x`), null)
+}
+
+console.log('\nwhat a staff record may carry to a hub')
+{
+  const full = {
+    isStaff: true, role: 'manager', branchIds: [branch], superadmin: false, sectionGrants: ['kds'],
+    email: 'placeholder-address', phone: 'placeholder-number', displayName: 'Rana', points: 120, pointsEarned: 400,
+  }
+  eq('THE TRAP: no name, email, phone or points go to a café PC', Object.keys(P.staffRecord(full)).sort(), ['branchIds', 'isStaff', 'role', 'sectionGrants', 'superadmin'])
+  eq('a customer is not sent at all',
+    [P.staffRecord({ isStaff: false, email: 'placeholder-address' }), P.staffRecord({ email: 'placeholder-address' })], [null, null])
+  eq('the older single branch field still travels', P.staffRecord({ isStaff: true, role: 'barista', branchId: branch }), { isStaff: true, role: 'barista', branchId: branch })
+}
+
+console.log('\nwhat a pull writes')
+{
+  const spec = P.pullSpec(branch)
+  eq('the settings pulled are the till\'s three, and the table layout is this branch\'s',
+    [spec.find(s => s.collection === 'appSettings').ids, spec.find(s => s.collection === 'branchTableLayouts').ids], [['features', 'business', 'printing'], [branch]])
+  const json = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+  const local = new Map(Object.entries({
+    'menuItems/m1': { name: 'Toast', price: 4 },
+    'menuItems/gone': { name: 'Old dish' },
+    'products/p1': { name: 'Mug', price: 12, stock: { [branch]: 3 } },
+    'products/p2': { name: 'Tote', price: 20 },
+    'appSettings/invoiceCounter': { year: 2026, nextNumber: 41 },
+    'appSettings/features': { pos: { enabled: true } },
+    'checks/c1': { branch, status: 'open' },
+    [`branchTableLayouts/${otherBranch}`]: { tables: [] },
+  }))
+  const snapshot = [
+    { collection: 'menuItems', id: 'm1', data: { name: 'Toast', price: 4 } },
+    { collection: 'menuItems', id: 'm2', data: { name: 'Soup', price: 6 } },
+    { collection: 'products', id: 'p1', data: { name: 'Mug', price: 13, stock: { [branch]: 50 } } },
+    { collection: 'products', id: 'p2', data: { name: 'Tote', price: 20, stock: { [branch]: 9 } } },
+    { collection: 'products', id: 'p3', data: { name: 'Beans', price: 15, stock: { [branch]: 7 } } },
+    { collection: 'appSettings', id: 'features', data: { pos: { enabled: true } } },
+    { collection: 'appSettings', id: 'invoiceCounter', data: { year: 2026, nextNumber: 1 } },
+    { collection: 'checks', id: 'c9', data: { branch, status: 'open' } },
+    { collection: 'branchTableLayouts', id: branch, data: { tables: [{ id: 't1', number: 1 }] } },
+    { collection: 'branchTableLayouts', id: otherBranch, data: { tables: [{ id: 'x', number: 9 }] } },
+  ]
+  const writes = P.planPull(spec, local, snapshot, json)
+  const said = writes.map(w => `${w.kind} ${w.collection}/${w.id}`).sort()
+  eq('a new dish, a changed product, a new product, this branch\'s tables, and a dish taken off',
+    said, [`delete menuItems/gone`, `set branchTableLayouts/${branch}`, 'set menuItems/m2', 'set products/p1', 'set products/p3'].sort())
+  eq('THE TRAP: the hub\'s stock count is kept, the cloud\'s price is taken',
+    writes.find(w => w.id === 'p1').data, { name: 'Mug', price: 13, stock: { [branch]: 3 } })
+  eq('a product the hub holds with no stock stays without, and is not rewritten', said.includes('set products/p2'), false)
+  eq('a product new to the hub arrives with the cloud\'s stock', writes.find(w => w.id === 'p3').data.stock, { [branch]: 7 })
+  eq('THE TRAP: the hub\'s receipt counter is never written, whatever the cloud sends', said.some(s => s.includes('invoiceCounter')), false)
+  eq('nor a check, nor another branch\'s tables, nor removing them', said.some(s => s.includes('checks/') || s.includes(otherBranch)), false)
+  eq('nothing unchanged is written', said.includes('set menuItems/m1') || said.includes('set appSettings/features'), false)
+  eq('an id with a slash in a snapshot is ignored', P.planPull(spec, new Map(), [{ collection: 'menuItems', id: 'a/b', data: {} }], json), [])
+}
+
+console.log('\nthe cloud pairs a hub')
+const db = FA.adminDb()
+const admin = { uid: 'u-admin', email: 'admin-placeholder', role: 'admin', branchIds: [], superadmin: false, isStaff: true }
+let device = null
+{
+  const made = await D.createPairingCode(admin, { branch, name: 'Counter PC' })
+  eq('a code for a branch and a name', [made.code.length, made.branch, made.name, made.expiresAt > Date.now()], [10, branch, 'Counter PC', true])
+  const codes = (await db.collection('hubPairingCodes').get()).docs
+  eq('THE TRAP: the code is stored as a hash, never as itself',
+    codes.some(d => d.id.includes(made.code) || JSON.stringify(d.data()).includes(made.code)), false)
+  await rejects('a branch that does not exist is refused', () => D.createPairingCode(admin, { branch: 'Nowhere', name: 'PC' }), e => e.status === 400)
+  await rejects('a hub needs a name', () => D.createPairingCode(admin, { branch, name: '   ' }), e => e.status === 400)
+
+  const paired = await D.pairDevice(P.formatPairingCode(made.code).toLowerCase())
+  eq('the code is swapped for the hub\'s own credential',
+    [/^[A-Za-z0-9]{20}$/.test(paired.deviceId), paired.secret.length, paired.branch, paired.name, paired.pairedBy.uid], [true, 43, branch, 'Counter PC', 'u-admin'])
+  eq('...a credential the hub can send', P.parseDeviceAuth(P.deviceAuthHeader(paired.deviceId, paired.secret)) !== null, true)
+  await rejects('THE TRAP: a code works once', () => D.pairDevice(made.code), e => e.status === 400)
+  const old = await D.createPairingCode(admin, { branch, name: 'Late PC' }, Date.now() - 16 * 60_000)
+  await rejects('a code older than fifteen minutes is refused', () => D.pairDevice(old.code), e => e.status === 400)
+  const answers = []
+  for (const c of [made.code, old.code, 'ZZZZZZZZZZ']) {
+    try { await D.pairDevice(c) } catch (e) { answers.push(e.message) }
+  }
+  eq('used, run out and never made get one answer, so a guesser learns nothing', [answers.length, new Set(answers).size], [3, 1])
+  await rejects('a typo is told as a typo', () => D.pairDevice('ABC'), /not a pairing code/)
+  const devices = (await db.collection('hubDevices').get()).docs
+  eq('THE TRAP: the cloud keeps a hash of the hub\'s secret, never the secret', devices.some(d => JSON.stringify(d.data()).includes(paired.secret)), false)
+
+  const req = header => new Request('https://cloud.test/api/hub-sync/pull', { headers: header ? { Authorization: header } : {} })
+  device = await D.deviceFromRequest(req(P.deviceAuthHeader(paired.deviceId, paired.secret)))
+  eq('the cloud knows the hub by its credential', [device.id, device.branch, device.name], [paired.deviceId, branch, 'Counter PC'])
+  await rejects('THE TRAP: the right hub with the wrong secret is refused',
+    () => D.deviceFromRequest(req(P.deviceAuthHeader(paired.deviceId, 'b'.repeat(43)))), e => e.status === 401)
+  await rejects('no credential, or a person\'s token, is refused',
+    async () => { await D.deviceFromRequest(req('Bearer abc.def.ghi')) }, e => e.status === 401)
+  const listed = await D.listDevices()
+  eq('THE TRAP: the admin list never carries a secret or its hash',
+    JSON.stringify(listed).includes(paired.secret) || JSON.stringify(listed).includes('secretHash'), false)
+  eq('...and says which hub, who paired it, and that it is paired', [listed[0].name, listed[0].pairedByEmail, listed[0].revoked], ['Counter PC', 'admin-placeholder', false])
+
+  const lost = await D.pairDevice((await D.createPairingCode(admin, { branch, name: 'Lost PC' })).code)
+  const revoked = await D.revokeDevice(admin, lost.deviceId)
+  eq('an admin unpairs a hub', [revoked.name, revoked.already], ['Lost PC', false])
+  eq('unpairing twice is an answer, not an error', (await D.revokeDevice(admin, lost.deviceId)).already, true)
+  await rejects('THE TRAP: an unpaired hub is refused, and told so',
+    () => D.deviceFromRequest(req(P.deviceAuthHeader(lost.deviceId, lost.secret))), e => e.status === 401 && /unpaired/i.test(e.message))
+}
+
+console.log('\nwhat the cloud sends a hub')
+{
+  const ts = Timestamp.fromMillis(1_700_000_000_000)
+  const put = (path, data) => db.doc(path).set(data)
+  await put('menuCategories/c1', { name: 'Food', section: 'Food' })
+  await put('menuItems/m1', { name: 'Toast', price: 4.5, categoryId: 'c1' })
+  await put('menuItems/m2', { name: 'Soup', price: 6, categoryId: 'c1' })
+  await put('modifierGroups/g1', { name: 'Milk', options: [] })
+  await put('products/p1', { name: 'Mug', price: 12, stock: { [branch]: 40 }, updatedAt: ts })
+  await put('users/u-staff', { isStaff: true, role: 'manager', branchIds: [branch], email: 'staff-placeholder', phone: 'staff-number', points: 120 })
+  await put('users/u-customer', { isStaff: false, email: 'customer-placeholder', points: 5 })
+  await put('appSettings/features', { pos: { enabled: true } })
+  await put('appSettings/business', { exchangeRate: 60000 })
+  await put('appSettings/invoiceCounter', { year: 2026, nextNumber: 900 })
+  await put('appSettings/errorBudget', { day: '2026-09-14', count: 3 })
+  await put(`branchTableLayouts/${branch}`, { tables: [{ id: 't1', number: 1 }] })
+  await put(`branchTableLayouts/${otherBranch}`, { tables: [{ id: 't9', number: 9 }] })
+  await put('checks/c1', { branch, status: 'open' })
+
+  const snap = await D.buildPullSnapshot(device)
+  const paths = snap.map(d => `${d.collection}/${d.id}`).sort()
+  eq('exactly what the cloud is master for, for this branch', paths, [
+    'appSettings/business', 'appSettings/features', `branchTableLayouts/${branch}`, 'menuCategories/c1',
+    'menuItems/m1', 'menuItems/m2', 'modifierGroups/g1', 'products/p1', 'users/u-staff',
+  ])
+  eq('THE TRAP: a staff record arrives without email, phone or points',
+    Object.keys(snap.find(d => d.id === 'u-staff').data).sort(), ['branchIds', 'isStaff', 'role'])
+  eq('THE TRAP: never the receipt counter, the error budget, a check, a customer, or another branch\'s tables',
+    paths.filter(p => /invoiceCounter|errorBudget|checks\/|u-customer|hubDevices|hubPairingCodes/.test(p) || p.includes(otherBranch)), [])
+  const enc = D.encodeSnapshot(snap)
+  eq('a Timestamp travels tagged', enc.docs.find(d => d.id === 'p1').data.updatedAt, { $fs: 'ts', s: 1_700_000_000, n: 0 })
+  eq('the same snapshot has the same digest', D.encodeSnapshot(await D.buildPullSnapshot(device)).digest, enc.digest)
+  await db.doc('menuItems/m1').update({ price: 5 })
+  eq('a price changed in the cloud changes the digest', D.encodeSnapshot(await D.buildPullSnapshot(device)).digest !== enc.digest, true)
+}
+
+console.log('\na hub takes it in')
+{
+  const hub = H.openHubStore(new DatabaseSync(':memory:'))
+  const first = D.encodeSnapshot(await D.buildPullSnapshot(device))
+  const r1 = await S.applySnapshot(hub, branch, first.docs)
+  eq('the first pull writes the menu, settings, tables and staff', [r1.written, r1.deleted], [9, 0])
+  eq('a Timestamp arrives as a Timestamp', (await hub.doc('products/p1').get()).data().updatedAt instanceof Timestamp, true)
+
+  // The hub trades: a mug sold, receipts issued.
+  await hub.doc('products/p1').update({ [`stock.${branch}`]: FieldValue.increment(-1) })
+  await hub.doc('appSettings/invoiceCounter').set({ year: 2026, nextNumber: 41 })
+  // The cloud changes: a price, and a dish taken off the menu.
+  await db.doc('products/p1').update({ price: 13 })
+  await db.doc('menuItems/m2').delete()
+
+  const second = D.encodeSnapshot(await D.buildPullSnapshot(device))
+  const r2 = await S.applySnapshot(hub, branch, second.docs)
+  const p1 = (await hub.doc('products/p1').get()).data()
+  eq('the cloud\'s new price arrives, one product and one dish', [p1.price, r2.written, r2.deleted], [13, 1, 1])
+  eq('THE TRAP: the hub\'s own stock count is not overwritten by the cloud\'s', p1.stock, { [branch]: 39 })
+  eq('a dish taken off the menu comes off the till', (await hub.doc('menuItems/m2').get()).exists, false)
+  eq('THE TRAP: the hub\'s receipt counter survives every pull', (await hub.doc('appSettings/invoiceCounter').get()).data().nextNumber, 41)
+  const seq = hub.lastSeq()
+  const r3 = await S.applySnapshot(hub, branch, second.docs)
+  eq('the same snapshot again writes nothing and wakes no screen', [r3.written, r3.deleted, hub.lastSeq()], [0, 0, seq])
+
+  eq('where the cloud is: an https origin, never a path',
+    [S.cloudBaseUrl('https://pos.example.test/api/anything'), S.cloudBaseUrl('http://localhost:3002/'), S.cloudBaseUrl('http://127.0.0.1:3002')],
+    ['https://pos.example.test', 'http://localhost:3002', 'http://127.0.0.1:3002'])
+  eq('THE TRAP: plain http across a network is refused: the hub sends its secret there',
+    [S.cloudBaseUrl('http://192.168.1.10:3002'), S.cloudBaseUrl('ftp://pos.example.test'), S.cloudBaseUrl(undefined)], [null, null, null])
+}
+
+console.log('\nstaff records from the cloud reach a hub session')
+{
+  // The database here is a hub's as well: users/u-staff is a pulled record.
+  const before = await HS.startHubSession({ uid: 'u-new', staff: true, role: 'barista', branchIds: [branch] })
+  eq('before any record is pulled, the token\'s claims stand', (await HS.callerFromHubToken(before.token))?.role, 'barista')
+
+  const s = await HS.startHubSession({ uid: 'u-staff', email: 'staff-placeholder', staff: true, role: 'manager', branchIds: [branch] })
+  eq('with the record pulled, the session is the record\'s', (await HS.callerFromHubToken(s.token))?.role, 'manager')
+  await db.doc('users/u-staff').update({ role: 'barista', branchIds: [otherBranch] })
+  const demoted = await HS.callerFromHubToken(s.token)
+  eq('a role changed in the cloud is the role at the till after the next pull', [demoted?.role, demoted?.branchIds], ['barista', [otherBranch]])
+  await db.doc('users/u-staff').update({ isStaff: false })
+  eq('THE TRAP: an account locked in the cloud is refused at the hub after the next pull, not at 05:00',
+    await HS.callerFromHubToken(s.token), null)
+}
+
+} catch (err) {
+  console.log(`  FAIL  the run stopped: ${String(err?.stack ?? err).split('\n').slice(0, 3).join(' | ')}`)
+  fail++
+}
+
+rmSync(out, { recursive: true, force: true })
+try { rmSync(tmp, { recursive: true, force: true }) } catch { /* the store's handle is still open; the OS cleans temp */ }
+
+console.log(`\n${pass} passed, ${fail} failed`)
+process.exit(fail ? 1 : 0)

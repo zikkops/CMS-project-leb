@@ -213,6 +213,8 @@ export const ADMIN_NAV: AdminNavSection[] = [
       // Admin, not superadmin: the person who plugs a printer in should not
       // have to find a superadmin to tell the app about it.
       { label: 'Printers', href: '/admin/settings/printers', access: ADMIN_ONLY, icon: faPrint, kind: 'setup', desc: 'Receipt and kitchen printers, and which device prints.' },
+      // Admin, as Printers: pairing a counter PC is done by whoever set it up.
+      { label: 'Café Hubs', href: '/admin/settings/hubs', access: ADMIN_ONLY, icon: faStore, kind: 'setup', desc: 'Counter PCs that keep the till working offline: pair one, see when it last synced, unpair a lost one.' },
     ],
   },
 ]

@@ -55,6 +55,7 @@
     "verify:desktop": "node scripts/verify-desktop.mjs",
     "verify:backend": "node scripts/verify-backend.mjs",
     "verify:hub": "node scripts/verify-hub.mjs",
+    "verify:hub-sync": "node scripts/verify-hub-sync.mjs",
     "hub:seed": "node --env-file=.env.local scripts/hub-seed.mjs",
     "dev:pos-hub": "node scripts/pos-hub-dev.mjs",
     "desktop": "npm --prefix desktop start",
