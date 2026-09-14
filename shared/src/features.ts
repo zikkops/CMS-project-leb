@@ -72,6 +72,14 @@ export const FEATURES = {
   payments: {
     label: 'Take Payment', group: 'Operations', requires: ['pos'], defaultEnabled: false,
   },
+  // Recipes (Sep 2026). This switch governs DEPLETION only — whether sending
+  // an order takes its ingredients off the shelf. Entering recipes and seeing
+  // what a dish costs never depends on it, so a café can cost its whole menu
+  // for weeks before letting a sale move stock. Off, Send behaves exactly as
+  // it did before recipes existed: the pilot's safety, same as `payments`.
+  recipes: {
+    label: 'Deduct Ingredients on Sale', group: 'Operations', requires: ['pos', 'supplies'], defaultEnabled: false,
+  },
 
   // ── Operations — the actual product ──────────────────────────────────────
   menu: {

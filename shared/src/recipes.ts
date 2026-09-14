@@ -1,0 +1,423 @@
+// Recipes: what a dish is made of, what it costs, and what a sale takes off
+// the shelf.
+//
+// ── Why this is a pure module before anything else exists ──────────────────
+// Stock arithmetic inside a component is arithmetic nothing can assert on. The
+// counter till's two money bugs got through tsc, three builds and a look in a
+// browser for exactly that reason (pos/app/lib/counterTotals.ts). So the numbers
+// come first, here, with no imports and no Firebase, and `npm run verify:recipes`
+// holds them. Screens and the server only ever apply what this module computed.
+//
+// ── Units: the part that goes wrong silently ───────────────────────────────
+// Stock is counted in the PURCHASE unit — the gallon, the box, the kg that
+// receiving and the daily count already use. Recipes are written in a RECIPE
+// unit — ml, g, pieces. Each supply says how many recipe units one purchase
+// unit holds. A wrong factor is not an error, it is a number a thousand times
+// too big, so a missing or nonsensical factor makes the answer UNKNOWN rather
+// than a guess — and a cost built on it reads "unknown", never "$0.00".
+//
+// Unit names arrive spelled several ways: the inventory form offers "L", "mL"
+// and "pieces", the order template "liter" and "pcs". Those are the same
+// units, and treating them as different would demand a conversion factor
+// between a litre and a litre. normalizeUnit() is the one place they meet.
+//
+// ── Trim ───────────────────────────────────────────────────────────────────
+// A recipe quantity is what goes into the dish. Onions trimmed to 85% usable
+// need 100 g bought for 85 g used, so the purchase quantity is divided by the
+// supply's yield. Yield belongs to the ingredient, set once rather than typed
+// into every dish (owner's decision, 14 Sep 2026).
+//
+// ── Modifiers ──────────────────────────────────────────────────────────────
+// Two kinds, keyed by modifier option id (owner's decision: add and replace):
+//   add     — an extra shot adds 18 g of beans
+//   replace — oat milk swaps the milk for oat milk, same quantity
+// ADDITIONS FIRST, then replacements over everything, whatever order the
+// options were tapped in. A replacement is a choice about an ingredient, so it
+// governs every portion of it: an extra shot in a decaf latte is decaf, and
+// extra milk in an oat latte is oat. The opposite order put caffeine in a decaf
+// and dairy in an oat latte — found by a mutation the first tests missed.
+
+export interface RecipeSupply {
+  id: string
+  name?: string
+  /** The purchase unit stock is counted in: 'gallon', 'box', 'kg'. */
+  unit: string
+  /** What recipes measure it in: 'ml', 'g'. Absent means the purchase unit itself. */
+  recipeUnit?: string | null
+  /** Recipe units in one purchase unit. Needed whenever recipeUnit differs from unit. */
+  recipeUnitsPerPurchaseUnit?: number | null
+  /** Share of what is bought that ends up usable, above 0 and at most 100. Absent means 100. */
+  yieldPercent?: number | null
+  /** USD per purchase unit — the weighted average kept by receiving. */
+  avgUnitCost?: number | null
+}
+
+export interface RecipeLine {
+  supplyId: string
+  /** In the supply's recipe unit, as used in the dish — after trim. */
+  qty: number
+}
+
+export type OptionAdjustment =
+  | { kind: 'add'; supplyId: string; qty: number }
+  | { kind: 'replace'; fromSupplyId: string; toSupplyId: string }
+
+export interface Recipe {
+  lines: RecipeLine[]
+  /** Keyed by modifier option id. */
+  adjustments?: Record<string, OptionAdjustment[]>
+}
+
+export interface Consumption {
+  supplyId: string
+  /** Purchase units taken off the shelf. */
+  qty: number
+  /** USD per purchase unit at the time, or null when the supply has never been costed. */
+  unitCostUsd: number | null
+}
+
+export interface LineConsumption {
+  consumes: Consumption[]
+  /** Supplies whose quantity cannot be worked out: missing, or no valid conversion or yield. */
+  unknown: string[]
+}
+
+const QTY_SCALE = 1e6
+
+/** Stock quantities to six decimals: 200 ml of a gallon is 0.052834, not 0.0528344351… */
+export function roundQty(n: number): number {
+  return Math.round(n * QTY_SCALE) / QTY_SCALE
+}
+
+const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
+
+const bySupplyId = (a: { supplyId: string }, b: { supplyId: string }) =>
+  a.supplyId < b.supplyId ? -1 : a.supplyId > b.supplyId ? 1 : 0
+
+// ── Units ─────────────────────────────────────────────────────────────────
+
+const UNIT_ALIASES: Readonly<Record<string, string>> = {
+  l: 'liter', liter: 'liter', liters: 'liter', litre: 'liter', litres: 'liter',
+  ml: 'ml', milliliter: 'ml', milliliters: 'ml', millilitre: 'ml', millilitres: 'ml',
+  kg: 'kg', kilogram: 'kg', kilograms: 'kg',
+  g: 'g', gram: 'g', grams: 'g',
+  gallon: 'gallon', gallons: 'gallon',
+  pcs: 'pcs', piece: 'pcs', pieces: 'pcs', unit: 'pcs', units: 'pcs',
+}
+
+/** One spelling per unit: "L" and "liter" are the same litre. Unknown names pass through, lower-cased. */
+export function normalizeUnit(unit: string | null | undefined): string {
+  const key = (unit ?? '').trim().toLowerCase()
+  return UNIT_ALIASES[key] ?? key
+}
+
+/**
+ * Recipe units per purchase unit, or null when it cannot be known.
+ *
+ * No recipe unit, or one that is the purchase unit under another spelling, is
+ * a factor of 1 — eggs bought and used as pieces. A recipe unit that differs
+ * with no positive factor is null, never 1: guessing 1 for "gallon → ml" is
+ * the 3,785× error.
+ */
+export function unitFactor(supply: RecipeSupply): number | null {
+  const recipeUnit = normalizeUnit(supply.recipeUnit)
+  if (!recipeUnit || recipeUnit === normalizeUnit(supply.unit)) return 1
+  const f = supply.recipeUnitsPerPurchaseUnit
+  return typeof f === 'number' && Number.isFinite(f) && f > 0 ? f : null
+}
+
+/** Usable share as a fraction. Absent is 1; anything outside (0, 100] is null. */
+export function yieldFraction(supply: RecipeSupply): number | null {
+  const y = supply.yieldPercent
+  if (y === null || y === undefined) return 1
+  return Number.isFinite(y) && y > 0 && y <= 100 ? y / 100 : null
+}
+
+/** Purchase units needed to put `recipeQty` recipe units into a dish, or null. */
+export function toPurchaseUnits(recipeQty: number, supply: RecipeSupply): number | null {
+  const factor = unitFactor(supply)
+  const usable = yieldFraction(supply)
+  if (factor === null || usable === null) return null
+  if (!Number.isFinite(recipeQty) || recipeQty < 0) return null
+  return roundQty(recipeQty / usable / factor)
+}
+
+const shown = (n: number) => (Math.abs(n) >= 1 ? String(r2(n)) : String(Number(n.toPrecision(3))))
+
+/**
+ * A recipe quantity in both units — "200 ml = 0.0528 gallon".
+ *
+ * The recipe editor shows this beside every line. Seeing the purchase figure is
+ * the cheapest defence against a wrong factor: "18 g = 18 kg" looks wrong to
+ * anybody who has bought coffee.
+ */
+export function describeQty(recipeQty: number, supply: RecipeSupply): string {
+  const recipeUnit = (supply.recipeUnit ?? '').trim() || supply.unit
+  const used = `${shown(recipeQty)} ${recipeUnit}`
+  const purchase = toPurchaseUnits(recipeQty, supply)
+  if (purchase === null) return `${used} = ? ${supply.unit} (no conversion set)`
+  if (normalizeUnit(recipeUnit) === normalizeUnit(supply.unit) && yieldFraction(supply) === 1) return used
+  return `${used} = ${shown(purchase)} ${supply.unit}`
+}
+
+/**
+ * Units with a fixed relationship, offered as a starting value in the editor.
+ * Pack units — box, bottle, bag, jar, can — have none: a box of what, holding
+ * how many, is the café's to say.
+ */
+export const COMMON_CONVERSIONS: readonly { unit: string; recipeUnit: string; factor: number }[] = [
+  { unit: 'kg', recipeUnit: 'g', factor: 1000 },
+  { unit: 'liter', recipeUnit: 'ml', factor: 1000 },
+  { unit: 'gallon', recipeUnit: 'ml', factor: 3785.41 },
+]
+
+export function suggestedFactor(unit: string, recipeUnit: string): number | null {
+  const u = normalizeUnit(unit)
+  const r = normalizeUnit(recipeUnit)
+  if (u === r) return 1
+  return COMMON_CONVERSIONS.find(c => c.unit === u && c.recipeUnit === r)?.factor ?? null
+}
+
+// ── A line on a check ─────────────────────────────────────────────────────
+
+/** The recipe as made, after the chosen options — merged by supply, sorted. */
+export function resolveLines(recipe: Recipe, optionIds: readonly string[] = []): RecipeLine[] {
+  const adjustments = [...new Set(optionIds)].flatMap(id => recipe.adjustments?.[id] ?? [])
+
+  const lines = recipe.lines.map(l => ({ ...l }))
+  for (const a of adjustments) {
+    if (a.kind === 'add') lines.push({ supplyId: a.supplyId, qty: a.qty })
+  }
+  let resolved = lines
+  for (const a of adjustments) {
+    if (a.kind !== 'replace') continue
+    resolved = resolved.map(l => (l.supplyId === a.fromSupplyId ? { ...l, supplyId: a.toSupplyId } : l))
+  }
+
+  const merged = new Map<string, number>()
+  for (const l of resolved) {
+    if (!l.supplyId || !Number.isFinite(l.qty) || l.qty <= 0) continue
+    merged.set(l.supplyId, (merged.get(l.supplyId) ?? 0) + l.qty)
+  }
+  return [...merged].map(([supplyId, qty]) => ({ supplyId, qty })).sort(bySupplyId)
+}
+
+/**
+ * What `lineQty` of this dish takes off the shelf, in purchase units, with the
+ * cost of each ingredient at the time.
+ *
+ * Snapshotted onto the check line when it is added and applied when it is
+ * sent, so a void returns exactly what was taken even if the recipe has been
+ * edited since.
+ */
+export function lineConsumption(
+  recipe: Recipe,
+  optionIds: readonly string[],
+  lineQty: number,
+  supplies: Readonly<Record<string, RecipeSupply>>,
+): LineConsumption {
+  if (!Number.isInteger(lineQty) || lineQty <= 0) return { consumes: [], unknown: [] }
+
+  const consumes: Consumption[] = []
+  const unknown: string[] = []
+  for (const line of resolveLines(recipe, optionIds)) {
+    const supply = supplies[line.supplyId]
+    const each = supply ? toPurchaseUnits(line.qty, supply) : null
+    if (!supply || each === null) {
+      unknown.push(line.supplyId)
+      continue
+    }
+    const cost = supply.avgUnitCost
+    consumes.push({
+      supplyId: line.supplyId,
+      qty: roundQty(each * lineQty),
+      unitCostUsd: typeof cost === 'number' && Number.isFinite(cost) && cost > 0 ? cost : null,
+    })
+  }
+  return { consumes, unknown: unknown.sort() }
+}
+
+export interface ConsumptionCost {
+  costUsd: number | null
+  /** ok: fully costed · empty: nothing to cost · incomplete: see `missing`. */
+  reason: 'ok' | 'empty' | 'incomplete'
+  /** Supplies that stop a cost being known — no conversion, or never received. */
+  missing: string[]
+}
+
+/**
+ * The cost of what was consumed — or null, never a flattering zero.
+ *
+ * An ingredient that has never been received has no average cost. Treating it
+ * as $0 would show a dish as cheaper than it is, which is the costing version
+ * of the cold menu cache that once under-priced a bill.
+ */
+export function consumptionCost(line: LineConsumption): ConsumptionCost {
+  const missing = [...new Set([
+    ...line.unknown,
+    ...line.consumes.filter(c => c.unitCostUsd === null).map(c => c.supplyId),
+  ])].sort()
+  if (missing.length > 0) return { costUsd: null, reason: 'incomplete', missing }
+  if (line.consumes.length === 0) return { costUsd: null, reason: 'empty', missing: [] }
+  const total = line.consumes.reduce((s, c) => s + c.qty * (c.unitCostUsd as number), 0)
+  return { costUsd: r2(total), reason: 'ok', missing: [] }
+}
+
+/**
+ * Margin on the price BEFORE VAT.
+ *
+ * Prices include VAT (owner's decision, 11 Sep 2026). Measuring a dish's cost
+ * against the VAT-inclusive price would flatter every margin by the tax rate,
+ * money the café collects and hands on.
+ */
+export function dishMargin(
+  priceUsd: number,
+  costUsd: number | null,
+  vatRate: number,
+): { priceExVatUsd: number; marginUsd: number | null; costPercent: number | null } {
+  const rate = Number.isFinite(vatRate) && vatRate >= 0 && vatRate < 1 ? vatRate : 0
+  const priceExVatUsd = Number.isFinite(priceUsd) && priceUsd > 0 ? r2(priceUsd / (1 + rate)) : 0
+  if (costUsd === null) return { priceExVatUsd, marginUsd: null, costPercent: null }
+  return {
+    priceExVatUsd,
+    marginUsd: r2(priceExVatUsd - costUsd),
+    costPercent: priceExVatUsd > 0 ? costUsd / priceExVatUsd : null,
+  }
+}
+
+// ── Sending, voiding, refunding ───────────────────────────────────────────
+
+/**
+ * One stock move per supply for a whole Send.
+ *
+ * Summed, not one per line: a busy check listing milk on twelve lines is one
+ * increment on milk, which keeps a Send transaction far from Firestore's
+ * write limit.
+ */
+export function stockMoves(lines: readonly (readonly Consumption[])[]): { supplyId: string; qty: number }[] {
+  const total = new Map<string, number>()
+  for (const line of lines) {
+    for (const c of line) total.set(c.supplyId, (total.get(c.supplyId) ?? 0) + c.qty)
+  }
+  return [...total].map(([supplyId, qty]) => ({ supplyId, qty: roundQty(qty) })).sort(bySupplyId)
+}
+
+export interface ReasonFlags {
+  /** The item was never made and its ingredients are still usable. */
+  returnsToStock: boolean
+  /** The item was made, or ruined, and lost. */
+  isWaste: boolean
+}
+
+export type IngredientOutcome = 'nothing-taken' | 'return' | 'waste' | 'kept'
+
+/**
+ * What happens to a line's ingredients when it is voided or refunded.
+ *
+ * Refunds follow their cause exactly as voids do (owner's decision, 14 Sep
+ * 2026): a customer who changed their mind before anything was cooked gives
+ * the ingredients back; a dish already made is waste.
+ *
+ *   never sent                 → nothing was taken
+ *   not made (returnsToStock)  → back on the shelf
+ *   made and lost (isWaste)    → waste, valued at what it cost
+ *   otherwise                  → consumed, and not waste
+ *
+ * A reason claiming both — returned AND wasted — resolves to waste. Returning
+ * ingredients that may not exist invents stock; recording waste that didn't
+ * happen is only a pessimistic report.
+ */
+export function ingredientOutcome(wasSent: boolean, reason: ReasonFlags): IngredientOutcome {
+  if (!wasSent) return 'nothing-taken'
+  if (reason.isWaste) return 'waste'
+  if (reason.returnsToStock) return 'return'
+  return 'kept'
+}
+
+// ── The daily count ───────────────────────────────────────────────────────
+
+/**
+ * Counted against expected, in quantity and money.
+ *
+ * `expectedQty` is the stock figure the system held just before the count
+ * overwrote it. Without that snapshot there is nothing to compare, so a count
+ * with no expected figure has no variance rather than an invented one.
+ */
+export function countVariance(
+  expectedQty: number | null | undefined,
+  countedQty: number,
+  avgUnitCost: number | null | undefined,
+): { varianceQty: number | null; varianceUsd: number | null } {
+  if (typeof expectedQty !== 'number' || !Number.isFinite(expectedQty) || !Number.isFinite(countedQty)) {
+    return { varianceQty: null, varianceUsd: null }
+  }
+  const varianceQty = roundQty(countedQty - expectedQty)
+  const cost = typeof avgUnitCost === 'number' && Number.isFinite(avgUnitCost) && avgUnitCost > 0 ? avgUnitCost : null
+  return { varianceQty, varianceUsd: cost === null ? null : r2(varianceQty * cost) }
+}
+
+// ── Saving a recipe ───────────────────────────────────────────────────────
+
+/**
+ * Everything wrong with a recipe, in words an admin can act on. Empty means
+ * it may be saved.
+ *
+ * The server calls this before writing, so the rules cannot be skipped by
+ * crafting a request; the editor calls it too, so they are seen before Save.
+ */
+export function recipeProblems(recipe: Recipe, supplies?: Readonly<Record<string, RecipeSupply>>): string[] {
+  const problems: string[] = []
+  const label = (id: string) => supplies?.[id]?.name ?? id
+
+  if (!Array.isArray(recipe.lines) || recipe.lines.length === 0) {
+    problems.push('A recipe needs at least one ingredient.')
+  }
+  const used = new Set<string>()
+  for (const [i, l] of (recipe.lines ?? []).entries()) {
+    if (!l.supplyId) { problems.push(`Ingredient ${i + 1} has no item chosen.`); continue }
+    used.add(l.supplyId)
+    if (!Number.isFinite(l.qty) || l.qty <= 0) {
+      problems.push(`${label(l.supplyId)} needs a quantity above zero.`)
+    }
+  }
+
+  for (const [optionId, list] of Object.entries(recipe.adjustments ?? {})) {
+    for (const a of list) {
+      if (a.kind === 'add') {
+        if (!a.supplyId) problems.push(`An added ingredient for option ${optionId} has no item chosen.`)
+        else if (!Number.isFinite(a.qty) || a.qty <= 0) {
+          problems.push(`Adding ${label(a.supplyId)} needs a quantity above zero.`)
+        }
+      } else if (a.kind === 'replace') {
+        if (!a.fromSupplyId || !a.toSupplyId) {
+          problems.push(`A replacement for option ${optionId} is missing an item.`)
+        } else if (a.fromSupplyId === a.toSupplyId) {
+          problems.push(`${label(a.fromSupplyId)} cannot replace itself.`)
+        } else if (!used.has(a.fromSupplyId)) {
+          problems.push(`${label(a.toSupplyId)} replaces ${label(a.fromSupplyId)}, which this recipe does not use.`)
+        }
+      } else {
+        problems.push(`Option ${optionId} has an adjustment of an unknown kind.`)
+      }
+    }
+  }
+
+  if (supplies) {
+    const referenced = new Set<string>([
+      ...(recipe.lines ?? []).map(l => l.supplyId),
+      ...Object.values(recipe.adjustments ?? {}).flat().flatMap(a =>
+        a.kind === 'add' ? [a.supplyId] : a.kind === 'replace' ? [a.toSupplyId] : []),
+    ].filter(Boolean))
+    for (const id of [...referenced].sort()) {
+      const s = supplies[id]
+      if (!s) { problems.push(`An ingredient is no longer in the supplies list (${id}).`); continue }
+      if (unitFactor(s) === null) {
+        problems.push(`${label(id)} is measured in ${s.recipeUnit} but has no conversion to ${s.unit}.`)
+      }
+      if (yieldFraction(s) === null) {
+        problems.push(`${label(id)} has a usable share outside 1–100%.`)
+      }
+    }
+  }
+  return problems
+}

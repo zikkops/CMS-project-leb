@@ -1,0 +1,238 @@
+// Assertions over recipe costing and ingredient stock — shared/src/recipes.ts.
+//
+//   node scripts/verify-recipes.mjs
+//   npm run verify:recipes
+//
+// Same shape as the other verifiers: transpile the real module and assert
+// against it. Nothing is re-implemented.
+//
+// ── Why it exists before any screen does ───────────────────────────────────
+// Stock and money arithmetic that lives in a component cannot be asserted on,
+// and that is how the counter till's two money bugs shipped past tsc, builds
+// and a browser. The failure this module most has to prevent is quiet: a wrong
+// unit factor is a number a thousand times too big, and an uncosted ingredient
+// makes a dish look cheap. Both are asserted here as UNKNOWN, never a guess.
+//
+// The decaf cases were added after a mutation survived: the first tests never
+// combined an addition with a replacement of the SAME ingredient, which is the
+// only place their order matters — and the order first written put regular
+// beans into a decaf latte's extra shot.
+
+import { execSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, writeFileSync, readdirSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+const out = mkdtempSync(join(tmpdir(), 'recipes-verify-'))
+execSync(
+  `npx tsc shared/src/recipes.ts --outDir ${out} --module esnext --target es2022 ` +
+  `--skipLibCheck --moduleResolution bundler --strict`,
+  { stdio: 'pipe' },
+)
+for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
+  const p = join(out, file)
+  writeFileSync(p, readFileSync(p, 'utf8').replace(/from '(\.\.?\/[^']+?)'/g, "from '$1.js'"))
+}
+
+const R = await import(`file://${join(out, 'recipes.js')}`)
+
+let pass = 0, fail = 0
+const eq = (name, got, want) => {
+  const ok = JSON.stringify(got) === JSON.stringify(want)
+  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(64)} got=${JSON.stringify(got)}`)
+  ok ? pass++ : fail++
+}
+
+// Purchase units are what receiving and the count use; recipe units are what a
+// barista measures. Costs are USD per purchase unit.
+const milk  = { id: 'milk',  name: 'Whole milk',     unit: 'gallon', recipeUnit: 'ml', recipeUnitsPerPurchaseUnit: 3785.41, avgUnitCost: 4.2 }
+const oat   = { id: 'oat',   name: 'Oat milk',       unit: 'liter',  recipeUnit: 'ml', recipeUnitsPerPurchaseUnit: 1000,    avgUnitCost: 3.6 }
+const beans = { id: 'beans', name: 'Espresso beans', unit: 'kg',     recipeUnit: 'g',  recipeUnitsPerPurchaseUnit: 1000,    avgUnitCost: 22 }
+const decaf = { id: 'decaf', name: 'Decaf beans',    unit: 'kg',     recipeUnit: 'g',  recipeUnitsPerPurchaseUnit: 1000,    avgUnitCost: 26 }
+const cups  = { id: 'cups',  name: 'Takeaway cup',   unit: 'pcs',                                                          avgUnitCost: 0.15 }
+const onion = { id: 'onion', name: 'Onion',          unit: 'kg',     recipeUnit: 'g',  recipeUnitsPerPurchaseUnit: 1000, yieldPercent: 85, avgUnitCost: 1.3 }
+// A factor nobody entered, and an ingredient nobody has received yet.
+const syrup = { id: 'syrup', name: 'Vanilla syrup',  unit: 'bottle', recipeUnit: 'ml',                                     avgUnitCost: 9 }
+const fresh = { id: 'fresh', name: 'New oat brand',  unit: 'liter',  recipeUnit: 'ml', recipeUnitsPerPurchaseUnit: 1000,    avgUnitCost: 0 }
+const S = { milk, oat, beans, decaf, cups, onion, syrup, fresh }
+
+const latte = {
+  lines: [{ supplyId: 'beans', qty: 18 }, { supplyId: 'milk', qty: 200 }],
+  adjustments: {
+    'opt-oat':     [{ kind: 'replace', fromSupplyId: 'milk', toSupplyId: 'oat' }],
+    'opt-decaf':   [{ kind: 'replace', fromSupplyId: 'beans', toSupplyId: 'decaf' }],
+    'opt-shot':    [{ kind: 'add', supplyId: 'beans', qty: 18 }],
+    'opt-milk':    [{ kind: 'add', supplyId: 'milk', qty: 50 }],
+    'opt-vanilla': [{ kind: 'add', supplyId: 'syrup', qty: 15 }],
+  },
+}
+
+console.log('\nunits — recipe units into the units stock is counted in')
+eq('200 ml of milk is a fraction of a gallon', R.toPurchaseUnits(200, milk), 0.052834)
+eq('18 g of beans is 0.018 kg', R.toPurchaseUnits(18, beans), 0.018)
+eq('a cup bought and used as pieces needs no factor', R.toPurchaseUnits(1, cups), 1)
+eq('THE TRAP: a recipe unit with no factor is unknown, not 1', R.toPurchaseUnits(15, syrup), null)
+eq('...and a zero factor is unknown too', R.toPurchaseUnits(15, { ...syrup, recipeUnitsPerPurchaseUnit: 0 }), null)
+eq('...as is a negative one', R.toPurchaseUnits(15, { ...syrup, recipeUnitsPerPurchaseUnit: -30 }), null)
+eq('a negative quantity is refused', R.toPurchaseUnits(-5, beans), null)
+eq('quantities keep six decimals', R.roundQty(0.1 + 0.2), 0.3)
+
+console.log('\nunit spellings — "L" and "liter" are the same litre')
+// The inventory form offers L, mL and pieces; the order template liter and pcs.
+eq('L and liter need no factor', R.toPurchaseUnits(2, { id: 'w', unit: 'L', recipeUnit: 'liter' }), 2)
+eq('mL and ml need no factor', R.toPurchaseUnits(250, { id: 'c', unit: 'mL', recipeUnit: 'ml' }), 250)
+eq('pieces and pcs need no factor', R.toPurchaseUnits(3, { id: 'e', unit: 'pieces', recipeUnit: 'pcs' }), 3)
+eq('a suggested factor reads through spellings', R.suggestedFactor('L', 'mL'), 1000)
+eq('...long names too', R.suggestedFactor('Kilograms', 'grams'), 1000)
+eq('an unrecognised unit still needs a real factor', R.toPurchaseUnits(3, { id: 'x', unit: 'crate', recipeUnit: 'bottle' }), null)
+
+console.log('\ntrim — what is bought versus what ends up in the dish')
+eq('85 g of onion at 85% usable is 100 g bought', R.toPurchaseUnits(85, onion), 0.1)
+eq('no yield set means all of it is usable', R.yieldFraction(beans), 1)
+eq('a yield of 0 is unknown, not a division by zero', R.toPurchaseUnits(85, { ...onion, yieldPercent: 0 }), null)
+eq('a yield above 100% is unknown', R.toPurchaseUnits(85, { ...onion, yieldPercent: 150 }), null)
+eq('a yield of NaN is unknown', R.toPurchaseUnits(85, { ...onion, yieldPercent: Number.NaN }), null)
+
+console.log('\nboth units, as the editor shows them')
+// Seeing the purchase figure is the cheapest defence against a wrong factor.
+eq('milk', R.describeQty(200, milk), '200 ml = 0.0528 gallon')
+eq('onion, trim included', R.describeQty(85, onion), '85 g = 0.1 kg')
+eq('a supply used in its own unit says it once', R.describeQty(1, cups), '1 pcs')
+eq('a missing factor says so instead of guessing', R.describeQty(15, syrup), '15 ml = ? bottle (no conversion set)')
+
+console.log('\nsuggested factors')
+eq('gallon to ml', R.suggestedFactor('gallon', 'ml'), 3785.41)
+eq('kg to g', R.suggestedFactor('kg', 'g'), 1000)
+eq('a box has no fixed size', R.suggestedFactor('box', 'pcs'), null)
+eq('the same unit is 1', R.suggestedFactor('kg', 'kg'), 1)
+
+console.log('\nmodifiers — add and replace')
+eq('the recipe as written', R.resolveLines(latte, []),
+  [{ supplyId: 'beans', qty: 18 }, { supplyId: 'milk', qty: 200 }])
+eq('oat milk replaces the milk, same quantity', R.resolveLines(latte, ['opt-oat']),
+  [{ supplyId: 'beans', qty: 18 }, { supplyId: 'oat', qty: 200 }])
+eq('an extra shot adds beans', R.resolveLines(latte, ['opt-shot']),
+  [{ supplyId: 'beans', qty: 36 }, { supplyId: 'milk', qty: 200 }])
+eq('oat milk and an extra shot together', R.resolveLines(latte, ['opt-oat', 'opt-shot']),
+  [{ supplyId: 'beans', qty: 36 }, { supplyId: 'oat', qty: 200 }])
+eq('an option with no adjustment changes nothing', R.resolveLines(latte, ['opt-large']), R.resolveLines(latte, []))
+eq('the same option twice counts once', R.resolveLines(latte, ['opt-shot', 'opt-shot']),
+  [{ supplyId: 'beans', qty: 36 }, { supplyId: 'milk', qty: 200 }])
+eq('replacing something the recipe lacks is a no-op',
+  R.resolveLines({ lines: [{ supplyId: 'beans', qty: 18 }], adjustments: { x: [{ kind: 'replace', fromSupplyId: 'milk', toSupplyId: 'oat' }] } }, ['x']),
+  [{ supplyId: 'beans', qty: 18 }])
+eq('a supply listed twice is merged',
+  R.resolveLines({ lines: [{ supplyId: 'beans', qty: 9 }, { supplyId: 'beans', qty: 9 }] }, []),
+  [{ supplyId: 'beans', qty: 18 }])
+
+console.log('\nan addition and a replacement of the same ingredient')
+// The only place their order matters, and the case the first tests never had.
+eq('THE TRAP: an extra shot in a decaf latte is decaf', R.resolveLines(latte, ['opt-decaf', 'opt-shot']),
+  [{ supplyId: 'decaf', qty: 36 }, { supplyId: 'milk', qty: 200 }])
+eq('THE TRAP: extra milk in an oat latte is oat', R.resolveLines(latte, ['opt-oat', 'opt-milk']),
+  [{ supplyId: 'beans', qty: 18 }, { supplyId: 'oat', qty: 250 }])
+eq('THE TRAP: tap order does not change a decaf with an extra shot',
+  R.resolveLines(latte, ['opt-shot', 'opt-decaf']), R.resolveLines(latte, ['opt-decaf', 'opt-shot']))
+eq('...nor an oat latte with extra milk',
+  R.resolveLines(latte, ['opt-milk', 'opt-oat']), R.resolveLines(latte, ['opt-oat', 'opt-milk']))
+
+console.log('\nwhat a line takes off the shelf')
+{
+  const one = R.lineConsumption(latte, [], 1, S)
+  eq('one latte', one, {
+    consumes: [
+      { supplyId: 'beans', qty: 0.018, unitCostUsd: 22 },
+      { supplyId: 'milk', qty: 0.052834, unitCostUsd: 4.2 },
+    ],
+    unknown: [],
+  })
+  eq('three lattes take three times as much', R.lineConsumption(latte, [], 3, S).consumes.map(c => c.qty), [0.054, 0.158502])
+  eq('a quantity of 0 takes nothing', R.lineConsumption(latte, [], 0, S), { consumes: [], unknown: [] })
+  eq('a fractional quantity is refused', R.lineConsumption(latte, [], 1.5, S), { consumes: [], unknown: [] })
+
+  const vanilla = R.lineConsumption(latte, ['opt-vanilla'], 1, S)
+  eq('an ingredient with no conversion is reported, not guessed', vanilla.unknown, ['syrup'])
+  eq('...and the rest of the drink still counts', vanilla.consumes.map(c => c.supplyId), ['beans', 'milk'])
+  eq('a supply missing from the list is unknown',
+    R.lineConsumption({ lines: [{ supplyId: 'ghost', qty: 5 }] }, [], 1, S).unknown, ['ghost'])
+}
+
+console.log('\nwhat a dish costs')
+{
+  eq('a latte', R.consumptionCost(R.lineConsumption(latte, [], 1, S)), { costUsd: 0.62, reason: 'ok', missing: [] })
+  eq('an oat latte', R.consumptionCost(R.lineConsumption(latte, ['opt-oat'], 1, S)).costUsd, 1.12)
+  eq('a decaf latte with an extra shot costs decaf twice',
+    R.consumptionCost(R.lineConsumption(latte, ['opt-decaf', 'opt-shot'], 1, S)).costUsd, 1.16)
+  eq('THE TRAP: a never-received ingredient is unknown, never $0',
+    R.consumptionCost(R.lineConsumption({ lines: [{ supplyId: 'fresh', qty: 200 }] }, [], 1, S)),
+    { costUsd: null, reason: 'incomplete', missing: ['fresh'] })
+  eq('a missing conversion makes the whole dish unknown',
+    R.consumptionCost(R.lineConsumption(latte, ['opt-vanilla'], 1, S)),
+    { costUsd: null, reason: 'incomplete', missing: ['syrup'] })
+  eq('an empty recipe has no cost rather than a free one',
+    R.consumptionCost({ consumes: [], unknown: [] }), { costUsd: null, reason: 'empty', missing: [] })
+}
+
+console.log('\nmargin, on the price before VAT')
+{
+  // A deliberately unround rate, so a hardcoded one cannot pass by coincidence.
+  const m = R.dishMargin(5.65, 0.62, 0.13)
+  eq('THE TRAP: the price is taken before VAT', m.priceExVatUsd, 5)
+  eq('...so the margin is on that', m.marginUsd, 4.38)
+  eq('...and so is the cost share', m.costPercent, 0.124)
+  eq('an unknown cost gives no margin', R.dishMargin(5.65, null, 0.13), { priceExVatUsd: 5, marginUsd: null, costPercent: null })
+}
+
+console.log('\none stock move per supply for a whole Send')
+{
+  const moves = R.stockMoves([
+    R.lineConsumption(latte, [], 2, S).consumes,
+    R.lineConsumption(latte, ['opt-oat'], 1, S).consumes,
+  ])
+  eq('summed by supply, sorted', moves, [
+    { supplyId: 'beans', qty: 0.054 },
+    { supplyId: 'milk', qty: 0.105668 },
+    { supplyId: 'oat', qty: 0.2 },
+  ])
+  eq('nothing sent, nothing moved', R.stockMoves([]), [])
+}
+
+console.log('\nvoids and refunds follow their cause')
+eq('never sent: nothing was taken', R.ingredientOutcome(false, { returnsToStock: true, isWaste: false }), 'nothing-taken')
+eq('changed their mind before it was made: back on the shelf', R.ingredientOutcome(true, { returnsToStock: true, isWaste: false }), 'return')
+eq('already made: waste', R.ingredientOutcome(true, { returnsToStock: false, isWaste: true }), 'waste')
+eq('eaten and not wasted: kept', R.ingredientOutcome(true, { returnsToStock: false, isWaste: false }), 'kept')
+eq('THE TRAP: a reason claiming both is waste, never invented stock',
+  R.ingredientOutcome(true, { returnsToStock: true, isWaste: true }), 'waste')
+
+console.log('\ncounted against expected')
+eq('half a gallon short', R.countVariance(2.5, 2, 4.2), { varianceQty: -0.5, varianceUsd: -2.1 })
+eq('more than expected is positive', R.countVariance(2, 2.75, 4.2).varianceQty, 0.75)
+eq('no expected figure: no variance, not an invented one', R.countVariance(null, 2, 4.2), { varianceQty: null, varianceUsd: null })
+eq('an uncosted supply has a quantity but no money', R.countVariance(2, 2.75, 0), { varianceQty: 0.75, varianceUsd: null })
+
+console.log('\nwhat stops a recipe being saved')
+{
+  const clean = { lines: [{ supplyId: 'beans', qty: 18 }, { supplyId: 'milk', qty: 200 }],
+    adjustments: { 'opt-oat': [{ kind: 'replace', fromSupplyId: 'milk', toSupplyId: 'oat' }] } }
+  eq('a sound recipe has no problems', R.recipeProblems(clean, S), [])
+  eq('an empty recipe', R.recipeProblems({ lines: [] }).length > 0, true)
+  eq('a quantity of zero', R.recipeProblems({ lines: [{ supplyId: 'beans', qty: 0 }] }, S),
+    ['Espresso beans needs a quantity above zero.'])
+  eq('replacing with itself', R.recipeProblems({ lines: [{ supplyId: 'milk', qty: 200 }],
+    adjustments: { o: [{ kind: 'replace', fromSupplyId: 'milk', toSupplyId: 'milk' }] } }, S),
+    ['Whole milk cannot replace itself.'])
+  eq('replacing something not in the recipe', R.recipeProblems({ lines: [{ supplyId: 'beans', qty: 18 }],
+    adjustments: { o: [{ kind: 'replace', fromSupplyId: 'milk', toSupplyId: 'oat' }] } }, S),
+    ['Oat milk replaces Whole milk, which this recipe does not use.'])
+  eq('adding a negative amount', R.recipeProblems({ lines: [{ supplyId: 'beans', qty: 18 }],
+    adjustments: { o: [{ kind: 'add', supplyId: 'beans', qty: -1 }] } }, S),
+    ['Adding Espresso beans needs a quantity above zero.'])
+  eq('THE TRAP: an ingredient with no conversion cannot be saved', R.recipeProblems({ lines: [{ supplyId: 'syrup', qty: 15 }] }, S),
+    ['Vanilla syrup is measured in ml but has no conversion to bottle.'])
+  eq('an ingredient no longer in supplies', R.recipeProblems({ lines: [{ supplyId: 'ghost', qty: 5 }] }, S),
+    ['An ingredient is no longer in the supplies list (ghost).'])
+}
+
+console.log(`\n${pass} passed, ${fail} failed`)
+process.exit(fail > 0 ? 1 : 0)
