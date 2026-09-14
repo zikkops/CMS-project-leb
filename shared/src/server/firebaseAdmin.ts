@@ -15,6 +15,7 @@
 import { initializeApp, getApps, getApp, cert, type App } from 'firebase-admin/app'
 import { getAuth, type Auth } from 'firebase-admin/auth'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
+import { openHubStore, type HubStore, type SqlDatabase } from './hubStore'
 
 // A build-time-ish tripwire. Next.js will usually fail the build first if this
 // module ends up in a client bundle, but an explicit throw makes the cause
@@ -110,11 +111,46 @@ function adminApp(): App {
 // to collect their config. Calling these inside a handler means a missing
 // credential fails that one request with a clear message, not the whole build.
 export function adminAuth(): Auth {
+  if (hubDbPath()) {
+    // Fails closed: getCaller() turns this into "not signed in". The hub never
+    // holds the Admin key, and sign-in there is the staff member's phone
+    // (POS software, stage 5), never a Firebase token checked with that key.
+    throw new Error('Firebase sign-in is not used on the café hub.')
+  }
   return getAuth(adminApp())
 }
 
 export function adminDb(): Firestore {
-  return getFirestore(adminApp())
+  return hubDb() ?? getFirestore(adminApp())
+}
+
+// ── The café hub (POS software, stage 3) ─────────────────────────────────
+// On a hub, BIG_CMS_HUB_DB names the SQLite file, and the same server code
+// reads and writes it instead of Firestore — see hubStore.ts. The store is
+// Firestore-shaped, not a Firestore, hence the cast: verify:hub runs the real
+// checks, tickets and drawer code over it to hold that shape to account.
+
+export function hubDbPath(): string | null {
+  return process.env.BIG_CMS_HUB_DB || null
+}
+
+interface HubHandle { path: string; store: HubStore }
+
+function hubDb(): Firestore | null {
+  const path = hubDbPath()
+  if (!path) return null
+  // On globalThis rather than in a module variable: a dev server can load this
+  // module more than once, and two handles on one SQLite file would each
+  // believe their own commit was the only one.
+  const g = globalThis as { __bigCmsHub?: HubHandle }
+  if (!g.__bigCmsHub || g.__bigCmsHub.path !== path) {
+    // Looked up at run time, so an online deploy on an older Node never loads it.
+    const load = (process as { getBuiltinModule?: (id: string) => unknown }).getBuiltinModule
+    const sqlite = load?.('node:sqlite') as { DatabaseSync: new (file: string) => SqlDatabase } | undefined
+    if (!sqlite) throw new Error('The café hub needs Node 22.13 or later, for node:sqlite.')
+    g.__bigCmsHub = { path, store: openHubStore(new sqlite.DatabaseSync(path)) }
+  }
+  return g.__bigCmsHub.store as unknown as Firestore
 }
 
 // True when the server layer is configured. Useful for a route that should

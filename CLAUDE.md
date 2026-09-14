@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 25 checks, 19 verifiers, 1188
+is the only thing that shows it. Currently 26 checks, 20 verifiers, 1266
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -686,6 +686,58 @@ wraps the same React screens.
   - **Not rerouted, on purpose:** the staff check, `useRequireRole` in
     `adminAuth`. It reads the signed-in user's token and staff record, which
     is sign-in, so it moves with the phone sign-in in stage 5.
+- **Stage 3 starts with the hub's database, `shared/src/server/hubStore.ts`.**
+  On a hub, `BIG_CMS_HUB_DB` names a SQLite file and `adminDb()` returns a
+  store with Firestore's shape. So `checks.ts`, `tickets.ts` and `drawer.ts`
+  run there **unchanged**; there is no second copy of the rules about money.
+  - It covers the part of the Admin SDK those files use: `doc`,
+    `collection`, `where`/`orderBy`/`limit`, `getAll`, `runTransaction`,
+    `set`/`update`/`create`/`delete`, `batch` and the `FieldValue` sentinels.
+    It runs on `node:sqlite`, which is built into Electron's Node 24, so
+    there is nothing to install. Anything else (listeners, counts, cursors)
+    is a TypeError, never a wrong answer.
+  - **Transactions retry as Firestore's do.** A read records the version it
+    saw and a query records what it returned. At commit both are checked
+    again, and if either moved the callback runs again, up to five times.
+    **The query is re-run, not just its documents re-checked**: two waiters
+    opening one table both find no open check, and only the re-run finds
+    the one the other just made. Commit is synchronous, so nothing lands
+    between the check and the write.
+  - **It refuses what Firestore refuses**, so code that passes on the hub
+    cannot fail in the cloud:
+    - a read after a write
+    - `undefined`
+    - a sentinel or an array inside an array
+    - `update()` on a missing document (code 5)
+    - `create()` on an existing one (code 6, what `idempotency.ts` checks)
+  - Values are stored with the backup codec's tags, so Timestamps come back
+    as Timestamps and a hub row is a backup line.
+  - **The sentinels' operands are read from fields the SDK does not
+    document** (`operand`, `elements`). `verify:hub` pins them: a firebase-admin
+    upgrade that renames them fails there, not at a till.
+  - **`adminAuth()` refuses on a hub**, so `getCaller()` says "not signed in"
+    and every route is 401 until stage 5 puts sign-in on the phone. Checking a
+    Firebase token there would need the Admin key or the internet.
+  - Every commit goes into a `changes` table with a sequence number and fires
+    `onChange()`. That is what the hub's clients will follow and stage 4
+    will sync. Nothing trims it yet.
+  - `npm run verify:hub` does two things:
+    - It checks the store behaves as Firestore does.
+    - It runs the real open shift → open check → add → send → bump → pay →
+      close → Z close over a hub file. That includes two waiters opening one
+      table, two taps on one ticket, and a batch and a payment each sent
+      twice.
+    - 20 mutations to the store are caught by name. **A missing field matching
+      `!=` survives, and should:** every inequality also orders by its field,
+      which drops documents without it, as Firestore does. The same shortcut
+      on `== null` is caught.
+    - A throw from the store is counted as a failure, so a broken store
+      cannot hide the count by crashing the run.
+  - **Not built yet:**
+    - the hub server process in `desktop/`
+    - a watch endpoint that the till's hub backend follows with `runPlan()`
+    - menu and settings pulled from the cloud
+    - reaching the hub on the café network
 
 ## The host's CDN caches prerendered pages for a year
 
