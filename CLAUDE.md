@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 24 checks, 18 verifiers, 1163
+is the only thing that shows it. Currently 25 checks, 19 verifiers, 1188
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -660,6 +660,25 @@ wraps the same React screens.
 - **A smoke run reports its first outcome only.** A failed load is followed by
   Chromium's error page finishing, and reporting both turned "could not load
   the POS" into exit 0.
+- **Stage 2 is the backend seam, `pos/app/lib/backend/`.** Nothing in the till
+  talks to Firestore or the routes directly any more.
+  - A screen's live read is a `PosQuery`: the open checks at a branch, one
+    check, a station's tickets, the menu, the open shift and so on.
+    `planQuery()` turns it into a plain plan.
+  - The cloud backend (`cloud.ts`) runs a plan as the same Firestore listener
+    as before. The stage 3 hub will run the same plan over its local copy with
+    `runPlan()`, so the two cannot mean different things by one query.
+  - Every write is `backend().request()`, today's routes.
+  - `verify:backend` asserts that every query the till can make is scoped
+    (branch, one document, or a small collection by design), and that
+    `runPlan()` matches Firestore: branch, statuses, order, limit, ties by
+    id, and a document missing the ordered field left out.
+  - **New till code reads through `backend()`, never `firebase/firestore` or
+    `authedFetch`.** Only `backend/cloud.ts` and the login page import Firebase.
+  - **Not rerouted yet:** the shared hooks the till also uses (features,
+    business settings, printing settings, the staff record in `adminAuth`).
+    They are shared with admin and belong in the seam before the hub can
+    answer them.
 
 ## The host's CDN caches prerendered pages for a year
 

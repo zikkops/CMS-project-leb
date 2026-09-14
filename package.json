@@ -53,6 +53,7 @@
     "verify:food-safety": "node scripts/verify-food-safety.mjs",
     "verify:admin-nav": "node scripts/verify-admin-nav.mjs",
     "verify:desktop": "node scripts/verify-desktop.mjs",
+    "verify:backend": "node scripts/verify-backend.mjs",
     "desktop": "npm --prefix desktop start",
     "verify:all": "node scripts/verify-all.mjs"
   },

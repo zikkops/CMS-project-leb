@@ -15,8 +15,7 @@
 // carries the READS; this is only the writes.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { auth } from '@big-cms/shared/firebase'
-import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
+import { backend } from './backend'
 import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import {
   EMPTY_OUTBOX, enqueue, replay, resolveStuck, waitingFor, changeDiffers,
@@ -86,16 +85,16 @@ async function sendAction(
 ): Promise<SendOutcome> {
   try {
     if (action.kind === 'open') {
-      await unwrap(await authedFetch('/api/pos/checks', 'POST', {
+      await backend().request('POST', '/api/pos/checks', {
         branch: action.branch,
         tableNumber: action.tableNumber,
         guestCount: action.guestCount,
         // The device named the check. Replaying an open the server already has
         // returns that same check instead of "table 4 is already open" (7b).
         openId: action.checkId,
-      }, { timeoutMs: SEND_TIMEOUT_MS }))
+      }, { timeoutMs: SEND_TIMEOUT_MS })
     } else if (action.kind === 'lines') {
-      await unwrap(await authedFetch('/api/pos/checks', 'POST', {
+      await backend().request('POST', '/api/pos/checks', {
         checkId: action.checkId,
         batchKey: action.batchKey,
         lines: action.lines,
@@ -104,14 +103,14 @@ async function sendAction(
         // kitchen, and a ticket for a coffee somebody drank an hour ago is
         // worse than no ticket at all.
         madeOfflineAt: action.at,
-      }, { timeoutMs: SEND_TIMEOUT_MS }))
+      }, { timeoutMs: SEND_TIMEOUT_MS })
     } else {
-      const data = await unwrap(await authedFetch('/api/pos/checks', 'PATCH', {
+      const data = await backend().request('PATCH', '/api/pos/checks', {
         checkId: action.checkId,
         action: 'pay',
         paymentKey: action.paymentKey,
         ...action.payment,
-      }, { timeoutMs: SEND_TIMEOUT_MS }))
+      }, { timeoutMs: SEND_TIMEOUT_MS })
       const p = (data.payment ?? {}) as { changeUsd?: number; changeLbp?: number }
       const actual = { changeUsd: Number(p.changeUsd ?? 0), changeLbp: Number(p.changeLbp ?? 0) }
       if (changeDiffers(action.expected, actual)) {
@@ -203,10 +202,10 @@ export function useOutbox(): Outbox {
     // A refusal nobody has looked at yet stops the queue — replay() enforces
     // that too, but not calling it keeps the "Syncing…" flicker off the screen.
     if (now.stuck) return
-    // Signed out, or auth has not settled: authedFetch would throw an error
+    // Signed out, or auth has not settled: a request would throw an error
     // about the session, which is neither "no answer" nor the server refusing
     // the action, and sticking the queue on it would be wrong.
-    if (!auth.currentUser) return
+    if (!backend().signedIn()) return
 
     running.current = true
     setSyncing(true)

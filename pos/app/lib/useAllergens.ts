@@ -5,7 +5,7 @@
 // shared/src/allergens.ts. Nothing here works an allergen out.
 
 import { useEffect, useState } from 'react'
-import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
+import { backend } from './backend'
 
 export interface ChartOption { optionId: string; name: string; group: string; adds: string[]; removes: string[]; verified: boolean }
 
@@ -46,7 +46,7 @@ export function useAllergenChart(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return
     let live = true
-    authedFetch('/api/pos/allergens', 'GET').then(unwrap)
+    backend().request('GET', '/api/pos/allergens')
       .then(r => { if (live) { setDishes((r.dishes as ChartDish[]) ?? []); setError('') } })
       .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Could not load the allergen chart.') })
     return () => { live = false }
@@ -64,6 +64,6 @@ export function useAllergenChart(enabled: boolean) {
 export async function readDishAllergens(menuItemId: string, optionIds: string[]): Promise<DishAnswer> {
   const q = new URLSearchParams({ item: menuItemId })
   for (const id of optionIds) q.append('option', id)
-  const data = await unwrap(await authedFetch(`/api/pos/allergens?${q}`, 'GET'))
+  const data = await backend().request('GET', `/api/pos/allergens?${q}`)
   return data.dish as DishAnswer
 }

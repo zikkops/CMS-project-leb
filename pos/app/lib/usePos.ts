@@ -17,14 +17,17 @@
 // every ticket query. Never a bare collection(). If a query here ever loses
 // its where() clauses, the bill is the symptom and it will not look like a
 // code change caused it.
+//
+// ── Where the data comes from (POS software, stage 2) ──────────────────────
+// Nothing here talks to Firestore or the routes directly any more. Reads ask
+// the backend for a PosQuery (backend/queries.ts, where the scoping above now
+// lives and verify:backend asserts it) and writes go through a request. Online
+// that is the cloud, as before; in software mode it will be the café's hub, and
+// no screen needs to know which.
 
 import { useEffect, useState } from 'react'
-import {
-  collection, doc, limit, onSnapshot, orderBy, query, where, Timestamp,
-} from 'firebase/firestore'
-import { onAuthStateChanged } from 'firebase/auth'
-import { auth, db } from '@big-cms/shared/firebase'
-import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
+import { backend } from './backend'
+import type { LocalDoc } from './backend/queries'
 import type { Check, Station } from '@big-cms/shared/checks'
 import type { PaymentRequest } from '@big-cms/shared/payments'
 import type { DenomCount, DrawerTotals, Money2 } from '@big-cms/shared/drawer'
@@ -59,8 +62,8 @@ import { nextReceiptBatch, EMPTY_RECEIPT_STATE, type ReceiptDoc } from './printB
  */
 export function useAuthReady(): { ready: boolean; signedIn: boolean } {
   const [state, setState] = useState({ ready: false, signedIn: false })
-  useEffect(() => onAuthStateChanged(auth, user => {
-    setState({ ready: true, signedIn: Boolean(user) })
+  useEffect(() => backend().watchAuth(signedIn => {
+    setState({ ready: true, signedIn })
   }), [])
   return state
 }
@@ -74,6 +77,11 @@ function listenerMessage(err: unknown): string {
     return 'This query needs a Firestore index that does not exist yet — the console link is in the browser log.'
   }
   return 'Lost connection to the live data. Showing the last known state.'
+}
+
+/** A document from the backend, as the typed object the screens use. */
+function asDoc<T>(d: LocalDoc): T {
+  return { id: d.id, ...d.data } as T
 }
 
 // ── Reads ─────────────────────────────────────────────────────────────────
@@ -91,14 +99,9 @@ export function useOpenChecks(branch: string): {
   useEffect(() => {
     if (!branch || !ready || !signedIn) return
     // Signed out is not an error, it is a redirect already in flight.
-    const q = query(
-      collection(db, 'checks'),
-      where('branch', '==', branch),
-      where('status', '==', 'open'),
-    )
-    return onSnapshot(q,
+    return backend().watch({ kind: 'openChecks', branch },
       snap => {
-        setChecks(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Check))
+        setChecks(snap.docs.map(d => asDoc<Check>(d)))
         setLoaded(true)
         setError('')
       },
@@ -127,9 +130,9 @@ export function useCheck(checkId: string): {
 
   useEffect(() => {
     if (!checkId || !ready || !signedIn) return
-    return onSnapshot(doc(db, 'checks', checkId),
+    return backend().watch({ kind: 'check', checkId },
       snap => {
-        setCheck(snap.exists() ? ({ id: snap.id, ...snap.data() } as Check) : null)
+        setCheck(snap.docs[0] ? asDoc<Check>(snap.docs[0]) : null)
         setLoaded(true)
         setError('')
       },
@@ -168,23 +171,9 @@ export function useStationTickets(branch: string, station: Station | null): {
   useEffect(() => {
     if (!branch || !ready || !signedIn) return
     const k = `${branch}|${station ?? '*'}`
-    const q = station
-      ? query(
-          collection(db, 'kitchenTickets'),
-          where('branch', '==', branch),
-          where('station', '==', station),
-          where('status', 'in', ACTIVE_TICKET_STATUSES),
-          orderBy('sentAt', 'asc'),
-        )
-      : query(
-          collection(db, 'kitchenTickets'),
-          where('branch', '==', branch),
-          where('status', 'in', ACTIVE_TICKET_STATUSES),
-          orderBy('sentAt', 'asc'),
-        )
-    return onSnapshot(q,
+    return backend().watch({ kind: 'stationTickets', branch, station, statuses: ACTIVE_TICKET_STATUSES },
       snap => {
-        setSnapshot({ key: k, tickets: snap.docs.map(d => ({ id: d.id, ...d.data() }) as Ticket), error: '' })
+        setSnapshot({ key: k, tickets: snap.docs.map(d => asDoc<Ticket>(d)), error: '' })
       },
       err => {
         console.error('[useStationTickets] listener failed:', err)
@@ -223,15 +212,9 @@ export function useReadyTickets(branch: string): {
 
   useEffect(() => {
     if (!branch || !ready || !signedIn) return
-    const q = query(
-      collection(db, 'kitchenTickets'),
-      where('branch', '==', branch),
-      where('status', '==', 'ready'),
-      orderBy('sentAt', 'asc'),
-    )
-    return onSnapshot(q,
+    return backend().watch({ kind: 'readyTickets', branch },
       snap => {
-        setSnapshot({ branch, tickets: snap.docs.map(d => ({ id: d.id, ...d.data() }) as Ticket), error: '' })
+        setSnapshot({ branch, tickets: snap.docs.map(d => asDoc<Ticket>(d)), error: '' })
       },
       err => {
         console.error('[useReadyTickets] listener failed:', err)
@@ -250,8 +233,8 @@ export function useReadyTickets(branch: string): {
 
 /** The front took a ready plate out. Clears it from the kitchen display too. */
 export async function pickUpTicket(ticketId: string): Promise<{ already: boolean }> {
-  const data = await unwrap(await authedFetch('/api/pos/tickets', 'PATCH',
-    { ticketId, action: 'pickup' }, { timeoutMs: POS_TIMEOUT_MS }))
+  const data = await call('/api/pos/tickets', 'PATCH',
+    { ticketId, action: 'pickup' }, { timeoutMs: POS_TIMEOUT_MS })
   return { already: data.already === true }
 }
 
@@ -277,19 +260,10 @@ export function useClosedChecks(branch: string, max = 50): {
 
   useEffect(() => {
     if (!branch || !ready || !signedIn) return
-    const q = query(
-      collection(db, 'checks'),
-      where('branch', '==', branch),
-      // Refunded checks stay in the list. A refund that disappears from the
-      // review screen is a refund nobody can find afterwards, which defeats
-      // the point of recording one.
-      where('status', 'in', ['closed', 'refunded']),
-      orderBy('closedAt', 'desc'),
-      limit(max),
-    )
-    return onSnapshot(q,
+    // Refunded checks stay in the list — see planQuery().
+    return backend().watch({ kind: 'closedChecks', branch, max },
       snap => {
-        setChecks(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Check))
+        setChecks(snap.docs.map(d => asDoc<Check>(d)))
         setLoaded(true)
         setError('')
       },
@@ -327,17 +301,9 @@ export function useChecksClosedSince(branch: string, sinceMs: number): {
 
   useEffect(() => {
     if (!branch || !ready || !signedIn || !Number.isFinite(sinceMs)) return
-    const q = query(
-      collection(db, 'checks'),
-      where('branch', '==', branch),
-      where('status', 'in', ['closed', 'refunded']),
-      where('closedAt', '>=', Timestamp.fromMillis(sinceMs)),
-      orderBy('closedAt', 'desc'),
-      limit(CEILING),
-    )
-    return onSnapshot(q,
+    return backend().watch({ kind: 'checksClosedSince', branch, sinceMs, ceiling: CEILING },
       snap => {
-        setChecks(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Check))
+        setChecks(snap.docs.map(d => asDoc<Check>(d)))
         setLoaded(true)
         setError('')
       },
@@ -373,29 +339,20 @@ export function watchClosedReceipts(
   onError: (message: string) => void,
 ): () => void {
   let state = EMPTY_RECEIPT_STATE
-  const q = query(
-    collection(db, 'checks'),
-    where('branch', '==', branch),
-    where('status', '==', 'closed'),
-    orderBy('closedAt', 'desc'),
-    limit(10),
-  )
   const toDoc = (id: string, data: Record<string, unknown>): ReceiptDoc => ({
     id,
     status: String(data.status ?? ''),
     // NaN while a server timestamp is unresolved; the decision waits for it.
     closedAtMs: timestampMs(data.closedAt, Number.NaN),
   })
-  return onSnapshot(q,
+  return backend().watch({ kind: 'recentClosedReceipts', branch },
     snap => {
-      const docs = snap.docs.map(d => toDoc(d.id, d.data()))
-      const changes = snap.docChanges()
-        .filter(c => c.type !== 'removed')
-        .map(c => toDoc(c.doc.id, c.doc.data()))
+      const docs = snap.docs.map(d => toDoc(d.id, d.data))
+      const changes = snap.changed.map(c => toDoc(c.id, c.data))
       const r = nextReceiptBatch(state, docs, changes)
       state = r.state
       if (r.print.length === 0) return
-      const byId = new Map(snap.docs.map(d => [d.id, { id: d.id, ...d.data() } as Check]))
+      const byId = new Map(snap.docs.map(d => [d.id, asDoc<Check>(d)]))
       const out = r.print.map(id => byId.get(id)).filter((c): c is Check => c !== undefined)
       if (out.length > 0) onNew(out)
     },
@@ -446,19 +403,19 @@ export function usePosMenu(): PosMenu {
   useEffect(() => {
     if (!ready) return
     const unsubs = [
-      onSnapshot(collection(db, 'menuCategories'), snap => {
+      backend().watch({ kind: 'menuCategories' }, snap => {
         setCategories(snap.docs.map(d => ({
           id: d.id,
-          name: String(d.data().name ?? ''),
-          section: String(d.data().section ?? ''),
-          image: String(d.data().image ?? ''),
+          name: String(d.data.name ?? ''),
+          section: String(d.data.section ?? ''),
+          image: String(d.data.image ?? ''),
         })))
         setLoaded(l => ({ ...l, cats: true }))
       }, () => setLoaded(l => ({ ...l, cats: true }))),
 
-      onSnapshot(collection(db, 'menuItems'), snap => {
+      backend().watch({ kind: 'menuItems' }, snap => {
         setItems(snap.docs.map(d => {
-          const data = d.data()
+          const data = d.data
           return {
             id: d.id,
             name: String(data.name ?? ''),
@@ -475,9 +432,9 @@ export function usePosMenu(): PosMenu {
         setLoaded(l => ({ ...l, items: true }))
       }, () => setLoaded(l => ({ ...l, items: true }))),
 
-      onSnapshot(collection(db, 'modifierGroups'), snap => {
+      backend().watch({ kind: 'modifierGroups' }, snap => {
         const next: PosMenu['groups'] = {}
-        snap.docs.forEach(d => { next[d.id] = { id: d.id, ...d.data() } as PosMenu['groups'][string] })
+        snap.docs.forEach(d => { next[d.id] = asDoc<PosMenu['groups'][string]>(d) })
         setGroups(next)
         setLoaded(l => ({ ...l, groups: true }))
       }, () => setLoaded(l => ({ ...l, groups: true }))),
@@ -535,10 +492,10 @@ export function useRetailProducts(branch: string): { products: PosProduct[]; loa
 
   useEffect(() => {
     if (!ready) return
-    return onSnapshot(collection(db, 'products'),
+    return backend().watch({ kind: 'products' },
       snap => {
         setProducts(snap.docs.map(d => {
-          const data = d.data()
+          const data = d.data
           const priced = {
             price: Number(data.price ?? 0),
             salePrice: data.salePrice == null ? null : Number(data.salePrice),
@@ -567,6 +524,15 @@ export function useRetailProducts(branch: string): { products: PosProduct[]; loa
 
 // ── Writes — all through the route, none direct ───────────────────────────
 
+/**
+ * Every write is a request to a route, through the backend: the cloud's routes
+ * online, the hub's in software mode. The argument order is authedFetch's,
+ * which this replaced, so each call reads as it always did.
+ */
+function call(path: string, method: 'GET' | 'POST' | 'PATCH', body?: unknown, opts?: { timeoutMs?: number }) {
+  return backend().request(method, path, body, opts)
+}
+
 export interface DraftLine {
   source: 'menu' | 'product'
   refId: string
@@ -585,8 +551,8 @@ export interface DraftLine {
 export async function openCheck(
   branch: string, tableNumber: number, guestCount: number,
 ): Promise<string> {
-  const data = await unwrap(await authedFetch('/api/pos/checks', 'POST',
-    { branch, tableNumber, guestCount }))
+  const data = await call('/api/pos/checks', 'POST',
+    { branch, tableNumber, guestCount })
   return String(data.id ?? '')
 }
 
@@ -600,7 +566,7 @@ export async function openCheck(
  * until Send, which offline persistence keeps across a reload.
  */
 export async function addLines(checkId: string, lines: DraftLine[], batchKey: string): Promise<void> {
-  await unwrap(await authedFetch('/api/pos/checks', 'POST', {
+  await call('/api/pos/checks', 'POST', {
     checkId,
     // The same key on every retry of this batch — the server skips a batch it
     // has already applied. See handleSend on the check page.
@@ -614,12 +580,12 @@ export async function addLines(checkId: string, lines: DraftLine[], batchKey: st
       course: l.course,
       note: l.note,
     })),
-  }, { timeoutMs: POS_TIMEOUT_MS }))
+  }, { timeoutMs: POS_TIMEOUT_MS })
 }
 
 export async function sendCheck(checkId: string): Promise<{ station: string; lines: number }[]> {
-  const data = await unwrap(await authedFetch('/api/pos/checks', 'PATCH',
-    { checkId, action: 'send' }, { timeoutMs: POS_TIMEOUT_MS }))
+  const data = await call('/api/pos/checks', 'PATCH',
+    { checkId, action: 'send' }, { timeoutMs: POS_TIMEOUT_MS })
   return (data.tickets ?? []) as { station: string; lines: number }[]
 }
 
@@ -635,16 +601,16 @@ const POS_TIMEOUT_MS = 15_000
 export async function voidLine(
   checkId: string, lineId: string, reasonKey: string, note: string,
 ): Promise<void> {
-  await unwrap(await authedFetch('/api/pos/checks', 'PATCH',
-    { checkId, action: 'void', lineId, reasonKey, note }))
+  await call('/api/pos/checks', 'PATCH',
+    { checkId, action: 'void', lineId, reasonKey, note })
 }
 
 export async function moveCheck(checkId: string, tableNumber: number): Promise<void> {
-  await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'move', tableNumber }))
+  await call('/api/pos/checks', 'PATCH', { checkId, action: 'move', tableNumber })
 }
 
 export async function setStaffMeal(checkId: string, on: boolean): Promise<void> {
-  await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'staffMeal', on }))
+  await call('/api/pos/checks', 'PATCH', { checkId, action: 'staffMeal', on })
 }
 
 /**
@@ -652,7 +618,7 @@ export async function setStaffMeal(checkId: string, on: boolean): Promise<void> 
  * reason decides what goes back on the shelf. `note` is required for Other.
  */
 export async function refundCheck(checkId: string, reasonKey: string, note: string): Promise<void> {
-  await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'refund', reasonKey, note }))
+  await call('/api/pos/checks', 'PATCH', { checkId, action: 'refund', reasonKey, note })
 }
 
 export interface PayResult {
@@ -677,8 +643,8 @@ export async function payCheck(
   req: PaymentRequest,
   paymentKey: string,
 ): Promise<PayResult> {
-  const data = await unwrap(await authedFetch('/api/pos/checks', 'PATCH',
-    { checkId, action: 'pay', paymentKey, ...req }, { timeoutMs: POS_TIMEOUT_MS }))
+  const data = await call('/api/pos/checks', 'PATCH',
+    { checkId, action: 'pay', paymentKey, ...req }, { timeoutMs: POS_TIMEOUT_MS })
   return data as unknown as PayResult
 }
 
@@ -706,15 +672,10 @@ export function useOpenShift(branch: string): { shift: OpenShift | null; loading
 
   useEffect(() => {
     if (!branch || !ready || !signedIn) return
-    const q = query(
-      collection(db, 'drawerShifts'),
-      where('branch', '==', branch),
-      where('status', 'in', ['open', 'closing']),
-    )
-    return onSnapshot(q,
+    return backend().watch({ kind: 'openShift', branch },
       snap => {
         const d = snap.docs[0]
-        setState({ key: branch, shift: d ? ({ id: d.id, ...d.data() } as OpenShift) : null, error: '' })
+        setState({ key: branch, shift: d ? asDoc<OpenShift>(d) : null, error: '' })
       },
       err => {
         console.error('[useOpenShift] listener failed:', err)
@@ -728,15 +689,15 @@ export function useOpenShift(branch: string): { shift: OpenShift | null; loading
 }
 
 export async function openDrawer(branch: string, float: Money2): Promise<{ id: string }> {
-  const data = await unwrap(await authedFetch('/api/pos/drawer', 'POST',
-    { branch, floatUsd: float.usd, floatLbp: float.lbp }, { timeoutMs: POS_TIMEOUT_MS }))
+  const data = await call('/api/pos/drawer', 'POST',
+    { branch, floatUsd: float.usd, floatLbp: float.lbp }, { timeoutMs: POS_TIMEOUT_MS })
   return data as unknown as { id: string }
 }
 
 /** An X reading: where the drawer stands. Changes nothing. */
 export async function readDrawer(shiftId: string): Promise<{ totals: DrawerTotals }> {
-  const data = await unwrap(await authedFetch(
-    `/api/pos/drawer?shiftId=${encodeURIComponent(shiftId)}`, 'GET', undefined, { timeoutMs: POS_TIMEOUT_MS }))
+  const data = await call(
+    `/api/pos/drawer?shiftId=${encodeURIComponent(shiftId)}`, 'GET', undefined, { timeoutMs: POS_TIMEOUT_MS })
   return data as unknown as { totals: DrawerTotals }
 }
 
@@ -745,8 +706,8 @@ export interface ZResult { totals: DrawerTotals; counted: Money2; difference: Mo
 export async function closeDrawer(
   shiftId: string, countLbp: DenomCount, countUsd: DenomCount, note: string,
 ): Promise<ZResult> {
-  const data = await unwrap(await authedFetch('/api/pos/drawer', 'PATCH',
-    { shiftId, countLbp, countUsd, note }, { timeoutMs: POS_TIMEOUT_MS }))
+  const data = await call('/api/pos/drawer', 'PATCH',
+    { shiftId, countLbp, countUsd, note }, { timeoutMs: POS_TIMEOUT_MS })
   return data as unknown as ZResult
 }
 
@@ -758,8 +719,8 @@ export async function setCheckCustomer(
   checkId: string,
   code: string | null,
 ): Promise<{ name: string | null; tier: string | null }> {
-  const data = await unwrap(await authedFetch('/api/pos/checks', 'PATCH',
-    { checkId, action: 'customer', code: code ?? '' }, { timeoutMs: POS_TIMEOUT_MS }))
+  const data = await call('/api/pos/checks', 'PATCH',
+    { checkId, action: 'customer', code: code ?? '' }, { timeoutMs: POS_TIMEOUT_MS })
   return data as unknown as { name: string | null; tier: string | null }
 }
 
@@ -777,20 +738,20 @@ export interface DiscountRequest {
  * Safe to repeat: it sets a value, so a retry after a lost reply is the same state.
  */
 export async function discountLine(checkId: string, lineId: string, d: DiscountRequest | null): Promise<void> {
-  await unwrap(await authedFetch('/api/pos/checks', 'PATCH',
-    { checkId, action: 'lineDiscount', lineId, discount: d }, { timeoutMs: POS_TIMEOUT_MS }))
+  await call('/api/pos/checks', 'PATCH',
+    { checkId, action: 'lineDiscount', lineId, discount: d }, { timeoutMs: POS_TIMEOUT_MS })
 }
 
 /** A percentage or an amount off the whole check; null takes it off. */
 export async function discountCheck(checkId: string, d: DiscountRequest | null): Promise<void> {
-  await unwrap(await authedFetch('/api/pos/checks', 'PATCH',
-    { checkId, action: 'checkDiscount', discount: d }, { timeoutMs: POS_TIMEOUT_MS }))
+  await call('/api/pos/checks', 'PATCH',
+    { checkId, action: 'checkDiscount', discount: d }, { timeoutMs: POS_TIMEOUT_MS })
 }
 
 export async function closeCheck(checkId: string): Promise<void> {
-  await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'close' }))
+  await call('/api/pos/checks', 'PATCH', { checkId, action: 'close' })
 }
 
 export async function advanceTicket(ticketId: string, status: string): Promise<void> {
-  await unwrap(await authedFetch('/api/pos/tickets', 'PATCH', { ticketId, status }))
+  await call('/api/pos/tickets', 'PATCH', { ticketId, status })
 }
