@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 23 checks, 17 verifiers, 1121
+is the only thing that shows it. Currently 23 checks, 17 verifiers, 1134
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -571,6 +571,26 @@ from them, not from a fresh `tap` constant.**
   14 Sep 2026): Counter, Closed, Kitchen display, then Drawer and Allergens
   when those are on. On a phone they are a grid under the title. Each has its
   own hue, never teal (`NavTile` in `pos/app/pos/page.tsx`).
+- **The order screen takes no seats or courses, and the menu is screens**
+  (owner's request, 14 Sep 2026). The first screen is the categories as big
+  picture tiles, plus Retail; tapping one opens its items as picture tiles,
+  with a Categories button back (`MenuPicker`, `CategoryTile`, `ItemTile` in
+  `pos/app/pos/check/[id]/page.tsx`). New lines carry `seat: null, course:
+  null`. Older checks that have a seat still show it on the line.
+- **Menu items have a picture** (`menuItems/{id}.image`), set on the admin Menu
+  page by upload (through `uploadImage()`) or from the media library. An update
+  that does not send `image` leaves the stored one alone, and `''` removes it.
+  An item with no picture shows its first letter. `npm run seed:menu-images`
+  puts a photo on each demo dish that has none, marks it `imageSeeded`, and
+  `--clear` takes off only those. The photos are in
+  `scripts/menu-item-photos.mjs`; each was looked at, not just loaded.
+- **Splitting a bill is between any number of people, evenly or by item**
+  (owner's request, 14 Sep 2026). By item, the waiter taps who had each line.
+  A line nobody is tapped for is shared by everyone, and a line tapped for
+  several is divided between them. `sharesByPerson()` in `shared/src/splits.ts`
+  (verify:payments) builds every share from the line totals, so the people
+  always sum to the bill, discounts included. "By seat" went with the seats.
+  As before, a share only fills the amount; the waiter still takes it.
 
 ## Ready to go out (Sep 2026)
 

@@ -211,6 +211,25 @@ const oddTable = {
 }
 eq('$1 off three $1 seats still sums to exactly $2.00', sum(S.sharesBySeat(oddTable).map(s => s.usd)), 2)
 
+console.log('\nsplit between any number of people, item by item (14 Sep 2026)')
+// The table: a $4 item, two $6 items on one line, a $5 plate, a voided $100.
+const people3 = S.sharesByPerson(table, 3, { a: [1], b: [2, 3] })
+eq('person 1: the $4 item and a third of the shared $5 plate', people3[0].usd, 5.67)
+eq('persons 2 and 3 split the $12 line and the rest of the plate, odd cent first', [people3[1].usd, people3[2].usd], [7.67, 7.66])
+eq('THE SUM of the people is the bill', sum(people3.map(p => p.usd)), C.checkTotals(table).net)
+eq('each person lists what they pay towards', people3[0].lineIds, ['a', 'c'])
+eq('nobody tapped for anything: an even split', S.sharesByPerson(table, 2, {}).map(p => p.usd), [10.5, 10.5])
+eq('the voided line is nobody\'s, even when tapped', S.sharesByPerson(table, 1, { d: [1] })[0].usd, 21)
+eq('someone outside the party is ignored, and the line is shared', S.sharesByPerson(table, 2, { a: [5] }).map(p => p.usd), [10.5, 10.5])
+eq('the same person tapped twice counts once', S.sharesByPerson(table, 2, { a: [1, 1] })[0].usd, S.sharesByPerson(table, 2, { a: [1] })[0].usd)
+eq('THE SUM with a whole-check discount is the discounted bill',
+   sum(S.sharesByPerson(discTable, 3, { a: [1], b: [2] }).map(p => p.usd)), C.checkTotals(discTable).net)
+eq('$1 off three $1 items, one each: exactly $2.00 between three people',
+   sum(S.sharesByPerson(oddTable, 3, { x: [1], y: [2], z: [3] }).map(p => p.usd)), 2)
+eq('twelve people, nothing tapped: still sums to the bill', sum(S.sharesByPerson(table, 12, {}).map(p => p.usd)), C.checkTotals(table).net)
+eq('zero people is no split', S.sharesByPerson(table, 0, {}), [])
+eq('more than forty is not a split', S.sharesByPerson(table, 41, {}), [])
+
 // ── Slice 4: the branch drawer ─────────────────────────────────────────────
 const D = await import(`file://${join(out, 'drawer.js')}`)
 const float = { usd: 50, lbp: 200_000 }

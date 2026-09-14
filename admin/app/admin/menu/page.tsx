@@ -38,6 +38,8 @@ interface MenuItem {
   order: number
   badge?: string
   available: boolean
+  /** Shown on the till's menu tiles. */
+  image?: string
 }
 
 const EMPTY_ITEM = {
@@ -48,9 +50,15 @@ const EMPTY_ITEM = {
   order: 0,
   badge: '',
   available: true,
+  image: '',
 }
 
 const SECTIONS: Section[] = ['Food', 'Beverage', 'Sweets']
+
+const smallButton: React.CSSProperties = {
+  background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(var(--offwhite-rgb),0.75)',
+  padding: '0.45rem 0.8rem', borderRadius: '2px', fontSize: '0.72rem', cursor: 'pointer', fontFamily: 'var(--font-inter)',
+}
 
 const sectionColors: Record<Section, string> = {
   Food:     'var(--teal)',
@@ -208,6 +216,7 @@ export default function AdminMenuPage() {
   const [open, setOpen]       = useState(false)
   const [editing, setEditing] = useState<MenuItem | null>(null)
   const [form, setForm]       = useState({ ...EMPTY_ITEM })
+  const [uploadingItem, setUploadingItem] = useState(false)
 
   // What each dish should sell for from its recipe — admins only, because a
   // suggested price at a known margin gives the cost away.
@@ -215,7 +224,7 @@ export default function AdminMenuPage() {
   const editSuggestion = editing ? suggestions[editing.id] : undefined
 
   // Media picker (shared modal — `pickerTarget` says which image field it fills)
-  const [pickerTarget, setPickerTarget] = useState<'new' | 'edit' | null>(null)
+  const [pickerTarget, setPickerTarget] = useState<'new' | 'edit' | 'item' | null>(null)
   const [saving, setSaving]   = useState(false)
 
   const sensors = useSensors(
@@ -277,6 +286,24 @@ export default function AdminMenuPage() {
     }
   }
 
+  // Every upload goes through uploadImage() (CLAUDE.md), and is recorded in
+  // the media library so it can be picked again.
+  async function handleItemImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingItem(true)
+    try {
+      const { url, deleteUrl, fileName } = await uploadImage(file)
+      setForm(f => ({ ...f, image: url }))
+      await recordMediaUpload({ url, deleteUrl, fileName })
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Upload failed.')
+    } finally {
+      e.target.value = ''
+      setUploadingItem(false)
+    }
+  }
+
   async function addCategory() {
     if (!newCatName.trim()) return
     setAddingCat(true)
@@ -335,6 +362,7 @@ export default function AdminMenuPage() {
       order:       item.order,
       badge:       item.badge ?? '',
       available:   item.available,
+      image:       item.image ?? '',
     })
     setOpen(true)
   }
@@ -883,6 +911,34 @@ export default function AdminMenuPage() {
               </div>
 
               <div>
+                <label style={labelStyle}>Picture</label>
+                <div style={{ display: 'flex', gap: '0.9rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{
+                    width: '96px', height: '72px', borderRadius: '4px', overflow: 'hidden', flexShrink: 0,
+                    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {form.image
+                      ? <img src={form.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>No picture</span>}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <label style={{ ...smallButton, display: 'inline-block' }}>
+                      {uploadingItem ? 'Uploading…' : 'Upload'}
+                      <input type="file" accept="image/*" onChange={handleItemImageUpload} disabled={uploadingItem} style={{ display: 'none' }} />
+                    </label>
+                    <button type="button" onClick={() => setPickerTarget('item')} style={smallButton}>From library</button>
+                    {form.image && (
+                      <button type="button" onClick={() => setForm(f => ({ ...f, image: '' }))} style={{ ...smallButton, color: 'var(--red)' }}>Remove</button>
+                    )}
+                  </div>
+                </div>
+                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.35)', marginTop: '0.4rem' }}>
+                  Shown on the till&apos;s menu tiles.
+                </p>
+              </div>
+
+              <div>
                 <label style={labelStyle}>Description</label>
                 <textarea value={form.description} rows={2} required
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
@@ -970,6 +1026,7 @@ export default function AdminMenuPage() {
         onSelect={url => {
           if (pickerTarget === 'new') setNewCatImage(url)
           else if (pickerTarget === 'edit') setEditCatImage(url)
+          else if (pickerTarget === 'item') setForm(f => ({ ...f, image: url }))
           setPickerTarget(null)
         }}
       />

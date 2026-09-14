@@ -31,7 +31,9 @@ import {
   faChair, faLayerGroup, faSliders, faBan, faRotateLeft, faPercent, faUserTag, faArrowRightArrowLeft,
   faCashRegister, faXmark, faUtensils, faBagShopping, faCheck, faPen, faHourglassHalf, faUserGroup,
   faClock, faCircleCheck, faTriangleExclamation, faWheatAwnCircleExclamation,
+  type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
+import { categoryImage } from '@big-cms/shared/menuCategoryImages'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import {
   lineTotal, grossLineTotal, lineDiscount, checkTotals, VOID_REASONS, reconcilePendingBatch,
@@ -190,7 +192,7 @@ function LineRow({ line, now, discount, onMore }: {
             : mins !== null
               ? <StatusBadge icon={faPaperPlane} tone={URGENCY_TONE[urgency(mins)]} label={`Sent ${mins}m ago`} />
               : <StatusBadge icon={faPen} tone="warn" label="Not sent" />}
-          <StatusBadge icon={faChair} label={line.seat !== null ? `Seat ${line.seat}` : 'Table'} />
+          {line.seat !== null && <StatusBadge icon={faChair} label={`Seat ${line.seat}`} />}
           {line.course !== null && <StatusBadge icon={faLayerGroup} label={`Course ${line.course}`} />}
         </div>
       </div>
@@ -257,8 +259,6 @@ function DraftRow({ draft, locked, onRemove, onNote, onQuantity }: {
           {locked
             ? <StatusBadge icon={faHourglassHalf} tone="warn" label="Sending — waiting to hear back" />
             : <StatusBadge icon={faPen} tone="warn" label="On this device — not sent" />}
-          {draft.seat !== null && <StatusBadge icon={faChair} label={`Seat ${draft.seat}`} />}
-          {draft.course !== null && <StatusBadge icon={faLayerGroup} label={`Course ${draft.course}`} />}
         </div>
         {!locked && (
           <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.55rem', flexWrap: 'wrap' }}>
@@ -414,21 +414,92 @@ function ModifierSheet({
 }
 
 /**
- * Seats, courses, categories and the items in one — the same picker in the
- * sheet on a phone and open beside the check on a wide screen.
+ * A category as a big picture tile, the menu's first screen.
+ *
+ * Module scope, like every component here (CONTRIBUTING.md gotcha #2).
+ */
+function CategoryTile({ name, image, colour, count, icon, onClick }: {
+  name: string
+  image: string
+  colour: string
+  count: number
+  icon?: IconDefinition
+  onClick: () => void
+}) {
+  return (
+    <button type="button" onClick={onClick} style={{
+      position: 'relative', minHeight: '150px', borderRadius: '14px', overflow: 'hidden', cursor: 'pointer',
+      padding: 0, border: `2px solid ${colour}`, background: `color-mix(in srgb, ${colour} 18%, #111)`,
+      display: 'flex', alignItems: 'flex-end', textAlign: 'left', WebkitTapHighlightColor: 'transparent',
+    }}>
+      {image
+        ? <img src={image} alt="" loading="lazy" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+        : icon && <FontAwesomeIcon icon={icon} style={{ position: 'absolute', top: '1rem', right: '1rem', fontSize: '2.2rem', color: colour }} />}
+      <span style={{
+        position: 'relative', width: '100%', padding: '2rem 0.9rem 0.8rem',
+        background: 'linear-gradient(transparent, rgba(0,0,0,0.88))',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '0.5rem',
+      }}>
+        <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.35rem', color: '#fff', lineHeight: 1.1 }}>{name}</span>
+        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', whiteSpace: 'nowrap' }}>
+          {count} {count === 1 ? 'item' : 'items'}
+        </span>
+      </span>
+    </button>
+  )
+}
+
+/** One thing to tap, with its picture, or its first letter when it has none. Module scope. */
+function ItemTile({ name, image, colour, locked, onClick, children }: {
+  name: string
+  image: string
+  colour: string
+  locked: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button type="button" onClick={() => !locked && onClick()} disabled={locked} style={{
+      borderRadius: '12px', overflow: 'hidden', cursor: locked ? 'not-allowed' : 'pointer', textAlign: 'left', padding: 0,
+      backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)',
+      border: '1px solid rgba(255,255,255,0.12)', borderTop: `4px solid ${colour}`,
+      display: 'flex', flexDirection: 'column', opacity: locked ? 0.45 : 1, WebkitTapHighlightColor: 'transparent',
+    }}>
+      <span style={{
+        position: 'relative', display: 'block', width: '100%', aspectRatio: '4 / 3',
+        background: `color-mix(in srgb, ${colour} 16%, #151515)`,
+      }}>
+        {image
+          ? <img src={image} alt="" loading="lazy" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <span style={{
+              position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'var(--font-cinzel)', fontSize: '2.4rem', color: colour,
+            }}>{name.slice(0, 1)}</span>}
+      </span>
+      <span style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', padding: '0.6rem 0.75rem 0.7rem' }}>
+        <span style={{ fontSize: '1.02rem', fontWeight: 600, lineHeight: 1.25 }}>{name}</span>
+        {children}
+      </span>
+    </button>
+  )
+}
+
+/**
+ * The menu as screens (owner's request, 14 Sep 2026). First the categories as
+ * big picture tiles; tapping one opens a screen of that category's items, with
+ * a way back. Seats and courses left ordering in the same request, so a line is
+ * for the table. The same picker in the sheet on a phone and open beside the
+ * check on a wide screen.
  */
 function MenuPicker({
-  guestCount, seat, onSeat, course, onCourse,
-  categories, activeCategory, onCategory,
+  categories, counts, activeCategory, onCategory,
   items, products, hasOptions, onPick, onProduct, locked, columns,
   allergenMap, allergenControl, allergenNote,
 }: {
-  guestCount: number
-  seat: number | null
-  onSeat: (s: number | null) => void
-  course: number | null
-  onCourse: (c: number | null) => void
-  categories: { id: string; name: string }[]
+  categories: { id: string; name: string; image: string }[]
+  /** Available items per category, for the tiles. */
+  counts: Map<string, number>
+  /** '' is the category screen; a category id, or 'retail', is its items. */
   activeCategory: string
   onCategory: (id: string) => void
   items: PosMenuItem[]
@@ -443,57 +514,55 @@ function MenuPicker({
   allergenControl: React.ReactNode
   allergenNote: React.ReactNode
 }) {
-  const colourOf = new Map(categories.map((c, i) => [c.id, kindColour(i)]))
-  const tileColour = activeCategory === 'retail' ? 'var(--brand-secondary)' : (colourOf.get(activeCategory) ?? 'var(--teal)')
-  const tile: React.CSSProperties = {
-    minHeight: '92px', borderRadius: '12px', cursor: locked ? 'not-allowed' : 'pointer', textAlign: 'left',
-    padding: '0.75rem 0.9rem 0.75rem 1rem', fontFamily: 'var(--font-inter)',
-    backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--offwhite)',
-    border: '1px solid rgba(255,255,255,0.12)', borderLeft: `6px solid ${tileColour}`,
-    display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '0.35rem',
-    opacity: locked ? 0.45 : 1, WebkitTapHighlightColor: 'transparent',
+  const grid: React.CSSProperties = { display: 'grid', gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gap: '0.7rem' }
+  const empty = (text: string) => (
+    <p style={{ color: 'rgba(var(--offwhite-rgb),0.45)', fontSize: '0.95rem', gridColumn: '1 / -1' }}>{text}</p>
+  )
+
+  if (!activeCategory) {
+    return (
+      <div>
+        <SectionLabel icon={faUtensils} right={allergenControl}>Menu</SectionLabel>
+        {allergenNote}
+        <div style={grid}>
+          {categories.map((c, i) => (
+            <CategoryTile key={c.id} name={c.name} image={categoryImage(c.name, c.image)} colour={kindColour(i)}
+              count={counts.get(c.id) ?? 0} onClick={() => onCategory(c.id)} />
+          ))}
+          {/* The differentiator, one tile along from the coffee. */}
+          <CategoryTile name="Retail" image="" icon={faBagShopping} colour="var(--brand-secondary)"
+            count={products.length} onClick={() => onCategory('retail')} />
+        </div>
+      </div>
+    )
   }
+
+  const retail = activeCategory === 'retail'
+  const index = categories.findIndex(c => c.id === activeCategory)
+  const colour = retail ? 'var(--brand-secondary)' : kindColour(Math.max(index, 0))
+  const title = retail ? 'Retail' : (categories[index]?.name ?? '')
 
   return (
     <div>
-      {/* Seat is chosen once and sticks, because a waiter takes a whole
-          seat's order before moving round the table. */}
-      <SectionLabel icon={faChair}>Seat</SectionLabel>
-      <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
-        <Chip label="Table" active={seat === null} onClick={() => onSeat(null)} size="sm" />
-        {Array.from({ length: Math.max(guestCount, 4) }, (_, n) => n + 1).map(s => (
-          <Chip key={s} label={`Seat ${s}`} active={seat === s} onClick={() => onSeat(s)} size="sm" />
-        ))}
-      </div>
-
-      {/* Course paces the kitchen: starters fire, mains wait. Sticky
-          like seat, and off by default because most orders have one
-          course and nobody should have to say so. */}
-      <SectionLabel icon={faLayerGroup}>Course</SectionLabel>
-      <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
-        <Chip label="Any" active={course === null} onClick={() => onCourse(null)} size="sm" colour="#64748B" />
-        {[1, 2, 3].map(c => (
-          <Chip key={c} label={`Course ${c}`} active={course === c} onClick={() => onCourse(c)} size="sm" colour="#64748B" />
-        ))}
-      </div>
-
-      <SectionLabel icon={faUtensils} right={allergenControl}>Menu</SectionLabel>
-      {/* Wrapped, not a sideways scroll: a tab scrolled out of sight is a
-          category nobody knows is there. */}
-      <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '0.9rem' }}>
-        {categories.map((c, i) => (
-          <Chip key={c.id} label={c.name} active={activeCategory === c.id} onClick={() => onCategory(c.id)} colour={kindColour(i)} />
-        ))}
-        {/* The differentiator, one tab along from the coffee. */}
-        <Chip label="Retail" icon={faBagShopping} active={activeCategory === 'retail'} onClick={() => onCategory('retail')} colour="var(--brand-secondary)" />
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap',
+        margin: '0.9rem 0',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+          <PosButton icon={faArrowLeft} label="Categories" tone="neutral" size="sm" onClick={() => onCategory('')} />
+          <h3 style={{
+            fontFamily: 'var(--font-cinzel)', fontSize: '1.5rem', color: 'var(--offwhite)', lineHeight: 1.1,
+            borderLeft: `5px solid ${colour}`, paddingLeft: '0.6rem',
+          }}>{title}</h3>
+        </div>
+        {allergenControl}
       </div>
       {allergenNote}
 
-      {activeCategory === 'retail' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gap: '0.6rem' }}>
+      {retail ? (
+        <div style={grid}>
           {products.map(p => (
-            <button key={p.id} type="button" onClick={() => !locked && onProduct(p)} disabled={locked} style={tile}>
-              <span style={{ fontSize: '1.02rem', fontWeight: 600, lineHeight: 1.25 }}>{p.name}</span>
+            <ItemTile key={p.id} name={p.name} image={p.image} colour={colour} locked={locked} onClick={() => onProduct(p)}>
               <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '1rem', fontWeight: 700 }}>
                   {money(p.price)}{p.onSale && <span style={{ color: 'var(--brand-secondary)', fontSize: '0.8rem', marginLeft: '0.35rem' }}>on sale</span>}
@@ -506,19 +575,14 @@ function MenuPicker({
                   {p.stock} in stock
                 </span>
               </span>
-            </button>
+            </ItemTile>
           ))}
-          {products.length === 0 && (
-            <p style={{ color: 'rgba(var(--offwhite-rgb),0.45)', fontSize: '0.95rem', gridColumn: '1 / -1' }}>
-              Nothing in the retail catalogue yet.
-            </p>
-          )}
+          {products.length === 0 && empty('Nothing in the retail catalogue yet.')}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gap: '0.6rem' }}>
+        <div style={grid}>
           {items.map(i => (
-            <button key={i.id} type="button" onClick={() => !locked && onPick(i)} disabled={locked} style={tile}>
-              <span style={{ fontSize: '1.02rem', fontWeight: 600, lineHeight: 1.25 }}>{i.name}</span>
+            <ItemTile key={i.id} name={i.name} image={i.image} colour={colour} locked={locked} onClick={() => onPick(i)}>
               <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem' }}>
                 <span style={{ fontSize: '1rem', fontWeight: 700 }}>{money(i.price)}</span>
                 {hasOptions(i) && (
@@ -535,13 +599,9 @@ function MenuPicker({
                   others={allergenMap.get(i.id)?.others ?? []}
                 />
               )}
-            </button>
+            </ItemTile>
           ))}
-          {items.length === 0 && (
-            <p style={{ color: 'rgba(var(--offwhite-rgb),0.45)', fontSize: '0.95rem', gridColumn: '1 / -1' }}>
-              Nothing available in this category.
-            </p>
-          )}
+          {items.length === 0 && empty('Nothing available in this category.')}
         </div>
       )}
     </div>
@@ -597,9 +657,7 @@ export default function CheckPage() {
   // never will — it is a different catalogue with a different stock model,
   // which is the entire point of it being on the same check.
   const [category, setCategory] = useState<string>('')
-  const [course, setCourse] = useState<number | null>(null)
   const [modifierFor, setModifierFor] = useState<PosMenuItem | null>(null)
-  const [seat, setSeat] = useState<number | null>(null)
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const [moving, setMoving] = useState(false)
@@ -636,23 +694,29 @@ export default function CheckPage() {
     () => menu.categories.filter(c => menu.items.some(i => i.categoryId === c.id)),
     [menu.categories, menu.items],
   )
-  // Derived, not stored with an effect to seed it. Setting state during an
-  // effect to supply a default renders once with nothing selected and again
-  // with the default — and React flags it, because that is a cascading render
-  // for a value that was always computable.
-  const activeCategory = category || categories[0]?.id || ''
+  // '' is the category screen; a category (or 'retail') is its items. Derived
+  // rather than trusted: a category deleted while its screen is open falls
+  // back to the categories instead of an empty screen.
+  const activeCategory = category === 'retail' || categories.some(c => c.id === category) ? category : ''
 
   const shown = useMemo(
     () => menu.items.filter(i => i.categoryId === activeCategory && i.available),
     [menu.items, activeCategory],
   )
+  const counts = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const i of menu.items) if (i.available) m.set(i.categoryId, (m.get(i.categoryId) ?? 0) + 1)
+    return m
+  }, [menu.items])
 
   function addDraft(item: PosMenuItem, optionIds: string[], label: string) {
     if (draftsLocked) return
     setDrafts(d => withDraft(d, {
       source: 'menu', refId: item.id, name: item.name, unitPrice: item.price,
       quantity: 1, modifierOptionIds: optionIds, modifierLabel: label,
-      seat, course, note: '',
+      // Seats and courses are no longer taken (owner's request, 14 Sep 2026):
+      // every line is for the table.
+      seat: null, course: null, note: '',
     }))
     setModifierFor(null)
   }
@@ -664,7 +728,7 @@ export default function CheckPage() {
       // arrive with anything. The server refuses modifiers on it too.
       source: 'product', refId: p.id, name: p.name, unitPrice: p.price,
       quantity: 1, modifierOptionIds: [], modifierLabel: '',
-      seat, course: null, note: '',
+      seat: null, course: null, note: '',
     }))
   }
 
@@ -782,10 +846,8 @@ export default function CheckPage() {
 
   const picker = (columns: number) => (
     <MenuPicker
-      guestCount={check.guestCount}
-      seat={seat} onSeat={setSeat}
-      course={course} onCourse={setCourse}
       categories={categories}
+      counts={counts}
       activeCategory={activeCategory}
       onCategory={setCategory}
       items={shown}

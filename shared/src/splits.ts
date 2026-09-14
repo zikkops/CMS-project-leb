@@ -84,6 +84,56 @@ export function sharesBySeat(check: Priced): SeatShare[] {
   return out.map((s, i) => ({ ...s, usd: spread[i] / 100 }))
 }
 
+export interface PersonShare {
+  /** 1-based. */
+  person: number
+  usd: number
+  /** The lines this person pays all or part of. */
+  lineIds: string[]
+}
+
+/** Most people a bill is split between. A table of forty is a set menu, not a split. */
+export const MAX_SPLIT_PEOPLE = 40
+
+/**
+ * A bill split between any number of people, item by item (owner's request,
+ * 14 Sep 2026: choose how to split the bill, for any number of people).
+ *
+ * `assigned` maps a line to the people who had it, 1-based. A line given to
+ * nobody — or only to people outside the party — is shared by everyone. A
+ * line shared by several is divided evenly between them to the cent, the odd
+ * cents to the first of them, as splitEvenly() does. A whole-check discount is
+ * spread over everyone in proportion, and the shares add up to exactly the
+ * bill: a split can never leave a cent owed that nobody was asked for.
+ */
+export function sharesByPerson(
+  check: Priced,
+  people: number,
+  assigned: Readonly<Record<string, readonly number[]>>,
+): PersonShare[] {
+  const n = Math.floor(people)
+  if (!Number.isFinite(n) || n < 1 || n > MAX_SPLIT_PEOPLE) return []
+  const cents = new Array<number>(n).fill(0)
+  const lineIds = Array.from({ length: n }, () => [] as string[])
+  const everyone = Array.from({ length: n }, (_, i) => i + 1)
+
+  for (const l of check.lines) {
+    if (l.status === 'void') continue
+    const lineCents = toCents(lineTotal(l, check.staffDiscount))
+    const who = [...new Set((assigned[l.id] ?? []).filter(p => Number.isInteger(p) && p >= 1 && p <= n))].sort((a, b) => a - b)
+    const payers = who.length > 0 ? who : everyone
+    const base = Math.floor(lineCents / payers.length)
+    const extra = lineCents - base * payers.length
+    payers.forEach((p, i) => {
+      cents[p - 1] += base + (i < extra ? 1 : 0)
+      lineIds[p - 1].push(l.id)
+    })
+  }
+
+  const spread = spreadTo(cents, toCents(checkTotals(check).net))
+  return spread.map((c, i) => ({ person: i + 1, usd: c / 100, lineIds: lineIds[i] }))
+}
+
 /** What a chosen set of lines comes to, after any staff discount. Voided and unknown lines count for nothing. */
 export function shareForLines(check: Priced, lineIds: readonly string[]): number {
   const chosen = new Set(lineIds)

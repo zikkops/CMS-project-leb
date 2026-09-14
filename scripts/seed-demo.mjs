@@ -609,6 +609,11 @@ EOD_BUSY.forEach((busy, i) => {
   }, `end of day · ${BRANCHES[0]} · ${date}`)
 })
 
+// A photograph on every dish, for the till's menu tiles (14 Sep 2026). The
+// list is shared with seed-menu-images.mjs, which adds them to a demo seeded
+// before items had pictures.
+const { MENU_ITEM_PHOTOS, menuPhotoUrl } = await import('./menu-item-photos.mjs')
+
 MENU.forEach(([catId, catName, section, items], ci) => {
   set(`menuCategories/cat-${catId}`, {
     name: catName, section, sortOrder: ci,
@@ -620,6 +625,7 @@ MENU.forEach(([catId, catName, section, items], ci) => {
     set(`menuItems/item-${id}`, {
       name, description: '', price,
       categoryId: `cat-${catId}`, sortOrder: ii, available: true,
+      image: MENU_ITEM_PHOTOS[id] ? menuPhotoUrl(MENU_ITEM_PHOTOS[id].photo) : '',
       createdAt: FieldValue.serverTimestamp(),
     }, `menu item · ${name}`)
   })

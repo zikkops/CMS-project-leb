@@ -109,6 +109,12 @@ export interface MenuItemInput {
   categoryId: string
   badge: string
   available: boolean
+  /**
+   * The item's picture, shown on the till's menu tiles; '' removes it. Absent
+   * when the request did not send one, so an update from anything that does
+   * not know about pictures leaves the stored one alone rather than wiping it.
+   */
+  image?: string
 }
 
 export function parseMenuItemInput(body: Record<string, unknown>): MenuItemInput {
@@ -125,6 +131,8 @@ export function parseMenuItemInput(body: Record<string, unknown>): MenuItemInput
     categoryId: text(body.categoryId, 'Category', { required: true, maxLen: 128 }),
     badge: text(body.badge, 'Badge', { maxLen: 50 }),
     available: body.available !== false,
+    // Firestore refuses undefined, so the key is left out rather than set to it.
+    ...(body.image !== undefined ? { image: text(body.image, 'Image', { maxLen: 2000 }) } : {}),
   }
 }
 

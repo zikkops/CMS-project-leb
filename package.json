@@ -44,6 +44,7 @@
     "verify:export": "node scripts/verify-export.mjs",
     "seed:pos": "node --env-file=.env.local scripts/seed-pos.mjs",
     "seed:recipes": "node --env-file=.env.local scripts/seed-recipes.mjs",
+    "seed:menu-images": "node --env-file=.env.local scripts/seed-menu-images.mjs",
     "verify:backup": "node scripts/verify-backup.mjs",
     "backup": "node --env-file=.env.local scripts/backup.mjs",
     "restore": "node --env-file=.env.local scripts/restore.mjs",

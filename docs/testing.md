@@ -257,6 +257,21 @@ Milk in Supplies first.
    included.
 5. **Turn the switch off again** afterwards.
 
+### Ordering and splitting — `/pos/check/[id]`
+1. Open a table. There are no Seat or Course pickers. The menu opens on big
+   picture tiles, one per category plus Retail, each saying how many items it has.
+2. Tap a category: its items are picture tiles. **Categories** goes back.
+   An item without a picture shows its first letter.
+3. In admin, **Menu → edit an item → Picture**: upload one, or pick from the
+   library, and save. It shows on the till's tile. Saving an item without
+   touching the picture keeps it.
+4. With `payments` on, ring up a few items and open payment. **Split → Evenly**,
+   set **People** to 5 (type it, or use − and +): five shares that add up to the
+   bill to the cent.
+5. **By item**: tap 1 on one line, 2 and 3 on another, and nobody on a third.
+   Person 1 pays their line plus a share of the untapped one; 2 and 3 split
+   theirs. Tap a person to fill in their amount, then Take.
+
 ### The counter — `/pos/counter`
 The single screen built for outages.
 

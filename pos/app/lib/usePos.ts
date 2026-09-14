@@ -417,11 +417,13 @@ export interface PosMenuItem {
   section: string
   available: boolean
   modifierGroupIds: string[]
+  /** The item's picture; '' when it has none. */
+  image: string
 }
 
 export interface PosMenu {
   items: PosMenuItem[]
-  categories: { id: string; name: string; section: string }[]
+  categories: { id: string; name: string; section: string; image: string }[]
   groups: Record<string, import('@big-cms/shared/modifiers').ModifierGroup>
   loading: boolean
 }
@@ -449,6 +451,7 @@ export function usePosMenu(): PosMenu {
           id: d.id,
           name: String(d.data().name ?? ''),
           section: String(d.data().section ?? ''),
+          image: String(d.data().image ?? ''),
         })))
         setLoaded(l => ({ ...l, cats: true }))
       }, () => setLoaded(l => ({ ...l, cats: true }))),
@@ -466,6 +469,7 @@ export function usePosMenu(): PosMenu {
             available: data.available !== false,
             modifierGroupIds: Array.isArray(data.modifierGroupIds)
               ? data.modifierGroupIds as string[] : [],
+            image: typeof data.image === 'string' ? data.image : '',
           }
         }))
         setLoaded(l => ({ ...l, items: true }))
@@ -509,6 +513,8 @@ export interface PosProduct {
   onSale: boolean
   /** At this branch. May be negative if a count is behind. */
   stock: number
+  /** The product's picture; '' when it has none. */
+  image: string
 }
 
 /**
@@ -547,6 +553,7 @@ export function useRetailProducts(branch: string): { products: PosProduct[]; loa
             price: effectivePrice(priced),
             onSale: saleIsActive(priced),
             stock: Number.isFinite(stock) ? stock : 0,
+            image: typeof data.image === 'string' ? data.image : '',
           }
         }).sort((a, b) => a.name.localeCompare(b.name)))
         setLoaded(true)
