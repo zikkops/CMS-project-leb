@@ -23,12 +23,19 @@ export type Department = typeof DEPARTMENTS[number]
 
 export interface InventoryLine {
   supplyId:    string
-  name:        string
-  nameAr?:     string
-  category:    string
-  unit:        string
-  previousQty: number
   countedQty:  number | null   // null = not yet counted by the employee
+  // Everything below is read from the supply BY THE SERVER when a count is
+  // saved (14 Sep 2026). Counts saved before that carry only supplyId and
+  // countedQty — the route stored nothing else — so these are optional, and a
+  // history page has to read them with a fallback rather than render NaN.
+  name?:        string
+  nameAr?:      string
+  category?:    string
+  unit?:        string
+  /** What the system held for this branch when the count was saved: the expected figure. */
+  previousQty?: number
+  /** Average cost of one unit when counted, so a variance keeps its value. null: never costed. */
+  unitCostUsd?: number | null
 }
 
 export interface DailyInventoryReport {

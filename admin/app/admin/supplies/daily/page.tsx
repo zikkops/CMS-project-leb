@@ -436,7 +436,11 @@ function DailyInventoryInner() {
                     ) : history.filter(h => h.department === department).length === 0 ? (
                       <p style={{ color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.8rem' }}>No {department} submissions yet for this branch.</p>
                     ) : history.filter(h => h.department === department).map(h => {
-                      const discrepancies = h.items.filter(i => i.countedQty != null && i.countedQty !== i.previousQty).length
+                      // Off expected only when both figures were stored. Counts saved before
+                      // 14 Sep 2026 carry no expected figure, and comparing a count against
+                      // `undefined` used to report every counted item as changed.
+                      const discrepancies = h.items.filter(i =>
+                        i.countedQty != null && typeof i.previousQty === 'number' && i.countedQty !== i.previousQty).length
                       return (
                         <div key={h.id} style={{
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',

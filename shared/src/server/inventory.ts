@@ -294,40 +294,91 @@ export async function saveCount(caller: Caller, input: CountInput): Promise<{ id
   const db = adminDb()
   const id = inventoryDocId(input.branch, input.date, input.department)
   const ref = db.doc(`dailyInventoryCounts/${id}`)
-  const existing = await ref.get()
 
-  if (existing.exists && existing.data()?.status === 'submitted' && input.submit) {
-    throw new HttpError(409, 'That count has already been submitted.')
-  }
-
-  const batch = db.batch()
-  batch.set(ref, {
-    ...input,
-    id,
-    status: input.submit ? 'submitted' : 'draft',
-    submittedBy: existing.exists ? existing.data()?.submittedBy ?? caller.uid : caller.uid,
-    submittedByEmail: existing.exists ? existing.data()?.submittedByEmail ?? (caller.email ?? '') : (caller.email ?? ''),
-    ...(input.submit ? { submittedAt: existing.data()?.submittedAt ?? FieldValue.serverTimestamp() } : {}),
-    updatedAt: FieldValue.serverTimestamp(),
-    updatedBy: caller.uid,
-  }, { merge: false })
-
-  let applied = 0
-  if (input.submit) {
-    for (const line of input.items) {
-      if (line.countedQty == null) continue
-      // FieldPath, not the string `quantity.${branch}`. The Admin SDK parses a
-      // dotted string as a path, and `branch` arrives in a request — a value
-      // containing a dot would write to a different part of the document.
-      // Touching only this branch's key is what stops one branch's count
-      // clobbering another's.
-      batch.update(db.doc(`supplies/${line.supplyId}`),
-        new FieldPath('quantity', input.branch), line.countedQty,
-        'updatedAt', FieldValue.serverTimestamp())
-      applied++
+  // The browser names what was counted and nothing else. Everything a history
+  // page shows about a line — its name, its unit, what the system expected,
+  // what a unit cost — is read here from the supply, inside the same
+  // transaction that overwrites the stock figure.
+  //
+  // It used to take the browser's two fields and REPLACE the document with
+  // them, so every stored count carried only supplyId and countedQty while the
+  // history pages rendered a name, a unit and a "Last Count" from fields that
+  // were never saved: blank names, a difference of NaN, and every counted item
+  // reported as changed. Read against the demo project on 14 Sep 2026, the one
+  // stored count had exactly those two fields on all 18 of its lines.
+  //
+  // `previousQty` is what the system held for this branch at the moment of
+  // saving — for a submission, exactly the figure the count is about to
+  // overwrite. Counted minus that is the variance: usage since the last count,
+  // or, with the `recipes` switch deducting ingredients on sale, what sales do
+  // not explain. A transaction, so no sale can move the stock between the
+  // expected figure being read and the count replacing it.
+  return db.runTransaction(async tx => {
+    const existing = await tx.get(ref)
+    if (existing.exists && existing.data()?.status === 'submitted' && input.submit) {
+      throw new HttpError(409, 'That count has already been submitted.')
     }
-  }
 
-  await batch.commit()
-  return { id, applied }
+    const supplyIds = [...new Set(input.items.map(i => i.supplyId))]
+    const supplySnaps = supplyIds.length
+      ? await tx.getAll(...supplyIds.map(supplyId => db.doc(`supplies/${supplyId}`)))
+      : []
+    const supplies = new Map(supplySnaps.map(s => [s.id, s]))
+    if (supplyIds.some(supplyId => !supplies.get(supplyId)?.exists)) {
+      // Refused rather than stored without a name: a count line nobody can
+      // identify later is worse than asking for a reload now.
+      throw new HttpError(409, 'An item on this count no longer exists. Reload the count and try again.')
+    }
+
+    const lines = input.items.map(item => {
+      const data = supplies.get(item.supplyId)?.data() ?? {}
+      const rawQty = data.quantity
+      const held = typeof rawQty === 'number'
+        ? rawQty                                    // legacy single-number stock
+        : Number((rawQty as Record<string, unknown> | undefined)?.[input.branch] ?? 0)
+      const cost = Number(data.avgUnitCost)
+      return {
+        supplyId: item.supplyId,
+        name: String(data.name ?? ''),
+        ...(data.nameAr ? { nameAr: String(data.nameAr) } : {}),
+        category: String(data.category ?? ''),
+        unit: String(data.unit ?? ''),
+        previousQty: Number.isFinite(held) ? held : 0,
+        // What a unit cost when it was counted, so a variance valued next
+        // month does not move with the average cost.
+        unitCostUsd: Number.isFinite(cost) && cost > 0 ? cost : null,
+        countedQty: item.countedQty,
+      }
+    })
+
+    tx.set(ref, {
+      ...input,
+      items: lines,
+      id,
+      status: input.submit ? 'submitted' : 'draft',
+      submittedBy: existing.exists ? existing.data()?.submittedBy ?? caller.uid : caller.uid,
+      submittedByEmail: existing.exists ? existing.data()?.submittedByEmail ?? (caller.email ?? '') : (caller.email ?? ''),
+      ...(input.submit ? { submittedAt: existing.data()?.submittedAt ?? FieldValue.serverTimestamp() } : {}),
+      updatedAt: FieldValue.serverTimestamp(),
+      updatedBy: caller.uid,
+    })
+
+    let applied = 0
+    if (input.submit) {
+      for (const line of input.items) {
+        if (line.countedQty == null) continue
+        // FieldPath, not the string `quantity.${branch}`. The Admin SDK parses a
+        // dotted string as a path, and `branch` arrives in a request — a value
+        // containing a dot would write to a different part of the document.
+        // Touching only this branch's key is what stops one branch's count
+        // clobbering another's.
+        tx.update(db.doc(`supplies/${line.supplyId}`),
+          new FieldPath('quantity', input.branch), line.countedQty,
+          'updatedAt', FieldValue.serverTimestamp())
+        applied++
+      }
+    }
+
+    return { id, applied }
+  })
 }
