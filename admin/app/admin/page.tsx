@@ -1,34 +1,36 @@
 'use client'
 
+// The admin dashboard: every page this person can open, grouped by section.
+//
+// It reads ADMIN_NAV (shared/src/adminNav.ts), the same list the sidebar
+// reads, so the two always show the same pages — they used to be declared
+// twice and had drifted apart (owner's request, 14 Sep 2026). Each section
+// says what it is for, and splits its pages into daily use and setup.
+
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { signOut } from 'firebase/auth'
 import { auth } from '@big-cms/shared/firebase'
-import { useRequireRole, hasSectionAccess, ALL_ROLES, SECTION_ACCESS, ROLE_LABELS, type Role } from '@big-cms/shared/adminAuth'
+import { useRequireRole, hasSectionAccess, ALL_ROLES, SECTION_ACCESS, ROLE_LABELS } from '@big-cms/shared/adminAuth'
 import { useFeatureFlags } from '@big-cms/shared/useFeatures'
 import { featureForSection, isFeatureOn } from '@big-cms/shared/features'
+import { ADMIN_NAV, type AdminNavItem, type BadgeKey } from '@big-cms/shared/adminNav'
 import { usePendingTransactions } from '@big-cms/shared/loyalty'
 import { usePendingRedemptions } from '@big-cms/shared/redemptions'
 import { usePendingEventReservations } from '@big-cms/shared/eventReservations'
 import { usePendingTableReservations } from '@big-cms/shared/tableReservations'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import {
-  faCashRegister, faReceipt, faBagShopping, faUtensils, faCalendar, faCalendarCheck,
-  faCalendarDay, faUsers, faUser, faClock, faMap,
-  faClipboard, faThumbsUp, faGift, faTag, faTrophy, faUserShield,
-  faFile, faPaperPlane, faTruck, faList, faImage, faScroll, faHandshake, faStore,
-  faClockRotateLeft, faChair, faThumbtack, faGear, faXmark, faMoneyBill,
-  faClipboardCheck, faChartPie, faTriangleExclamation, faFileExport,
-  faTemperatureHalf, faShieldHalved,
-  type IconDefinition,
-} from '@fortawesome/free-solid-svg-icons'
+import { faThumbtack, faGear, faXmark, faBolt, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import { BRAND } from '@big-cms/shared/brand'
 
 // Events can be set to the literal branch "All Branches" in Manage Events —
 // always include it alongside a manager's real branchIds so those events
 // aren't missed in their badge count.
 const ALL_BRANCHES_LABEL = 'All Branches'
+
+/** A colour at a strength. color-mix works with a CSS variable, where appending hex alpha to one silently did not. */
+const tint = (color: string, pct: number) => `color-mix(in srgb, ${color} ${pct}%, transparent)`
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false)
@@ -40,6 +42,8 @@ function useIsMobile(breakpoint = 768) {
   }, [breakpoint])
   return isMobile
 }
+
+type Card = AdminNavItem & { color: string; count?: number }
 
 export default function AdminPage() {
   const router  = useRouter()
@@ -98,158 +102,41 @@ export default function AdminPage() {
   const [pinnedHrefs, setPinnedHrefs] = useState<string[]>([])
   useEffect(() => {
     if (!user?.uid) return
-    const saved = localStorage.getItem(`quickaccess-${user.uid}`)
-    if (saved) try { setPinnedHrefs(JSON.parse(saved)) } catch {}
+    try {
+      const saved = localStorage.getItem(`quickaccess-${user.uid}`)
+      if (saved) setPinnedHrefs(JSON.parse(saved))
+    } catch { /* unreadable or private mode: nothing pinned */ }
   }, [user?.uid])
 
   function togglePin(href: string) {
     setPinnedHrefs(prev => {
       const next = prev.includes(href) ? prev.filter(h => h !== href) : [...prev, href]
-      if (user?.uid) localStorage.setItem(`quickaccess-${user.uid}`, JSON.stringify(next))
+      try { if (user?.uid) localStorage.setItem(`quickaccess-${user.uid}`, JSON.stringify(next)) } catch { /* private mode */ }
       return next
     })
   }
 
-  // Every card within a section shares that section's color — the color is
-  // the grouping signal, not a per-card decoration, so it's set once here
-  // rather than picked individually for each card.
-  const sections = [
-    {
-      title: 'Product Sales',
-      color: 'var(--teal)',
-      cards: [
-        { label: 'Record a Sale',    icon: faCashRegister, daily: true,  desc: 'Process a product purchase, deduct stock, and generate an invoice', href: '/admin/products/purchase', access: SECTION_ACCESS.productPurchases },
-        { label: 'Sales & Invoices', icon: faReceipt,      daily: false, desc: 'View past sales, download invoices, and process refunds',       href: '/admin/products/invoices', access: SECTION_ACCESS.productPurchases },
-      ],
-    },
-    {
-      title: 'Content Management',
-      color: 'var(--teal)',
-      cards: [
-        { label: 'Event Reservations', icon: faCalendarCheck, daily: true,  desc: 'Approve or reject pending event spot requests',        href: '/admin/events/reservations', access: SECTION_ACCESS.events, badge: pendingEventReservations.length },
-        { label: 'Manage Products',    icon: faBagShopping,          daily: false, desc: 'Add, edit or remove products from the shop',              href: '/admin/products',               access: SECTION_ACCESS.products },
-        { label: 'Manage Menu',        icon: faUtensils,      daily: false, desc: 'Update food and drink items',                           href: '/admin/menu',                access: SECTION_ACCESS.menu },
-        { label: 'Manage Events',      icon: faCalendar,      daily: false, desc: 'Create and manage events',                             href: '/admin/events',              access: SECTION_ACCESS.events },
-      ],
-    },
-    {
-      title: 'Table Bookings',
-      color: 'var(--navy)',
-      cards: [
-        { label: "Today's Schedule",   icon: faCalendarDay, daily: true,  desc: 'All approved reservations for today — tables and events'      , href: '/admin/schedule',            access: SECTION_ACCESS.tableReservations },
-        { label: 'Table Reservations', icon: faChair,       daily: true,  desc: 'Approve or reject pending table booking requests',               href: '/admin/tables/reservations', access: SECTION_ACCESS.tableReservations, badge: pendingTableReservations.length },
-        { label: 'Table Map Editor',   icon: faMap,         daily: false, desc: 'Upload floor plans and place table markers for each branch',     href: '/admin/branches/tables',     access: SECTION_ACCESS.branchTables },
-      ],
-    },
-    {
-      title: 'Loyalty Submissions',
-      color: 'var(--navy)',
-      cards: [
-        { label: 'Event Attendance',       icon: faClipboard, daily: true, desc: 'Log event attendees to send them for manager approval',   href: '/admin/loyalty/events', access: SECTION_ACCESS.loyaltyEvents },
-      ],
-    },
-    {
-      title: 'Loyalty Approvals',
-      color: 'var(--navy)',
-      cards: [
-        { label: 'Loyalty Approvals',   icon: faThumbsUp, daily: true, desc: 'Approve or reject pending point submissions',  href: '/admin/loyalty/approvals',   access: SECTION_ACCESS.loyalty, badge: pendingLoyalty.length },
-        { label: 'Redemption Requests', icon: faGift,     daily: true, desc: 'Confirm or reject pending Point redemption requests', href: '/admin/loyalty/redemptions', access: SECTION_ACCESS.loyalty, badge: pendingRedemptions.length },
-      ],
-    },
-    {
-      title: 'Loyalty Catalog',
-      color: 'var(--navy)',
-      cards: [
-        { label: 'Redemption Items', icon: faTag,    daily: false, desc: 'Add, edit or deactivate items customers can redeem with Points',        href: '/admin/loyalty/redemption-items', access: SECTION_ACCESS.loyalty },
-        { label: 'Tier Perks',       icon: faTrophy, daily: false, desc: 'Edit the perks customers unlock at each tier, shown on the Loyalty page', href: '/admin/loyalty/perks',            access: SECTION_ACCESS.loyalty },
-      ],
-    },
-    {
-      title: 'Customer Accounts',
-      color: 'var(--navy)',
-      cards: [
-        { label: 'Manage Customers', icon: faUser,            daily: false, desc: 'Edit points, resend password resets, delete accounts, and set the annual points reset date', href: '/admin/loyalty/customers', access: ['admin'] as Role[] },
-        { label: 'Loyalty Activity', icon: faClockRotateLeft, daily: false, desc: 'Submissions, approvals, rejections, and redemption item changes',                                     href: '/admin/loyalty/activity',  access: SECTION_ACCESS.loyalty },
-      ],
-    },
-    {
-      title: 'Weekly Orders',
-      color: 'var(--teal)',
-      cards: [
-        { label: 'End of Week Order', icon: faPaperPlane, daily: true,  desc: "Fill in quantities and submit this week's stock order",             href: '/admin/weekly-orders/submit',    access: SECTION_ACCESS.weeklyOrdersSubmit },
-        { label: 'Order Reports',    icon: faFile,       daily: true,  desc: 'View all end-of-week order reports submitted by staff',             href: '/admin/weekly-orders',           access: SECTION_ACCESS.weeklyOrders },
-        { label: 'Manage Providers', icon: faTruck,      daily: false, desc: 'Add suppliers with per-branch phone numbers for WhatsApp ordering', href: '/admin/weekly-orders/providers', access: ['admin'] as Role[] },
-        { label: 'Edit Template',    icon: faList,       daily: false, desc: 'Manage orderable items, pack sizes, Arabic names, and units',      href: '/admin/weekly-orders/template',  access: ['admin'] as Role[] },
-      ],
-    },
-    {
-      title: 'Wholesale',
-      color: 'var(--purple)',
-      cards: [
-        { label: 'Wholesale Orders',   icon: faHandshake, daily: true,  desc: 'Approve or reject trade orders from shops, then email them on', href: '/admin/wholesale/orders',   access: SECTION_ACCESS.products },
-        { label: 'Wholesale Accounts', icon: faStore,     daily: false, desc: 'Create and deactivate the shop logins that can see trade pricing', href: '/admin/wholesale/accounts', access: ['admin'] as Role[] },
-      ],
-    },
-    {
-      title: 'Inventory Management',
-      color: '#6A9E5A',
-      cards: [
-        { label: 'Inventory Management', icon: faClipboard, daily: true, desc: 'Track consumable stock levels across Kitchen, Bar, and Cleaning — color alerts when items run low', href: '/admin/supplies', access: SECTION_ACCESS.supplies },
-        { label: 'Receive a Delivery', icon: faTruck, daily: true, desc: 'Book in what actually arrived against a weekly order — quantities, rejects and what it cost', href: '/admin/supplies/receiving', access: SECTION_ACCESS.deliveries },
-        { label: 'Food Cost Report', icon: faChartPie, daily: false, desc: 'Cost of goods against till sales for a period — food cost %, by branch and department', href: '/admin/supplies/receiving/report', access: SECTION_ACCESS.deliveriesReport },
-        { label: 'Daily Inventory Count', icon: faClipboardCheck, daily: true, desc: 'Count today\'s stock at your branch and submit — updates live inventory levels', href: '/admin/supplies/daily', access: SECTION_ACCESS.dailyInventory },
-        { label: 'Daily Inventory History', icon: faClockRotateLeft, daily: true, desc: 'Review every submitted and in-progress count by branch and department', href: '/admin/supplies/daily/history', access: SECTION_ACCESS.dailyInventoryHistory },
-      ],
-    },
-    {
-      title: 'End of Day',
-      color: 'var(--brand-secondary)',
-      cards: [
-        { label: 'Submit EOD Report', icon: faMoneyBill,       daily: true,  desc: 'Fill in cash count, expenses, income, and attendance for the end of shift', href: '/admin/end-of-day',          access: SECTION_ACCESS.endOfDay },
-        { label: 'EOD History',       icon: faClockRotateLeft, daily: true,  desc: 'Browse past end-of-day reports by branch',                                   href: '/admin/end-of-day/history',  access: SECTION_ACCESS.endOfDayHistory },
-        { label: 'Daily Summary',     icon: faReceipt,         daily: true,  desc: 'View daily totals and add tips — mobile-friendly for screenshots',           href: '/admin/end-of-day/summary',  access: SECTION_ACCESS.endOfDayHistory },
-        { label: 'Staff Roster',      icon: faUsers,           daily: false, desc: 'Configure the default staff list per branch for EOD attendance tracking',    href: '/admin/end-of-day/staff',    access: ['admin'] as Role[] },
-        { label: 'Sales Export',      icon: faFileExport,      daily: false, desc: 'Closed checks for a date range, with VAT and both currencies, for your accountant', href: '/admin/exports',             access: SECTION_ACCESS.endOfDay },
-      ],
-    },
-    {
-      title: 'Food Safety',
-      color: 'var(--teal)',
-      cards: [
-        { label: 'Food Safety Diary',    icon: faTemperatureHalf, daily: true,  desc: 'Opening and closing checks and fridge, freezer and hot-holding temperatures — signed each day by a manager', href: '/admin/food-safety',          access: SECTION_ACCESS.foodSafety },
-        { label: 'Allergen Chart',       icon: faTriangleExclamation, daily: true, desc: 'What each dish contains, whether that is verified, and what each option changes — for answering a customer', href: '/admin/food-safety/allergens', access: SECTION_ACCESS.foodSafety },
-        { label: 'Food Safety History',  icon: faShieldHalved,    daily: false, desc: 'Which days were signed, by whom, readings out of range and days nobody signed',                       href: '/admin/food-safety/history',  access: SECTION_ACCESS.foodSafetyReview },
-        { label: 'Food Safety Settings', icon: faGear,            daily: false, desc: 'Fridges, freezers and hot holding per branch, the checklists, limits and allergens tracked',          href: '/admin/food-safety/settings', access: SECTION_ACCESS.foodSafetyReview },
-      ],
-    },
-    {
-      title: 'Administration',
-      color: 'var(--red)',
-      cards: [
-        { label: 'Media Library', icon: faImage,      daily: false, desc: 'View and delete previously uploaded images',          href: '/admin/media', access: ALL_ROLES },
-        { label: 'Manage Users',  icon: faUserShield, daily: false, desc: 'Create accounts and set access levels',               href: '/admin/users', access: ['admin'] as Role[] },
-        { label: 'Activity Log',  icon: faScroll,     daily: false, desc: 'See who created, edited, or deleted what, and when', href: '/admin/logs',  access: ['admin'] as Role[] },
-        { label: 'What Broke',    icon: faTriangleExclamation, daily: false, desc: 'Errors the three apps reported, and how often',   href: '/admin/errors', access: ['admin'] as Role[] },
-      ],
-    },
-  ]
+  const counts: Record<BadgeKey, number> = {
+    loyaltyApprovals: pendingLoyalty.length,
+    redemptions: pendingRedemptions.length,
+    eventReservations: pendingEventReservations.length,
+    tableReservations: pendingTableReservations.length,
+  }
+
+  const sections = ADMIN_NAV
     .map(section => ({
       ...section,
-      cards: section.cards.filter(({ access }) => {
-        const key = Object.entries(SECTION_ACCESS).find(([, v]) => v === access)?.[0]
-        if (!hasSectionAccess(role, access, sectionGrants, key)) return false
-        // The dashboard is a THIRD surface. adminNav.ts already warns that its
-        // card list is declared independently of the sidebar's — so wiring the
-        // sidebar to the feature flags left the cards behind, and switching a
-        // module off hid its nav entry while leaving a card that bounced you
-        // straight back to this page.
-        //
-        // Fails open while the flags load, matching the sidebar: a card that
-        // briefly appears is better than the whole dashboard flickering empty.
-        if (featuresLoading || !key) return true
-        const feature = featureForSection(key)
-        return feature ? isFeatureOn(feature, flags) : true
-      }),
+      cards: section.items
+        .filter(({ access }) => {
+          const key = Object.entries(SECTION_ACCESS).find(([, v]) => v === access)?.[0]
+          if (!hasSectionAccess(role, access, sectionGrants, key)) return false
+          // Fails open while the flags load, matching the sidebar: a card that
+          // briefly appears is better than the whole dashboard flickering empty.
+          if (featuresLoading || !key) return true
+          const feature = featureForSection(key)
+          return feature ? isFeatureOn(feature, flags) : true
+        })
+        .map(item => ({ ...item, color: section.color, count: item.badge ? counts[item.badge] : undefined }) as Card),
     }))
     .filter(section => section.cards.length > 0)
 
@@ -264,150 +151,136 @@ export default function AdminPage() {
     )
   }
 
+  const allCards = sections.flatMap(s => s.cards)
+  const attention = allCards.filter(c => (c.count ?? 0) > 0)
+  const pinned = pinnedHrefs.map(h => allCards.find(c => c.href === h)).filter(Boolean) as Card[]
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#0d0d0d', fontFamily: 'var(--font-inter)' }}>
 
       {/* Top bar */}
-      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)', padding: isMobile ? '1rem 1.25rem' : '1rem 2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.02)', padding: isMobile ? '1rem 1.25rem' : '1rem 2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
           <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color: 'var(--offwhite)', letterSpacing: '0.05em' }}>{BRAND.shortName}</span>
-          <span style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)' }} />
-          <span style={{ fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.35)', letterSpacing: '0.05em' }}>
+          <span style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.12)' }} />
+          <span style={{ fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
             {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
           </span>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginRight: '0.25rem' }}>{user?.email}</span>
-          <Link href="/" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(var(--offwhite-rgb),0.55)', padding: '0.45rem 1rem', borderRadius: '6px', fontSize: '0.72rem', letterSpacing: '0.05em', textDecoration: 'none' }}>
+          <span style={{ fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.45)', marginRight: '0.25rem' }}>{user?.email}</span>
+          <Link href="/" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(var(--offwhite-rgb),0.75)', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.8rem', textDecoration: 'none' }}>
             View Site
           </Link>
-          <button onClick={handleSignOut} style={{ background: 'rgba(var(--red-rgb),0.08)', border: '1px solid rgba(var(--red-rgb),0.2)', color: 'rgba(var(--red-rgb),0.7)', padding: '0.45rem 1rem', borderRadius: '6px', fontSize: '0.72rem', letterSpacing: '0.05em', cursor: 'pointer' }}>
+          <button onClick={handleSignOut} style={{ background: 'rgba(var(--red-rgb),0.1)', border: '1px solid rgba(var(--red-rgb),0.35)', color: 'var(--red)', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer' }}>
             Sign Out
           </button>
         </div>
       </div>
 
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '1.5rem 1.25rem 4rem' : '2.5rem 2.5rem 5rem' }}>
+      <div style={{ maxWidth: '1240px', margin: '0 auto', padding: isMobile ? '1.5rem 1.25rem 4rem' : '2.5rem 2.5rem 5rem' }}>
 
         {/* Greeting */}
-        <div style={{ marginBottom: '2.5rem' }}>
-          <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.6rem' : '2rem', color: 'var(--offwhite)', marginBottom: '0.3rem' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.7rem' : '2.1rem', color: 'var(--offwhite)', marginBottom: '0.35rem' }}>
             {greeting}
           </h1>
-          <p style={{ fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
-            {role ? ROLE_LABELS[role] : ''} dashboard — {sections.reduce((n, s) => n + s.cards.length, 0)} tools available
+          <p style={{ fontSize: '0.92rem', color: 'rgba(var(--offwhite-rgb),0.55)' }}>
+            {role ? ROLE_LABELS[role] : ''} — {allCards.length} pages in {sections.length} sections. The same pages are in the sidebar;
+            each section says what it is for, and its <FontAwesomeIcon icon={faGear} style={{ fontSize: '0.8em' }} /> Setup pages are kept apart from daily use.
           </p>
         </div>
 
         {/* Needs Attention */}
-        {(() => {
-          const attention = sections.flatMap(s =>
-            s.cards.filter(c => c.badge && c.badge > 0).map(c => ({ ...c, color: s.color }))
-          )
-          if (attention.length === 0) return null
-          return (
-            <div style={{ marginBottom: '2.5rem', background: 'rgba(var(--red-rgb),0.06)', border: '1px solid rgba(var(--red-rgb),0.2)', borderRadius: '10px', padding: '1.25rem 1.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem' }}>
-                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'var(--red)', flexShrink: 0 }} />
-                <p style={{ fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--red)', fontWeight: 600 }}>
-                  Needs Attention
-                </p>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${Math.min(attention.length, 3)}, 1fr)`, gap: '0.75rem' }}>
-                {attention.map(card => (
-                  <a key={card.label} href={card.href} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(var(--red-rgb),0.06)', border: '1px solid rgba(var(--red-rgb),0.18)', borderRadius: '8px', padding: '0.9rem 1.1rem', textDecoration: 'none' }}>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: `${card.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <FontAwesomeIcon icon={card.icon} style={{ color: card.color, fontSize: '0.95rem' }} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.88rem', color: 'var(--offwhite)', marginBottom: '0.1rem' }}>{card.label}</p>
-                      <p style={{ fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>{card.badge} pending</p>
-                    </div>
-                    <span style={{ background: 'var(--red)', color: '#fff', borderRadius: '999px', minWidth: '26px', height: '26px', padding: '0 0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.78rem', fontWeight: 700, flexShrink: 0 }}>{card.badge}</span>
-                  </a>
-                ))}
-              </div>
+        {attention.length > 0 && (
+          <div style={{ marginBottom: '2rem', background: 'rgba(var(--red-rgb),0.07)', border: '1px solid rgba(var(--red-rgb),0.25)', borderRadius: '12px', padding: '1.1rem 1.3rem' }}>
+            <p style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--red)', fontWeight: 700, marginBottom: '0.9rem' }}>
+              <FontAwesomeIcon icon={faBolt} /> Needs attention
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${Math.min(attention.length, 3)}, 1fr)`, gap: '0.7rem' }}>
+              {attention.map(card => (
+                <Link key={card.href} href={card.href} style={{ display: 'flex', alignItems: 'center', gap: '0.9rem', background: 'rgba(var(--red-rgb),0.06)', border: '1px solid rgba(var(--red-rgb),0.2)', borderRadius: '10px', padding: '0.85rem 1rem', textDecoration: 'none' }}>
+                  <IconBlock icon={card.icon} color={card.color} size={38} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--offwhite)' }}>{card.label}</p>
+                    <p style={{ fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.55)' }}>{card.count} waiting</p>
+                  </div>
+                  <CountBadge count={card.count ?? 0} />
+                </Link>
+              ))}
             </div>
-          )
-        })()}
+          </div>
+        )}
 
         {/* Quick Access */}
-        {(() => {
-          const allCards = sections.flatMap(s => s.cards.map(c => ({ ...c, color: s.color })))
-          const pinned = pinnedHrefs.map(h => allCards.find(c => c.href === h)).filter(Boolean) as typeof allCards
-          return (
-            <div style={{ marginBottom: '2.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem' }}>
-                <FontAwesomeIcon icon={faThumbtack} style={{ fontSize: '0.6rem', color: 'rgba(var(--offwhite-rgb),0.3)' }} />
-                <p style={{ fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)', fontWeight: 600 }}>Quick Access</p>
-                <span style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.05)' }} />
-              </div>
-              {pinned.length === 0 ? (
-                <p style={{ fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.18)', fontStyle: 'italic', border: '1px dashed rgba(255,255,255,0.06)', borderRadius: '8px', padding: '1.25rem 1.5rem' }}>
-                  Pin any card below with the <FontAwesomeIcon icon={faThumbtack} style={{ margin: '0 0.3rem', fontSize: '0.7rem' }} /> icon to add it here.
-                </p>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '0.6rem' }}>
-                  {pinned.map(card => (
-                    <div key={card.href} style={{ position: 'relative' }}>
-                      <a href={card.href} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: `${card.color}0e`, border: `1px solid ${card.color}30`, borderRadius: '8px', padding: '0.75rem 1rem', textDecoration: 'none', paddingRight: '2rem' }}>
-                        <div style={{ width: '30px', height: '30px', borderRadius: '6px', background: `${card.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <FontAwesomeIcon icon={card.icon} style={{ color: card.color, fontSize: '0.8rem' }} />
-                        </div>
-                        <span style={{ fontSize: '0.78rem', color: 'var(--offwhite)', fontWeight: 500, lineHeight: 1.3 }}>{card.label}</span>
-                        {card.badge != null && card.badge > 0 && (
-                          <span style={{ marginLeft: 'auto', background: 'var(--red)', color: '#fff', borderRadius: '999px', minWidth: '18px', height: '18px', padding: '0 0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, flexShrink: 0 }}>{card.badge}</span>
-                        )}
-                      </a>
-                      <button onClick={() => togglePin(card.href)} title="Unpin" style={{ position: 'absolute', top: '0.35rem', right: '0.4rem', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(var(--offwhite-rgb),0.2)', fontSize: '0.65rem', padding: '0.2rem' }}>
-                        <FontAwesomeIcon icon={faXmark} />
-                      </button>
-                    </div>
-                  ))}
+        <div style={{ marginBottom: '2.25rem' }}>
+          <p style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.55)', fontWeight: 700, marginBottom: '0.8rem' }}>
+            <FontAwesomeIcon icon={faThumbtack} /> Quick access
+          </p>
+          {pinned.length === 0 ? (
+            <p style={{ fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.45)', border: '1px dashed rgba(255,255,255,0.12)', borderRadius: '10px', padding: '1rem 1.25rem' }}>
+              Pin the pages you use most with the <FontAwesomeIcon icon={faThumbtack} style={{ margin: '0 0.25rem' }} /> on any card below.
+            </p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '0.6rem' }}>
+              {pinned.map(card => (
+                <div key={card.href} style={{ position: 'relative' }}>
+                  <Link href={card.href} style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', background: tint(card.color, 8), border: `1px solid ${tint(card.color, 30)}`, borderRadius: '10px', padding: '0.75rem 2.2rem 0.75rem 0.9rem', textDecoration: 'none', minHeight: '56px' }}>
+                    <IconBlock icon={card.icon} color={card.color} size={32} />
+                    <span style={{ fontSize: '0.88rem', color: 'var(--offwhite)', fontWeight: 600, lineHeight: 1.3 }}>{card.label}</span>
+                    {(card.count ?? 0) > 0 && <span style={{ marginLeft: 'auto' }}><CountBadge count={card.count ?? 0} small /></span>}
+                  </Link>
+                  <button onClick={() => togglePin(card.href)} title="Unpin" aria-label={`Unpin ${card.label}`} style={{ position: 'absolute', top: '50%', right: '0.5rem', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(var(--offwhite-rgb),0.45)', fontSize: '0.8rem', padding: '0.35rem' }}>
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
                 </div>
-              )}
+              ))}
             </div>
-          )
-        })()}
+          )}
+        </div>
 
         {/* Sections */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           {sections.map(section => {
-            const dailyCards  = section.cards.filter(c => c.daily)
-            const configCards = section.cards.filter(c => !c.daily)
+            const use = section.cards.filter(c => c.kind === 'use')
+            const setup = section.cards.filter(c => c.kind === 'setup')
             return (
-              <div key={section.title}>
-                {/* Section header */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', padding: '0.55rem 1rem', background: `${section.color}0d`, border: `1px solid ${section.color}22`, borderRadius: '8px' }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: section.color, flexShrink: 0 }} />
-                  <p style={{ fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: section.color, fontWeight: 600 }}>{section.title}</p>
+              <section key={section.key}>
+                {/* What the section is FOR, before what is in it. */}
+                <div style={{
+                  display: 'flex', alignItems: 'flex-start', gap: '0.9rem', marginBottom: '0.9rem',
+                  padding: '0.9rem 1.1rem', background: tint(section.color, 8),
+                  border: `1px solid ${tint(section.color, 28)}`, borderLeft: `4px solid ${section.color}`, borderRadius: '10px',
+                }}>
+                  <IconBlock icon={section.icon} color={section.color} size={42} />
+                  <div>
+                    <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.15rem', color: 'var(--offwhite)', marginBottom: '0.2rem' }}>{section.title}</h2>
+                    <p style={{ fontSize: '0.9rem', color: 'rgba(var(--offwhite-rgb),0.7)', lineHeight: 1.5 }}>{section.purpose}</p>
+                  </div>
                 </div>
 
-                {dailyCards.length > 0 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '0.6rem', marginBottom: configCards.length > 0 ? '0.5rem' : 0 }}>
-                    {dailyCards.map(card => (
-                      <DashboardCard key={card.label} {...card} color={section.color} pinned={pinnedHrefs.includes(card.href)} onTogglePin={() => togglePin(card.href)} />
-                    ))}
-                  </div>
-                )}
-
-                {configCards.length > 0 && (
+                {use.length > 0 && (
                   <>
-                    {dailyCards.length > 0 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.6rem 0' }}>
-                        <FontAwesomeIcon icon={faGear} style={{ fontSize: '0.55rem', color: 'rgba(var(--offwhite-rgb),0.15)' }} />
-                        <span style={{ fontSize: '0.58rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.15)' }}>Configure</span>
-                        <span style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.04)' }} />
-                      </div>
-                    )}
+                    {setup.length > 0 && <GroupLabel>Daily use</GroupLabel>}
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '0.6rem' }}>
-                      {configCards.map(card => (
-                        <DashboardCard key={card.label} {...card} color={section.color} pinned={pinnedHrefs.includes(card.href)} onTogglePin={() => togglePin(card.href)} />
+                      {use.map(card => (
+                        <DashboardCard key={card.href} card={card} pinned={pinnedHrefs.includes(card.href)} onTogglePin={() => togglePin(card.href)} />
                       ))}
                     </div>
                   </>
                 )}
-              </div>
+
+                {setup.length > 0 && (
+                  <>
+                    <GroupLabel icon={faGear}>Setup — configure {section.title.toLowerCase()}</GroupLabel>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '0.6rem' }}>
+                      {setup.map(card => (
+                        <DashboardCard key={card.href} card={card} setup pinned={pinnedHrefs.includes(card.href)} onTogglePin={() => togglePin(card.href)} />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </section>
             )
           })}
         </div>
@@ -417,73 +290,73 @@ export default function AdminPage() {
   )
 }
 
-function DashboardCard({ label, desc, href, color, badge, icon, daily, pinned, onTogglePin }: {
-  label: string
-  desc: string
-  href: string
-  color: string
-  badge?: number
-  icon: IconDefinition
-  daily: boolean
+// ── Module scope — see CONTRIBUTING.md gotcha #2 ──────────────────────────
+
+function IconBlock({ icon, color, size }: { icon: IconDefinition; color: string; size: number }) {
+  return (
+    <div style={{ width: `${size}px`, height: `${size}px`, borderRadius: '9px', background: tint(color, 20), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <FontAwesomeIcon icon={icon} style={{ color, fontSize: `${Math.round(size * 0.42)}px` }} />
+    </div>
+  )
+}
+
+function CountBadge({ count, small }: { count: number; small?: boolean }) {
+  return (
+    <span style={{ background: 'var(--red)', color: '#fff', borderRadius: '999px', minWidth: small ? '22px' : '28px', height: small ? '22px' : '28px', padding: '0 0.45rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: small ? '0.75rem' : '0.85rem', fontWeight: 700, flexShrink: 0 }}>
+      {count}
+    </span>
+  )
+}
+
+function GroupLabel({ children, icon }: { children: React.ReactNode; icon?: IconDefinition }) {
+  return (
+    <p style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.55)', fontWeight: 700, margin: '0.9rem 0 0.5rem 0.2rem' }}>
+      {icon && <FontAwesomeIcon icon={icon} />}{children}
+    </p>
+  )
+}
+
+function DashboardCard({ card, setup, pinned, onTogglePin }: {
+  card: Card
+  setup?: boolean
   pinned: boolean
   onTogglePin: () => void
 }) {
   const [hovered, setHovered] = useState(false)
+  const { color } = card
   return (
-    <a
-      href={href}
+    <Link
+      href={card.href}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        position: 'relative',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.75rem',
-        background: hovered ? `${color}14` : 'rgba(255,255,255,0.025)',
-        border: `1px solid ${hovered ? `${color}45` : 'rgba(255,255,255,0.07)'}`,
-        borderRadius: '8px',
-        padding: '0.85rem 1rem',
-        textDecoration: 'none',
-        transition: 'all 0.18s ease',
-        transform: hovered ? 'translateY(-1px)' : 'none',
-        boxShadow: hovered ? `0 4px 16px ${color}15` : 'none',
-        opacity: daily ? 1 : hovered ? 1 : 0.6,
-        paddingRight: '2.2rem',
+        position: 'relative', display: 'flex', alignItems: 'center', gap: '0.8rem',
+        background: hovered ? tint(color, 12) : setup ? 'rgba(255,255,255,0.015)' : 'rgba(255,255,255,0.035)',
+        border: `1px ${setup ? 'dashed' : 'solid'} ${hovered ? tint(color, 55) : 'rgba(255,255,255,0.12)'}`,
+        borderRadius: '10px', padding: '0.9rem 2.4rem 0.9rem 1rem', minHeight: '72px',
+        textDecoration: 'none', transition: 'background 0.15s ease, border-color 0.15s ease',
       }}
     >
-      {/* Icon block */}
-      <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: hovered ? `${color}28` : `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.18s' }}>
-        <FontAwesomeIcon icon={icon} style={{ color, fontSize: '0.9rem', width: '0.9rem' }} />
-      </div>
-
-      {/* Text */}
+      <IconBlock icon={card.icon} color={color} size={38} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.82rem', color: 'var(--offwhite)', marginBottom: '0.15rem', lineHeight: 1.2 }}>{label}</h2>
-        <p style={{ fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.35)', lineHeight: 1.4 }}>{desc}</p>
+        <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--offwhite)', marginBottom: '0.2rem', lineHeight: 1.25 }}>{card.label}</h3>
+        <p style={{ fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.55)', lineHeight: 1.4 }}>{card.desc}</p>
       </div>
-
-      {/* Badge */}
-      {!!badge && badge > 0 && (
-        <span style={{ background: 'var(--red)', color: '#fff', borderRadius: '999px', minWidth: '22px', height: '22px', padding: '0 0.35rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, flexShrink: 0, border: '2px solid #0d0d0d' }}>
-          {badge}
-        </span>
-      )}
-
-      {/* Pin */}
+      {(card.count ?? 0) > 0 && <CountBadge count={card.count ?? 0} />}
       <button
         onClick={e => { e.preventDefault(); e.stopPropagation(); onTogglePin() }}
         title={pinned ? 'Remove from Quick Access' : 'Pin to Quick Access'}
+        aria-label={pinned ? `Unpin ${card.label}` : `Pin ${card.label}`}
         style={{
-          position: 'absolute', top: '0.6rem', right: '0.7rem',
-          background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem',
-          color: pinned ? color : hovered ? 'rgba(var(--offwhite-rgb),0.2)' : 'transparent',
-          fontSize: '0.7rem', lineHeight: 1,
-          transform: pinned ? 'rotate(-45deg)' : 'none',
-          transition: 'color 0.15s, transform 0.15s',
+          position: 'absolute', top: '0.5rem', right: '0.55rem',
+          background: 'none', border: 'none', cursor: 'pointer', padding: '0.3rem',
+          color: pinned ? color : hovered ? 'rgba(var(--offwhite-rgb),0.5)' : 'rgba(var(--offwhite-rgb),0.2)',
+          fontSize: '0.8rem', lineHeight: 1,
+          transform: pinned ? 'rotate(-45deg)' : 'none', transition: 'color 0.15s, transform 0.15s',
         }}
       >
         <FontAwesomeIcon icon={faThumbtack} />
       </button>
-    </a>
+    </Link>
   )
 }

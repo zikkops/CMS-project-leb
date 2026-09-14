@@ -1,22 +1,37 @@
 'use client'
 
+// The admin frame: the sidebar, and the guide strip at the top of every page.
+//
+// Both read ADMIN_NAV (shared/src/adminNav.ts) — the same list the dashboard
+// reads, so the sidebar and the dashboard always show the same pages
+// (owner's request, 14 Sep 2026). Each section's setup pages sit under their
+// own "Setup" heading, and every page opens with what its section is for and
+// where that section is configured.
+
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'firebase/auth'
 import { auth } from '@big-cms/shared/firebase'
 import { useAdminUser, hasSectionAccess, ROLE_LABELS, SECTION_ACCESS, type Role } from '@big-cms/shared/adminAuth'
-import { ADMIN_NAV } from '@big-cms/shared/adminNav'
+import { ADMIN_NAV, sectionForPath, type AdminNavSection, type AdminNavItem } from '@big-cms/shared/adminNav'
 import { useFeatureFlags } from '@big-cms/shared/useFeatures'
 import { featureForSection, isFeatureOn } from '@big-cms/shared/features'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faBars, faChevronLeft, faChevronRight, faXmark, faRightFromBracket } from '@fortawesome/free-solid-svg-icons'
+import {
+  faBars, faChevronLeft, faChevronRight, faXmark, faRightFromBracket, faGear, faHouse,
+  faGlobe, faCircleQuestion, faChevronDown, faChevronUp,
+} from '@fortawesome/free-solid-svg-icons'
 import { BRAND } from '@big-cms/shared/brand'
 
 const COLLAPSE_KEY = 'admin_sidebar_collapsed'
-const EXPANDED_W = 252
-const COLLAPSED_W = 64
+const GUIDE_KEY = 'admin_guide_hidden'
+const EXPANDED_W = 268
+const COLLAPSED_W = 68
 const MOBILE_BAR_H = 56
+
+/** A colour at a strength, for tints. color-mix works with a CSS variable, where appending hex alpha to one silently did not. */
+const tint = (color: string, pct: number) => `color-mix(in srgb, ${color} ${pct}%, transparent)`
 
 function useIsMobile(bp = 880) {
   const [v, setV] = useState(false)
@@ -27,38 +42,159 @@ function useIsMobile(bp = 880) {
   return v
 }
 
+// Module scope — see CONTRIBUTING.md gotcha #2.
+function NavLink({ item, color, active, compact }: { item: AdminNavItem; color: string; active: boolean; compact: boolean }) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <Link
+      href={item.href}
+      title={compact ? `${item.label} — ${item.desc}` : item.desc}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '0.65rem',
+        justifyContent: compact ? 'center' : 'flex-start',
+        padding: compact ? '0.55rem 0' : '0.5rem 0.65rem',
+        borderRadius: '6px',
+        backgroundColor: active ? tint(color, 16) : hovered ? 'rgba(255,255,255,0.05)' : 'transparent',
+        color: active || hovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.68)',
+        borderLeft: !compact ? `3px solid ${active ? color : 'transparent'}` : 'none',
+        textDecoration: 'none', fontFamily: 'var(--font-inter)', fontSize: '0.86rem',
+        fontWeight: active ? 600 : 400, whiteSpace: 'nowrap', overflow: 'hidden',
+        transition: 'background-color 0.15s ease, color 0.15s ease',
+      }}
+    >
+      <FontAwesomeIcon icon={item.icon} style={{
+        width: '1rem', flexShrink: 0, fontSize: compact ? '1rem' : '0.9rem',
+        color: active || hovered ? color : tint(color, 75),
+      }} />
+      {!compact && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>}
+    </Link>
+  )
+}
+
+/** What this section is for, what this page does, and where the section is set up. */
+function GuideStrip({ section, item, setupItems, hidden, onToggle, isMobile }: {
+  section: AdminNavSection
+  item: AdminNavItem
+  setupItems: AdminNavItem[]
+  hidden: boolean
+  onToggle: () => void
+  isMobile: boolean
+}) {
+  const others = setupItems.filter(s => s.href !== item.href)
+  if (hidden) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: isMobile ? '0.4rem 1rem 0' : '0.5rem 2rem 0' }}>
+        <button type="button" onClick={onToggle} style={{
+          display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer',
+          background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '999px',
+          color: 'rgba(var(--offwhite-rgb),0.55)', fontFamily: 'var(--font-inter)', fontSize: '0.75rem',
+          padding: '0.3rem 0.75rem',
+        }}>
+          <FontAwesomeIcon icon={faCircleQuestion} style={{ color: section.color }} />
+          About {section.title}
+          <FontAwesomeIcon icon={faChevronDown} />
+        </button>
+      </div>
+    )
+  }
+  return (
+    <div style={{
+      margin: isMobile ? '0.75rem 1rem 0' : '1rem 2rem 0',
+      padding: isMobile ? '0.85rem 0.95rem' : '0.95rem 1.2rem',
+      borderRadius: '10px', fontFamily: 'var(--font-inter)',
+      background: tint(section.color, 8), border: `1px solid ${tint(section.color, 30)}`,
+      borderLeft: `4px solid ${section.color}`,
+      display: 'flex', gap: '0.9rem', alignItems: 'flex-start', flexWrap: isMobile ? 'wrap' : 'nowrap',
+    }}>
+      <div style={{
+        width: '40px', height: '40px', borderRadius: '10px', flexShrink: 0,
+        background: tint(section.color, 20), display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <FontAwesomeIcon icon={section.icon} style={{ color: section.color, fontSize: '1.05rem' }} />
+      </div>
+
+      <div style={{ flex: '1 1 18rem', minWidth: 0 }}>
+        <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: section.color, marginBottom: '0.15rem' }}>
+          {section.title}
+          <span style={{ color: 'rgba(var(--offwhite-rgb),0.45)', fontWeight: 600 }}>
+            {' · '}{item.kind === 'setup' ? 'Setup' : 'Daily use'}
+          </span>
+        </p>
+        <p style={{ fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.85)', lineHeight: 1.5 }}>{section.purpose}</p>
+        <p style={{ fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.6)', lineHeight: 1.5, marginTop: '0.2rem' }}>
+          <strong style={{ color: 'var(--offwhite)', fontWeight: 600 }}>This page:</strong> {item.desc}
+        </p>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'flex-start' : 'flex-end', gap: '0.45rem', flex: isMobile ? '1 1 100%' : '0 1 auto' }}>
+        {others.length > 0 && (
+          <>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
+              <FontAwesomeIcon icon={faGear} /> Set up {section.title}
+            </span>
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
+              {others.map(s => (
+                <Link key={s.href} href={s.href} title={s.desc} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap',
+                  padding: '0.35rem 0.7rem', borderRadius: '999px', textDecoration: 'none',
+                  fontSize: '0.8rem', color: 'var(--offwhite)',
+                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.14)',
+                }}>
+                  <FontAwesomeIcon icon={s.icon} style={{ color: section.color }} />{s.label}
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+        <button type="button" onClick={onToggle} style={{
+          display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer',
+          background: 'transparent', border: 'none', color: 'rgba(var(--offwhite-rgb),0.45)',
+          fontFamily: 'var(--font-inter)', fontSize: '0.75rem', padding: '0.15rem 0',
+        }}>
+          Hide <FontAwesomeIcon icon={faChevronUp} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const isMobile = useIsMobile()
-  const { user, role, loading } = useAdminUser()
+  const { user, role, loading, sectionGrants, sectionRevocations } = useAdminUser()
 
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [hydrated, setHydrated] = useState(false)
-
-  // Hover tracking — inline styles can't express :hover, so every interactive
-  // element in this sidebar is lit via onMouseEnter/onMouseLeave state,
-  // matching the pattern Navbar.tsx already uses for its own nav links.
-  const [hoveredHref, setHoveredHref] = useState<string | null>(null)
-  const [logoHovered, setLogoHovered] = useState(false)
-  const [toggleHovered, setToggleHovered] = useState(false)
-  const [viewSiteHovered, setViewSiteHovered] = useState(false)
+  const [guideHidden, setGuideHidden] = useState(false)
   const [signOutHovered, setSignOutHovered] = useState(false)
 
-  // Read the persisted collapse preference after mount only — reading
-  // localStorage during the initial render would make the server-rendered
-  // and first-client-rendered markup disagree (hydration mismatch).
+  // Read the persisted preferences after mount only — reading localStorage
+  // during the initial render would make the server-rendered and
+  // first-client-rendered markup disagree (hydration mismatch).
   useEffect(() => {
-    const stored = window.localStorage.getItem(COLLAPSE_KEY)
-    if (stored === '1') setCollapsed(true)
+    try {
+      if (window.localStorage.getItem(COLLAPSE_KEY) === '1') setCollapsed(true)
+      if (window.localStorage.getItem(GUIDE_KEY) === '1') setGuideHidden(true)
+    } catch { /* private mode: defaults */ }
     setHydrated(true)
   }, [])
 
   function toggleCollapsed() {
     setCollapsed(prev => {
       const next = !prev
-      window.localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0')
+      try { window.localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0') } catch { /* private mode */ }
+      return next
+    })
+  }
+
+  function toggleGuide() {
+    setGuideHidden(prev => {
+      const next = !prev
+      try { window.localStorage.setItem(GUIDE_KEY, next ? '1' : '0') } catch { /* private mode */ }
       return next
     })
   }
@@ -91,10 +227,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   // reference equality — every item passes SECTION_ACCESS.xxx directly, so the
   // array object is the same one. Same trick useRequireRole() uses to find its
   // section key.
-  function itemEnabled(access: Role[]): boolean {
-    if (featuresLoading) return true          // fail open while unknown
+  function itemVisible(access: Role[]): boolean {
     const sectionKey = Object.entries(SECTION_ACCESS).find(([, v]) => v === access)?.[0]
-    if (!sectionKey) return true              // not a section — nothing to gate
+    // Section grants and revocations count, the same as on the dashboard — a
+    // barista granted the stock count must see its link.
+    if (!hasSectionAccess(role, access, sectionGrants, sectionKey, sectionRevocations)) return false
+    if (featuresLoading || !sectionKey) return true   // fail open while unknown; not a section — nothing to gate
     const feature = featureForSection(sectionKey)
     return feature ? isFeatureOn(feature, flags) : true
   }
@@ -102,176 +240,143 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   // Resolve once role/loading is known — before then, render no nav items
   // rather than briefly flashing the full unfiltered list.
   const visibleSections = (loading || !user) ? [] : ADMIN_NAV
-    .map(section => ({
-      ...section,
-      items: section.items.filter(it => hasSectionAccess(role, it.access) && itemEnabled(it.access)),
-    }))
+    .map(section => ({ ...section, items: section.items.filter(it => itemVisible(it.access)) }))
     .filter(section => section.items.length > 0)
 
+  const compact = collapsed && !isMobile
   const sidebarWidth = collapsed ? COLLAPSED_W : EXPANDED_W
+
+  // The guide for the page being shown — not on the dashboard, which is the
+  // guide to everything already.
+  const here = pathname === '/admin' || !user ? null : sectionForPath(pathname)
+  const hereSection = here ? visibleSections.find(s => s.key === here.section.key) : undefined
 
   const navContent = (
     <>
       <div style={{
         display: 'flex', alignItems: 'center',
-        justifyContent: collapsed && !isMobile ? 'center' : 'space-between',
-        padding: collapsed && !isMobile ? '1.1rem 0' : '1.1rem 1.1rem 1.1rem 1.4rem',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        flexShrink: 0,
+        justifyContent: compact ? 'center' : 'space-between',
+        padding: compact ? '1.1rem 0' : '1.05rem 1rem 1.05rem 1.25rem',
+        borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0,
       }}>
-        {(!collapsed || isMobile) && (
-          <Link
-            href="/admin"
-            onMouseEnter={() => setLogoHovered(true)}
-            onMouseLeave={() => setLogoHovered(false)}
-            style={{
-              fontFamily: 'var(--font-cinzel)', fontSize: '1.05rem',
-              color: logoHovered ? 'var(--teal)' : 'var(--offwhite)',
-              textDecoration: 'none', letterSpacing: '0.02em',
-              transition: 'color 0.18s ease',
-            }}>{BRAND.shortName} CMS</Link>
+        {!compact && (
+          <Link href="/admin" style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.55rem',
+            fontFamily: 'var(--font-cinzel)', fontSize: '1.05rem', color: 'var(--offwhite)',
+            textDecoration: 'none', letterSpacing: '0.02em',
+          }}><FontAwesomeIcon icon={faHouse} style={{ color: 'var(--teal)', fontSize: '0.9rem' }} />{BRAND.shortName} CMS</Link>
         )}
         {isMobile ? (
           <button onClick={() => setMobileOpen(false)} aria-label="Close menu" style={{
-            background: 'transparent', border: 'none', color: 'rgba(var(--offwhite-rgb),0.5)',
-            cursor: 'pointer', padding: '0.3rem', fontSize: '1rem',
+            background: 'transparent', border: 'none', color: 'rgba(var(--offwhite-rgb),0.6)',
+            cursor: 'pointer', padding: '0.4rem', fontSize: '1.1rem',
           }}>
             <FontAwesomeIcon icon={faXmark} />
           </button>
         ) : (
-          <button
-            onClick={toggleCollapsed}
-            onMouseEnter={() => setToggleHovered(true)}
-            onMouseLeave={() => setToggleHovered(false)}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            style={{
-              background: toggleHovered ? 'rgba(var(--teal-rgb),0.18)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${toggleHovered ? 'rgba(var(--teal-rgb),0.4)' : 'rgba(255,255,255,0.08)'}`,
-              color: toggleHovered ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.55)',
-              cursor: 'pointer', width: '26px', height: '26px',
-              borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '0.7rem', flexShrink: 0,
-              transform: toggleHovered ? 'scale(1.08)' : 'scale(1)',
-              transition: 'all 0.18s ease',
-            }}>
+          <button onClick={toggleCollapsed} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} style={{
+            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+            color: 'rgba(var(--offwhite-rgb),0.65)', cursor: 'pointer', width: '30px', height: '30px',
+            borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '0.75rem', flexShrink: 0,
+          }}>
             <FontAwesomeIcon icon={collapsed ? faChevronRight : faChevronLeft} />
           </button>
         )}
       </div>
 
-      <nav style={{ flex: 1, overflowY: 'auto', padding: collapsed && !isMobile ? '0.75rem 0.4rem' : '0.75rem 0.75rem' }}>
-        {visibleSections.map(section => (
-          <div key={section.title} style={{ marginBottom: '1.1rem' }}>
-            {(!collapsed || isMobile) ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0 0.5rem', marginBottom: '0.4rem' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: section.color, flexShrink: 0 }} />
-                <p style={{
-                  fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase',
-                  color: section.color, fontFamily: 'var(--font-inter)', fontWeight: 600,
-                }}>{section.title}</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.4rem' }} title={section.title}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: section.color }} />
-              </div>
-            )}
+      <nav style={{ flex: 1, overflowY: 'auto', padding: compact ? '0.75rem 0.45rem' : '0.75rem 0.7rem' }}>
+        {/* The dashboard first, always — the one link every role has. */}
+        <div style={{ marginBottom: '0.9rem' }}>
+          <NavLink
+            item={{ label: 'Dashboard', href: '/admin', access: [], icon: faHouse, desc: 'Everything you can open, grouped by section.', kind: 'use' }}
+            color="var(--teal)" active={pathname === '/admin'} compact={compact}
+          />
+        </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-              {section.items.map(item => {
-                const active = isActive(item.href)
-                const hovered = hoveredHref === item.href
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    title={item.label}
-                    onMouseEnter={() => setHoveredHref(item.href)}
-                    onMouseLeave={() => setHoveredHref(null)}
-                    style={{
-                      display: 'flex', alignItems: 'center',
-                      justifyContent: collapsed && !isMobile ? 'center' : 'flex-start',
-                      padding: collapsed && !isMobile ? '0.5rem 0' : '0.55rem 0.6rem',
-                      borderRadius: '3px',
-                      backgroundColor: active ? 'rgba(255,255,255,0.06)' : hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
-                      color: active || hovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.5)',
-                      borderLeft: active && (!collapsed || isMobile) ? `2px solid ${section.color}` : '2px solid transparent',
-                      textDecoration: 'none',
-                      fontFamily: 'var(--font-inter)',
-                      fontSize: '0.78rem',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      transform: hovered && (!collapsed || isMobile) ? 'translateX(3px)' : 'translateX(0)',
-                      transition: 'background-color 0.18s ease, color 0.18s ease, transform 0.18s ease',
-                    }}
-                  >
-                    {collapsed && !isMobile ? (
-                      <span style={{
-                        width: '28px', height: '28px', borderRadius: '50%',
-                        backgroundColor: active ? section.color : hovered ? `${section.color}55` : 'rgba(255,255,255,0.06)',
-                        color: active || hovered ? '#fff' : 'rgba(var(--offwhite-rgb),0.6)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '0.7rem', fontFamily: 'var(--font-cinzel)', flexShrink: 0,
-                        transform: hovered ? 'scale(1.14)' : 'scale(1)',
-                        boxShadow: hovered ? `0 0 0 3px ${section.color}25` : 'none',
-                        transition: 'all 0.18s ease',
-                      }}>{item.label.charAt(0)}</span>
-                    ) : (
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
-                    )}
-                  </Link>
-                )
-              })}
+        {visibleSections.map(section => {
+          const use = section.items.filter(i => i.kind === 'use')
+          const setup = section.items.filter(i => i.kind === 'setup')
+          return (
+            <div key={section.key} style={{ marginBottom: '1.05rem' }}>
+              {compact ? (
+                <div title={`${section.title} — ${section.purpose}`} style={{ display: 'flex', justifyContent: 'center', margin: '0.2rem 0 0.35rem' }}>
+                  <span style={{ width: '26px', height: '3px', borderRadius: '2px', background: section.color }} />
+                </div>
+              ) : (
+                <div title={section.purpose} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0 0.55rem', marginBottom: '0.35rem' }}>
+                  <FontAwesomeIcon icon={section.icon} style={{ color: section.color, fontSize: '0.75rem', width: '0.9rem' }} />
+                  <p style={{
+                    fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase',
+                    color: section.color, fontFamily: 'var(--font-inter)', fontWeight: 700,
+                  }}>{section.title}</p>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                {use.map(item => (
+                  <NavLink key={item.href} item={item} color={section.color} active={isActive(item.href)} compact={compact} />
+                ))}
+              </div>
+
+              {setup.length > 0 && (
+                <>
+                  {!compact && (
+                    <p style={{
+                      display: 'flex', alignItems: 'center', gap: '0.35rem',
+                      fontSize: '0.64rem', letterSpacing: '0.12em', textTransform: 'uppercase',
+                      color: 'rgba(var(--offwhite-rgb),0.4)', fontFamily: 'var(--font-inter)', fontWeight: 600,
+                      padding: '0.4rem 0.65rem 0.15rem 1.9rem',
+                    }}>
+                      <FontAwesomeIcon icon={faGear} style={{ fontSize: '0.6rem' }} /> Setup
+                    </p>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                    {setup.map(item => (
+                      <NavLink key={item.href} item={item} color={section.color} active={isActive(item.href)} compact={compact} />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </nav>
 
       <div style={{
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        padding: collapsed && !isMobile ? '0.9rem 0.4rem' : '0.9rem 1rem',
-        flexShrink: 0,
+        borderTop: '1px solid rgba(255,255,255,0.07)',
+        padding: compact ? '0.9rem 0.45rem' : '0.9rem 1rem', flexShrink: 0,
       }}>
-        {(!collapsed || isMobile) && user && (
+        {!compact && user && (
           <p style={{
-            fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.3)',
+            fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.45)',
             marginBottom: '0.6rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
             {user.email} · {role ? ROLE_LABELS[role] : ''}
           </p>
         )}
-        <div style={{ display: 'flex', flexDirection: collapsed && !isMobile ? 'column' : 'row', gap: '0.5rem' }}>
-          <Link
-            href="/"
-            title="View Site"
-            onMouseEnter={() => setViewSiteHovered(true)}
-            onMouseLeave={() => setViewSiteHovered(false)}
+        <div style={{ display: 'flex', flexDirection: compact ? 'column' : 'row', gap: '0.5rem' }}>
+          <Link href="/" title="View Site" style={{
+            flex: compact ? undefined : 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+            border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(var(--offwhite-rgb),0.7)',
+            padding: '0.55rem', borderRadius: '6px', fontSize: '0.78rem', textDecoration: 'none',
+            fontFamily: 'var(--font-inter)',
+          }}>
+            <FontAwesomeIcon icon={faGlobe} />{!compact && 'View Site'}
+          </Link>
+          <button onClick={handleSignOut} title="Sign Out"
+            onMouseEnter={() => setSignOutHovered(true)} onMouseLeave={() => setSignOutHovered(false)}
             style={{
-              flex: collapsed && !isMobile ? undefined : 1,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: `1px solid ${viewSiteHovered ? 'rgba(var(--teal-rgb),0.4)' : 'rgba(255,255,255,0.1)'}`,
-              color: viewSiteHovered ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.5)',
-              backgroundColor: viewSiteHovered ? 'rgba(var(--teal-rgb),0.08)' : 'transparent',
-              padding: '0.5rem', borderRadius: '2px', fontSize: '0.68rem',
-              letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'none',
-              fontFamily: 'var(--font-inter)', transition: 'all 0.18s ease',
-            }}>{collapsed && !isMobile ? '🏠' : 'View Site'}</Link>
-          <button
-            onClick={handleSignOut}
-            title="Sign Out"
-            onMouseEnter={() => setSignOutHovered(true)}
-            onMouseLeave={() => setSignOutHovered(false)}
-            style={{
-              flex: collapsed && !isMobile ? undefined : 1,
+              flex: compact ? undefined : 1,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
-              border: `1px solid ${signOutHovered ? 'rgba(var(--red-rgb),0.6)' : 'rgba(var(--red-rgb),0.25)'}`,
+              border: `1px solid ${signOutHovered ? 'var(--red)' : 'rgba(var(--red-rgb),0.35)'}`,
               color: signOutHovered ? '#fff' : 'var(--red)',
               backgroundColor: signOutHovered ? 'var(--red)' : 'transparent',
-              padding: '0.5rem', borderRadius: '2px', fontSize: '0.68rem',
-              letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
-              fontFamily: 'var(--font-inter)', transition: 'all 0.18s ease',
+              padding: '0.55rem', borderRadius: '6px', fontSize: '0.78rem', cursor: 'pointer',
+              fontFamily: 'var(--font-inter)', transition: 'all 0.15s ease',
             }}>
-            <FontAwesomeIcon icon={faRightFromBracket} style={{ fontSize: '0.7rem' }} />
-            {(!collapsed || isMobile) && 'Sign Out'}
+            <FontAwesomeIcon icon={faRightFromBracket} />{!compact && 'Sign Out'}
           </button>
         </div>
       </div>
@@ -287,7 +392,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           position: 'fixed', top: 0, left: 0, bottom: 0,
           width: `${sidebarWidth}px`,
           backgroundColor: '#0a0a0a',
-          borderRight: '1px solid rgba(255,255,255,0.06)',
+          borderRight: '1px solid rgba(255,255,255,0.07)',
           display: 'flex', flexDirection: 'column',
           zIndex: 40,
           transition: hydrated ? 'width 0.2s ease' : 'none',
@@ -303,14 +408,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           position: 'fixed', top: 0, left: 0, right: 0, height: `${MOBILE_BAR_H}px`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 1.2rem',
-          backgroundColor: 'rgba(5,5,5,0.97)', borderBottom: '1px solid rgba(255,255,255,0.06)',
+          backgroundColor: 'rgba(5,5,5,0.97)', borderBottom: '1px solid rgba(255,255,255,0.07)',
           zIndex: 50,
         }}>
           <Link href="/admin" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.95rem', color: 'var(--offwhite)', textDecoration: 'none' }}>
             {BRAND.shortName} CMS
           </Link>
           <button onClick={() => setMobileOpen(true)} aria-label="Open menu" style={{
-            background: 'transparent', border: 'none', color: 'var(--offwhite)', cursor: 'pointer', fontSize: '1.1rem', padding: '0.3rem',
+            background: 'transparent', border: 'none', color: 'var(--offwhite)', cursor: 'pointer', fontSize: '1.2rem', padding: '0.4rem',
           }}>
             <FontAwesomeIcon icon={faBars} />
           </button>
@@ -329,7 +434,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              position: 'absolute', top: 0, left: 0, bottom: 0, width: '78vw', maxWidth: '300px',
+              position: 'absolute', top: 0, left: 0, bottom: 0, width: '82vw', maxWidth: '320px',
               backgroundColor: '#0a0a0a', borderRight: '1px solid rgba(255,255,255,0.08)',
               display: 'flex', flexDirection: 'column',
               transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
@@ -347,6 +452,16 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         paddingTop: isMobile ? `${MOBILE_BAR_H}px` : 0,
         transition: hydrated && !isMobile ? 'margin-left 0.2s ease' : 'none',
       }}>
+        {here && hereSection && hydrated && (
+          <GuideStrip
+            section={here.section}
+            item={here.item}
+            setupItems={hereSection.items.filter(i => i.kind === 'setup')}
+            hidden={guideHidden}
+            onToggle={toggleGuide}
+            isMobile={isMobile}
+          />
+        )}
         {children}
       </div>
     </div>

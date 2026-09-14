@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 22 checks, 16 verifiers, 1024
+is the only thing that shows it. Currently 23 checks, 17 verifiers, 1042
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -61,6 +61,7 @@ npm run verify:backup        # if you touched how a document is copied out or pu
 npm run verify:tips          # if you touched how tips are split
 npm run verify:recipes       # if you touched a recipe, a unit conversion or what a sale takes off the shelf
 npm run verify:food-safety   # if you touched a food safety limit, a reading, or who may sign a day
+npm run verify:admin-nav     # if you added, moved or renamed an admin page
 npm run verify:errors        # if you touched what an error report may contain
 npm run verify:delivery-math # if you touched receiving or costing
 npm run audit:writes         # must stay at 0
@@ -440,6 +441,31 @@ review, recall. Behind the `foodSafety` module, **off by default**.
   (managers, admins); limits and the allergen list are admin-only in the route.
   Units are retired, never deleted. `npm run verify:food-safety`, 28 mutations
   caught by name.
+
+## Admin navigation (Sep 2026)
+
+**`shared/src/adminNav.ts` is the one list of admin pages**, and the sidebar
+(`AdminShell.tsx`) and the dashboard (`admin/app/admin/page.tsx`) both read
+it. They used to be declared separately with a comment asking whoever added a
+page to update both. Nobody did: by September each had pages the other lacked,
+and four pages were in neither.
+
+- **Adding an admin page means adding it to `ADMIN_NAV`**, or to `NOT_IN_NAV`
+  with a reason. `npm run verify:admin-nav` fails otherwise, and also when an
+  entry points at a page that does not exist.
+- **Every section has a `purpose`** (what it is for, for somebody new), and
+  every item a `desc` and a `kind`: `'use'` for daily work, `'setup'` for
+  configuration done once. The sidebar and dashboard show setup pages under
+  their own "Setup" heading. **Every admin page opens with a guide strip**
+  giving its section, what the section is for, what the page does, and links to
+  that section's setup pages (`sectionForPath()`, longest match). It can be
+  hidden, and the choice is remembered per browser.
+- `access` must be `SECTION_ACCESS.xxx` itself, so the module switch hides the
+  item. adminNav imports it from `roles.ts`, not `adminAuth.ts` (the same
+  object), so the verifier can load the file without a browser.
+- Tints use `color-mix(in srgb, <colour> N%, transparent)`. The old dashboard
+  appended hex alpha to colours like `var(--teal)`, which produces an invalid
+  colour, so the browser silently dropped the tint.
 
 ## POS look and feel (Sep 2026)
 

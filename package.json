@@ -50,6 +50,7 @@
     "verify:tips": "node scripts/verify-tips.mjs",
     "verify:recipes": "node scripts/verify-recipes.mjs",
     "verify:food-safety": "node scripts/verify-food-safety.mjs",
+    "verify:admin-nav": "node scripts/verify-admin-nav.mjs",
     "verify:all": "node scripts/verify-all.mjs"
   },
   "dependencies": {
