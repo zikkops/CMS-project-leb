@@ -22,7 +22,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { useTillAccess } from '../../../../lib/useTillAccess'
 import { receiptOptionsFor } from '../../../../lib/receiptOptions'
 import { useBusinessSettings } from '../../../../lib/useTillSettings'
 import {
@@ -61,7 +62,7 @@ export default function ReceiptPage() {
   // a path the POS app does not have, so the sign-in page is a 404 and the
   // receipt looks broken rather than locked. Same for `home` when the pos
   // feature is off. Every other POS page passes these; this one did not.
-  const { checking } = useRequireRole(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
+  const { checking } = useTillAccess(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
   const params = useParams<{ id: string }>()
   const checkId = String(params?.id ?? '')
   const isMobile = useIsMobile()

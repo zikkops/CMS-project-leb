@@ -19,7 +19,8 @@ import {
   faArrowLeft, faTriangleExclamation, faChevronDown, faChevronUp, faWheatAwnCircleExclamation,
   faRotateLeft, faCircleCheck, faCircleQuestion, faBan, faXmark,
 } from '@fortawesome/free-solid-svg-icons'
-import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { useTillAccess } from '../../lib/useTillAccess'
 import { useFeature } from '../../lib/useTillSettings'
 import { ALLERGENS_EU14 } from '@big-cms/shared/foodSafety'
 import { allergenVerdict } from '@big-cms/shared/allergens'
@@ -112,7 +113,7 @@ function DishRow({ dish, open, onToggle, isMobile }: {
 }
 
 export default function PosAllergensPage() {
-  const { checking, blocked } = useRequireRole(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
+  const { checking, blocked } = useTillAccess(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
   const { on: moduleOn, loading: flagsLoading } = useFeature('foodSafety')
   const isMobile = useIsMobile()
   const router = useRouter()

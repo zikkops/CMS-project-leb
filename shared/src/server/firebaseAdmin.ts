@@ -153,6 +153,22 @@ function hubDb(): Firestore | null {
   return g.__bigCmsHub.store as unknown as Firestore
 }
 
+/**
+ * Checks a Firebase sign-in on a café hub, with Google's public keys only.
+ *
+ * An app with a project id and no credential: verifyIdToken needs nothing
+ * more, so the Admin key never goes on the PC. It cannot check revocation (that
+ * needs the key), which is why a hub session is short enough to end tonight —
+ * see shared/src/server/hubSession.ts.
+ */
+export function hubTokenVerifier(): Auth {
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+  if (!projectId) throw new Error('NEXT_PUBLIC_FIREBASE_PROJECT_ID is not set.')
+  const name = 'cms-hub-verify'
+  const existing = getApps().find(a => a.name === name)
+  return getAuth(existing ?? initializeApp({ projectId }, name))
+}
+
 // True when the server layer is configured. Useful for a route that should
 // degrade rather than 500 — and for the health check in docs/server-setup.md.
 export function isAdminConfigured(): boolean {

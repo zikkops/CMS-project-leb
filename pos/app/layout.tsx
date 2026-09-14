@@ -35,8 +35,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // guide). The service worker still keeps the counter screen for outages —
   // the Cache API stores what it is given, whatever the header says.
   await connection()
+  // On a café hub (POS software, stage 3) the page says so, and the till's
+  // backend() reads it: its data then comes from the hub, not Firestore. An
+  // attribute rather than an inline script, which the CSP would refuse.
+  const onHub = Boolean(process.env.BIG_CMS_HUB_DB)
   return (
-    <html lang="en" className={`${bodyFont.variable} ${displayFont.variable}`}>
+    <html lang="en" data-backend={onHub ? 'hub' : undefined} className={`${bodyFont.variable} ${displayFont.variable}`}>
       <head>
         <style dangerouslySetInnerHTML={{ __html: brandCssVars() }} />
       </head>

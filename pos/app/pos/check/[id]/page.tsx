@@ -34,7 +34,8 @@ import {
   type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
 import { categoryImage } from '@big-cms/shared/menuCategoryImages'
-import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { useTillAccess } from '../../../lib/useTillAccess'
 import {
   lineTotal, grossLineTotal, lineDiscount, checkTotals, VOID_REASONS, reconcilePendingBatch,
   type CheckLine, type StaffDiscount,
@@ -608,7 +609,7 @@ function MenuPicker({
 }
 
 export default function CheckPage() {
-  const { checking, blocked, role } = useRequireRole(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
+  const { checking, blocked, role } = useTillAccess(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
   // Discounts are a manager's or an admin's (owner's decision, 12 Sep 2026).
   // Hiding the buttons is courtesy; the server refuses anyone else regardless.
   const canDiscount = role === 'admin' || role === 'manager'

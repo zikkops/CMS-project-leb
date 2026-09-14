@@ -28,7 +28,8 @@ import {
   faChair, faLayerGroup, faPrint, faArrowRightArrowLeft, faArrowLeft, faMugHot, faCakeCandles,
   faUtensils, faTriangleExclamation, type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
-import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { useTillAccess } from '../../lib/useTillAccess'
 import { BRAND } from '@big-cms/shared/brand'
 import { STATIONS, type Station } from '@big-cms/shared/checks'
 import {
@@ -250,7 +251,7 @@ function TicketCard({
 }
 
 export default function KdsPage() {
-  const { checking, blocked } = useRequireRole(SECTION_ACCESS.kds, { login: '/pos/login', home: '/pos' })
+  const { checking, blocked } = useTillAccess(SECTION_ACCESS.kds, { login: '/pos/login', home: '/pos' })
   const isMobile = useIsMobile()
   const router = useRouter()
   const now = useNow()

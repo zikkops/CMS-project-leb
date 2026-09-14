@@ -120,5 +120,42 @@ console.log('\nthe hub runs a plan the way the cloud does')
   eq('whole collections are whole', Q.runPlan(Q.planQuery({ kind: 'products' }), [{ id: 'p1', data: {} }, { id: 'p2', data: {} }], toMs).map(d => d.id), ['p1', 'p2'])
 }
 
+console.log('\na query from a request is checked, never trusted (the hub\'s watch route)')
+{
+  const ACTIVE_Q = ['new', 'preparing', 'ready']
+  const sent = [
+    { kind: 'openChecks', branch },
+    { kind: 'check', checkId: 'c1' },
+    { kind: 'stationTickets', branch, station: 'Bar', statuses: ACTIVE_Q },
+    { kind: 'stationTickets', branch, station: null, statuses: ACTIVE_Q },
+    { kind: 'readyTickets', branch },
+    { kind: 'closedChecks', branch, max: 50 },
+    { kind: 'checksClosedSince', branch, sinceMs: 1000, ceiling: 2000 },
+    { kind: 'recentClosedReceipts', branch },
+    { kind: 'openShift', branch },
+    { kind: 'menuCategories' }, { kind: 'menuItems' }, { kind: 'modifierGroups' }, { kind: 'products' },
+    { kind: 'settings', doc: 'features' }, { kind: 'settings', doc: 'business' }, { kind: 'settings', doc: 'printing' },
+  ]
+  eq('every query the till makes arrives as it was sent',
+    sent.filter(q => JSON.stringify(Q.parsePosQuery(JSON.parse(JSON.stringify(q)))) !== JSON.stringify(q)).map(q => q.kind), [])
+  const refused = [
+    ['not an object', 'openChecks'],
+    ['a list', [{ kind: 'openChecks', branch }]],
+    ['an unknown kind', { kind: 'everything' }],
+    ['no branch', { kind: 'openChecks' }],
+    ['an empty branch', { kind: 'openChecks', branch: '' }],
+    ['THE TRAP: a check id with a slash names another document', { kind: 'check', checkId: '../users/u1' }],
+    ['a station that is neither a name nor null', { kind: 'stationTickets', branch, statuses: ACTIVE_Q }],
+    ['no statuses', { kind: 'stationTickets', branch, station: null, statuses: [] }],
+    ['a status that is not text', { kind: 'stationTickets', branch, station: null, statuses: ['new', 7] }],
+    ['a list of none', { kind: 'closedChecks', branch, max: 0 }],
+    ['a list longer than any screen shows', { kind: 'closedChecks', branch, max: 501 }],
+    ['a fraction of a check', { kind: 'closedChecks', branch, max: 2.5 }],
+    ['a time before time', { kind: 'checksClosedSince', branch, sinceMs: -1, ceiling: 10 }],
+    ['a settings document that is not the till\'s', { kind: 'settings', doc: 'invoiceCounter' }],
+  ]
+  for (const [name, raw] of refused) eq(`refused: ${name}`, Q.parsePosQuery(raw), null)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -25,7 +25,8 @@ import {
   faArrowLeft, faCashRegister, faReceipt, faLock, faCircleCheck, faTriangleExclamation,
   faCircleQuestion, faMoneyBillWave, faCoins, faTimes,
 } from '@fortawesome/free-solid-svg-icons'
-import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { useTillAccess } from '../../lib/useTillAccess'
 import { BRAND } from '@big-cms/shared/brand'
 import {
   LBP_DENOMS, USD_DENOMS, countedCash,
@@ -130,7 +131,7 @@ function CountGrid({ denoms, counts, onChange, label, format, icon, isMobile }: 
 }
 
 export default function DrawerPage() {
-  const { checking, blocked } = useRequireRole(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
+  const { checking, blocked } = useTillAccess(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
   const isMobile = useIsMobile()
   const router = useRouter()
   // Same branch choice as the till's home screen.

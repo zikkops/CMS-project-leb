@@ -898,6 +898,11 @@ export class HubStore {
   }
 }
 
+/** A value as it leaves the hub for a browser: tagged as a backup line is, so a Timestamp arrives as one. */
+export function encodeHubValue(value: unknown): unknown {
+  return encode(value, classify)
+}
+
 export function openHubStore(sql: SqlDatabase): HubStore {
   return new HubStore(sql)
 }

@@ -16,6 +16,8 @@ import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '@big-cms/shared/firebase'
 import { setAdminSessionCookie } from '@big-cms/shared/adminAuth'
 import { BRAND } from '@big-cms/shared/brand'
+import { backend } from '../../lib/backend'
+import { startHubSessionFromFirebase } from '../../lib/backend/hub'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -49,17 +51,34 @@ export default function PosLoginPage() {
     setError('')
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password)
-      // Set before navigating: proxy.ts checks for this cookie on the way in,
-      // and useRequireRole would bounce straight back here without it.
-      setAdminSessionCookie()
-      router.replace('/pos')
     } catch {
       // Deliberately one message for every failure. Distinguishing "no such
       // account" from "wrong password" tells anyone holding the login form
       // which emails are real.
       setError('That email and password did not match an account.')
       setBusy(false)
+      return
     }
+
+    // On a café hub the Firebase sign-in is swapped for a hub session that
+    // lasts the night (POS software, stage 3). The hub's refusal is shown as
+    // it is: only staff may sign in, or the hub needs the internet to check.
+    if (backend().kind === 'hub') {
+      try {
+        const user = auth.currentUser
+        if (!user) throw new Error('That sign-in did not finish. Please try again.')
+        await startHubSessionFromFirebase(await user.getIdToken())
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'The hub did not sign you in.')
+        setBusy(false)
+        return
+      }
+    }
+
+    // Set before navigating: proxy.ts checks for this cookie on the way in,
+    // and useRequireRole would bounce straight back here without it.
+    setAdminSessionCookie()
+    router.replace('/pos')
   }
 
   return (

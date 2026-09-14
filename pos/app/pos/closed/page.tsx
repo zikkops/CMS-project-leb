@@ -24,7 +24,8 @@ import {
   faArrowLeft, faChevronDown, faChevronUp, faClock, faRotateLeft, faUtensils, faBan, faReceipt,
   faTrashCan, faCheck, faXmark, faNoteSticky, faTriangleExclamation, faUserGroup, faInbox,
 } from '@fortawesome/free-solid-svg-icons'
-import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { useTillAccess } from '../../lib/useTillAccess'
 import { BRAND } from '@big-cms/shared/brand'
 import { checkTotals, VOID_REASONS, type Check } from '@big-cms/shared/checks'
 import { ymdInZone } from '@big-cms/shared/dates'
@@ -322,7 +323,7 @@ function RefundPanel({ check, busy, error, onConfirm, onCancel }: {
 }
 
 export default function ClosedChecksPage() {
-  const { checking, blocked } = useRequireRole(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
+  const { checking, blocked } = useTillAccess(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
   const isMobile = useIsMobile()
   const router = useRouter()
   const [branch] = useState(BRAND.branches[0] ?? '')

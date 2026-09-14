@@ -27,7 +27,8 @@ import {
   faDoorOpen, faStore, faMoneyBillWave, faCircleCheck, faTableCells, faScaleBalanced, faRotateLeft,
   faTriangleExclamation, faUserGroup, faWheatAwnCircleExclamation, type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
-import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { useTillAccess } from '../lib/useTillAccess'
 import { useFeature } from '../lib/useTillSettings'
 import { BRAND } from '@big-cms/shared/brand'
 import { orderedTotal, checkTotals, type Check, type CheckLine } from '@big-cms/shared/checks'
@@ -232,7 +233,7 @@ function NavTile({ icon, label, sub, colour, onClick, isMobile }: {
 }
 
 export default function FloorPage() {
-  const { checking, blocked } = useRequireRole(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
+  const { checking, blocked } = useTillAccess(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
   const { on: allergensOn } = useFeature('foodSafety')
   // What the kitchen has ready, for whoever is nearest to run it.
   const { on: kdsOn } = useFeature('kds')

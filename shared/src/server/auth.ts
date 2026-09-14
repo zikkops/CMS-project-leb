@@ -14,7 +14,8 @@
 // full privilege, so a route can enforce a decision the browser is not trusted
 // to make — which is the entire point of Phase 00.
 
-import { adminAuth, adminDb } from './firebaseAdmin'
+import { adminAuth, adminDb, hubDbPath } from './firebaseAdmin'
+import { callerFromHubToken } from './hubSession'
 import {
   SECTION_ACCESS,
   hasSectionAccess,
@@ -93,6 +94,11 @@ async function callerFromDoc(uid: string, email: string | null): Promise<Caller>
 export async function getCaller(request: Request): Promise<Caller | null> {
   const token = bearerToken(request)
   if (!token) return null
+
+  // On a café hub the caller is a hub session (POS software, stage 3). The
+  // Firebase sign-in behind it was checked once, when the session started; a
+  // Firebase token sent straight to a hub route is not accepted.
+  if (hubDbPath()) return callerFromHubToken(token)
 
   let decoded
   try {

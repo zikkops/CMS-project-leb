@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 26 checks, 20 verifiers, 1266
+is the only thing that shows it. Currently 26 checks, 20 verifiers, 1311
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -715,9 +715,73 @@ wraps the same React screens.
   - **The sentinels' operands are read from fields the SDK does not
     document** (`operand`, `elements`). `verify:hub` pins them: a firebase-admin
     upgrade that renames them fails there, not at a till.
-  - **`adminAuth()` refuses on a hub**, so `getCaller()` says "not signed in"
-    and every route is 401 until stage 5 puts sign-in on the phone. Checking a
-    Firebase token there would need the Admin key or the internet.
+  - **`adminAuth()` refuses on a hub.** A hub route's caller is a hub session,
+    never a Firebase token sent straight to it (`getCaller()`).
+  - **Signing in on a hub, until phone sign-in** (owner's decision, 14 Sep
+    2026: "today's sign in for now but it should last until they check out
+    at night").
+    - The login page signs in with Firebase as always, then swaps the ID
+      token at `POST /api/hub/session` for a hub session. The hub checks that
+      token ONCE, with Google's public keys (`hubTokenVerifier()`, a project
+      id and no credential), so there is no Admin key on the PC. That step
+      needs the internet; the rest of the night does not.
+    - **A session lasts until 05:00 café time**, the first one at least four
+      hours away (`hubSessionExpiry()` in `shared/src/hubSession.ts`). Someone
+      signing in at 03:00 to close is not put out at 05:00. The POS has no
+      check-out yet, so that or `DELETE /api/hub/session` ends it.
+    - Only a token with `staff: true` and a role starts one. The hub holds no
+      staff records yet, so the role decides and there are no grants.
+    - Sessions are stored under a SHA-256 of the token, so a copy of the hub
+      file holds no live sessions.
+    - **The honest limit:** revocation cannot be checked without the key. A
+      role changed or an account locked during the night reaches a hub session
+      when it ends. Stage 4's sync can end sessions early.
+    - The till keeps the session in localStorage. **POS pages gate on
+      `useTillAccess()`** (`pos/app/lib/useTillAccess.ts`), not
+      `useRequireRole()`. Online it is `useRequireRole()`; on a hub it reads the
+      session, because Firebase's staff record cannot be read offline.
+  - **The page knows it is on a hub from `<html data-backend="hub">`**, set by
+    the root layout when `BIG_CMS_HUB_DB` is set. `backend()` then returns
+    `hubBackend` (`pos/app/lib/backend/hub.ts`).
+  - **Live queries on a hub are one change feed per screen plus a request per
+    query**:
+    - `GET /api/hub/changes` streams which documents each commit wrote, never
+      their contents.
+    - `GET /api/hub/query` answers one `PosQuery` with `runHubPlan()` and the
+      change log position read before it ran.
+    - A watch asks again only when a write touching its plan is newer than
+      its last answer.
+    - **Never a stream per query.** A browser allows six connections to one
+      address over plain HTTP. The first version streamed each watch, the
+      floor opened seven, and "Open table" and even a page reload queued
+      behind them for good. That was found in a browser, not by any test.
+    - A query from a request goes through `parsePosQuery()`, where a document
+      id with a slash is refused, and must be scoped.
+    - `compareResults()` delivers nothing when a write elsewhere did not
+      change the answer.
+    - `verify:hub` asserts `runHubPlan()` answers all 14 till query shapes as
+      `runPlan()` does.
+    - 18 mutations to sign-in and the live queries are caught by name. Two
+      of them first exposed weak tests, and both tests were tightened: the
+      "stores a hash" check compared whole tokens, so a lightly disguised token
+      passed. And nothing tried an account marked not staff whose token still
+      names a role.
+  - **Run a hub on a developer's machine:**
+    - `npm run hub:seed` copies the menu, products, table layouts, features
+      and business settings from `.env.local`'s project into `.hub/dev.db`.
+      It is read-only against Firestore, and a real hub never runs it.
+    - `npm run dev:pos-hub` serves the POS as a hub on port 3004. Stop the
+      ordinary POS dev server first: one `next dev` per app.
+  - **Exercised in a browser, 14 Sep 2026**, through the till's own screens on
+    a dev hub: open table 12 → Fries → Send → the kitchen display showed it →
+    Start → Ready → the floor's ready panel → Picked up. Every step's route
+    answered 200 in under 60 ms, and every screen updated from the feed.
+    - The session was made by a script, not a real Firebase sign-in, because
+      nobody's password is typed here. **The real login-to-hub swap has not
+      been run.**
+    - Nor has a phone on the café wifi. An http LAN address gets no service
+      worker and no camera. Firebase sign-in needs that address in the
+      project's authorised domains.
   - Every commit goes into a `changes` table with a sequence number and fires
     `onChange()`. That is what the hub's clients will follow and stage 4
     will sync. Nothing trims it yet.
@@ -735,9 +799,9 @@ wraps the same React screens.
       cannot hide the count by crashing the run.
   - **Not built yet:**
     - the hub server process in `desktop/`
-    - a watch endpoint that the till's hub backend follows with `runPlan()`
-    - menu and settings pulled from the cloud
-    - reaching the hub on the café network
+    - menu and settings pulled from the cloud by the hub itself (stage 4's
+      device credential; `hub:seed` is the developer's stand-in)
+    - reaching the hub from a phone on the café wifi
 
 ## The host's CDN caches prerendered pages for a year
 

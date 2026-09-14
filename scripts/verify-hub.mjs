@@ -33,6 +33,7 @@ rmSync(out, { recursive: true, force: true })
 try {
   execSync(
     'npx tsc shared/src/server/hubStore.ts shared/src/server/checks.ts shared/src/server/tickets.ts ' +
+    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts ' +
     `shared/src/server/drawer.ts --outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -51,6 +52,13 @@ const fixImports = dir => {
   }
 }
 fixImports(out)
+// The till's own query plans, compiled on their own: the hub has to answer them as runPlan() does.
+const queriesOut = join(out, 'pos-queries')
+execSync(
+  `npx tsc pos/app/lib/backend/queries.ts --outDir ${queriesOut} --module esnext --target es2022 ` +
+  '--skipLibCheck --moduleResolution bundler --strict',
+  { stdio: 'pipe' },
+)
 writeFileSync(join(out, 'package.json'), '{ "type": "module" }')
 const url = rel => pathToFileURL(resolve(out, rel)).href
 const H = await import(url('server/hubStore.js'))
@@ -350,6 +358,134 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
   eq('another handle on the same file sees the closed check and its receipt',
     [stored.status, stored.receiptNumber], ['closed', closed.receiptNumber])
   sql.close()
+}
+
+console.log('\nhow long a sign-in at the hub lasts')
+{
+  const S = await import(url('hubSession.js'))
+  const until = (signedIn, zone = 'Asia/Beirut') => new Date(S.hubSessionExpiry(Date.parse(signedIn), zone)).toISOString()
+  // Beirut is UTC+3 until the clocks go back on 25 Oct 2026, UTC+2 after.
+  eq('signed in at 09:00, it lasts until 05:00 the next morning', until('2026-09-14T06:00:00Z'), '2026-09-15T02:00:00.000Z')
+  eq('signed in at 23:30, still until 05:00', until('2026-09-14T20:30:00Z'), '2026-09-15T02:00:00.000Z')
+  eq('signed in at 01:00, until 05:00 that morning: four hours is enough', until('2026-09-14T22:00:00Z'), '2026-09-15T02:00:00.000Z')
+  eq('THE TRAP: signed in at 03:00 to close up, not put out at 05:00', until('2026-09-15T00:00:00Z'), '2026-09-16T02:00:00.000Z')
+  eq('across the clocks going back, 05:00 is still 05:00 on the wall', until('2026-10-24T09:00:00Z'), '2026-10-25T03:00:00.000Z')
+  eq('judged in the café\'s zone, not the host\'s', until('2026-09-14T10:00:00Z', 'UTC'), '2026-09-15T05:00:00.000Z')
+}
+
+console.log('\nsigning in at the hub')
+{
+  const FA = await import(url('server/firebaseAdmin.js'))
+  const HS = await import(url('server/hubSession.js'))
+  const AU = await import(url('server/auth.js'))
+  const request = token => new Request('http://hub.test/api/pos/checks', { headers: { Authorization: `Bearer ${token}` } })
+
+  const started = await HS.startHubSession({ uid: 'u-night', email: 'night@hub.test', staff: true, role: 'barista', branchIds: ['Main'] })
+  eq('a staff sign-in gets a session to the end of the night',
+    [started.token.startsWith('hub.'), started.caller.role, started.caller.expiresAt > Date.now()], [true, 'barista', true])
+  eq('a route finds the caller from it', (await AU.getCaller(request(started.token)))?.uid, 'u-night')
+  const rows = (await FA.adminDb().collection('hubSessions').get()).docs
+  eq('THE TRAP: the hub stores a hash of the token, never the token',
+    rows.some(d => d.id.includes(started.token.slice(4)) || JSON.stringify(d.data()).includes(started.token.slice(4))), false)
+  await rejects('a customer account cannot start one', () => HS.startHubSession({ uid: 'c-1', staff: false, role: null }), e => e.status === 403)
+  await rejects('THE TRAP: an account no longer marked staff is refused, whatever role its token still names',
+    () => HS.startHubSession({ uid: 'c-3', staff: false, role: 'manager' }), e => e.status === 403)
+  await rejects('nor a staff token without a role', () => HS.startHubSession({ uid: 'c-2', staff: true }), e => e.status === 403)
+  eq('THE TRAP: a Firebase token sent straight to a hub route is not a caller',
+    await AU.getCaller(request('eyJhbGciOiJSUzI1NiJ9.eyJzdGFmZiI6dHJ1ZX0.c2ln')), null)
+  eq('a made-up hub token is not a caller', await AU.getCaller(request(`hub.${'x'.repeat(43)}`)), null)
+  eq('a session is good a minute before the night ends',
+    (await HS.callerFromHubToken(started.token, started.caller.expiresAt - 60_000))?.uid, 'u-night')
+  eq('...and over when it does', await HS.callerFromHubToken(started.token, started.caller.expiresAt), null)
+  eq('signing out ends it', [await HS.endHubSession(started.token), await AU.getCaller(request(started.token))], [true, null])
+  eq('signing out twice finds nothing to end', await HS.endHubSession(started.token), false)
+  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||= 'hub-verify'
+  await rejects('a sign-in that cannot be checked is refused, never trusted', () => HS.signInAtHub('not-a-token'), e => e.status === 401)
+}
+
+console.log('\nthe till\'s live queries, answered by the hub')
+{
+  const W = await import(url('server/hubWatch.js'))
+  const Q = await import(pathToFileURL(resolve(queriesOut, 'queries.js')).href)
+  const { encodeHubValue } = H
+  const db = fresh()
+  const ts = ms => Timestamp.fromMillis(ms)
+  const put = (path, data) => db.doc(path).set(data)
+  await put('checks/c6', { branch: 'Main', status: 'closed', closedAt: ts(3000) })
+  await put('checks/c1', { branch: 'Main', status: 'open' })
+  await put('checks/c3', { branch: 'Main', status: 'refunded', closedAt: ts(5000) })
+  await put('checks/c2', { branch: 'Main', status: 'closed', closedAt: ts(3000) })
+  await put('checks/c4', { branch: 'Other', status: 'closed', closedAt: ts(9000) })
+  await put('checks/c5', { branch: 'Main', status: 'closed' })
+  await put('kitchenTickets/t4', { branch: 'Main', station: 'Bar', status: 'preparing', sentAt: ts(20) })
+  await put('kitchenTickets/t1', { branch: 'Main', station: 'Bar', status: 'new', sentAt: ts(20) })
+  await put('kitchenTickets/t2', { branch: 'Main', station: 'Kitchen', status: 'ready', sentAt: ts(10) })
+  await put('kitchenTickets/t3', { branch: 'Main', station: 'Bar', status: 'bumped', sentAt: ts(5) })
+  await put('kitchenTickets/t5', { branch: 'Other', station: 'Bar', status: 'ready', sentAt: ts(1) })
+  await put('drawerShifts/s1', { branch: 'Main', status: 'closed' })
+  await put('drawerShifts/s2', { branch: 'Main', status: 'closing' })
+  await put('menuItems/m2', { name: 'Tea' })
+  await put('menuItems/m1', { name: 'Toast' })
+  await put('appSettings/features', { pos: { enabled: true } })
+
+  const ACTIVE = ['new', 'preparing', 'ready']
+  const queries = [
+    { kind: 'openChecks', branch: 'Main' },
+    { kind: 'check', checkId: 'c2' },
+    { kind: 'check', checkId: 'nope' },
+    { kind: 'stationTickets', branch: 'Main', station: 'Bar', statuses: ACTIVE },
+    { kind: 'stationTickets', branch: 'Main', station: null, statuses: ACTIVE },
+    { kind: 'readyTickets', branch: 'Main' },
+    { kind: 'closedChecks', branch: 'Main', max: 50 },
+    { kind: 'closedChecks', branch: 'Main', max: 2 },
+    { kind: 'checksClosedSince', branch: 'Main', sinceMs: 4000, ceiling: 2000 },
+    { kind: 'checksClosedSince', branch: 'Main', sinceMs: 0, ceiling: 1 },
+    { kind: 'recentClosedReceipts', branch: 'Main' },
+    { kind: 'openShift', branch: 'Main' },
+    { kind: 'menuItems' },
+    { kind: 'settings', doc: 'features' },
+  ]
+  const toMs = v => (v instanceof Timestamp ? v.toMillis() : Number.NaN)
+  const rows = {}
+  const answers = []
+  for (const q of queries) {
+    const plan = Q.planQuery(q)
+    rows[plan.collection] ??= (await db.collection(plan.collection).get()).docs.map(d => ({ id: d.id, data: d.data() }))
+    const local = Q.runPlan(plan, rows[plan.collection], toMs).map(d => d.id)
+    const hub = (await W.runHubPlan(db, plan)).map(d => d.id)
+    answers.push(`${q.kind}: ${hub.join(',')}`)
+    if (JSON.stringify(local) !== JSON.stringify(hub)) answers.push(`  DISAGREES with runPlan: ${local.join(',')}`)
+  }
+  eq('THE TRAP: the hub answers every till query as runPlan does', answers.filter(a => a.includes('DISAGREES')), [])
+  eq('...and the answers are the ones meant', answers, [
+    'openChecks: c1', 'check: c2', 'check: ', 'stationTickets: t1,t4', 'stationTickets: t2,t1,t4', 'readyTickets: t2',
+    'closedChecks: c3,c6,c2', 'closedChecks: c3,c6', 'checksClosedSince: c3', 'checksClosedSince: c3',
+    'recentClosedReceipts: c6,c2', 'openShift: s2', 'menuItems: m1,m2', 'settings: features',
+  ])
+
+  const open = Q.planQuery({ kind: 'openChecks', branch: 'Main' })
+  const one = Q.planQuery({ kind: 'check', checkId: 'c2' })
+  eq('a write to the collection may change the query', Q.planTouches(open, { collection: 'checks', id: 'zz' }), true)
+  eq('a write elsewhere cannot', Q.planTouches(open, { collection: 'kitchenTickets', id: 'c1' }), false)
+  eq('one document is only woken by that document', [Q.planTouches(one, { collection: 'checks', id: 'c2' }), Q.planTouches(one, { collection: 'checks', id: 'c1' })], [true, false])
+
+  // What /api/hub/query sends a till: each document's data tagged.
+  const wire = async plan => (await W.runHubPlan(db, plan)).map(d => ({ id: d.id, data: encodeHubValue(d.data) }))
+  let step = Q.compareResults(null, await wire(open))
+  eq('the first answer is always delivered, and everything in it is new', step.changed, ['c1'])
+  eq('an empty first answer is still an answer', Q.compareResults(null, []).changed, [])
+  await put('checks/c7', { branch: 'Other', status: 'open' })
+  step = Q.compareResults(step.state, await wire(open))
+  eq('THE TRAP: another branch opening a table does not wake this till', step.changed, null)
+  await put('checks/c8', { branch: 'Main', status: 'open', openedAt: ts(7000) })
+  const withNew = await wire(open)
+  step = Q.compareResults(step.state, withNew)
+  eq('a new open check here is delivered, and only it is marked changed', [withNew.map(d => d.id), step.changed], [['c1', 'c8'], ['c8']])
+  eq('a Timestamp travels tagged, so the till gets a Timestamp back', withNew.find(d => d.id === 'c8')?.data.openedAt, { $fs: 'ts', s: 7, n: 0 })
+  await db.doc('checks/c1').update({ status: 'closed' })
+  const afterClose = await wire(open)
+  step = Q.compareResults(step.state, afterClose)
+  eq('a check closing leaves the list, and nothing is marked changed for it', [afterClose.map(d => d.id), step.changed], [['c8'], []])
 }
 
 } catch (err) {

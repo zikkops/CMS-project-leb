@@ -74,3 +74,6 @@ backups/
 # workspaces: its Electron download must never reach a Hostinger build.
 desktop/node_modules/
 desktop/dist/
+
+# A café hub's local database on a developer's machine — npm run hub:seed.
+.hub/
