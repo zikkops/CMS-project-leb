@@ -311,8 +311,21 @@ database.
   `supplyIds` so that is one array-contains query.
 
 - **The arithmetic is `shared/src/recipes.ts`, pure, asserted by `npm run
-  verify:recipes`** (75 cases, 8 mutations caught by name). The page and the
+  verify:recipes`** (102 cases, 16 mutations caught by name). The page and the
   server only apply what it computed.
+- **`npm run seed:recipes` gives the demo something to cost.** Recipes for 15
+  of the 16 dishes, the unit conversions they need, and the per-serving
+  snapshots on the SEEDED checks only, all through `recipeProblems()` and
+  `lineConsumption()` transpiled and called. The Club Sandwich has no recipe
+  on purpose, since there is no bread in supplies, so the report's coverage
+  warning has something real to show. It fills only conversions that are
+  missing and never touches a recipe saved on the Recipes page. `--clear`
+  removes exactly what it flagged. Applied to the demo project on 14 Sep 2026:
+  23 conversions, 15 recipes, 963 lines snapshotted across 415 checks. It
+  prints the figure the Food Cost Report should show for the whole seeded span:
+  **16.3% theoretical on $7,177.48 of costed sales, 87.9% coverage**. A second
+  dry run reproduced it from the stored documents. The report page itself has
+  not been looked at signed in.
 - **Recipes never live on `menuItems` or `modifierGroups`.** Both are
   world-readable so the menu works signed out, and a recipe there publishes
   every margin. They live in `recipes/{menuItemId}`, which has **no Firestore
