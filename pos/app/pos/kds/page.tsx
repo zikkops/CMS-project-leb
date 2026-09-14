@@ -41,6 +41,7 @@ import { activeStations } from '@big-cms/shared/printing'
 import { useAutoPrintTickets, useAutoPrintReceipts, usePrintsHere } from '../../lib/useAutoPrint'
 import { useBusinessSettings } from '../../lib/useTillSettings'
 import { PosButton, Chip, StatusBadge, STATION_COLOUR } from '../../lib/posUi'
+import { useHubOnly, HubOnlyBanner } from '../../lib/useHubOnly'
 
 const STORAGE_KEY = 'kds.station'
 
@@ -257,6 +258,8 @@ export default function KdsPage() {
   const now = useNow()
 
   const [branch] = useState(BRAND.branches[0] ?? '')
+  // A branch a café hub trades is view-only online (S10): its kitchen is the hub's.
+  const hubOnly = useHubOnly(branch)
   // 'All' is a real choice, not the absence of one — so the picker still has
   // to be answered before anything renders. null means "not chosen yet".
   const [station, setStation] = useState<Station | 'All' | null>(null)
@@ -405,6 +408,7 @@ export default function KdsPage() {
       padding: isMobile ? '1rem 0.8rem 2rem' : '1.25rem 1.5rem 3rem',
       fontFamily: 'var(--font-inter)',
     }}>
+      <HubOnlyBanner hub={hubOnly} branch={branch} isMobile={isMobile} />
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         marginBottom: '1.1rem', flexWrap: 'wrap', gap: '0.8rem',

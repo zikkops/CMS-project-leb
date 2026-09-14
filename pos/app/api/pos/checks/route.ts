@@ -17,6 +17,7 @@ import {
   setLineDiscount, setCheckDiscount, parseDiscountInput, parseOpenId, parseMadeOffline,
 } from '@big-cms/shared/server/checks'
 import { logActivity } from '@big-cms/shared/server/activityLog'
+import { refuseWhileHubbed } from '@big-cms/shared/server/hubLock'
 
 export const runtime = 'nodejs'
 
@@ -46,6 +47,8 @@ export async function POST(request: Request): Promise<Response> {
     if (!checkId && Array.isArray(body.lines)) {
       throw new HttpError(400, 'Missing check id — items can only be added to an open check.')
     }
+    // A branch a café hub trades is view-only here (S10).
+    await refuseWhileHubbed(checkId ? { checkId } : { branch: String(body.branch ?? '') })
     if (checkId) {
       const madeOfflineAt = parseMadeOffline(body)
       const result = await addLines(caller, checkId, parseLineRequests(body), parseBatchKey(body), madeOfflineAt)
@@ -83,6 +86,7 @@ export async function PATCH(request: Request): Promise<Response> {
 
     const checkId = typeof body.checkId === 'string' ? body.checkId : ''
     if (!checkId) throw new HttpError(400, 'Missing check id.')
+    await refuseWhileHubbed({ checkId })
 
     switch (String(body.action ?? '')) {
       case 'send': {

@@ -262,6 +262,8 @@ export default function HubsPage() {
           A café hub is a counter PC running the POS app as the hub: the till keeps
           taking orders there with no internet. Pair it here once, and it takes this
           café&apos;s menu, settings and staff roles every few minutes while it is online.
+          While a branch has a hub paired, the online till for that branch is view-only:
+          tables, payments and the drawer are worked on the counter PC.
         </p>
 
         <section style={panel}>

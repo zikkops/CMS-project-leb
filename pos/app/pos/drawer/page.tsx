@@ -37,6 +37,7 @@ import {
   useOpenShift, openDrawer, readDrawer, closeDrawer, type ZResult,
 } from '../../lib/usePos'
 import { PosButton, StatusBadge, SectionLabel } from '../../lib/posUi'
+import { useHubOnly, HubOnlyBanner } from '../../lib/useHubOnly'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -137,6 +138,7 @@ export default function DrawerPage() {
   // Same branch choice as the till's home screen.
   const [branch] = useState(BRAND.branches[0] ?? '')
   const { shift, loading, error: liveError } = useOpenShift(branch)
+  const hubOnly = useHubOnly(branch)
 
   const [floatUsd, setFloatUsd] = useState('')
   const [floatLbp, setFloatLbp] = useState('')
@@ -203,6 +205,8 @@ export default function DrawerPage() {
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.3rem' }}>Drawer</h1>
           <span style={{ color: muted, fontSize: '1rem' }}>{branch}</span>
         </div>
+
+        <HubOnlyBanner hub={hubOnly} branch={branch} isMobile={isMobile} />
 
         {(liveError || error) && (
           <p style={{

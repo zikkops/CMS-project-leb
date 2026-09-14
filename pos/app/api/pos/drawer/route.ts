@@ -13,6 +13,7 @@ import {
   openShift, xReading, closeShift, parseFloat2, parseLbpCount, parseUsdCount,
 } from '@big-cms/shared/server/drawer'
 import { logActivity } from '@big-cms/shared/server/activityLog'
+import { refuseWhileHubbed } from '@big-cms/shared/server/hubLock'
 
 export const runtime = 'nodejs'
 
@@ -35,6 +36,8 @@ export async function POST(request: Request): Promise<Response> {
     const caller: Caller = await requireSection(request, 'pos')
     const body = await readBody(request)
     const branch = typeof body.branch === 'string' ? body.branch.trim() : ''
+    // A branch a café hub trades is view-only here (S10): its drawer is the hub's.
+    await refuseWhileHubbed({ branch })
     const float = parseFloat2(body)
     const { id } = await openShift(caller, branch, float)
     await logActivity(caller, 'create', 'POS',
@@ -62,6 +65,7 @@ export async function PATCH(request: Request): Promise<Response> {
     const body = await readBody(request)
     const shiftId = typeof body.shiftId === 'string' ? body.shiftId : ''
     if (!shiftId) throw new HttpError(400, 'Missing shift id.')
+    await refuseWhileHubbed({ shiftId })
 
     const z = await closeShift(
       caller, shiftId,

@@ -12,6 +12,7 @@
 
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import { parseTicketStatus, advanceTicket, pickUpTicket } from '@big-cms/shared/server/tickets'
+import { refuseWhileHubbed } from '@big-cms/shared/server/hubLock'
 
 export const runtime = 'nodejs'
 
@@ -30,6 +31,8 @@ export async function PATCH(request: Request): Promise<Response> {
 
     if (body.action === 'pickup') {
       const caller: Caller = await requireSection(request, 'pos')
+      // A branch a café hub trades is view-only here (S10): its kitchen is the hub's.
+      await refuseWhileHubbed({ ticketId })
       // Not logged, for the same reason as a bump: the ticket carries who took
       // it and when, and a service is hundreds of plates.
       const result = await pickUpTicket(caller, ticketId)
@@ -37,6 +40,7 @@ export async function PATCH(request: Request): Promise<Response> {
     }
 
     const caller: Caller = await requireSection(request, 'kds')
+    await refuseWhileHubbed({ ticketId })
     // Not logged. A service is hundreds of bumps and the ticket carries who
     // bumped it and when, which is the record anyone would actually want.
     const result = await advanceTicket(caller, ticketId, parseTicketStatus(body.status))

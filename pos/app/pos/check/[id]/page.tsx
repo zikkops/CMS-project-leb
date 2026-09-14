@@ -56,6 +56,7 @@ import {
   type DraftLine, type PosMenuItem, type PosProduct,
 } from '../../../lib/usePos'
 import { PosButton, Chip, StatusBadge, SectionLabel, kindColour, type Tone } from '../../../lib/posUi'
+import { useHubOnly, HubOnlyBanner } from '../../../lib/useHubOnly'
 import { useAllergenChart, readDishAllergens, type ChartDish, type DishAnswer } from '../../../lib/useAllergens'
 import { AllergenAnswer } from '../../../lib/allergenView'
 
@@ -620,6 +621,8 @@ export default function CheckPage() {
 
   const { check, error: liveError } = useCheck(checkId)
   const { products } = useRetailProducts(check?.branch ?? '')
+  // A branch a café hub trades is view-only online (S10).
+  const hubOnly = useHubOnly(check?.branch ?? '')
   const now = useNow()
   const menu = usePosMenu()
   // Phase 04: with the payments feature on, Close goes through the payment
@@ -887,6 +890,8 @@ export default function CheckPage() {
         <PosButton icon={faArrowLeft} label="Floor" tone="quiet" size="sm" onClick={() => router.push('/pos')} />
         <StatusBadge icon={faUserGroup} label={`${check.guestCount} ${check.guestCount === 1 ? 'guest' : 'guests'}`} />
       </div>
+
+      <HubOnlyBanner hub={hubOnly} branch={check.branch} isMobile={isMobile} />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '1rem', marginBottom: '1rem' }}>
         <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.2rem', color: 'var(--offwhite)', lineHeight: 1 }}>

@@ -35,7 +35,7 @@ rmSync(out, { recursive: true, force: true })
 try {
   execSync(
     'npx tsc shared/src/hubSync.ts shared/src/receiptBlocks.ts shared/src/server/hubDevices.ts shared/src/server/hubSync.ts ' +
-    'shared/src/server/hubSession.ts shared/src/server/invoiceNumber.ts ' +
+    'shared/src/server/hubSession.ts shared/src/server/invoiceNumber.ts shared/src/server/hubLock.ts ' +
     `--outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -576,6 +576,65 @@ console.log('\nthe hub\'s own sync sends up, then takes the cloud\'s count back'
   await db.doc('products/p1').update({ [`stock.${branch}`]: FieldValue.increment(-1) })
   await S.applySnapshot(db, branch, snapshot.docs, await S.pendingStock(db))
   eq('...but while a sale is still waiting to go up, it keeps its own count', (await db.doc('products/p1').get()).data().stock[branch], 47)
+}
+
+console.log('\nwhile a café hub trades a branch, the online till is view-only there (S10)')
+{
+  const L = await import(url('server/hubLock.js'))
+  const cloudData = H.openHubStore(new DatabaseSync(':memory:'))
+  const refused = async (target, onHub = false) => {
+    try { await L.refuseWhileHubbed(target, { db: cloudData, onHub }); return null } catch (e) { return e.status ?? String(e) }
+  }
+  await cloudData.doc('checks/c-here').set({ branch, status: 'open', tableNumber: 3 })
+  await cloudData.doc('checks/c-there').set({ branch: otherBranch, status: 'open', tableNumber: 3 })
+  await cloudData.doc('kitchenTickets/t-here').set({ branch, status: 'ready' })
+  await cloudData.doc('drawerShifts/s-here').set({ branch, status: 'open' })
+
+  eq('with no hub, the online till changes anything', [await refused({ branch }), await refused({ checkId: 'c-here' })], [null, null])
+
+  await cloudData.doc('hubDevices/h-here').set({ branch, name: 'Counter PC', secretHash: 'x', revokedAt: null })
+  eq('THE TRAP: with a hub paired, opening a table, a check, a ticket and the drawer there are all refused, 409',
+    [await refused({ branch }), await refused({ checkId: 'c-here' }), await refused({ ticketId: 't-here' }), await refused({ shiftId: 's-here' })],
+    [409, 409, 409, 409])
+  let message = ''
+  try { await L.refuseWhileHubbed({ branch }, { db: cloudData, onHub: false }) } catch (e) { message = e.message }
+  eq('the refusal names the branch and the hub, and says where to go', [message.includes(branch), message.includes('Counter PC'), message.includes('view-only')], [true, true, true])
+  eq('another branch, with no hub of its own, is not touched', [await refused({ branch: otherBranch }), await refused({ checkId: 'c-there' })], [null, null])
+  eq('a document that is not there is left to the write itself to refuse', [await refused({ checkId: 'no-such' }), await refused({ checkId: 'a/b' })], [null, null])
+  eq('THE TRAP: on the hub itself nothing is refused — it is the master', [await refused({ branch }, true), await refused({ checkId: 'c-here' }, true)], [null, null])
+
+  await cloudData.doc('hubDevices/h-here').update({ revokedAt: Timestamp.fromMillis(1_700_000_000_000) })
+  eq('once an admin unpairs the hub, the online till is open again', [await refused({ branch }), await L.branchHub(branch, cloudData)], [null, null])
+  await cloudData.doc('hubDevices/h-new').set({ branch, name: '', revokedAt: null })
+  eq('...and a hub paired again, with no name, locks it again, found past the unpaired one',
+    [await refused({ checkId: 'c-here' }), (await L.branchHub(branch, cloudData))?.id], [409, 'h-new'])
+  eq('a hub row for another branch is not this branch\'s hub, whatever rows a caller hands over',
+    [L.activeHubFor([{ id: 'h-there', data: { branch: otherBranch, name: 'Other PC', revokedAt: null } }], branch),
+      L.activeHubFor([{ id: 'h-there', data: { branch: otherBranch, revokedAt: null } }, { id: 'h-here', data: { branch, name: 'PC' } }], branch)?.id],
+    [null, 'h-here'])
+  eq('a message without a hub name reads cleanly', L.hubOnlyMessage(branch, { id: 'h', name: '' }).includes('()'), false)
+
+  // The lock is only as good as the routes that call it: every till write in
+  // the cloud, about the right thing, before its first write.
+  const guards = [
+    // Opening a table names a branch; adding to a check names the check.
+    ['checks', 'POST', /await refuseWhileHubbed\(checkId \? \{ checkId \} : \{ branch: /g, 1],
+    ['checks', 'PATCH', /await refuseWhileHubbed\(\{ checkId \}\)/g, 1],
+    // Two writes, the front's pickup and the kitchen's, each checked.
+    ['tickets', 'PATCH', /await refuseWhileHubbed\(\{ ticketId \}\)/g, 2],
+    ['drawer', 'POST', /await refuseWhileHubbed\(\{ branch \}\)/g, 1],
+    ['drawer', 'PATCH', /await refuseWhileHubbed\(\{ shiftId \}\)/g, 1],
+  ]
+  const WRITES = /\b(openCheck|addLines|sendCheck|voidLine|moveCheck|closeCheck|refundCheck|addPayment|openShift|closeShift|advanceTicket|pickUpTicket)\(/
+  const unguarded = []
+  for (const [name, method, guard, needed] of guards) {
+    const src = readFileSync(`pos/app/api/pos/${name}/route.ts`, 'utf8')
+    const body = src.split(`export async function ${method}(`)[1]?.split('export async function')[0] ?? ''
+    const found = [...body.matchAll(guard)]
+    const firstWrite = body.search(WRITES)
+    if (found.length < needed || firstWrite < 0 || found[0].index > firstWrite) unguarded.push(`${name} ${method}`)
+  }
+  eq('THE TRAP: every till write route in the cloud asks about the right thing before it writes', unguarded, [])
 }
 
 } catch (err) {

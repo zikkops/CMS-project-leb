@@ -39,6 +39,7 @@ import { useOpenChecks, useChecksClosedSince, openCheck } from '../lib/usePos'
 import { PosButton, Chip, StatusBadge } from '../lib/posUi'
 import { floorReadings, readReadingChoice, READINGS, type ReadingKey } from '../lib/floorReadings'
 import { ReadyPanel } from '../lib/ReadyPanel'
+import { useHubOnly, HubOnlyBanner } from '../lib/useHubOnly'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -250,6 +251,8 @@ export default function FloorPage() {
   // nothing to do on it.
   const { on: takesPayment } = useFeature('payments')
   const { checks, error: liveError } = useOpenChecks(branch)
+  // A branch a café hub trades is view-only online (S10); the routes refuse, this says so.
+  const hubOnly = useHubOnly(branch)
 
   // A little over a day back, fixed when the page opens: always wide enough to
   // hold the café's whole today, whatever the zone, and no wider.
@@ -399,6 +402,7 @@ export default function FloorPage() {
           </nav>
         )}
 
+        <HubOnlyBanner hub={hubOnly} branch={branch} isMobile={isMobile} />
         {kdsOn && <ReadyPanel branch={branch} isMobile={isMobile} />}
 
         {/* ── Readings ──────────────────────────────────────────────────── */}

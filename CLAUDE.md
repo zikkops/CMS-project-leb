@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1464
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1475
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -998,9 +998,38 @@ wraps the same React screens.
         branch's shelf.
       - The first run of two cloud mutations did not compile, which proves
         nothing, and they were rewritten.
+  - **While a branch has a paired hub, the online till for it is view-only**
+    (owner's decision S10, 14 Sep 2026). The hub is master for that branch's
+    checks, tickets and drawer, and sends them up as they stand. So a payment
+    taken online meanwhile is written over at the hub's next push, and a table
+    opened online is a second open check the hub never sees.
+    - **The lock is on the server:** `refuseWhileHubbed()` in
+      `shared/src/server/hubLock.ts`. Every till write route in the cloud calls
+      it after the caller is checked and before anything is written: checks
+      POST/PATCH, tickets PATCH (both the front's pickup and the kitchen's
+      bump), and drawer POST/PATCH. It answers 409, naming the branch and the
+      hub.
+    - It follows a check, ticket or shift id to that document's branch. A
+      document that is not there is left for the write itself to refuse.
+    - **An unpaired hub no longer locks.** Revoking a hub in Settings → Café
+      Hubs opens the online till again.
+    - **On the hub itself nothing is refused**, since there it is the master.
+      `onHub` is a parameter, because `verify:hub-sync` runs its "cloud" as a
+      hub store with `BIG_CMS_HUB_DB` set.
+    - **A new till write route must call it.** `verify:hub-sync` reads the
+      route files and fails when a write route does not lock the right thing
+      (`branch`, `checkId`, `ticketId`, `shiftId`) before its first write.
+    - **The screens only say so.** `useHubOnly()` asks `GET
+      /api/pos/hub-lock` when a screen opens and every minute after.
+      `HubOnlyBanner` puts an amber "View only" notice on the floor, counter,
+      check, kitchen display and drawer. **The banner has not been looked at
+      in a browser:** it shows only on the online till, and that needs a real
+      Firebase sign-in.
+    - 14 mutations, all caught by name. "Any hub locks every branch" first
+      survived: `branchHub()` already queries by branch, so the check in
+      `activeHubFor()` was only proved once a test handed it another
+      branch's row directly.
   - **Not built yet:**
-    - the online POS view-only for a branch with a paired hub (owner's
-      decision, 14 Sep 2026)
     - reaching the hub from a phone on the café wifi (the server listens on
       this PC only)
 

@@ -61,6 +61,7 @@ import {
 import type { OutboxAction } from '../../lib/outbox'
 import { PosButton, Chip, StatusBadge, SectionLabel, kindColour } from '../../lib/posUi'
 import { ReadyPanel } from '../../lib/ReadyPanel'
+import { useHubOnly, HubOnlyBanner } from '../../lib/useHubOnly'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 900) {
@@ -141,6 +142,9 @@ export default function CounterPage() {
 
   const [branch] = useState(BRAND.branches[0] ?? '')
   const { checks } = useOpenChecks(branch)
+  // A branch a café hub trades is view-only online (S10). The outbox would
+  // only queue refusals, so the screen says so first.
+  const hubOnly = useHubOnly(branch)
   const menu = usePosMenu()
   const { settings } = useBusinessSettings()
   const { on: takesPayment } = useFeature('payments')
@@ -720,6 +724,8 @@ export default function CounterPage() {
           </div>
           {status}
         </div>
+
+        <HubOnlyBanner hub={hubOnly} branch={branch} isMobile={isMobile} />
 
         {/* A refusal stops the queue, and only a person can clear it: the
             items after it are usually for the same table. */}
