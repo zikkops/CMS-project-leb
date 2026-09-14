@@ -27,9 +27,22 @@
 // a receipt number is the server's to issue). Modifiers and retail are not
 // here either: this is the fast path for a counter, and the full check screen
 // is one tap away whenever there is a server to render it.
+//
+// ── Look (14 Sep 2026) ─────────────────────────────────────────────────────
+// On a wide screen the check and the money sit on the left and the menu on
+// the right, both always visible. Controls come from pos/app/lib/posUi.tsx.
+// The connection is a large badge, not 0.72rem text in a corner: on the one
+// screen built for outages it is the most important fact on it. "Try again"
+// and "Drop it" are no longer the same outlined chip in two border colours.
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import {
+  faWifi, faPlugCircleXmark, faTriangleExclamation, faArrowLeft, faRotateRight, faTrashCan, faCheck,
+  faPlus, faXmark, faHourglassHalf, faPen, faPaperPlane, faClipboardCheck, faMoneyBillWave, faCoins,
+  faCreditCard, faEquals, faHandHoldingDollar, faReceipt, faUserGroup, faUtensils, faStore,
+} from '@fortawesome/free-solid-svg-icons'
 import { BRAND } from '@big-cms/shared/brand'
 import { checkTotals, type Check } from '@big-cms/shared/checks'
 import {
@@ -47,9 +60,10 @@ import {
   checkDue, draftsUsd, queuedUsd, replayApplied, takeBlocked,
 } from '../../lib/counterTotals'
 import type { OutboxAction } from '../../lib/outbox'
+import { PosButton, Chip, StatusBadge, SectionLabel, kindColour } from '../../lib/posUi'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
-function useIsMobile(breakpoint = 768) {
+function useIsMobile(breakpoint = 900) {
   const [isMobile, setIsMobile] = useState(false)
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < breakpoint)
@@ -63,15 +77,9 @@ function useIsMobile(breakpoint = 768) {
 const usd = (n: number) => `$${n.toFixed(2)}`
 const lbpFmt = (n: number) => `${Math.round(n).toLocaleString('en-US')} LBP`
 
-const tap: React.CSSProperties = {
-  minHeight: '48px', padding: '0.7rem 1rem', borderRadius: '6px',
-  fontFamily: 'var(--font-inter)', fontSize: '0.9rem', cursor: 'pointer',
-}
-
-const chip: React.CSSProperties = {
-  ...tap, minHeight: '40px', padding: '0.45rem 0.8rem', fontSize: '0.82rem',
-  backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.14)',
-  color: 'rgba(var(--offwhite-rgb),0.75)',
+const card: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.12)',
+  borderRadius: '14px', padding: '1rem 1.1rem', marginBottom: '1rem',
 }
 
 /** One item on the counter's view of a check, wherever it came from. */
@@ -239,9 +247,6 @@ export default function CounterPage() {
 
   const rate = table?.check?.billRate ?? settings.exchangeRate
 
-  // Payments already on the check, plus any still queued — replayed through
-  // the same function the server uses, so what this screen says is owed is
-  // what the server will say when the queue lands.
   // Payments on the check plus the ones still queued, replayed through the
   // same function the server settles with — so what this screen says is owed
   // is what the server will say when the queue lands.
@@ -425,366 +430,387 @@ export default function CounterPage() {
 
   if (!ready || !signedIn) return null
 
-  const banner = outbox.stuck ? 'var(--red)' : outbox.online ? 'var(--teal)' : 'var(--brand-secondary)'
+  const typed = Number(amount)
+  const takeLabel = busy === 'Taking…'
+    ? 'Taking…'
+    : amount && Number.isFinite(typed) && typed > 0
+      ? `Take ${currency === 'USD' ? usd(typed) : lbpFmt(typed)}`
+      : 'Take payment'
+
+  // ── Pieces ─────────────────────────────────────────────────────────────────
+  // Plain JSX values rather than components declared in here: a component
+  // declared inside a render body remounts on every keystroke (CONTRIBUTING #2),
+  // and the amount input lives in one of these.
+
+  const status = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: '0.55rem', minHeight: '44px',
+        padding: '0 1rem', borderRadius: '999px', fontWeight: 700, fontSize: '1rem',
+        background: outbox.stuck ? 'rgba(var(--red-rgb),0.16)' : outbox.online ? 'rgba(var(--teal-rgb),0.16)' : 'rgba(var(--brand-secondary-rgb),0.16)',
+        border: `2px solid ${outbox.stuck ? 'var(--red)' : outbox.online ? 'var(--teal)' : 'var(--brand-secondary)'}`,
+        color: outbox.stuck ? 'var(--red)' : outbox.online ? 'var(--teal)' : 'var(--brand-secondary)',
+      }}>
+        <FontAwesomeIcon icon={outbox.stuck ? faTriangleExclamation : outbox.online ? faWifi : faPlugCircleXmark} />
+        {outbox.stuck ? 'Stopped' : outbox.online ? 'Online' : 'Offline'}
+        {outbox.queued > 0 && <span style={{ fontWeight: 600 }}>· {outbox.queued} waiting</span>}
+        {outbox.syncing && <span style={{ fontWeight: 600 }}>· sending…</span>}
+      </span>
+      {/* A plain page load, not router navigation: the floor is a server page,
+          and this screen must not depend on one. */}
+      <PosButton icon={faArrowLeft} label="Floor" tone="quiet" size="sm" onClick={() => { window.location.href = '/pos' }} />
+    </div>
+  )
+
+  const tablesBlock = (
+    <>
+      <SectionLabel icon={faStore}>Tables</SectionLabel>
+      <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+        {tables.map(t => {
+          const on = selected === t.checkId
+          return (
+            <button
+              key={t.checkId}
+              type="button"
+              onClick={() => { setSelected(t.checkId); setDrafts([]); setChange(null); setError('') }}
+              aria-pressed={on}
+              style={{
+                minHeight: '84px', minWidth: '96px', padding: '0.5rem 0.7rem', borderRadius: '12px', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.3rem',
+                background: on ? 'rgba(var(--teal-rgb),0.2)' : 'rgba(255,255,255,0.04)',
+                border: `${on ? 3 : 2}px solid ${on ? 'var(--teal)' : t.waiting > 0 ? 'var(--brand-secondary)' : 'rgba(255,255,255,0.16)'}`,
+                color: 'var(--offwhite)', fontFamily: 'var(--font-inter)',
+              }}
+            >
+              <span style={{ fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.6)' }}>Table</span>
+              <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.7rem', lineHeight: 1 }}>{t.tableNumber}</span>
+              {t.waiting > 0 && <StatusBadge icon={faHourglassHalf} tone="warn" label={`${t.waiting} waiting`} />}
+            </button>
+          )
+        })}
+        <PosButton icon={faPlus} label="Table" tone="neutral" style={{ minHeight: '84px', minWidth: '96px', flexDirection: 'column', gap: '0.3rem' }}
+          onClick={() => { setOpening(true); setTableNumber(''); setError('') }} />
+      </div>
+
+      {opening && (
+        <div style={card}>
+          <SectionLabel>Open a table</SectionLabel>
+          <input
+            value={tableNumber}
+            onChange={e => setTableNumber(e.target.value.replace(/[^0-9]/g, ''))}
+            inputMode="numeric"
+            autoFocus
+            placeholder="Table number"
+            style={{
+              width: '100%', minHeight: '64px', textAlign: 'center',
+              background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.18)',
+              borderRadius: '10px', color: 'var(--offwhite)',
+              fontFamily: 'var(--font-cinzel)', fontSize: '2rem', outline: 'none',
+            }}
+          />
+          <SectionLabel icon={faUserGroup}>Guests</SectionLabel>
+          <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+            {[1, 2, 3, 4, 5, 6, 8].map(n => (
+              <Chip key={n} label={String(n)} active={guests === String(n)} onClick={() => setGuests(String(n))} size="sm" />
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '0.55rem', marginTop: '1rem' }}>
+            <PosButton icon={faXmark} label="Cancel" tone="quiet" grow={1} onClick={() => setOpening(false)} />
+            <PosButton icon={faPlus} label={busy === 'Opening…' ? 'Opening…' : `Open table ${tableNumber || ''}`} tone="primary" size="lg" grow={2}
+              disabled={Boolean(busy) || !tableNumber} onClick={handleOpen} />
+          </div>
+        </div>
+      )}
+    </>
+  )
+
+  const checkBlock = table && (
+    <div style={card}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.5rem' }}>
+        <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.6rem', color: 'var(--offwhite)' }}>Table {table.tableNumber}</h2>
+        {!table.check && <StatusBadge icon={faHourglassHalf} tone="warn" label="Not on the server yet" />}
+      </div>
+
+      {lines.length === 0 && (
+        <p style={{ fontSize: '1rem', color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.6rem 0' }}>
+          Nothing on this table yet — tap items on the menu.
+        </p>
+      )}
+      {lines.map(l => (
+        <div key={l.key} style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem',
+          fontSize: '1.02rem', padding: '0.45rem 0', borderBottom: '1px solid rgba(255,255,255,0.06)',
+          color: l.where === 'live' ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.8)',
+        }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <strong style={{ minWidth: '2rem' }}>{l.quantity}×</strong> {l.name}
+            {l.where === 'queued' && <StatusBadge icon={faHourglassHalf} tone="warn" label="waiting" />}
+            {l.where === 'draft' && <StatusBadge icon={faPen} label="not rung up" />}
+          </span>
+          <span style={{ fontWeight: 600 }}>{usd(l.unitPrice * l.quantity)}</span>
+        </div>
+      ))}
+
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.6rem',
+        marginTop: '0.8rem', paddingTop: '0.3rem',
+      }}>
+        <span style={{ fontSize: '1rem', fontWeight: 700 }}>{draftTotal > 0 ? 'Rung up' : 'Total'}</span>
+        <span style={{ textAlign: 'right' }}>
+          <span style={{ fontSize: '1.6rem', fontWeight: 800 }}>{usd(due)}</span>
+          <span style={{ display: 'block', fontSize: '0.92rem', color: 'rgba(var(--offwhite-rgb),0.6)' }}>{lbpFmt(due * rate)}</span>
+        </span>
+      </div>
+      {draftTotal > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.98rem', color: 'var(--brand-secondary)', marginTop: '0.35rem', fontWeight: 600 }}>
+          <span><FontAwesomeIcon icon={faPen} style={{ marginRight: '0.4rem' }} />Not rung up yet</span>
+          <span>+{usd(draftTotal)}</span>
+        </div>
+      )}
+      {applied.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.98rem', marginTop: '0.35rem', color: bill.settled ? 'var(--teal)' : 'var(--offwhite)', fontWeight: 600 }}>
+          <span>{bill.settled ? 'Paid in full' : 'Still owed'}</span>
+          <span>{bill.settled ? '—' : `${usd(bill.remainingUsd)} · ${lbpFmt(bill.remainingLbp)}`}</span>
+        </div>
+      )}
+
+      {drafts.length > 0 && (
+        <div style={{ marginTop: '1rem' }}>
+          <PosButton
+            icon={outbox.online ? faPaperPlane : faClipboardCheck}
+            label={busy === 'Recording…' ? 'Recording…' : outbox.online ? 'Send to the kitchen' : 'Record — the kitchen is here'}
+            tone="primary" size="lg" full disabled={Boolean(busy)} onClick={handleRecord}
+            badge={drafts.reduce((n, d) => n + d.quantity, 0)}
+          />
+        </div>
+      )}
+    </div>
+  )
+
+  const moneyBlock = table && takesPayment && (
+    <div style={card}>
+      <SectionLabel icon={faHandHoldingDollar}>Payment</SectionLabel>
+      <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '0.8rem' }}>
+        {([
+          { t: 'cash', c: 'USD', label: 'Cash $', icon: faMoneyBillWave },
+          { t: 'cash', c: 'LBP', label: 'Cash LBP', icon: faCoins },
+          { t: 'card', c: 'USD', label: 'Card $', icon: faCreditCard },
+        ] as const).map(o => (
+          <Chip
+            key={o.label}
+            icon={o.icon}
+            label={o.label}
+            active={tender === o.t && currency === o.c}
+            onClick={() => { setTender(o.t); setCurrency(o.c); setChange(null) }}
+          />
+        ))}
+      </div>
+
+      <input
+        value={amount}
+        onChange={e => { setAmount(e.target.value.replace(/[^0-9.]/g, '')); setChange(null) }}
+        inputMode="decimal"
+        placeholder={currency === 'USD' ? usd(bill.remainingUsd) : lbpFmt(bill.remainingLbp)}
+        style={{
+          width: '100%', minHeight: '68px', textAlign: 'center',
+          background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.18)',
+          borderRadius: '10px', color: 'var(--offwhite)',
+          fontFamily: 'var(--font-cinzel)', fontSize: '2rem', outline: 'none',
+        }}
+      />
+
+      <div style={{ display: 'flex', gap: '0.55rem', marginTop: '0.8rem' }}>
+        <PosButton icon={faEquals} label="Exact" tone="neutral" grow={1}
+          onClick={() => setAmount(String(currency === 'USD' ? bill.remainingUsd : bill.remainingLbp))} />
+        <PosButton icon={faHandHoldingDollar} label={takeLabel} tone="primary" size="lg" grow={2}
+          disabled={Boolean(busy) || !amount || blocked !== null} onClick={handlePay} />
+      </div>
+
+      {blocked && (
+        <p style={{ fontSize: '0.95rem', color: 'var(--brand-secondary)', marginTop: '0.8rem', lineHeight: 1.6, fontWeight: 600 }}>
+          <FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.45rem' }} />{blocked}
+        </p>
+      )}
+      {change && (
+        <div style={{
+          marginTop: '0.9rem', padding: '0.85rem 1rem', borderRadius: '10px',
+          background: 'rgba(var(--teal-rgb),0.12)', border: '2px solid var(--teal)',
+        }}>
+          <p style={{ fontSize: '0.85rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--teal)' }}>Change to hand back</p>
+          <p style={{ fontSize: '1.7rem', fontWeight: 800, color: 'var(--offwhite)' }}>{usd(change.usd)} + {lbpFmt(change.lbp)}</p>
+          {change.queued && (
+            <p style={{ color: 'var(--brand-secondary)', fontSize: '0.92rem', marginTop: '0.25rem', lineHeight: 1.5 }}>
+              Worked out on this device. If the till makes it different when this is sent, you will be told here.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Closing issues a receipt number, which is the server's to
+          give (owner's decision: close when the connection is back). */}
+      <div style={{ marginTop: '1rem' }}>
+        {bill.settled && outbox.online && table.check ? (
+          <PosButton icon={faReceipt} label="Paid in full — close it and print the receipt" tone="neutral" full
+            onClick={() => { window.location.href = `/pos/check/${table.checkId}` }} />
+        ) : (
+          <p style={{ fontSize: '0.9rem', color: 'rgba(var(--offwhite-rgb),0.55)', lineHeight: 1.6 }}>
+            A check is closed — and its receipt numbered — on the full check screen, once the connection is back.
+          </p>
+        )}
+      </div>
+    </div>
+  )
+
+  const menuBlock = table && (
+    <>
+      <SectionLabel icon={faUtensils}>Menu</SectionLabel>
+      <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '0.9rem' }}>
+        {categories.map((c, i) => (
+          <Chip key={c.id} label={c.name} active={activeCategory === c.id} onClick={() => setCategory(c.id)} colour={kindColour(i)} />
+        ))}
+      </div>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, minmax(0, 1fr))',
+        gap: '0.6rem', marginBottom: '1.4rem',
+      }}>
+        {shown.map(i => {
+          const colour = kindColour(Math.max(0, categories.findIndex(c => c.id === activeCategory)))
+          return (
+            <button key={i.id} type="button" onClick={() => setDrafts(d => withDraft(d, i))} style={{
+              minHeight: '92px', borderRadius: '12px', cursor: 'pointer', textAlign: 'left',
+              padding: '0.75rem 0.9rem 0.75rem 1rem', fontFamily: 'var(--font-inter)',
+              backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--offwhite)',
+              border: '1px solid rgba(255,255,255,0.12)', borderLeft: `6px solid ${colour}`,
+              display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '0.35rem',
+            }}>
+              <span style={{ fontSize: '1.02rem', fontWeight: 600, lineHeight: 1.25 }}>{i.name}</span>
+              <span style={{ fontSize: '1rem', fontWeight: 700 }}>{usd(i.price)}</span>
+            </button>
+          )
+        })}
+        {shown.length === 0 && (
+          <p style={{ color: 'rgba(var(--offwhite-rgb),0.5)', fontSize: '0.98rem', gridColumn: '1 / -1' }}>
+            {menu.loading ? 'Loading the menu…' : 'Nothing available in this category.'}
+          </p>
+        )}
+      </div>
+    </>
+  )
 
   return (
     <main style={{
       minHeight: '100vh', backgroundColor: 'var(--black)',
-      padding: isMobile ? '1rem 0.9rem 2rem' : '1.5rem 1.5rem 3rem',
+      padding: isMobile ? '1rem 0.9rem 2rem' : '1.25rem 1.5rem 3rem',
       fontFamily: 'var(--font-inter)', color: 'var(--offwhite)',
     }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1500px', margin: '0 auto' }}>
 
         {/* ── Where this device stands ─────────────────────────────────── */}
         <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-          flexWrap: 'wrap', gap: '0.6rem', marginBottom: '1rem',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          flexWrap: 'wrap', gap: '0.8rem', marginBottom: '1rem',
         }}>
           <div>
-            <p style={{
-              fontSize: '0.6rem', letterSpacing: '0.25em', textTransform: 'uppercase',
-              color: 'var(--teal)', marginBottom: '0.3rem',
-            }}>{branch}</p>
-            <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.4rem' : '1.8rem' }}>
-              Counter
-            </h1>
+            <p style={{ fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: '0.3rem', fontWeight: 700 }}>{branch}</p>
+            <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.3rem', lineHeight: 1 }}>Counter</h1>
           </div>
-          <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <span style={{ fontSize: '0.72rem', color: banner }}>
-              {outbox.online ? 'Online' : 'Offline'}
-              {outbox.queued > 0 && ` · ${outbox.queued} waiting`}
-              {outbox.syncing && ' · sending…'}
-            </span>
-            <a href="/pos" style={{
-              fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase',
-              color: 'rgba(var(--offwhite-rgb),0.35)', textDecoration: 'none',
-            }}>Floor →</a>
-          </div>
+          {status}
         </div>
 
         {/* A refusal stops the queue, and only a person can clear it: the
             items after it are usually for the same table. */}
         {outbox.stuck && (
           <div style={{
-            border: '1px solid rgba(var(--red-rgb),0.4)', background: 'rgba(var(--red-rgb),0.08)',
-            borderRadius: '6px', padding: '0.9rem 1rem', marginBottom: '1rem',
+            border: '2px solid var(--red)', background: 'rgba(var(--red-rgb),0.1)',
+            borderRadius: '12px', padding: '1rem 1.1rem', marginBottom: '1rem',
           }}>
-            <p style={{ fontSize: '0.85rem', lineHeight: 1.6, marginBottom: '0.7rem' }}>
+            <p style={{ fontSize: '1rem', lineHeight: 1.6, marginBottom: '0.8rem' }}>
+              <FontAwesomeIcon icon={faTriangleExclamation} style={{ color: 'var(--red)', marginRight: '0.5rem' }} />
               <strong>Nothing is being sent.</strong> The server would not take one of the
               queued actions: {outbox.stuck.reason}
             </p>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <button onClick={() => outbox.resolve('retry')} style={{
-                ...chip, borderColor: 'var(--teal)', color: 'var(--offwhite)',
-              }}>Try it again</button>
-              <button onClick={() => outbox.resolve('drop')} style={{
-                ...chip, borderColor: 'var(--red)', color: 'var(--offwhite)',
-              }}>Drop it and carry on</button>
+            {/* Apart, and in different colours and icons: dropping throws the
+                action away, and it must not be the button next to "again". */}
+            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+              <PosButton icon={faRotateRight} label="Try it again" tone="primary" onClick={() => outbox.resolve('retry')} />
+              <PosButton icon={faTrashCan} label="Drop it and carry on" tone="danger" onClick={() => outbox.resolve('drop')} />
             </div>
           </div>
         )}
 
         {outbox.notices.length > 0 && (
           <div style={{
-            border: '1px solid rgba(var(--brand-secondary-rgb),0.35)',
-            background: 'rgba(var(--brand-secondary-rgb),0.08)',
-            borderRadius: '6px', padding: '0.9rem 1rem', marginBottom: '1rem',
+            border: '1px solid rgba(var(--brand-secondary-rgb),0.45)',
+            background: 'rgba(var(--brand-secondary-rgb),0.1)',
+            borderRadius: '12px', padding: '1rem 1.1rem', marginBottom: '1rem',
           }}>
             {outbox.notices.map((n, i) => (
-              <p key={i} style={{ fontSize: '0.82rem', lineHeight: 1.6, marginBottom: '0.4rem' }}>{n}</p>
+              <p key={i} style={{ fontSize: '0.98rem', lineHeight: 1.6, marginBottom: '0.4rem' }}>
+                <FontAwesomeIcon icon={faTriangleExclamation} style={{ color: 'var(--brand-secondary)', marginRight: '0.45rem' }} />{n}
+              </p>
             ))}
-            <button onClick={outbox.dismissNotices} style={{ ...chip, marginTop: '0.3rem' }}>
-              Noted
-            </button>
+            <div style={{ marginTop: '0.4rem' }}>
+              <PosButton icon={faCheck} label="Noted" tone="neutral" size="sm" onClick={outbox.dismissNotices} />
+            </div>
           </div>
         )}
 
         {error && (
           <p style={{
-            color: 'var(--red)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6,
-            background: 'rgba(var(--red-rgb),0.08)', border: '1px solid rgba(var(--red-rgb),0.25)',
-            borderRadius: '4px', padding: '0.7rem 0.9rem',
-          }}>{error}</p>
+            color: 'var(--red)', fontSize: '1rem', marginBottom: '1rem', lineHeight: 1.6,
+            background: 'rgba(var(--red-rgb),0.1)', border: '1px solid rgba(var(--red-rgb),0.35)',
+            borderRadius: '10px', padding: '0.85rem 1rem',
+          }}><FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.5rem' }} />{error}</p>
         )}
 
-        {/* ── The tables ───────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.2rem' }}>
-          {tables.map(t => (
-            <button
-              key={t.checkId}
-              onClick={() => { setSelected(t.checkId); setDrafts([]); setChange(null); setError('') }}
-              style={{
-                ...chip, minHeight: '56px', minWidth: '72px',
-                flexDirection: 'column', display: 'flex', gap: '0.1rem',
-                borderColor: selected === t.checkId ? 'var(--teal)' : 'rgba(255,255,255,0.14)',
-                backgroundColor: selected === t.checkId ? 'rgba(var(--teal-rgb),0.14)' : 'transparent',
-                color: 'var(--offwhite)',
-              }}
-            >
-              <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem' }}>{t.tableNumber}</span>
-              {t.waiting > 0 && (
-                <span style={{ fontSize: '0.6rem', color: 'var(--brand-secondary)' }}>{t.waiting} waiting</span>
-              )}
-            </button>
-          ))}
-          <button onClick={() => { setOpening(true); setTableNumber(''); setError('') }} style={{
-            ...chip, minHeight: '56px', minWidth: '72px',
-            borderColor: 'rgba(var(--teal-rgb),0.5)', color: 'var(--offwhite)',
-          }}>+ Table</button>
-        </div>
-
-        {opening && (
-          <div style={{
-            border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px',
-            padding: '1rem', marginBottom: '1.2rem',
-          }}>
-            <label style={{
-              display: 'block', fontSize: '0.64rem', letterSpacing: '0.14em',
-              textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.4)', marginBottom: '0.4rem',
-            }}>Table number</label>
-            <input
-              value={tableNumber}
-              onChange={e => setTableNumber(e.target.value.replace(/[^0-9]/g, ''))}
-              inputMode="numeric"
-              autoFocus
-              placeholder="7"
-              style={{
-                width: '100%', minHeight: '52px', textAlign: 'center',
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.14)',
-                borderRadius: '4px', color: 'var(--offwhite)',
-                fontFamily: 'var(--font-cinzel)', fontSize: '1.6rem', outline: 'none',
-              }}
-            />
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', margin: '0.8rem 0' }}>
-              {[1, 2, 3, 4, 5, 6, 8].map(n => (
-                <button key={n} onClick={() => setGuests(String(n))} style={{
-                  ...chip, minWidth: '44px',
-                  borderColor: guests === String(n) ? 'var(--teal)' : 'rgba(255,255,255,0.12)',
-                  color: 'var(--offwhite)',
-                }}>{n}</button>
-              ))}
+        {isMobile ? (
+          <>
+            {tablesBlock}
+            {checkBlock}
+            {menuBlock}
+            {moneyBlock}
+          </>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(400px, 0.95fr) minmax(0, 1.25fr)', gap: '1.25rem', alignItems: 'start' }}>
+            <div>
+              {tablesBlock}
+              {checkBlock}
+              {moneyBlock}
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button onClick={() => setOpening(false)} style={{ ...chip, flex: 1 }}>Cancel</button>
-              <button disabled={Boolean(busy) || !tableNumber} onClick={handleOpen} style={{
-                ...tap, flex: 2, border: 'none',
-                backgroundColor: !tableNumber ? 'rgba(var(--teal-rgb),0.25)' : 'var(--teal)',
-                color: '#fff', letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: '0.8rem',
-              }}>{busy || `Open table ${tableNumber || ''}`}</button>
+            <div style={{ ...card, padding: '0.3rem 1.1rem 0.4rem' }}>
+              {menuBlock ?? (
+                <p style={{ fontSize: '1.05rem', color: 'rgba(var(--offwhite-rgb),0.5)', padding: '3rem 0', textAlign: 'center' }}>
+                  Pick a table, or open one, to see the menu.
+                </p>
+              )}
             </div>
           </div>
         )}
 
-        {table && (
-          <>
-            {/* ── What is on it ────────────────────────────────────────── */}
-            <div style={{
-              border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px',
-              padding: '0.9rem 1rem', marginBottom: '1rem',
-            }}>
-              {lines.length === 0 && (
-                <p style={{ fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
-                  Nothing on this table yet.
-                </p>
-              )}
-              {lines.map(l => (
-                <div key={l.key} style={{
-                  display: 'flex', justifyContent: 'space-between', gap: '0.6rem',
-                  fontSize: '0.85rem', padding: '0.25rem 0',
-                  color: l.where === 'live' ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.6)',
-                }}>
-                  <span>
-                    {l.quantity}× {l.name}
-                    {l.where === 'queued' && (
-                      <span style={{ color: 'var(--brand-secondary)', fontSize: '0.7rem' }}> · waiting</span>
-                    )}
-                    {l.where === 'draft' && (
-                      <span style={{ color: 'rgba(var(--offwhite-rgb),0.35)', fontSize: '0.7rem' }}> · not rung up</span>
-                    )}
-                  </span>
-                  <span>{usd(l.unitPrice * l.quantity)}</span>
-                </div>
-              ))}
-
-              <div style={{
-                display: 'flex', justifyContent: 'space-between',
-                borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '0.6rem', paddingTop: '0.6rem',
-                fontSize: '0.95rem',
-              }}>
-                <span>{draftTotal > 0 ? 'Rung up' : 'Total'}</span>
-                <span style={{ color: 'var(--teal)' }}>{usd(due)} · {lbpFmt(due * rate)}</span>
-              </div>
-              {draftTotal > 0 && (
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between',
-                  fontSize: '0.82rem', color: 'var(--brand-secondary)', marginTop: '0.3rem',
-                }}>
-                  <span>Not rung up yet</span>
-                  <span>+{usd(draftTotal)}</span>
-                </div>
-              )}
-              {applied.length > 0 && (
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between',
-                  fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginTop: '0.3rem',
-                }}>
-                  <span>{bill.settled ? 'Paid in full' : 'Still owed'}</span>
-                  <span>{bill.settled ? '—' : `${usd(bill.remainingUsd)} · ${lbpFmt(bill.remainingLbp)}`}</span>
-                </div>
-              )}
-            </div>
-
-            {drafts.length > 0 && (
-              <button onClick={handleRecord} disabled={Boolean(busy)} style={{
-                ...tap, width: '100%', border: 'none', marginBottom: '1rem',
-                backgroundColor: 'var(--teal)', color: '#fff',
-                letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: '0.8rem',
-              }}>
-                {busy || (outbox.online ? 'Send to the kitchen' : 'Record — the kitchen is here')}
-              </button>
-            )}
-
-            {/* ── The menu ─────────────────────────────────────────────── */}
-            <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.8rem', overflowX: 'auto', paddingBottom: '0.3rem' }}>
-              {categories.map(c => (
-                <button key={c.id} onClick={() => setCategory(c.id)} style={{
-                  ...chip, whiteSpace: 'nowrap',
-                  borderColor: activeCategory === c.id ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
-                  backgroundColor: activeCategory === c.id ? 'rgba(255,255,255,0.08)' : 'transparent',
-                  color: 'var(--offwhite)',
-                }}>{c.name}</button>
-              ))}
-            </div>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)',
-              gap: '0.5rem', marginBottom: '1.4rem',
-            }}>
-              {shown.map(i => (
-                <button key={i.id} onClick={() => setDrafts(d => withDraft(d, i))} style={{
-                  ...tap, minHeight: '64px', textAlign: 'left',
-                  backgroundColor: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.1)', color: 'var(--offwhite)',
-                  display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0.2rem',
-                }}>
-                  <span style={{ fontSize: '0.82rem' }}>{i.name}</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--teal)' }}>{usd(i.price)}</span>
-                </button>
-              ))}
-              {shown.length === 0 && (
-                <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontSize: '0.82rem', gridColumn: '1 / -1' }}>
-                  {menu.loading ? 'Loading the menu…' : 'Nothing available in this category.'}
-                </p>
-              )}
-            </div>
-
-            {/* ── The money ────────────────────────────────────────────── */}
-            {takesPayment && (
-              <div style={{
-                border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '0.9rem 1rem',
-              }}>
-                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.7rem' }}>
-                  {([
-                    { t: 'cash', c: 'USD', label: 'Cash $' },
-                    { t: 'cash', c: 'LBP', label: 'Cash LBP' },
-                    { t: 'card', c: 'USD', label: 'Card $' },
-                  ] as const).map(o => (
-                    <button
-                      key={o.label}
-                      onClick={() => { setTender(o.t); setCurrency(o.c); setChange(null) }}
-                      style={{
-                        ...chip,
-                        borderColor: tender === o.t && currency === o.c ? 'var(--teal)' : 'rgba(255,255,255,0.14)',
-                        backgroundColor: tender === o.t && currency === o.c ? 'rgba(var(--teal-rgb),0.14)' : 'transparent',
-                        color: 'var(--offwhite)',
-                      }}
-                    >{o.label}</button>
-                  ))}
-                </div>
-
-                <input
-                  value={amount}
-                  onChange={e => { setAmount(e.target.value.replace(/[^0-9.]/g, '')); setChange(null) }}
-                  inputMode="decimal"
-                  placeholder={currency === 'USD' ? usd(bill.remainingUsd) : lbpFmt(bill.remainingLbp)}
-                  style={{
-                    width: '100%', minHeight: '52px', textAlign: 'center',
-                    background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.14)',
-                    borderRadius: '4px', color: 'var(--offwhite)',
-                    fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem', outline: 'none',
-                  }}
-                />
-
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.7rem' }}>
-                  <button
-                    onClick={() => setAmount(String(currency === 'USD' ? bill.remainingUsd : bill.remainingLbp))}
-                    style={{ ...chip, flex: 1 }}
-                  >Exact</button>
-                  <button
-                    disabled={Boolean(busy) || !amount || blocked !== null}
-                    onClick={handlePay}
-                    style={{
-                      ...tap, flex: 2, border: 'none',
-                      backgroundColor: !amount || blocked !== null ? 'rgba(var(--teal-rgb),0.25)' : 'var(--teal)',
-                      color: '#fff', letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: '0.8rem',
-                    }}
-                  >{busy || 'Take'}</button>
-                </div>
-
-                {blocked && (
-                  <p style={{
-                    fontSize: '0.78rem', color: 'var(--brand-secondary)',
-                    marginTop: '0.7rem', lineHeight: 1.6,
-                  }}>{blocked}</p>
-                )}
-                {change && (
-                  <p style={{ fontSize: '0.85rem', marginTop: '0.8rem', lineHeight: 1.6 }}>
-                    Change: <strong>{usd(change.usd)} + {lbpFmt(change.lbp)}</strong>
-                    {change.queued && (
-                      <span style={{ color: 'var(--brand-secondary)' }}>
-                        {' '}— worked out on this device. If the till makes it different when
-                        this is sent, you will be told here.
-                      </span>
-                    )}
-                  </p>
-                )}
-
-                {/* Closing issues a receipt number, which is the server's to
-                    give (owner's decision: close when the connection is back). */}
-                <p style={{
-                  fontSize: '0.76rem', color: 'rgba(var(--offwhite-rgb),0.35)',
-                  marginTop: '0.9rem', lineHeight: 1.6,
-                }}>
-                  {bill.settled && outbox.online && table.check
-                    ? <>Paid in full. <a href={`/pos/check/${table.checkId}`} style={{ color: 'var(--teal)' }}>Close it and print the receipt →</a></>
-                    : 'A check is closed — and its receipt numbered — on the full check screen, once the connection is back.'}
-                </p>
-              </div>
-            )}
-          </>
-        )}
-
         {/* ── This device ──────────────────────────────────────────────── */}
-        <div style={{
-          marginTop: '2rem', paddingTop: '1rem',
-          borderTop: '1px solid rgba(255,255,255,0.08)',
-        }}>
+        <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
           {device.supported ? (
-            <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: '0.8rem', lineHeight: 1.6 }}>
+            <label style={{
+              display: 'flex', gap: '0.8rem', alignItems: 'flex-start', fontSize: '0.95rem', lineHeight: 1.6, cursor: 'pointer',
+              padding: '0.8rem 1rem', borderRadius: '12px',
+              background: device.isCounter ? 'rgba(var(--teal-rgb),0.1)' : 'rgba(255,255,255,0.03)',
+              border: `2px solid ${device.isCounter ? 'var(--teal)' : 'rgba(255,255,255,0.14)'}`,
+            }}>
               <input
                 type="checkbox"
                 checked={device.isCounter}
                 onChange={e => device.setCounter(e.target.checked)}
-                style={{ marginTop: '0.25rem', width: '20px', height: '20px', accentColor: 'var(--teal)' }}
+                style={{ marginTop: '0.2rem', width: '24px', height: '24px', accentColor: 'var(--teal)', flexShrink: 0 }}
               />
-              <span style={{ color: 'rgba(var(--offwhite-rgb),0.5)' }}>
+              <span style={{ color: 'rgba(var(--offwhite-rgb),0.7)' }}>
                 <strong style={{ color: 'var(--offwhite)' }}>This is the counter device.</strong>{' '}
                 Keeps this screen on the device so it opens without a connection. One device per
                 branch — a waiter&apos;s phone should not be marked.
               </span>
             </label>
           ) : (
-            <p style={{ fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.35)', lineHeight: 1.6 }}>
+            <p style={{ fontSize: '0.95rem', color: 'rgba(var(--offwhite-rgb),0.55)', lineHeight: 1.6 }}>
               This browser cannot keep the screen for offline use. The till still works with a
               connection.
             </p>

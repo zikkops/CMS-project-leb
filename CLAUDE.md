@@ -494,7 +494,21 @@ from them, not from a fresh `tap` constant.**
   `useClosedChecks()`**. That one is capped at 50 for the review screen and
   would undercount a busy day; the time-bounded query has a 2,000 ceiling and
   says so on screen when it is hit.
-- Not yet redesigned: the counter, the KDS, closed checks, the drawer.
+- **Every POS screen is on it now.**
+  - **KDS:** a ticket's status is its header, tinted with an icon (new, preparing,
+    ready), because a new ticket and a started one looked identical from across
+    the kitchen. How long it has waited is the border and the timer. Back moved
+    to the top of the card, away from Start/Ready/Bump, which it sat 1px from.
+  - **Counter:** on a wide screen the check and money are on the left and the
+    menu is on the right. The connection is a large badge. "Try again" and
+    "Drop it" are different buttons at opposite ends.
+  - **Closed checks:** Receipt and Refund sit at opposite ends of an opened row,
+    and the refund panel puts Cancel on the left like every other confirmation.
+  - **Drawer:** "Close shift" is an outline and only the final "Close with this
+    count" is solid red. A difference has an icon as well as a colour.
+- The counter's links to the floor and to the full check use a plain
+  `window.location` load, not the router, so that screen never waits on a
+  server-rendered page during an outage.
 
 ## Seeding a POS history (Sep 2026)
 

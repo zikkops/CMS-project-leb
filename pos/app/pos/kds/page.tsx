@@ -11,8 +11,23 @@
 // of the screen, not of the person signed in: the same account is a manager on
 // their phone and the pass on the wall, and asking them to re-pick every
 // morning is how a screen ends up on the wrong station all service.
+//
+// ── Look (14 Sep 2026) ─────────────────────────────────────────────────────
+// A ticket's STATUS is its header — tinted, with an icon and a word — because
+// a new ticket and one somebody has started looked identical from across the
+// kitchen, told apart only by the label on a button. How LONG it has waited is
+// the border and the timer. Back moved from beside the main button (1px away,
+// the easiest thing on the screen to hit by mistake) to the top of the card.
+// Controls come from pos/app/lib/posUi.tsx.
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import {
+  faBell, faFire, faCircleCheck, faCheckDouble, faClock, faRotateLeft, faNoteSticky, faBan,
+  faChair, faLayerGroup, faPrint, faArrowRightArrowLeft, faArrowLeft, faMugHot, faCakeCandles,
+  faUtensils, faTriangleExclamation, type IconDefinition,
+} from '@fortawesome/free-solid-svg-icons'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { BRAND } from '@big-cms/shared/brand'
 import { STATIONS, type Station } from '@big-cms/shared/checks'
@@ -24,6 +39,7 @@ import { usePrintingSettings } from '@big-cms/shared/usePrintingSettings'
 import { activeStations } from '@big-cms/shared/printing'
 import { useAutoPrintTickets, useAutoPrintReceipts, usePrintsHere } from '../../lib/useAutoPrint'
 import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
+import { PosButton, Chip, StatusBadge, STATION_COLOUR } from '../../lib/posUi'
 
 const STORAGE_KEY = 'kds.station'
 
@@ -55,20 +71,37 @@ function useNow(everyMs = 10_000) {
   return now
 }
 
+/** How long it has waited: the border and the timer. */
 const URGENCY = {
-  fresh: { border: 'rgba(var(--teal-rgb),0.45)', text: 'var(--teal)' },
-  aging: { border: 'var(--brand-secondary)', text: 'var(--brand-secondary)' },
-  late: { border: 'var(--red)', text: 'var(--red)' },
+  fresh: { border: 'rgba(255,255,255,0.16)', width: 2, text: 'var(--offwhite)' },
+  aging: { border: 'var(--brand-secondary)', width: 3, text: 'var(--brand-secondary)' },
+  late: { border: 'var(--red)', width: 4, text: 'var(--red)' },
 } as const
 
+/** What state it is in: the header. */
+const STATUS_LOOK: Record<string, { label: string; icon: IconDefinition; colour: string }> = {
+  new: { label: 'New', icon: faBell, colour: '#3B82F6' },
+  preparing: { label: 'Preparing', icon: faFire, colour: '#F97316' },
+  ready: { label: 'Ready', icon: faCircleCheck, colour: '#22C55E' },
+}
+
 /** What tapping the big button does next, and what it should say. */
-const NEXT_ACTION: Record<string, { to: TicketStatus; label: string } | null> = {
-  new: { to: 'preparing', label: 'Start' },
-  preparing: { to: 'ready', label: 'Ready' },
-  ready: { to: 'bumped', label: 'Bump' },
+const NEXT_ACTION: Record<string, { to: TicketStatus; label: string; icon: IconDefinition } | null> = {
+  new: { to: 'preparing', label: 'Start', icon: faFire },
+  preparing: { to: 'ready', label: 'Ready', icon: faCircleCheck },
+  ready: { to: 'bumped', label: 'Bump', icon: faCheckDouble },
   bumped: null,
   cancelled: null,
 }
+
+const STATION_ICON: Record<string, IconDefinition> = {
+  Kitchen: faUtensils,
+  Bar: faMugHot,
+  Sweets: faCakeCandles,
+  All: faLayerGroup,
+}
+
+const tint = (color: string, pct: number) => `color-mix(in srgb, ${color} ${pct}%, transparent)`
 
 /** One ticket. Module scope — see CONTRIBUTING.md gotcha #2. */
 function TicketCard({
@@ -89,70 +122,91 @@ function TicketCard({
   const mins = minutesWaiting(ticketSentAtMs(ticket, now), now)
   const level = urgency(mins)
   const next = NEXT_ACTION[ticket.status]
+  const look = STATUS_LOOK[ticket.status] ?? { label: ticket.status, icon: faBell, colour: '#64748B' }
   const live = ticket.lines.filter(l => !l.voided)
   const voided = ticket.lines.filter(l => l.voided)
+  // A way back, because the commonest mistake on a touchscreen in a kitchen is
+  // a tap nobody meant. Absent on 'new', which has no earlier state.
+  const canGoBack = canTransition(ticket.status, 'new') || canTransition(ticket.status, 'preparing')
 
   return (
     <div style={{
-      border: `2px solid ${URGENCY[level].border}`,
-      borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)',
-      display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      border: `${URGENCY[level].width}px solid ${URGENCY[level].border}`,
+      borderRadius: '14px', backgroundColor: level === 'late' ? 'rgba(var(--red-rgb),0.06)' : 'rgba(255,255,255,0.03)',
+      display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'var(--font-inter)',
     }}>
+      {/* The status IS the header. */}
       <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-        padding: '0.7rem 0.9rem', borderBottom: '1px solid rgba(255,255,255,0.08)',
+        background: tint(look.colour, 22), borderBottom: `1px solid ${tint(look.colour, 45)}`,
+        padding: '0.7rem 0.9rem',
       }}>
-        <span style={{
-          fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.4rem' : '1.6rem',
-          color: 'var(--offwhite)',
-        }}>
-          T{ticket.tableNumber}
-          {showStation && (
-            <span style={{
-              fontFamily: 'var(--font-inter)', fontSize: '0.65rem',
-              letterSpacing: '0.1em', textTransform: 'uppercase',
-              color: 'var(--teal)', marginLeft: '0.5rem',
-            }}>{ticket.station}</span>
-          )}
-          {ticket.round > 1 && (
-            <span style={{ fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginLeft: '0.4rem' }}>
-              round {ticket.round}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.45rem',
+            fontSize: '0.95rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: look.colour,
+          }}>
+            <FontAwesomeIcon icon={look.icon} style={{ fontSize: '1.1rem' }} />{look.label}
+          </span>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+            fontSize: isMobile ? '1.3rem' : '1.55rem', fontWeight: 800, color: URGENCY[level].text,
+          }}>
+            <FontAwesomeIcon icon={level === 'late' ? faTriangleExclamation : faClock} style={{ fontSize: '0.9em' }} />{mins}m
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginTop: '0.45rem' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.6rem' : '1.9rem', color: 'var(--offwhite)', lineHeight: 1 }}>
+              Table {ticket.tableNumber}
             </span>
+            {ticket.round > 1 && (
+              <span style={{ fontSize: '0.9rem', color: 'rgba(var(--offwhite-rgb),0.65)', fontWeight: 600 }}>round {ticket.round}</span>
+            )}
+          </span>
+          {canGoBack && (
+            <PosButton icon={faRotateLeft} label="Back" size="sm" tone="quiet" disabled={busy} onClick={onBack} />
           )}
-        </span>
-        <span style={{
-          fontFamily: 'var(--font-inter)', fontSize: '1.2rem', fontWeight: 700,
-          color: URGENCY[level].text,
-        }}>{mins}m</span>
+        </div>
+
+        {showStation && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.45rem',
+            padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.82rem', fontWeight: 700,
+            background: tint(STATION_COLOUR[ticket.station] ?? '#64748B', 25),
+            color: 'var(--offwhite)', border: `1px solid ${STATION_COLOUR[ticket.station] ?? '#64748B'}`,
+          }}>
+            <FontAwesomeIcon icon={STATION_ICON[ticket.station] ?? faUtensils} />{ticket.station}
+          </span>
+        )}
       </div>
 
-      <div style={{ padding: '0.7rem 0.9rem', flex: 1 }}>
+      <div style={{ padding: '0.8rem 0.95rem', flex: 1 }}>
         {live.map(l => (
-          <div key={l.lineId} style={{ marginBottom: '0.6rem' }}>
-            <p style={{
-              fontFamily: 'var(--font-inter)', fontSize: isMobile ? '1rem' : '1.05rem',
-              color: 'var(--offwhite)', lineHeight: 1.35,
-            }}>
-              <span style={{ color: 'var(--teal)', fontWeight: 700 }}>{l.quantity}×</span>{' '}
+          <div key={l.lineId} style={{ marginBottom: '0.8rem' }}>
+            <p style={{ fontSize: isMobile ? '1.12rem' : '1.22rem', color: 'var(--offwhite)', lineHeight: 1.3, fontWeight: 600 }}>
+              <span style={{ display: 'inline-block', minWidth: '2.3rem', fontWeight: 800 }}>{l.quantity}×</span>
               {l.name}
             </p>
             {l.modifiers && (
-              <p style={{
-                fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
-                color: 'rgba(var(--offwhite-rgb),0.55)', marginTop: '0.1rem',
-              }}>{l.modifiers}</p>
+              <p style={{ fontSize: '1rem', color: 'rgba(var(--offwhite-rgb),0.72)', marginTop: '0.15rem', paddingLeft: '2.3rem' }}>
+                {l.modifiers}
+              </p>
             )}
             {l.note && (
               <p style={{
-                fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
-                color: 'var(--brand-secondary)', marginTop: '0.1rem', fontWeight: 600,
-              }}>{l.note}</p>
+                fontSize: '1rem', color: 'var(--brand-secondary)', marginTop: '0.25rem', fontWeight: 700,
+                marginLeft: '2.3rem', padding: '0.25rem 0.55rem', borderRadius: '6px',
+                background: 'rgba(var(--brand-secondary-rgb),0.12)', display: 'inline-block',
+              }}>
+                <FontAwesomeIcon icon={faNoteSticky} style={{ marginRight: '0.4rem' }} />{l.note}
+              </p>
             )}
-            {l.seat !== null && (
-              <p style={{
-                fontFamily: 'var(--font-inter)', fontSize: '0.7rem',
-                color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.1rem',
-              }}>seat {l.seat}{l.course !== null ? ` · course ${l.course}` : ''}</p>
+            {(l.seat !== null || l.course !== null) && (
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.35rem', paddingLeft: '2.3rem' }}>
+                {l.seat !== null && <StatusBadge icon={faChair} label={`Seat ${l.seat}`} />}
+                {l.course !== null && <StatusBadge icon={faLayerGroup} label={`Course ${l.course}`} />}
+              </div>
             )}
           </div>
         ))}
@@ -162,44 +216,20 @@ function TicketCard({
             from a pass is how a plate gets made twice or not at all. */}
         {voided.map(l => (
           <p key={l.lineId} style={{
-            fontFamily: 'var(--font-inter)', fontSize: '0.95rem',
-            color: 'rgba(var(--red-rgb),0.65)', textDecoration: 'line-through',
-            marginBottom: '0.4rem',
-          }}>{l.quantity}× {l.name} — cancelled</p>
+            fontSize: '1.05rem', color: 'var(--red)', marginBottom: '0.5rem', fontWeight: 600,
+          }}>
+            <FontAwesomeIcon icon={faBan} style={{ marginRight: '0.45rem' }} />
+            <span style={{ textDecoration: 'line-through' }}>{l.quantity}× {l.name}</span> — cancelled
+          </p>
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: '1px', backgroundColor: 'rgba(255,255,255,0.08)' }}>
-        {/* A way back, because the commonest mistake on a touchscreen in a
-            kitchen is a tap nobody meant. Absent on 'new', which has no
-            earlier state to return to. */}
-        {canTransition(ticket.status, 'new') || canTransition(ticket.status, 'preparing') ? (
-          <button
-            disabled={busy}
-            onClick={onBack}
-            style={{
-              minHeight: '58px', width: '78px', border: 'none', cursor: 'pointer',
-              backgroundColor: 'rgba(255,255,255,0.04)', color: 'rgba(var(--offwhite-rgb),0.45)',
-              fontFamily: 'var(--font-inter)', fontSize: '0.75rem',
-            }}
-          >Back</button>
-        ) : null}
-
-        {next && (
-          <button
-            disabled={busy}
-            onClick={() => onAdvance(next.to)}
-            style={{
-              flex: 1, minHeight: '58px', border: 'none',
-              cursor: busy ? 'default' : 'pointer',
-              backgroundColor: ticket.status === 'ready' ? 'var(--teal)' : 'rgba(255,255,255,0.06)',
-              color: ticket.status === 'ready' ? '#fff' : 'var(--offwhite)',
-              fontFamily: 'var(--font-inter)', fontSize: '0.95rem',
-              letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600,
-            }}
-          >{next.label}</button>
-        )}
-      </div>
+      {next && (
+        <div style={{ padding: '0 0.75rem 0.75rem' }}>
+          <PosButton icon={next.icon} label={next.label} tone="primary" size="lg" full
+            disabled={busy} onClick={() => onAdvance(next.to)} style={{ minHeight: '72px', fontSize: '1.25rem' }} />
+        </div>
+      )}
     </div>
   )
 }
@@ -207,6 +237,7 @@ function TicketCard({
 export default function KdsPage() {
   const { checking, blocked } = useRequireRole(SECTION_ACCESS.kds, { login: '/pos/login', home: '/pos' })
   const isMobile = useIsMobile()
+  const router = useRouter()
   const now = useNow()
 
   const [branch] = useState(BRAND.branches[0] ?? '')
@@ -296,12 +327,11 @@ export default function KdsPage() {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '2rem', fontFamily: 'var(--font-inter)',
       }}>
-        <div style={{ maxWidth: '40ch', textAlign: 'center' }}>
-          <h1 style={{
-            fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem',
-            color: 'var(--offwhite)', marginBottom: '0.8rem',
-          }}>{blocked === 'feature' ? 'Kitchen Display is switched off' : 'You do not have pass access'}</h1>
-          <p style={{ fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.4)', lineHeight: 1.7 }}>
+        <div style={{ maxWidth: '44ch', textAlign: 'center' }}>
+          <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.6rem', color: 'var(--offwhite)', marginBottom: '0.8rem' }}>
+            {blocked === 'feature' ? 'Kitchen Display is switched off' : 'You do not have pass access'}
+          </h1>
+          <p style={{ fontSize: '1rem', color: 'rgba(var(--offwhite-rgb),0.6)', lineHeight: 1.7 }}>
             {blocked === 'feature'
               ? 'A superadmin can switch it on under Settings → Features. It needs Point of Sale on as well.'
               : 'Ask a manager to grant you the Kitchen Display section under Staff Accounts.'}
@@ -319,109 +349,113 @@ export default function KdsPage() {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '2rem', fontFamily: 'var(--font-inter)',
       }}>
-        <div style={{ textAlign: 'center', maxWidth: '32ch' }}>
-          <h1 style={{
-            fontFamily: 'var(--font-cinzel)', fontSize: '1.5rem',
-            color: 'var(--offwhite)', marginBottom: '0.6rem',
-          }}>Which pass is this screen?</h1>
-          <p style={{
-            fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.4)',
-            lineHeight: 1.7, marginBottom: '1.5rem',
-          }}>Remembered on this device.</p>
-          <div style={{ display: 'grid', gap: '0.6rem' }}>
-            {([...STATIONS, 'All'] as const).map(s => (
-              <button key={s} onClick={() => choose(s)} style={{
-                minHeight: '60px', borderRadius: '5px', cursor: 'pointer',
-                backgroundColor: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.14)', color: 'var(--offwhite)',
-                fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem',
-              }}>{s}</button>
-            ))}
+        <div style={{ textAlign: 'center', width: '100%', maxWidth: '520px' }}>
+          <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.9rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
+            Which pass is this screen?
+          </h1>
+          <p style={{ fontSize: '1rem', color: 'rgba(var(--offwhite-rgb),0.6)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+            Remembered on this device.
+          </p>
+          <div style={{ display: 'grid', gap: '0.7rem' }}>
+            {([...STATIONS, 'All'] as const).map(s => {
+              const colour = STATION_COLOUR[s] ?? '#64748B'
+              return (
+                <button key={s} type="button" onClick={() => choose(s)} style={{
+                  minHeight: '84px', borderRadius: '14px', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '1rem', padding: '0 1.4rem',
+                  backgroundColor: tint(colour, 12), border: `2px solid ${tint(colour, 60)}`, borderLeft: `8px solid ${colour}`,
+                  color: 'var(--offwhite)', fontFamily: 'var(--font-cinzel)', fontSize: '1.5rem',
+                }}>
+                  <FontAwesomeIcon icon={STATION_ICON[s] ?? faUtensils} style={{ color: colour, fontSize: '1.5rem', width: '1.8rem' }} />
+                  {s === 'All' ? 'All stations' : s}
+                </button>
+              )
+            })}
+          </div>
+          <div style={{ marginTop: '1.2rem' }}>
+            <PosButton icon={faArrowLeft} label="Back to the floor" tone="quiet" onClick={() => router.push('/pos')} />
           </div>
         </div>
       </main>
     )
   }
 
+  const byStatus = (s: string) => tickets.filter(t => t.status === s).length
+  const stationColour = STATION_COLOUR[station] ?? '#64748B'
+
   return (
     <main style={{
       minHeight: '100vh', backgroundColor: 'var(--black)',
-      padding: isMobile ? '1rem 0.8rem 2rem' : '1.5rem 1.5rem 3rem',
+      padding: isMobile ? '1rem 0.8rem 2rem' : '1.25rem 1.5rem 3rem',
       fontFamily: 'var(--font-inter)',
     }}>
       <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-        marginBottom: '1.1rem', flexWrap: 'wrap', gap: '0.5rem',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        marginBottom: '1.1rem', flexWrap: 'wrap', gap: '0.8rem',
       }}>
-        <h1 style={{
-          fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.5rem' : '1.9rem',
-          color: 'var(--offwhite)',
-        }}>{station}</h1>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem' }}>
-          <span style={{ fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
-            {tickets.length} on the pass
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem', flexWrap: 'wrap' }}>
+          <span style={{
+            width: '52px', height: '52px', borderRadius: '12px', background: tint(stationColour, 22),
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${stationColour}`,
+          }}>
+            <FontAwesomeIcon icon={STATION_ICON[station] ?? faUtensils} style={{ color: stationColour, fontSize: '1.4rem' }} />
           </span>
+          <div>
+            <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.7rem' : '2.2rem', color: 'var(--offwhite)', lineHeight: 1 }}>
+              {station === 'All' ? 'All stations' : station}
+            </h1>
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
+              <StatusBadge icon={faBell} label={`${byStatus('new')} new`} />
+              <StatusBadge icon={faFire} label={`${byStatus('preparing')} preparing`} />
+              <StatusBadge icon={faCircleCheck} label={`${byStatus('ready')} ready`} />
+            </div>
+          </div>
+        </div>
 
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           {/* Only offered where a printer is actually configured for this
               branch. A toggle that cannot do anything is a toggle somebody
               turns on and then reports as broken. */}
           {printable.length > 0 && (
-            <label style={{
-              display: 'flex', alignItems: 'center', gap: '0.45rem', cursor: 'pointer',
-              fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase',
-              color: printsHere.on ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.3)',
-            }}>
-              <input
-                type="checkbox"
-                checked={printsHere.on}
-                onChange={e => printsHere.setOn(e.target.checked)}
-                style={{ width: '16px', height: '16px', accentColor: 'var(--teal)' }}
-              />
-              Print here
-              {printsHere.on && paperCount > 0 && (
-                <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)' }}>· {paperCount}</span>
-              )}
-              {receipts.active && (
-                <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)' }}>· receipts</span>
-              )}
-            </label>
+            <Chip
+              icon={faPrint}
+              active={printsHere.on}
+              onClick={() => printsHere.setOn(!printsHere.on)}
+              label={`Print here${printsHere.on && paperCount > 0 ? ` · ${paperCount}` : ''}${receipts.active ? ' · receipts' : ''}`}
+            />
           )}
-          <button onClick={() => { setStation(null); try { localStorage.removeItem(STORAGE_KEY) } catch {} }}
-            style={{
-              background: 'none', border: 'none', padding: '0.3rem 0', cursor: 'pointer',
-              color: 'rgba(var(--offwhite-rgb),0.3)', fontSize: '0.68rem',
-              letterSpacing: '0.12em', textTransform: 'uppercase',
-              fontFamily: 'var(--font-inter)',
-            }}>Change</button>
+          <PosButton icon={faArrowRightArrowLeft} label="Change station" tone="neutral" size="sm"
+            onClick={() => { setStation(null); try { localStorage.removeItem(STORAGE_KEY) } catch {} }} />
+          <PosButton icon={faArrowLeft} label="Floor" tone="quiet" size="sm" onClick={() => router.push('/pos')} />
         </div>
       </div>
 
       {(liveError || error) && (
         <p style={{
-          color: 'var(--brand-secondary)', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: 1.6,
-          background: 'rgba(var(--brand-secondary-rgb),0.08)', border: '1px solid rgba(var(--brand-secondary-rgb),0.25)',
-          borderRadius: '3px', padding: '0.8rem 1rem',
-        }}>{error || liveError}</p>
+          color: 'var(--brand-secondary)', fontSize: '1rem', marginBottom: '1rem', lineHeight: 1.6,
+          background: 'rgba(var(--brand-secondary-rgb),0.1)', border: '1px solid rgba(var(--brand-secondary-rgb),0.35)',
+          borderRadius: '8px', padding: '0.85rem 1rem',
+        }}><FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.5rem' }} />{error || liveError}</p>
       )}
 
       {paperError && (
         <p style={{
-          color: 'rgba(var(--offwhite-rgb),0.5)', fontSize: '0.78rem', marginBottom: '1rem',
-          lineHeight: 1.6, border: '1px solid rgba(var(--offwhite-rgb),0.1)',
-          borderRadius: '3px', padding: '0.6rem 0.9rem',
-        }}>Paper: {paperError} — nothing is lost; the screen is the record.</p>
+          color: 'rgba(var(--offwhite-rgb),0.7)', fontSize: '0.92rem', marginBottom: '1rem',
+          lineHeight: 1.6, border: '1px solid rgba(255,255,255,0.14)',
+          borderRadius: '8px', padding: '0.7rem 1rem',
+        }}><FontAwesomeIcon icon={faPrint} style={{ marginRight: '0.5rem' }} />Paper: {paperError} — nothing is lost; the screen is the record.</p>
       )}
 
       {tickets.length === 0 ? (
-        <p style={{
-          color: 'rgba(var(--offwhite-rgb),0.25)', fontSize: '1.1rem',
-          textAlign: 'center', padding: '4rem 0',
-        }}>Nothing on the pass.</p>
+        <div style={{ color: 'rgba(var(--offwhite-rgb),0.45)', fontSize: '1.3rem', textAlign: 'center', padding: '5rem 0' }}>
+          <FontAwesomeIcon icon={faCircleCheck} style={{ fontSize: '2.4rem', marginBottom: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.3)' }} />
+          <p>Nothing on the pass.</p>
+        </div>
       ) : (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '260px' : '300px'}, 1fr))`,
-          gap: '0.8rem', alignItems: 'start',
+          gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '270px' : '320px'}, 1fr))`,
+          gap: '0.9rem', alignItems: 'start',
         }}>
           {tickets.map(t => (
             <TicketCard
