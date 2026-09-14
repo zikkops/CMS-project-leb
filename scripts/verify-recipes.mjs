@@ -254,6 +254,45 @@ console.log('\nwhat a Send takes, and what a void or refund gives back')
     R.reversalPlan([{ status: 'sent', quantity: 1 }], true, madeWrong), { outcome: null, returns: [], wasteUsd: 0 })
 }
 
+console.log('\ntheoretical food cost — the POS checks\' own sales, before VAT')
+{
+  const perServing = R.lineConsumption(latte, [], 1, S).consumes
+  // A deliberately unround VAT rate, so a hardcoded one cannot pass by coincidence.
+  const costed   = { status: 'sent', quantity: 2, consumesPerServing: perServing, salesUsd: 11.3, vatRate: 0.13 }
+  const noRecipe = { status: 'sent', quantity: 1, salesUsd: 4.52, vatRate: 0.13 }
+  const uncosted = { status: 'sent', quantity: 1, consumesPerServing: perServing, consumesUnknown: ['syrup'], salesUsd: 5.65, vatRate: 0.13 }
+  const voided   = { status: 'void', quantity: 1, consumesPerServing: perServing, salesUsd: 5.65, vatRate: 0.13 }
+  const r4 = n => (n === null ? null : Number(n.toFixed(4)))
+
+  const all = R.theoreticalFoodCost([costed, noRecipe, uncosted, voided])
+  eq('sales are taken before VAT, at each check\'s own rate', all.salesExVatUsd, 19)
+  eq('only fully costed lines are in the costed sales', all.costedSalesExVatUsd, 10)
+  eq('...and their ingredient cost comes from the snapshots', all.costUsd, 1.24)
+  eq('food cost is over the costable sales', r4(all.costPercent), 0.124)
+  eq('coverage says how much of sales that is', r4(all.coverage), 0.5263)
+  eq('lines are counted by what could be costed',
+    [all.linesCosted, all.linesUncosted, all.linesWithoutRecipe], [1, 1, 1])
+
+  const withoutGaps = R.theoreticalFoodCost([costed])
+  eq('THE TRAP: a dish with no recipe does not make food cost look cheaper',
+    r4(all.costPercent), r4(withoutGaps.costPercent))
+  eq('...nor does a dish whose recipe cannot be costed',
+    r4(R.theoreticalFoodCost([costed, uncosted]).costPercent), r4(withoutGaps.costPercent))
+  eq('...they lower the coverage instead', r4(R.theoreticalFoodCost([costed, uncosted]).coverage), 0.6667)
+
+  const noRate = R.theoreticalFoodCost([{ ...costed, vatRate: null }])
+  eq('a check with no recorded VAT rate is counted at full price', noRate.salesExVatUsd, 11.3)
+  eq('...and flagged, never guessed at today\'s rate', noRate.linesWithoutVatRate, 1)
+
+  eq('merchandise is not food: a mug sold is in neither side',
+    R.theoreticalFoodCost([costed, { ...noRecipe, source: 'product' }]).coverage, 1)
+
+  eq('no sales: no percentage and no coverage', R.theoreticalFoodCost([]),
+    { salesExVatUsd: 0, costedSalesExVatUsd: 0, costUsd: 0, costPercent: null, coverage: null,
+      linesCosted: 0, linesUncosted: 0, linesWithoutRecipe: 0, linesWithoutVatRate: 0 })
+  eq('nothing costable: no percentage, not 0%', R.theoreticalFoodCost([noRecipe]).costPercent, null)
+}
+
 console.log('\ncounted against expected')
 eq('half a gallon short', R.countVariance(2.5, 2, 4.2), { varianceQty: -0.5, varianceUsd: -2.1 })
 eq('more than expected is positive', R.countVariance(2, 2.75, 4.2).varianceQty, 0.75)

@@ -413,6 +413,94 @@ export function reversalPlan(lines: readonly ConsumingLine[], wasSent: boolean, 
   return { outcome, returns: [], wasteUsd: r2(total) }
 }
 
+// ── Theoretical food cost ─────────────────────────────────────────────────
+
+/** One menu line sold on a closed check, with its share of what the check charged. */
+export interface SoldLine extends ConsumingLine {
+  /** This line's share of the bill, VAT included, every discount already applied. */
+  salesUsd: number
+  /** The VAT rate the check closed at, or null for a check that recorded none. */
+  vatRate: number | null
+  /** 'product' is merchandise off the shelf — not food, so not in food cost. */
+  source?: string
+}
+
+export interface TheoreticalFoodCost {
+  /** Sales before VAT of every menu line counted. */
+  salesExVatUsd: number
+  /** Sales before VAT of the lines whose recipes could be fully costed. */
+  costedSalesExVatUsd: number
+  /** What those lines' ingredients cost, from each line's own snapshot. */
+  costUsd: number
+  /** Food cost over the sales that can be costed. null when none can. */
+  costPercent: number | null
+  /** Share of sales the percentage covers. null when there were no sales. */
+  coverage: number | null
+  linesCosted: number
+  /** Has a recipe, but an ingredient has no cost or no conversion. */
+  linesUncosted: number
+  /** Sold with no snapshot: no recipe, or added while ingredient deduction was off. */
+  linesWithoutRecipe: number
+  /** On checks that recorded no VAT rate: counted at full price, no VAT extracted. */
+  linesWithoutVatRate: number
+}
+
+/**
+ * What the recipes say the food sold should have cost, against what it sold for
+ * before VAT — the POS checks' own sales (owner's decision, 14 Sep 2026), the
+ * only sales a recipe cost is known for.
+ *
+ * The percentage is taken ONLY over lines that can be fully costed, and
+ * `coverage` says how much of sales that is. Dividing a partial cost by all of
+ * sales would print a flattering food cost for every dish nobody wrote a recipe
+ * for: the figure would improve by leaving recipes out.
+ *
+ * VAT is extracted at each check's own rate. A check that recorded none
+ * contributes its full price and is counted — the sales export's rule: never a
+ * guess at today's rate.
+ */
+export function theoreticalFoodCost(lines: readonly SoldLine[]): TheoreticalFoodCost {
+  let salesExVat = 0
+  let costedSales = 0
+  let cost = 0
+  let linesCosted = 0
+  let linesUncosted = 0
+  let linesWithoutRecipe = 0
+  let linesWithoutVatRate = 0
+
+  for (const l of lines) {
+    if (l.status === 'void' || l.source === 'product' || !Number.isFinite(l.salesUsd)) continue
+    const rate = l.vatRate
+    const hasRate = typeof rate === 'number' && Number.isFinite(rate) && rate >= 0 && rate < 1
+    if (!hasRate) linesWithoutVatRate++
+    const exVat = hasRate ? l.salesUsd / (1 + rate) : l.salesUsd
+    salesExVat += exVat
+
+    const c = consumptionCost({ consumes: lineTaken(l), unknown: [...(l.consumesUnknown ?? [])] })
+    if (c.reason === 'ok') {
+      linesCosted++
+      costedSales += exVat
+      cost += c.costUsd as number
+    } else if (c.reason === 'incomplete') {
+      linesUncosted++
+    } else {
+      linesWithoutRecipe++
+    }
+  }
+
+  return {
+    salesExVatUsd: r2(salesExVat),
+    costedSalesExVatUsd: r2(costedSales),
+    costUsd: r2(cost),
+    costPercent: costedSales > 0 ? cost / costedSales : null,
+    coverage: salesExVat > 0 ? costedSales / salesExVat : null,
+    linesCosted,
+    linesUncosted,
+    linesWithoutRecipe,
+    linesWithoutVatRate,
+  }
+}
+
 // ── The daily count ───────────────────────────────────────────────────────
 
 /**

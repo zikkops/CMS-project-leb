@@ -33,6 +33,10 @@ import {
   listEndOfDayReportsBetween, netSalesUsd, formatUsd, todayDateStr,
   type EndOfDayReport,
 } from '@big-cms/shared/endOfDay'
+import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
+import type { TheoreticalFoodCost } from '@big-cms/shared/recipes'
+
+type Theory = TheoreticalFoodCost & { checks: number }
 
 const inp: React.CSSProperties = {
   backgroundColor: 'rgba(255,255,255,0.04)',
@@ -130,6 +134,8 @@ export default function FoodCostReportPage() {
   const [reports,    setReports]    = useState<EndOfDayReport[]>([])
   const [loading,    setLoading]    = useState(false)
   const [err,        setErr]        = useState('')
+  const [theory,     setTheory]     = useState<Theory | null>(null)
+  const [theoryErr,  setTheoryErr]  = useState('')
 
   useEffect(() => {
     if (checking) return
@@ -172,6 +178,19 @@ export default function FoodCostReportPage() {
         setReports([])
       })
       .finally(() => { if (!cancelled) setLoading(false) })
+
+    // The theoretical side is fetched on its own and fails on its own: the
+    // actual figure above is complete without it, and one route being down
+    // should not blank a report that has everything else it needs.
+    setTheory(null)
+    setTheoryErr('')
+    const params = new URLSearchParams({ from, to, branch })
+    authedFetch(`/api/admin/food-cost?${params}`, 'GET')
+      .then(unwrap)
+      .then(result => { if (!cancelled) setTheory(result as unknown as Theory) })
+      .catch((e: unknown) => {
+        if (!cancelled) setTheoryErr(e instanceof Error ? e.message : 'Could not work out the theoretical food cost.')
+      })
 
     return () => { cancelled = true }
   }, [checking, branch, from, to])
@@ -337,6 +356,75 @@ export default function FoodCostReportPage() {
             <Note tone="warn">
               {stats.shortLines} {stats.shortLines === 1 ? 'line' : 'lines'} arrived short
               of what was ordered. Worth checking the invoice was credited.
+            </Note>
+          )}
+
+          {/* What the recipes say it should have cost */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+            gap: '1rem', margin: '1.5rem 0 0.5rem',
+          }}>
+            <Stat
+              label="Theoretical food cost"
+              value={theory?.costPercent == null ? '—' : formatPercent(theory.costPercent)}
+              sub={
+                theoryErr ? 'Could not be worked out'
+                  : !theory ? 'Working it out…'
+                  : theory.coverage === null ? 'No POS sales in this range'
+                  : theory.costPercent === null ? 'No sold dish has a costed recipe'
+                  : `Recipe cost ÷ sales before VAT, on ${formatPercent(theory.coverage)} of POS sales`
+              }
+              color={
+                theory?.costPercent == null ? 'rgba(var(--offwhite-rgb),0.3)'
+                  : theory.costPercent <= 0.35 ? 'var(--teal)'
+                  : theory.costPercent <= 0.45 ? 'var(--brand-secondary)'
+                  : 'var(--red)'
+              }
+            />
+            <Stat
+              label="Recipe cost"
+              value={theory ? formatUsd(theory.costUsd) : '—'}
+              sub={theory ? `${theory.linesCosted} costed ${theory.linesCosted === 1 ? 'line' : 'lines'}` : undefined}
+              color="var(--purple)"
+            />
+            <Stat
+              label="POS sales before VAT"
+              value={theory ? formatUsd(theory.salesExVatUsd) : '—'}
+              sub={theory ? `${theory.checks} closed ${theory.checks === 1 ? 'check' : 'checks'}` : undefined}
+              color="var(--teal)"
+            />
+          </div>
+
+          {theoryErr && <Note tone="warn">{theoryErr}</Note>}
+          {theory && theory.linesWithoutRecipe > 0 && (
+            <Note tone="warn">
+              {theory.linesWithoutRecipe} sold {theory.linesWithoutRecipe === 1 ? 'line has' : 'lines have'} no
+              recipe, or {theory.linesWithoutRecipe === 1 ? 'was' : 'were'} rung up while ingredient
+              deduction was off. They are left out of the percentage rather than counted as free —
+              which is why it says how much of sales it covers.
+            </Note>
+          )}
+          {theory && theory.linesUncosted > 0 && (
+            <Note tone="warn">
+              {theory.linesUncosted} sold {theory.linesUncosted === 1 ? 'line uses' : 'lines use'} an
+              ingredient with no cost or no conversion, so {theory.linesUncosted === 1 ? 'it is' : 'they are'} left
+              out too. Give the ingredient a cost in Supplies.
+            </Note>
+          )}
+          {theory && theory.linesWithoutVatRate > 0 && (
+            <Note tone="warn">
+              {theory.linesWithoutVatRate} {theory.linesWithoutVatRate === 1 ? 'line is' : 'lines are'} on
+              checks that recorded no VAT rate, and {theory.linesWithoutVatRate === 1 ? 'is' : 'are'} counted
+              at full price — no rate is guessed for them.
+            </Note>
+          )}
+          {theory && theory.costPercent !== null && (
+            <Note tone="info">
+              Theoretical is what the recipes say the food sold should have cost; actual is what was
+              received against the till. Actual well above theoretical usually means waste, portions
+              over the recipe, or stock leaving without a sale. The two are over different sales
+              figures, so compare the percentages, not the dollars.
             </Note>
           )}
 

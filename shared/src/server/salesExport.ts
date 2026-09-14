@@ -53,7 +53,7 @@ export function parseExportRange(params: URLSearchParams): ExportRequest {
 }
 
 /** One day either side, as instants, so no café day can fall outside the query. */
-function paddedWindow(from: string, to: string): { start: Date; end: Date } {
+export function paddedWindow(from: string, to: string): { start: Date; end: Date } {
   return {
     start: new Date(Date.parse(`${from}T00:00:00Z`) - 86_400_000),
     end: new Date(Date.parse(`${to}T00:00:00Z`) + 2 * 86_400_000),

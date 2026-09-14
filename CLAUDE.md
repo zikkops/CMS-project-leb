@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 21 checks, 15 verifiers, 893
+is the only thing that shows it. Currently 21 checks, 15 verifiers, 907
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -270,8 +270,20 @@ writing needs `--apply`**.
 Scoped in the vault (`Recipes and Ingredient Stock - Scope.md`), with the
 owner's decisions of 14 Sep 2026. Built: the arithmetic, admin costing at
 `/admin/menu/recipes`, ingredients leaving stock on Send behind the `recipes`
-switch (off), and expected-vs-counted on the count history. Not yet:
-theoretical food cost. None of the till side has run against the database.
+switch (off), expected-vs-counted on the count history, and theoretical food
+cost on the Food Cost Report. None of the till side has run against the
+database.
+
+- **Theoretical food cost divides only what it can cost.** Recipe cost of the
+  closed checks' menu lines ÷ those lines' share of the bill before VAT, each
+  check at its own `vatRate` (owner's choice, 14 Sep 2026: the POS checks' own
+  sales, not the end-of-day till figure). A line with no recipe snapshot, or
+  one with an uncosted ingredient, is left out of BOTH sides and lowers
+  `coverage` instead — dividing a partial cost by all of sales prints a
+  flattering percentage for every recipe nobody wrote. `theoreticalFoodCost()`
+  in `recipes.ts`; the server read is `shared/src/server/foodCost.ts`, reusing
+  the export's padded `closedAt` window, because checks are unreadable to the
+  report's audience in the browser.
 
 - **A count stores what was expected.** `saveCount()` reads each supply inside
   a transaction and stores the full line from the supply document — name,
