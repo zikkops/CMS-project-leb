@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1475
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1501
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -1029,9 +1029,53 @@ wraps the same React screens.
       survived: `branchHub()` already queries by branch, so the check in
       `activeHubFor()` was only proved once a test handed it another
       branch's row directly.
+  - **Phones reach the hub on the café wifi encrypted, through the app, never
+    over plain http** (owner's decision S11, 15 Sep 2026). On plain http, a
+    signed-in session and the Firebase token behind it cross the wifi in the
+    clear. Anyone on that network could copy them and take payments as that
+    person until 05:00.
+    - **The hub server still listens on 127.0.0.1 only.** `desktop/hubLan.js`
+      puts an encrypted door in front of it: TLS on `hubLanPort` (3443) with
+      the hub's own certificate, passing bytes through to the server, so the
+      change feed's stream works. It opens once the server answers and closes
+      on quit.
+    - **Off by default** (`"hubLan": true` in `config.json` turns it on), so
+      nothing listens on the network until a café sets phones up. Windows asks
+      once whether to allow it through the firewall, and a person answers.
+    - **The certificate is made with `node:crypto`, no package**: P-256,
+      self-signed, ten years, for a TLS server only, starting a day early for a
+      phone whose clock runs ahead. No authority signs a certificate for an
+      address like 192.168.1.20, so no browser trusts it. **The app trusts
+      exactly this certificate, by SHA-256 fingerprint.** It is kept in the hub
+      folder and made again only when missing, damaged, or within 30 days of
+      running out, because a new one means every phone pairs again.
+    - **The counter screen's QR is the pairing hand-off.** `/pos/hub` shows,
+      once paired, `bigcms-hub:https://<private address>:3443#sha256=<hex>`
+      for each private IPv4 address the PC has (`shared/src/hubNetwork.ts`,
+      `hubLanStatus()`). `parseHubLink()` is the app's reading of it: only
+      https, a private address with no path or login, and a whole fingerprint
+      count.
+    - **Checked on a dev hub, 15 Sep 2026**, paired with a fake cloud on this PC
+      so nothing reached a real project. The hub status named this PC's real
+      wifi address. Through the door, a request reached the real POS server
+      (401 as JSON) over TLS 1.3, presenting exactly the fingerprint on the page.
+      Plain http on the door's port got no answer. Once paired, the page drew
+      the QR, and sampling its 41×41 squares gave the same grid `qrcode` makes
+      from the hub link. So the QR says exactly that link. The door was bound to
+      127.0.0.1 for the check, so Windows asked nothing, and **no phone has
+      connected yet**: there is no app.
+    - 19 mutations, all caught by name. "The certificate is an authority"
+      first survived: Node's `x.ca` reads false for an authority that lacks
+      the right to sign certificates, so the test now checks the certificate's
+      own bytes. `desktop/main.js` wires it up and is not under test (Electron);
+      the decisions it applies are.
+    - `verify:desktop` makes a real certificate and runs a real handshake
+      through the door. An ordinary client is refused
+      (`DEPTH_ZERO_SELF_SIGNED_CERT`), while the pinned one gets through.
+      `verify:hub-sync` asserts the addresses and the QR text.
   - **Not built yet:**
-    - reaching the hub from a phone on the café wifi (the server listens on
-      this PC only)
+    - the Android app that pairs by that QR and signs staff in with the
+      phone's fingerprint or face (stage 5)
 
 ## The host's CDN caches prerendered pages for a year
 

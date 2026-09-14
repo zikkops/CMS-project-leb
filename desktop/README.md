@@ -49,10 +49,18 @@ from the repo root copies the demo one in (development only).
 - With no connection and nothing cached, it shows its own screen and retries
   every 15 seconds. A PC marked as the counter device opens the counter screen
   offline, as in a browser.
-- **As the hub**, it starts the POS server on `127.0.0.1` (this PC only, for
-  now), waits until it answers as the hub, then opens it. A server that stops
+- **As the hub**, it starts the POS server on `127.0.0.1` (this PC only),
+  waits until it answers as the hub, then opens it. A server that stops
   is started again, backing off to 30 seconds. The database is
   `%APPDATA%\BIG CMS POS\hub\pos.db`, with `hub.log` beside it.
+- **Phones on the café wifi reach the hub encrypted, never over plain http**
+  (`hubLan.js`), and only once `"hubLan": true` is set. The app then opens a
+  TLS port (`hubLanPort`, 3443) in front of the server, with the hub's own
+  certificate (`hub-tls.crt` and `hub-tls.key` beside the database). Windows
+  asks once whether to allow it through the firewall. No browser trusts that
+  certificate: the phone app trusts it by the fingerprint in the QR on
+  `/pos/hub`. The certificate is kept, because a new one means every phone
+  pairs again.
 - **Holds no secrets.** The Firebase Admin key never goes on a café PC:
   - The hub server is started with a short list of environment variables, so
     a key set on the PC cannot reach it.
@@ -67,10 +75,12 @@ Keys for a manager: **Ctrl+Shift+Alt+K** leaves or returns to full screen,
 `config.json` in the app's data folder (`%APPDATA%\BIG CMS POS\`), all optional:
 
 ```json
-{ "mode": "online", "posUrl": "https://pos.cms-projectlb.com/pos", "kiosk": true, "startWithWindows": true, "hubPort": 3100 }
+{ "mode": "online", "posUrl": "https://pos.cms-projectlb.com/pos", "kiosk": true, "startWithWindows": true, "hubPort": 3100, "hubLan": false, "hubLanPort": 3443 }
 ```
 
 - **`mode`** is `online` or `hub`.
+- **`hubLan`** opens the encrypted port for phones on the café wifi, on
+  `hubLanPort`. It is never the same port as `hubPort`, which stays on this PC.
 - **`posUrl`** must be https (or http on localhost). It is not used as the hub,
   which opens `http://localhost:<hubPort>/pos`.
 - **A wrong value** falls back to the default rather than stopping the till.

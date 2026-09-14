@@ -30,6 +30,7 @@ const {
   readConfig, isAllowedNavigation, isAllowedPermission,
   hubAddress, hubServerEnv, classifyHubProbe, hubRestartDelay,
 } = require('./policy')
+const { loadOrCreateCertificate, startLanFront } = require('./hubLan')
 
 const SMOKE = process.argv.includes('--smoke')
 
@@ -202,16 +203,49 @@ function startHub(config, { onReady, onStopped, onFailed }) {
   let stopping = false
   let attempt = 0
   let restartTimer = null
+  // Phones on the café wifi (owner's decision S11): an encrypted door with the
+  // hub's own certificate, opened once the server answers. Off unless
+  // config.json has "hubLan": true. The server itself stays on 127.0.0.1.
+  let lan = null
+  let front = null
+  let opening = false
 
   const stop = () => {
     stopping = true
     clearTimeout(restartTimer)
     if (child) child.kill()
+    if (front) front.close()
   }
 
   if (!fs.existsSync(serverPath)) {
     onFailed(`The hub is not installed with this app: ${serverPath} is missing.`)
     return { stop, logFile }
+  }
+
+  if (config.hubLan) {
+    try {
+      const made = loadOrCreateCertificate(dataDir)
+      lan = { port: config.hubLanPort, fingerprint: made.fingerprint, key: made.key, cert: made.cert }
+      if (made.created) log(`made the hub's certificate (${made.created}), fingerprint ${made.fingerprint}`)
+    } catch (err) {
+      log(`no certificate, so phones on the café wifi cannot reach the hub: ${err?.message ?? err}`)
+    }
+  }
+
+  const openLan = () => {
+    if (!lan || front || opening) return
+    opening = true
+    startLanFront({
+      key: lan.key, cert: lan.cert, port: lan.port, targetPort: config.hubPort,
+      onError: err => log(`the café wifi door: ${err.message}`),
+    })
+      .then(server => {
+        if (stopping) { server.close(); return }
+        front = server
+        log(`phones on the café wifi reach the hub on port ${lan.port}, encrypted`)
+      })
+      .catch(err => log(`could not open port ${lan.port} to the café wifi: ${err.message}`))
+      .finally(() => { opening = false })
   }
 
   const launch = () => {
@@ -220,7 +254,10 @@ function startHub(config, { onReady, onStopped, onFailed }) {
     const started = Date.now()
     const current = utilityProcess.fork(serverPath, [], {
       cwd: path.dirname(serverPath),
-      env: hubServerEnv(process.env, { port: config.hubPort, dbFile, cloudUrl: config.cloudUrl }),
+      env: hubServerEnv(process.env, {
+        port: config.hubPort, dbFile, cloudUrl: config.cloudUrl,
+        lan: lan && { port: lan.port, fingerprint: lan.fingerprint },
+      }),
       stdio: 'pipe',
       serviceName: 'BIG CMS hub',
     })
@@ -243,6 +280,7 @@ function startHub(config, { onReady, onStopped, onFailed }) {
         if (state === 'ready') {
           attempt = 0
           log('the hub is answering')
+          openLan()
           onReady()
           return
         }

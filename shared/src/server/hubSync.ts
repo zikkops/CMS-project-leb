@@ -18,6 +18,8 @@
 
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb, hubDbPath } from './firebaseAdmin'
+import { networkInterfaces } from 'node:os'
+import { hubLink, lanAddresses, normalizeFingerprint, type NetInterface } from '../hubNetwork'
 import { HttpError } from './auth'
 import { encodeHubValue, type HubStore } from './hubStore'
 import { stable } from '../backupCodec'
@@ -76,6 +78,33 @@ export interface HubSyncStatus {
   pushError: string | null
   /** Stock movements the cloud does not have yet. */
   movesWaiting: number
+  /** Where phones on the café wifi reach this hub, encrypted (S11), or null while that is off. */
+  lan: HubLan | null
+}
+
+export interface HubLan {
+  port: number
+  fingerprint: string
+  addresses: string[]
+  /** What the counter screen's QR says, one per address. */
+  links: string[]
+}
+
+/**
+ * The encrypted door the Windows app put in front of this hub (desktop/hubLan.js),
+ * from what it passed in the environment. Null when it did not: the hub is then
+ * on this PC only.
+ */
+export function hubLanStatus(
+  env: Record<string, string | undefined> = process.env,
+  interfaces: Record<string, NetInterface[] | undefined> = networkInterfaces(),
+): HubLan | null {
+  const port = Number(env.BIG_CMS_HUB_LAN_PORT)
+  const fingerprint = env.BIG_CMS_HUB_CERT_SHA256 ?? ''
+  if (!Number.isInteger(port) || port < 1024 || port > 65535 || !normalizeFingerprint(fingerprint)) return null
+  const addresses = lanAddresses(interfaces, port)
+  const links = addresses.map(a => hubLink(a, fingerprint)).filter((l): l is string => l !== null)
+  return { port, fingerprint, addresses, links }
 }
 
 interface SyncState {
@@ -450,5 +479,6 @@ export async function hubSyncStatus(now = new Date()): Promise<HubSyncStatus> {
     lastPushAt: state.lastPushAt,
     pushError: state.pushError,
     movesWaiting: waiting,
+    lan: hubLanStatus(),
   }
 }

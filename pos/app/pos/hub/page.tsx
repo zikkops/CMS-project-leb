@@ -12,6 +12,7 @@
 // the route refuses a second pairing.
 
 import { useEffect, useState } from 'react'
+import QRCode from 'qrcode'
 import { BRAND } from '@big-cms/shared/brand'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
@@ -41,6 +42,7 @@ interface HubStatus {
   lastPushAt: number | null
   pushError: string | null
   movesWaiting: number
+  lan: { port: number; fingerprint: string; addresses: string[]; links: string[] } | null
 }
 
 const field: React.CSSProperties = {
@@ -89,6 +91,19 @@ export default function HubPage() {
     const poll = setInterval(() => { void load() }, 10_000)
     return () => clearInterval(poll)
   }, [])
+
+  // The QR a phone scans to pair with this hub: where it is on the wifi, and
+  // the one certificate to trust there (S11).
+  const link = status?.lan?.links[0] ?? null
+  const [qr, setQr] = useState<string | null>(null)
+  useEffect(() => {
+    if (!link) { setQr(null); return }
+    let live = true
+    QRCode.toDataURL(link, { margin: 1, width: 240 })
+      .then(img => { if (live) setQr(img) })
+      .catch(() => { if (live) setQr(null) })
+    return () => { live = false }
+  }, [link])
 
   async function pair(e: React.FormEvent) {
     e.preventDefault()
@@ -178,6 +193,24 @@ export default function HubPage() {
               <span style={{ opacity: 0.55 }}>Receipt numbers left</span>
               <span style={{ color: status.receiptsLeft === 0 ? 'var(--red)' : undefined }}>{status.receiptsLeft}</span>
             </div>
+            {status.lan && (
+              <div style={{ ...row, flexDirection: 'column', gap: '0.6rem' }}>
+                <span style={{ opacity: 0.55 }}>Phones on the café wifi</span>
+                {status.lan.addresses.length === 0 ? (
+                  <span style={{ fontSize: '0.82rem', lineHeight: 1.6 }}>
+                    This PC is not on a local network that phones can reach.
+                  </span>
+                ) : (
+                  <>
+                    {qr && <img src={qr} alt="Pairing code for the phone app" width={240} height={240} style={{ alignSelf: 'center', borderRadius: '6px', background: '#fff' }} />}
+                    <span style={{ fontSize: '0.82rem', lineHeight: 1.6, opacity: 0.8 }}>
+                      For the phone app: it reaches this hub at {status.lan.addresses.join(' or ')}, encrypted, and trusts only this certificate.
+                    </span>
+                  </>
+                )}
+                <span style={{ fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: '0.68rem', opacity: 0.45, wordBreak: 'break-all' }}>{status.lan.fingerprint}</span>
+              </div>
+            )}
             {status.pushError && <p style={problem}>{status.pushError}</p>}
             {status.lastError && <p style={problem}>{status.lastError}</p>}
             {status.receiptError && <p style={problem}>{status.receiptError}</p>}

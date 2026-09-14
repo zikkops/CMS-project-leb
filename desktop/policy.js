@@ -19,6 +19,11 @@ const DEFAULT_CONFIG = Object.freeze({
   hubPort: 3100,
   // Where a hub pairs and takes the menu from (stage 4): the hosted POS.
   cloudUrl: 'https://pos.cms-projectlb.com',
+  // Phones on the café wifi reach a hub through an encrypted door with the
+  // hub's own certificate (owner's decision S11, hubLan.js). Off until a café
+  // sets phones up: nothing listens on the network before somebody asks it to.
+  hubLan: false,
+  hubLanPort: 3443,
 })
 
 const MODES = new Set(['online', 'hub'])
@@ -53,6 +58,13 @@ const readMode = raw => (typeof raw === 'string' && MODES.has(raw) ? raw : null)
 // Not a privileged port, and a real number: "3200" as text is a typo, not a port.
 const readPort = raw => (Number.isInteger(raw) && raw >= 1024 && raw <= 65535 ? raw : null)
 
+// The encrypted port can never be the hub's own: that one stays on this PC.
+function readLanPort(raw, hubPort) {
+  const port = readPort(raw)
+  if (port && port !== hubPort) return port
+  return hubPort === DEFAULT_CONFIG.hubLanPort ? DEFAULT_CONFIG.hubLanPort + 1 : DEFAULT_CONFIG.hubLanPort
+}
+
 /**
  * The app's settings, from config.json in its data folder (raw text, or
  * nothing) and the environment. Unreadable or wrong-typed values fall back to
@@ -75,6 +87,8 @@ function readConfig(raw, env) {
     mode: readMode(env?.BIG_CMS_DESKTOP_MODE) ?? readMode(src.mode) ?? DEFAULT_CONFIG.mode,
     hubPort: readPort(src.hubPort) ?? DEFAULT_CONFIG.hubPort,
     cloudUrl: readCloudUrl(env?.BIG_CMS_CLOUD_URL) ?? readCloudUrl(src.cloudUrl) ?? DEFAULT_CONFIG.cloudUrl,
+    hubLan: typeof src.hubLan === 'boolean' ? src.hubLan : DEFAULT_CONFIG.hubLan,
+    hubLanPort: readLanPort(src.hubLanPort, readPort(src.hubPort) ?? DEFAULT_CONFIG.hubPort),
   }
 }
 
@@ -110,7 +124,8 @@ function isAllowedPermission(permission, requestingUrl, posUrl) {
 
 /**
  * The address the till opens in hub mode. This PC only: the hub server listens
- * on 127.0.0.1, so nothing else on the café network reaches it yet. localhost
+ * on 127.0.0.1, and the café network reaches it only through the encrypted
+ * door in hubLan.js, when `hubLan` is on. localhost
  * rather than 127.0.0.1 in the page address, because that is the name Firebase
  * sign-in already knows.
  */
@@ -135,7 +150,9 @@ const HUB_ENV_KEEP = [
  * NODE_OPTIONS, which could load any code into the server that takes money.
  * A list of what to keep cannot miss a name nobody thought of.
  */
-function hubServerEnv(baseEnv, { port, dbFile, cloudUrl }) {
+const FINGERPRINT = /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/
+
+function hubServerEnv(baseEnv, { port, dbFile, cloudUrl, lan = null }) {
   const env = {}
   for (const key of HUB_ENV_KEEP) {
     if (typeof baseEnv?.[key] === 'string') env[key] = baseEnv[key]
@@ -148,6 +165,11 @@ function hubServerEnv(baseEnv, { port, dbFile, cloudUrl }) {
     HOSTNAME: '127.0.0.1',
     BIG_CMS_HUB_DB: dbFile,
     BIG_CMS_CLOUD_URL: cloudUrl,
+    // So the counter screen can show phones where the encrypted door is and
+    // which certificate to trust. The server itself still listens on this PC only.
+    ...(lan && readPort(lan.port) && FINGERPRINT.test(String(lan.fingerprint))
+      ? { BIG_CMS_HUB_LAN_PORT: String(lan.port), BIG_CMS_HUB_CERT_SHA256: lan.fingerprint }
+      : {}),
   }
 }
 

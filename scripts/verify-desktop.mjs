@@ -12,9 +12,16 @@
 // credential must never be sent to the cloud over plain http.
 
 import { createRequire } from 'node:module'
+import { X509Certificate, createPrivateKey } from 'node:crypto'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { createServer } from 'node:http'
+import { connect } from 'node:tls'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 const require = createRequire(import.meta.url)
 const P = require('../desktop/policy.js')
+const L = require('../desktop/hubLan.js')
 
 let pass = 0, fail = 0
 const eq = (name, got, want) => {
@@ -25,7 +32,7 @@ const eq = (name, got, want) => {
 
 const POS = 'https://pos.cms-projectlb.com/pos'
 const CLOUD = 'https://pos.cms-projectlb.com'
-const DEFAULTS = { posUrl: POS, kiosk: true, startWithWindows: true, mode: 'online', hubPort: 3100, cloudUrl: CLOUD }
+const DEFAULTS = { posUrl: POS, kiosk: true, startWithWindows: true, mode: 'online', hubPort: 3100, cloudUrl: CLOUD, hubLan: false, hubLanPort: 3443 }
 
 console.log('\nthe address the till opens')
 {
@@ -115,6 +122,79 @@ console.log('\nthe café hub (stages 3 and 4)')
     [P.classifyHubProbe(200, '<html></html>'), P.classifyHubProbe(401, 'Unauthorized'), P.classifyHubProbe(500, '')], ['other', 'other', 'other'])
   eq('a stopped hub is started again, backing off to at most 30 seconds',
     [0, 1, 2, 4, 5, 50, -1].map(P.hubRestartDelay), [1000, 2000, 4000, 16000, 30000, 30000, 1000])
+}
+
+console.log('\nphones on the café wifi, encrypted (S11)')
+try {
+  eq('THE TRAP: nothing listens on the network until a café asks for it', P.readConfig(null, {}).hubLan, false)
+  eq('switched on in the settings file', P.readConfig('{"hubLan": true}', {}).hubLan, true)
+  eq('..."true" as text does not switch it on', P.readConfig('{"hubLan": "true"}', {}).hubLan, false)
+  eq('its port defaults to 3443, and can be set', [P.readConfig(null, {}).hubLanPort, P.readConfig('{"hubLanPort": 4443}', {}).hubLanPort], [3443, 4443])
+  eq('THE TRAP: it is never the hub server\'s own port, which stays on this PC',
+    [P.readConfig('{"hubPort": 3200, "hubLanPort": 3200}', {}).hubLanPort, P.readConfig('{"hubPort": 3443}', {}).hubLanPort], [3443, 3444])
+
+  const FP = Array(32).fill('AB').join(':')
+  const lanEnv = P.hubServerEnv({}, { port: 3100, dbFile: 'C:\\hub\\pos.db', cloudUrl: CLOUD, lan: { port: 3443, fingerprint: FP } })
+  eq('the hub server is told where the door is and which certificate it has',
+    [lanEnv.BIG_CMS_HUB_LAN_PORT, lanEnv.BIG_CMS_HUB_CERT_SHA256], ['3443', FP])
+  eq('THE TRAP: ...and still listens on this PC only: only the encrypted door faces the wifi', lanEnv.HOSTNAME, '127.0.0.1')
+  eq('a malformed fingerprint or port is not passed on',
+    ['BIG_CMS_HUB_LAN_PORT' in P.hubServerEnv({}, { port: 3100, dbFile: 'x', cloudUrl: CLOUD, lan: { port: 3443, fingerprint: 'AB:CD' } }),
+      'BIG_CMS_HUB_LAN_PORT' in P.hubServerEnv({}, { port: 3100, dbFile: 'x', cloudUrl: CLOUD, lan: { port: 80, fingerprint: FP } })], [false, false])
+
+  const now = new Date(Date.UTC(2026, 8, 15, 12))
+  const made = L.createHubCertificate({ now })
+  const x = new X509Certificate(made.cert)
+  eq('the hub makes a real certificate, signed by its own key, for a TLS server and nothing more',
+    [x.verify(x.publicKey), x.checkPrivateKey(createPrivateKey(made.key)), x.ca, x.keyUsage], [true, true, false, ['1.3.6.1.5.5.7.3.1']])
+  // Node's x.ca also needs the right to sign certificates, so it reads false for
+  // an authority without it. The certificate's own bytes say what it claims.
+  eq('THE TRAP: its basic constraints say, in its own bytes, that it is not an authority',
+    Buffer.from(x.raw).includes(Buffer.from('300c0603551d130101ff04023000', 'hex')), true)
+  eq('it lasts ten years, and starts a day early for a phone whose clock runs ahead',
+    [new Date(x.validTo).getUTCFullYear(), Date.parse(x.validFrom) < now.getTime()], [2036, true])
+  eq('its fingerprint is the one a phone pins', L.certificateFingerprint(made.cert), x.fingerprint256)
+  eq('a sound certificate has no problem', L.certificateProblem(made.cert, made.key, now), null)
+  const other = L.createHubCertificate({ now })
+  eq('THE TRAP: a key that is not the certificate\'s, one about to run out, or garbage, is not used',
+    [L.certificateProblem(made.cert, other.key, now), L.certificateProblem(made.cert, made.key, new Date(Date.UTC(2036, 8, 1))), L.certificateProblem('nonsense', made.key, now)],
+    ['the key is not this certificate\'s', 'runs out within 30 days', 'unreadable certificate'])
+
+  const dir = mkdtempSync(join(tmpdir(), 'hub-lan-verify-'))
+  const first = L.loadOrCreateCertificate(dir, { now })
+  const again = L.loadOrCreateCertificate(dir, { now })
+  eq('THE TRAP: made once and kept, so paired phones keep trusting the hub',
+    [first.created, again.created, again.fingerprint === first.fingerprint], ['none yet', null, true])
+  writeFileSync(join(dir, L.CERT_FILE), 'damaged')
+  const remade = L.loadOrCreateCertificate(dir, { now })
+  eq('a damaged one is made again, with a new fingerprint', [remade.created, remade.fingerprint !== first.fingerprint], ['unreadable certificate', true])
+
+  const upstream = createServer((req, res) => res.end(`hub saw ${req.url}`))
+  await new Promise(r => upstream.listen(0, '127.0.0.1', r))
+  const front = await L.startLanFront({ key: remade.key, cert: remade.cert, host: '127.0.0.1', port: 0, targetPort: upstream.address().port })
+  const port = front.address().port
+  const talk = opts => new Promise(resolve => {
+    const socket = connect({ host: '127.0.0.1', port, ...opts }, () => {
+      const fp = socket.getPeerCertificate().fingerprint256
+      let body = ''
+      socket.on('data', d => { body += d })
+      socket.on('end', () => resolve({ fp, body }))
+      socket.write('GET /api/hub/session HTTP/1.1\r\nHost: hub\r\nConnection: close\r\n\r\n')
+    })
+    socket.on('error', e => resolve({ error: e.code ?? e.message }))
+  })
+  const pinned = await talk({ rejectUnauthorized: false })
+  eq('through the door, encrypted, a phone reaches the hub server and sees the certificate it pinned',
+    [pinned.fp === remade.fingerprint, /hub saw \/api\/hub\/session/.test(pinned.body ?? '')], [true, true])
+  const trusting = await talk({})
+  eq('THE TRAP: an ordinary client trusts no hub certificate: only the app, by fingerprint, does',
+    trusting.error, 'DEPTH_ZERO_SELF_SIGNED_CERT')
+  front.close()
+  upstream.close()
+  try { rmSync(dir, { recursive: true, force: true }) } catch { /* the OS cleans temp */ }
+} catch (err) {
+  console.log(`  FAIL  the run stopped: ${String(err?.stack ?? err).split('\n').slice(0, 3).join(' | ')}`)
+  fail++
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

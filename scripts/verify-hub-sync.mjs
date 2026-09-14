@@ -637,6 +637,39 @@ console.log('\nwhile a café hub trades a branch, the online till is view-only t
   eq('THE TRAP: every till write route in the cloud asks about the right thing before it writes', unguarded, [])
 }
 
+console.log('\nwhere phones find the hub on the café wifi, and what its QR says (S11)')
+{
+  const N = await import(url('hubNetwork.js'))
+  eq('private addresses are the café network; public, loopback and link-local are not',
+    ['10.0.0.1', '172.16.0.1', '172.31.255.1', '192.168.68.148', '172.32.0.1', '8.8.8.8', '127.0.0.1', '169.254.1.1', '192.168.1.256', 'hub'].map(N.isPrivateIPv4),
+    [true, true, true, true, false, false, false, false, false, false])
+  const interfaces = {
+    'Wi-Fi': [{ address: '192.168.1.20', family: 'IPv4', internal: false }, { address: 'fe80::1', family: 'IPv6', internal: false }],
+    'Loopback': [{ address: '127.0.0.1', family: 'IPv4', internal: true }],
+    'vEthernet': [{ address: '172.20.0.1', family: 4, internal: false }],
+    'Modem': [{ address: '81.2.69.160', family: 'IPv4', internal: false }],
+  }
+  eq('the addresses phones can use: private IPv4, on the encrypted port, never a public one',
+    N.lanAddresses(interfaces, 3443), ['https://172.20.0.1:3443', 'https://192.168.1.20:3443'])
+
+  const FP = Array(32).fill('AB').join(':')
+  const link = N.hubLink('https://192.168.1.20:3443', FP)
+  eq('the QR says where the hub is and which certificate to trust', link, `bigcms-hub:https://192.168.1.20:3443#sha256=${'ab'.repeat(32)}`)
+  eq('...and the app reads it back', N.parseHubLink(link), { address: 'https://192.168.1.20:3443', fingerprint: 'ab'.repeat(32) })
+  eq('THE TRAP: a QR is anything stuck on a counter: plain http, a public address, a path, a login, a short fingerprint or another QR is not a hub',
+    [`bigcms-hub:http://192.168.1.20:3443#sha256=${'ab'.repeat(32)}`, `bigcms-hub:https://81.2.69.160:3443#sha256=${'ab'.repeat(32)}`,
+      `bigcms-hub:https://192.168.1.20:3443/steal#sha256=${'ab'.repeat(32)}`, `bigcms-hub:https://staff${'@'}192.168.1.20:3443#sha256=${'ab'.repeat(32)}`,
+      'bigcms-hub:https://192.168.1.20:3443#sha256=abcd', `https://192.168.1.20:3443#sha256=${'ab'.repeat(32)}`, null].map(N.parseHubLink),
+    [null, null, null, null, null, null, null])
+  eq('no link is made from a bad address or fingerprint', [N.hubLink('http://192.168.1.20:3443', FP), N.hubLink('https://192.168.1.20:3443', 'nope')], [null, null])
+
+  const lan = S.hubLanStatus({ BIG_CMS_HUB_LAN_PORT: '3443', BIG_CMS_HUB_CERT_SHA256: FP }, interfaces)
+  eq('the hub page is told the door\'s addresses and a QR for each', [lan.port, lan.addresses, lan.links.length, lan.fingerprint], [3443, ['https://172.20.0.1:3443', 'https://192.168.1.20:3443'], 2, FP])
+  eq('THE TRAP: with no door, or a malformed one, the hub is on this PC only and says nothing about the wifi',
+    [S.hubLanStatus({}, interfaces), S.hubLanStatus({ BIG_CMS_HUB_LAN_PORT: '3443', BIG_CMS_HUB_CERT_SHA256: 'AB:CD' }, interfaces), S.hubLanStatus({ BIG_CMS_HUB_LAN_PORT: '80', BIG_CMS_HUB_CERT_SHA256: FP }, interfaces)],
+    [null, null, null])
+}
+
 } catch (err) {
   console.log(`  FAIL  the run stopped: ${String(err?.stack ?? err).split('\n').slice(0, 3).join(' | ')}`)
   fail++
