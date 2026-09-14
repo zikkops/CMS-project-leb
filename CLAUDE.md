@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 21 checks, 15 verifiers, 932
+is the only thing that shows it. Currently 22 checks, 16 verifiers, 996
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -60,6 +60,7 @@ npm run verify:export        # if you touched what leaves the building for an ac
 npm run verify:backup        # if you touched how a document is copied out or put back
 npm run verify:tips          # if you touched how tips are split
 npm run verify:recipes       # if you touched a recipe, a unit conversion or what a sale takes off the shelf
+npm run verify:food-safety   # if you touched a food safety limit, a reading, or who may sign a day
 npm run verify:errors        # if you touched what an error report may contain
 npm run verify:delivery-math # if you touched receiving or costing
 npm run audit:writes         # must stay at 0
@@ -379,6 +380,49 @@ database.
   both is waste, so stock is never invented (`ingredientOutcome()`).
 - **The `recipes` feature switch governs depletion only**, off by default.
   Entering recipes and costing dishes never depends on it.
+
+## Food safety (Sep 2026)
+
+Scoped in the vault (`Food Safety - Scope.md`) from a full read of the FSA's
+*Safer Food, Better Business for caterers* (UK, 2015 edition, Open Government
+Licence — structure and numbers used, wording our own, no logos or photos) and
+from research into Lebanese requirements. Built: the diary. Not yet: safe
+method cards, training and cleaning records, the 4-weekly review, allergens,
+recall. Behind the `foodSafety` module, **off by default**.
+
+- **Every limit is a setting with a UK default, never a constant.** The pack's
+  temperatures are UK law; the client is in Lebanon. `readLimits()` reads them
+  fail-safe (out of bounds, text, or a contradictory pair → default); the
+  settings route REFUSES a bad value rather than quietly saving the default, so
+  nobody believes their local rule is in force when it is not. Lebanon, from a
+  Ministry of Public Health inspection checklist (not a decree): fridge below
+  8 °C, freezer below −18 °C, logged daily — both met by the defaults. Nothing
+  Lebanese was found for hot holding, cooking, allergens or retention, and no
+  number was guessed.
+- **Readings are logged, which the pack does not ask for** (owner's decision,
+  14 Sep 2026). `judgeReading()`: chilled at or below the set point is ok,
+  above it a warning, above the keep limit a breach; limits are inclusive, as
+  the pack writes them, judged to a tenth of a degree. A breach cannot be saved
+  without what was done about it; a typo (800 °C) is not a reading at all.
+- **Staff answer, a manager signs** (owner's decision). A check is DONE or NOT
+  DONE WITH A NOTE — `signingBlockers()` accepts either. A diary that can only
+  be signed by ticking everything is a diary that gets ticked.
+- **The unit decides a reading's kind**, never the request: 5 °C sent as a
+  "fridge" reading for a bain-marie is judged as hot holding.
+- **Who may write which day is `dayAccess()`**: staff today and yesterday (a
+  closing check after midnight belongs to the night before); a manager may fill
+  an unsigned day up to a week back, and it then reads "signed late"; nobody
+  writes tomorrow; **a signed day is amended with a reason, never edited** — the
+  amendment keeps what the day said before.
+- **A signed day keeps what it was judged against** (`atSigning`: limits,
+  checklists, units), so a limit changed next month cannot re-judge it — the VAT
+  rule again. History lists unsigned past days as MISSED, never just absent.
+- Server-only collections `foodSafetyDays/{branch}_{date}` and
+  `foodSafetyUnits`, behind `/api/admin/food-safety`; **no Firestore rule, so
+  no rules deploy**. Sections `foodSafety` (floor) and `foodSafetyReview`
+  (managers, admins); limits and the allergen list are admin-only in the route.
+  Units are retired, never deleted. `npm run verify:food-safety`, 17 mutations
+  caught by name.
 
 ## Seeding a POS history (Sep 2026)
 

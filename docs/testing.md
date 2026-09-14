@@ -128,6 +128,31 @@ The one with the most behind it.
   void as made wrong), set the range to today: it should appear under **Made
   wrong** with what its ingredients cost, and as a share of POS sales.
 
+### Food safety — `/admin/food-safety` (needs the module on)
+Settings → Features → **Food Safety**, which is **off** by default. Nothing is
+seeded, so start in settings.
+
+1. **`/admin/food-safety/settings`** as admin: add a fridge, a freezer and a
+   hot-holding unit to Main. The limits show the UK defaults with a note on
+   Lebanon's checklist. Type **80** for the chilled limit and save — it should
+   be refused by name, not quietly saved as 8.
+2. **The diary** as a barista or kitchen crew: answer the opening checks. Mark
+   one **Not done** — a note box appears. Log readings: **4** on the fridge
+   (teal), **7** (amber, adjust the unit), **9** (red) — a 9 will not save
+   until you say what was done about it. Mark the freezer out of use: it asks
+   why.
+3. As a **manager**: the day lists what still stops the signature, in order.
+   "Not done, with a note" does not block it — only an unanswered check, a
+   missing reading or a breach with nothing said. Answer the closing checks,
+   save, and **Sign as supervised**.
+4. Change a reading on the signed day: as a barista it is read-only; as a
+   manager it asks for a reason and keeps what the day said before.
+5. Open yesterday as a barista (allowed — closing checks after midnight) and
+   the day before (read-only). **History** should show the signed day, and
+   earlier days in the range as **Missed**.
+6. Change a limit in settings: the signed day is still shown against the limit
+   it was signed with.
+
 ### Daily counts — `/admin/supplies/daily`, `.../history`
 - Submit a count, then open it in the history: **Expected, Counted, Variance
   and Value** per supply, with totals. Counts from before 14 Sep have no expected

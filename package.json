@@ -49,6 +49,7 @@
     "restore": "node --env-file=.env.local scripts/restore.mjs",
     "verify:tips": "node scripts/verify-tips.mjs",
     "verify:recipes": "node scripts/verify-recipes.mjs",
+    "verify:food-safety": "node scripts/verify-food-safety.mjs",
     "verify:all": "node scripts/verify-all.mjs"
   },
   "dependencies": {

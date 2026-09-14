@@ -67,6 +67,8 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
   dailyInventoryHistory: 'Daily Inventory History',
   deliveries:            'Goods Receiving',
   deliveriesReport:      'Receiving & Cost Reports',
+  foodSafety:            'Food Safety Checks',
+  foodSafetyReview:      'Food Safety Sign-off & History',
 }
 
 // Reads either shape — the new `branchIds` array, or the older singular

@@ -20,6 +20,7 @@ import {
   faFile, faPaperPlane, faTruck, faList, faImage, faScroll, faHandshake, faStore,
   faClockRotateLeft, faChair, faThumbtack, faGear, faXmark, faMoneyBill,
   faClipboardCheck, faChartPie, faTriangleExclamation, faFileExport,
+  faTemperatureHalf, faShieldHalved,
   type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
 import { BRAND } from '@big-cms/shared/brand'
@@ -209,6 +210,15 @@ export default function AdminPage() {
         { label: 'Daily Summary',     icon: faReceipt,         daily: true,  desc: 'View daily totals and add tips — mobile-friendly for screenshots',           href: '/admin/end-of-day/summary',  access: SECTION_ACCESS.endOfDayHistory },
         { label: 'Staff Roster',      icon: faUsers,           daily: false, desc: 'Configure the default staff list per branch for EOD attendance tracking',    href: '/admin/end-of-day/staff',    access: ['admin'] as Role[] },
         { label: 'Sales Export',      icon: faFileExport,      daily: false, desc: 'Closed checks for a date range, with VAT and both currencies, for your accountant', href: '/admin/exports',             access: SECTION_ACCESS.endOfDay },
+      ],
+    },
+    {
+      title: 'Food Safety',
+      color: 'var(--teal)',
+      cards: [
+        { label: 'Food Safety Diary',    icon: faTemperatureHalf, daily: true,  desc: 'Opening and closing checks and fridge, freezer and hot-holding temperatures — signed each day by a manager', href: '/admin/food-safety',          access: SECTION_ACCESS.foodSafety },
+        { label: 'Food Safety History',  icon: faShieldHalved,    daily: false, desc: 'Which days were signed, by whom, readings out of range and days nobody signed',                       href: '/admin/food-safety/history',  access: SECTION_ACCESS.foodSafetyReview },
+        { label: 'Food Safety Settings', icon: faGear,            daily: false, desc: 'Fridges, freezers and hot holding per branch, the checklists, limits and allergens tracked',          href: '/admin/food-safety/settings', access: SECTION_ACCESS.foodSafetyReview },
       ],
     },
     {

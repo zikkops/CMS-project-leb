@@ -109,6 +109,16 @@ export const FEATURES = {
     label: 'Goods Receiving', group: 'Operations', requires: ['supplies', 'weeklyOrders'], defaultEnabled: true,
     sections: ['deliveries', 'deliveriesReport'], collections: ['deliveries'],
   },
+  // Food safety (Sep 2026) — opening and closing checks, logged temperatures
+  // and a manager's signature each day, after the FSA's Safer Food, Better
+  // Business. Off by default: turning it on takes on a daily obligation, and
+  // a café should choose that rather than find it already running. Its records
+  // are server-only and read through routes, so no Firestore rule governs them.
+  foodSafety: {
+    label: 'Food Safety', group: 'Operations', requires: [], defaultEnabled: false,
+    sections: ['foodSafety', 'foodSafetyReview'],
+    collections: ['foodSafetyDays', 'foodSafetyUnits'],
+  },
   endOfDay: {
     label: 'End of Day', group: 'Operations', requires: [], defaultEnabled: true,
     sections: ['endOfDay', 'endOfDayHistory'],

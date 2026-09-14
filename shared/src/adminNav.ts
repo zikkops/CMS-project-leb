@@ -113,6 +113,15 @@ export const ADMIN_NAV: AdminNavSection[] = [
     ],
   },
   {
+    title: 'Food Safety',
+    color: 'var(--teal)',
+    items: [
+      { label: 'Food Safety Diary',    href: '/admin/food-safety',          access: SECTION_ACCESS.foodSafety },
+      { label: 'Food Safety History',  href: '/admin/food-safety/history',  access: SECTION_ACCESS.foodSafetyReview },
+      { label: 'Food Safety Settings', href: '/admin/food-safety/settings', access: SECTION_ACCESS.foodSafetyReview },
+    ],
+  },
+  {
     title: 'Administration',
     color: 'var(--red)',
     items: [

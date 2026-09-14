@@ -89,6 +89,14 @@ export const SECTION_ACCESS = {
   // reasoning as dailyInventoryHistory. Purchase prices and supplier price
   // drift are not something every floor role needs to see.
   deliveriesReport: ['admin', 'manager'] as Role[],
+  // Food safety (Sep 2026). The floor answers the checks and logs the readings —
+  // the same people who count stock and sign for deliveries.
+  foodSafety: ['admin', 'manager', 'kitchen_crew', 'barista'] as Role[],
+  // Signing the day as supervised, the history and the limits. Management only
+  // (owner's decision, 14 Sep 2026: staff tick, a manager or admin signs).
+  // A key rather than a role check on purpose: a café whose senior barista runs
+  // the morning is exactly who a manager grants this to.
+  foodSafetyReview: ['admin', 'manager'] as Role[],
 }
 
 // DO NOT add a key here for staff account management. /admin/users gates on
