@@ -1,17 +1,22 @@
-// Assertions over pairing a café hub and pulling from the cloud — POS software, stage 4.
+// Assertions over pairing a café hub, pulling from the cloud, and receipt
+// number blocks — POS software, stage 4.
 //
 //   node scripts/verify-hub-sync.mjs
 //   npm run verify:hub-sync
 //
-// Three parts:
-//   1. The pure rules (shared/src/hubSync.ts): codes, the hub's credential,
-//      what a staff record may carry, and what a pull writes.
+// Four parts:
+//   1. The pure rules (shared/src/hubSync.ts, shared/src/receiptBlocks.ts):
+//      codes, the hub's credential, what a staff record may carry, what a pull
+//      writes, and how a block of receipt numbers is reserved and used.
 //   2. The cloud's side (shared/src/server/hubDevices.ts) over a Firestore-shaped
 //      store: a code works once, a credential is checked, an unpaired hub is
-//      refused, and a snapshot carries exactly what the cloud is master for.
-//   3. The hub's side (shared/src/server/hubSync.ts): a snapshot taken into a
-//      second database, where the hub's own stock and receipt counter survive
-//      every pull — and hub sessions obeying the staff records pulled.
+//      refused, a snapshot carries exactly what the cloud is master for, and a
+//      block comes off the cloud's own receipt counter.
+//   3. The hub's side (shared/src/server/hubSync.ts, invoiceNumber.ts): a
+//      snapshot taken into a second database, where the hub's own stock and
+//      receipt counter survive every pull; hub sessions obeying the staff records
+//      pulled; receipts numbered only from blocks; and a hub fetching a block
+//      through its real pairing and refill code, over a fake connection to the cloud.
 //
 // Fixture contact details are placeholders that are not shaped like an email
 // or a phone number. The tests only care that those FIELDS never reach a hub,
@@ -29,7 +34,8 @@ const out = join('node_modules', '.cache', `verify-hub-sync-${process.pid}`)
 rmSync(out, { recursive: true, force: true })
 try {
   execSync(
-    'npx tsc shared/src/hubSync.ts shared/src/server/hubDevices.ts shared/src/server/hubSync.ts shared/src/server/hubSession.ts ' +
+    'npx tsc shared/src/hubSync.ts shared/src/receiptBlocks.ts shared/src/server/hubDevices.ts shared/src/server/hubSync.ts ' +
+    'shared/src/server/hubSession.ts shared/src/server/invoiceNumber.ts ' +
     `--outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -57,14 +63,17 @@ const tmp = mkdtempSync(join(tmpdir(), 'hub-sync-verify-'))
 process.env.BIG_CMS_HUB_DB = join(tmp, 'cloud.db')
 
 const P = await import(url('hubSync.js'))
+const R = await import(url('receiptBlocks.js'))
 const H = await import(url('server/hubStore.js'))
 const FA = await import(url('server/firebaseAdmin.js'))
 const D = await import(url('server/hubDevices.js'))
 const S = await import(url('server/hubSync.js'))
 const HS = await import(url('server/hubSession.js'))
+const I = await import(url('server/invoiceNumber.js'))
 const { BRAND } = await import(url('brand.js'))
 const branch = BRAND.branches[0]
 const otherBranch = BRAND.branches[1]
+const cafeYear = Number(new Intl.DateTimeFormat('en-US', { timeZone: BRAND.locale.timezone, year: 'numeric' }).format(new Date()))
 
 let pass = 0, fail = 0
 const eq = (name, got, want) => {
@@ -160,6 +169,29 @@ console.log('\nwhat a pull writes')
   eq('nor a check, nor another branch\'s tables, nor removing them', said.some(s => s.includes('checks/') || s.includes(otherBranch)), false)
   eq('nothing unchanged is written', said.includes('set menuItems/m1') || said.includes('set appSettings/features'), false)
   eq('an id with a slash in a snapshot is ignored', P.planPull(spec, new Map(), [{ collection: 'menuItems', id: 'a/b', data: {} }], json), [])
+}
+
+console.log('\nreceipt number blocks')
+{
+  const y = 2026
+  eq('the first block of a year starts at 1, and the counter moves to its end',
+    R.reserveBlock(undefined, y), { block: { year: y, first: 1, last: 500, next: 1 }, counter: { year: y, nextNumber: 500 } })
+  eq('a block starts right after the cloud\'s last number', R.reserveBlock({ year: y, nextNumber: 41 }, y).block, { year: y, first: 42, last: 541, next: 42 })
+  eq('a counter from last year starts this year again at 1', R.reserveBlock({ year: y - 1, nextNumber: 900 }, y).block.first, 1)
+  const a = R.takeReceipt([R.reserveBlock({ year: y, nextNumber: 41 }, y).block], y)
+  const b = R.takeReceipt(a.blocks, y)
+  eq('receipts are taken in order from the block', [a.sequence, b.sequence, R.receiptsLeft(b.blocks, y)], [42, 43, 498])
+  eq('THE TRAP: a block from last year never numbers this year\'s receipts', R.takeReceipt([{ year: y - 1, first: 1, last: 500, next: 10 }], y).ok, false)
+  eq('used up, it refuses rather than inventing a number', R.takeReceipt([{ year: y, first: 1, last: 1, next: 2 }], y).ok, false)
+  eq('more are asked for below 100 left, not at 100',
+    [R.needsReceipts([{ year: y, first: 1, last: 500, next: 402 }], y), R.needsReceipts([{ year: y, first: 1, last: 500, next: 401 }], y)], [true, false])
+  eq('an older block is used up before a newer one',
+    R.takeReceipt([{ year: y, first: 501, last: 1000, next: 501 }, { year: y, first: 1, last: 500, next: 499 }], y).sequence, 499)
+  eq('THE TRAP: a malformed block issues nothing',
+    R.readBlocks([{ year: y, first: 10, last: 5, next: 10 }, { year: '2026', first: 1, last: 5, next: 1 }, { year: y, first: 1, last: 5, next: 0 }, null, 'x']), [])
+  eq('a new block drops used-up blocks and other years\'',
+    R.addBlock([{ year: y - 1, first: 1, last: 500, next: 20 }, { year: y, first: 1, last: 500, next: 501 }], { year: y, first: 501, last: 1000, next: 501 }),
+    [{ year: y, first: 501, last: 1000, next: 501 }])
 }
 
 console.log('\nthe cloud pairs a hub')
@@ -294,6 +326,64 @@ console.log('\nstaff records from the cloud reach a hub session')
   await db.doc('users/u-staff').update({ isStaff: false })
   eq('THE TRAP: an account locked in the cloud is refused at the hub after the next pull, not at 05:00',
     await HS.callerFromHubToken(s.token), null)
+}
+
+console.log('\nthe cloud reserves receipt numbers for a hub')
+{
+  await db.doc('appSettings/invoiceCounter').set({ year: cafeYear, nextNumber: 900 })
+  const block = await D.reserveReceiptBlock(device, 0)
+  eq('a block of 500 right after the cloud\'s last receipt', [block.first, block.last, block.next, block.year], [901, 1400, 901, cafeYear])
+  eq('THE TRAP: the cloud\'s own next receipt comes after the block', (await db.doc('appSettings/invoiceCounter').get()).data().nextNumber, 1400)
+  await rejects('a hub that still has 100 or more is refused another block', () => D.reserveReceiptBlock(device, 100), e => e.status === 409)
+  const logged = (await db.collection('hubReceiptBlocks').get()).docs.map(d => d.data())
+  eq('every block is written down: which hub, which numbers', logged.map(l => [l.name, l.branch, l.first, l.last]), [['Counter PC', branch, 901, 1400]])
+}
+
+console.log('\na hub numbers receipts only from its blocks')
+{
+  await rejects('THE TRAP: with no block, a hub refuses to number a receipt rather than count from 1',
+    () => I.issueInvoiceNumber(), e => e.status === 409 && /no receipt numbers/.test(e.message))
+  await db.doc('hubMeta/receipts').set({ blocks: [{ year: cafeYear, first: 901, last: 902, next: 901 }] })
+  const one = await I.issueInvoiceNumber()
+  const two = await I.issueInvoiceNumber()
+  eq('numbers come from the block, in order, in the café\'s format', [one.sequence, two.sequence, one.invoiceNumber.endsWith('-0901')], [901, 902, true])
+  await rejects('used up, the next close is refused until more arrive', () => I.issueInvoiceNumber(), e => e.status === 409 && /used all/.test(e.message))
+  eq('THE TRAP: a hub numbering receipts never moves the cloud\'s counter', (await db.doc('appSettings/invoiceCounter').get()).data().nextNumber, 1400)
+}
+
+console.log('\na hub pairs and fetches receipt numbers through its own code')
+{
+  process.env.BIG_CMS_CLOUD_URL = 'https://cloud.test'
+  const asked = []
+  // The cloud's routes, in-process: the same functions the routes call.
+  const cloud = async (href, init = {}) => {
+    const target = new URL(href)
+    asked.push(target.pathname)
+    const request = new Request(href, { method: init.method ?? 'GET', headers: init.headers, body: init.body })
+    const reply = (status, data) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
+    try {
+      if (target.pathname === '/api/hub-sync/pair') return reply(200, await D.pairDevice(JSON.parse(init.body).code))
+      if (target.pathname === '/api/hub-sync/receipts') {
+        return reply(200, await D.reserveReceiptBlock(await D.deviceFromRequest(request), JSON.parse(init.body).have))
+      }
+      return reply(404, { error: 'Not found.' })
+    } catch (e) {
+      return reply(e.status ?? 500, { error: e.message })
+    }
+  }
+  const code = (await D.createPairingCode(admin, { branch, name: 'Hub under test' })).code
+  const pairing = await S.pairHub(code, cloud, false)
+  eq('the hub pairs through the cloud\'s pairing', [pairing.branch, pairing.name, pairing.revoked], [branch, 'Hub under test', false])
+  await rejects('a paired hub refuses to pair again', () => S.pairHub(code, cloud, false), e => e.status === 409)
+
+  await db.doc('hubMeta/receipts').delete()
+  const first = await S.refillReceipts(cloud)
+  eq('a hub with none fetches a block of 500', [first.added, first.left], [true, 500])
+  const again = await S.refillReceipts(cloud)
+  eq('with 500 left it does not ask again', [again.added, asked.filter(p => p === '/api/hub-sync/receipts').length], [false, 1])
+  const next = await I.issueInvoiceNumber()
+  eq('its next receipt is the first of that block', next.sequence, 1401)
+  eq('its page says how many are left', (await S.hubSyncStatus()).receiptsLeft, 499)
 }
 
 } catch (err) {

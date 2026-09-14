@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1396
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1422
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -923,10 +923,45 @@ wraps the same React screens.
       its used code and one activity log entry.
     - **Not yet run:** the admin page signed in, and pairing from the Windows
       app's own hub.
+  - **Receipt numbers on a hub come in blocks** (owner's decision, 14 Sep 2026:
+    500 at a time, refilled once fewer than 100 are left). The rules are
+    `shared/src/receiptBlocks.ts`.
+    - The cloud reserves a block off the same `appSettings/invoiceCounter` it
+      issues its own from, in one transaction
+      (`reserveReceiptBlock()`, `POST /api/hub-sync/receipts`), so its own next
+      receipt comes after the block. It writes down which hub got which numbers
+      (`hubReceiptBlocks`) and refuses a hub that says it still has 100 or more.
+    - On a hub, `issueInvoiceNumber()` takes numbers ONLY from
+      `hubMeta/receipts`. **With none for this year, closing is refused with a
+      reason and the check stays open**, never numbered from a counter of its
+      own. A hub counting from 1 would print numbers the cloud has given out.
+    - **A block belongs to one café year**, because the sequence restarts every
+      year and the printed number carries its month and year. A hub offline
+      across New Year cannot close until it fetches this year's first block.
+    - Unused numbers are skipped, which leaves gaps; accounting accepts gaps,
+      not duplicates.
+    - The hub fetches after pairing and on every two-minute sync.
+      `/pos/hub` shows how many are left.
+    - **A dev hub that is not paired cannot close checks any more**, so pair it
+      with the POS dev server first.
+    - A used-up block is kept until a new one arrives. So a hub out of numbers
+      says "used all its receipt numbers", not "has none for this year yet",
+      which would send somebody looking for a problem with New Year. The first
+      test run caught that.
+    - `verify:hub-sync` runs the hub's real `pairHub()` and `refillReceipts()`
+      against the cloud's real functions over a fake connection. **Not run
+      against the demo project**, because every reservation permanently uses
+      500 of its receipt numbers.
+    - 14 mutations: 13 caught by name. The survivor is "an upside-down block
+      is read as a block". It survives correctly, because `readBlocks()` also
+      requires `next` between `first` and `last + 1`, and the only
+      upside-down block that passes is an empty used-up one, which issues
+      nothing.
   - **Not built yet:**
     - the hub's sales, tickets and shifts going up to the cloud, with stock as
-      movements rather than counts
-    - receipt number blocks for closing offline
+      movements rather than counts (owner's decision, 14 Sep 2026)
+    - the online POS view-only for a branch with a paired hub (owner's
+      decision, 14 Sep 2026)
     - reaching the hub from a phone on the café wifi (the server listens on
       this PC only)
 

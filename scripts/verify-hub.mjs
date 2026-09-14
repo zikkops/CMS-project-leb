@@ -342,9 +342,15 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
   eq('THE TRAP: a payment sent twice is taken once', [repaid.duplicate, check.payments.length], [true, 1])
   eq('a payment\'s time is a Timestamp inside an array', check.payments[0].at instanceof Timestamp, true)
 
+  // On a hub, receipt numbers come from a block the cloud reserved (stage 4).
+  const cafeYear = Number(new Intl.DateTimeFormat('en-US', { timeZone: BRAND.locale.timezone, year: 'numeric' }).format(new Date()))
+  await rejects('THE TRAP: a hub with no receipt numbers from the cloud does not close, and says why',
+    () => C.closeCheck(staff, checkId), e => e.status === 409 && /receipt numbers/.test(e.message))
+  await db.doc('hubMeta/receipts').set({ blocks: [{ year: cafeYear, first: 501, last: 1000, next: 501 }] })
   const closed = await C.closeCheck(staff, checkId)
-  eq('closing issues a receipt number from the hub\'s own counter',
-    [typeof closed.receiptNumber, (await db.doc('appSettings/invoiceCounter').get()).data().nextNumber], ['string', 1])
+  eq('closing takes the next number from the block the cloud reserved',
+    [closed.receiptNumber.endsWith('-0501'), (await db.doc('hubMeta/receipts').get()).data().blocks[0].next], [true, 502])
+  eq('...and never keeps a counter of its own', (await db.doc('appSettings/invoiceCounter').get()).exists, false)
   await rejects('a closed check does not close twice', () => C.closeCheck(staff, checkId), e => e.status === 409)
 
   const z = await D.closeShift(staff, shift.id, {}, { 50: 1, 20: 1, 1: 1 }, '')

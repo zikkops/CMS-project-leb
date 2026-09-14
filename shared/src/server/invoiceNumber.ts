@@ -19,10 +19,19 @@
 // another, and a crash between them would burn a number on a sale that never
 // happened. Two implementations, one reason, written down here so the next
 // person does not "fix" the duplication.
+//
+// ── On a café hub ──────────────────────────────────────────────────────────
+// A hub numbers receipts from the blocks the cloud reserved for it
+// (shared/src/receiptBlocks.ts, owner's decision S9), never from a counter of
+// its own: a hub counting from 1 would print numbers the cloud has already
+// given out. With no block for this year, closing is refused with a reason,
+// and the check stays open until the hub is online long enough to fetch one.
 
-import { adminDb } from './firebaseAdmin'
+import { adminDb, hubDbPath } from './firebaseAdmin'
+import { HttpError } from './auth'
 import { formatInvoiceNumber, invoicePeriod } from '../invoiceFormat'
 import { readInvoicePrefixSetting } from './settings'
+import { readBlocks, takeReceipt } from '../receiptBlocks'
 
 /**
  * Issues the next invoice number and advances the counter atomically.
@@ -33,7 +42,6 @@ import { readInvoicePrefixSetting } from './settings'
  */
 export async function issueInvoiceNumber(): Promise<{ invoiceNumber: string; sequence: number; issuedAt: Date }> {
   const db = adminDb()
-  const ref = db.doc('appSettings/invoiceCounter')
   const issuedAt = new Date()
   // The café's year, not the host's. The counter resets on it, and a UTC host
   // would have reset two hours late and numbered the new year's first receipts
@@ -46,6 +54,19 @@ export async function issueInvoiceNumber(): Promise<{ invoiceNumber: string; seq
   // make it retry against for no benefit.
   const prefix = await readInvoicePrefixSetting()
 
+  if (hubDbPath()) {
+    const ref = db.doc('hubMeta/receipts')
+    const sequence = await db.runTransaction(async tx => {
+      const snap = await tx.get(ref)
+      const taken = takeReceipt(readBlocks(snap.data()?.blocks), year)
+      if (!taken.ok) throw new HttpError(409, taken.reason)
+      tx.set(ref, { blocks: taken.blocks }, { merge: true })
+      return taken.sequence
+    })
+    return { invoiceNumber: formatInvoiceNumber(sequence, issuedAt, prefix), sequence, issuedAt }
+  }
+
+  const ref = db.doc('appSettings/invoiceCounter')
   const sequence = await db.runTransaction(async tx => {
     const snap = await tx.get(ref)
     const data = snap.data() ?? {}

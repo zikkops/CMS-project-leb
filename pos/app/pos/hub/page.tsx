@@ -3,8 +3,8 @@
 // The café hub's own page — POS software, stage 4.
 //
 // Only on a hub: whether it is paired with the cloud, when it last took the
-// menu and settings, and, while it is not paired, where to type the code an
-// admin gets from Settings → Café Hubs.
+// menu and settings, how many receipt numbers it has left, and, while it is not
+// paired, where to type the code an admin gets from Settings → Café Hubs.
 //
 // No sign-in, on purpose. A hub that is not paired has no staff records, and
 // the admin's code is itself the authority. Once paired, the page only reports:
@@ -35,6 +35,8 @@ interface HubStatus {
   lastPullAt: number | null
   lastChanged: number
   lastError: string | null
+  receiptsLeft: number
+  receiptError: string | null
 }
 
 const field: React.CSSProperties = {
@@ -161,12 +163,25 @@ export default function HubPage() {
               <span style={{ opacity: 0.55 }}>Last took the menu</span>
               <span>{when(status.lastPullAt)}{status.lastPullAt && status.lastChanged > 0 ? ` · ${status.lastChanged} changed` : ''}</span>
             </div>
+            <div style={row}>
+              <span style={{ opacity: 0.55 }}>Receipt numbers left</span>
+              <span style={{ color: status.receiptsLeft === 0 ? 'var(--red)' : undefined }}>{status.receiptsLeft}</span>
+            </div>
             {status.lastError && (
               <p style={{ color: 'var(--red)', fontSize: '0.82rem', lineHeight: 1.6, marginTop: '0.8rem' }}>{status.lastError}</p>
             )}
+            {status.receiptError && (
+              <p style={{ color: 'var(--red)', fontSize: '0.82rem', lineHeight: 1.6, marginTop: '0.8rem' }}>{status.receiptError}</p>
+            )}
+            {status.receiptsLeft === 0 && (
+              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem', lineHeight: 1.7, marginTop: '0.8rem' }}>
+                With no receipt numbers left, checks can be opened, sent and paid, but not closed, until the hub is online and fetches more.
+              </p>
+            )}
             <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.8rem', lineHeight: 1.7, marginTop: '1rem' }}>
               The till works from what this hub holds, with or without the internet. While
-              it is online, the hub takes the menu, settings and staff roles every two minutes.
+              it is online, the hub takes the menu, settings and staff roles every two minutes,
+              and more receipt numbers once fewer than 100 are left.
             </p>
           </div>
         )}

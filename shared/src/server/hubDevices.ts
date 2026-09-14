@@ -23,8 +23,12 @@ import {
   pullSpec, staffRecord, type PulledDoc,
 } from '../hubSync'
 
+import { RECEIPT_BLOCK_SIZE, RECEIPT_REFILL_AT, reserveBlock, type ReceiptBlock } from '../receiptBlocks'
+import { invoicePeriod } from '../invoiceFormat'
+
 const DEVICES = 'hubDevices'
 const CODES = 'hubPairingCodes'
+const RECEIPT_BLOCKS = 'hubReceiptBlocks'
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex')
 
@@ -197,6 +201,36 @@ export async function buildPullSnapshot(device: HubDevice): Promise<PulledDoc[]>
     }
   }
   return docs
+}
+
+/**
+ * A block of receipt numbers for a hub (owner's decision S9), reserved off the
+ * counter the cloud issues its own receipts from, in one transaction, and
+ * written down: which hub, which numbers, when.
+ *
+ * Refused while the hub says it still has RECEIPT_REFILL_AT or more. A request
+ * whose reply was lost and gets sent again, or a hub stuck in a loop, must not
+ * burn block after block of the café's numbering.
+ */
+export async function reserveReceiptBlock(device: HubDevice, have: unknown, now = new Date()): Promise<ReceiptBlock> {
+  const left = Number(have)
+  if (Number.isFinite(left) && left >= RECEIPT_REFILL_AT) {
+    throw new HttpError(409, `This hub still has ${left} receipt numbers; it gets more below ${RECEIPT_REFILL_AT}.`)
+  }
+  const { year } = invoicePeriod(now)
+  const db = adminDb()
+  const counterRef = db.doc('appSettings/invoiceCounter')
+  const logRef = db.collection(RECEIPT_BLOCKS).doc()
+  return db.runTransaction(async tx => {
+    const snap = await tx.get(counterRef)
+    const { block, counter } = reserveBlock(snap.data(), year, RECEIPT_BLOCK_SIZE)
+    tx.set(counterRef, counter, { merge: true })
+    tx.set(logRef, {
+      deviceId: device.id, branch: device.branch, name: device.name,
+      year, first: block.first, last: block.last, reservedAt: FieldValue.serverTimestamp(),
+    })
+    return block
+  })
 }
 
 // Firestore's values, tagged as a backup line tags them, so the hub gets a

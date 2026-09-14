@@ -1,16 +1,17 @@
 // SERVER ONLY — see firebaseAdmin.ts for the import rule.
 //
-// The café hub's side of the cloud — POS software, stage 4: pairing, and
-// pulling what the cloud is master for. What to pull and how to take it in is
-// shared/src/hubSync.ts; the cloud's side is hubDevices.ts.
+// The café hub's side of the cloud — POS software, stage 4: pairing, pulling
+// what the cloud is master for, and fetching receipt number blocks. What to
+// pull and how to take it in is shared/src/hubSync.ts; the block rules are
+// shared/src/receiptBlocks.ts; the cloud's side is hubDevices.ts.
 //
 // The hub's credential lives in its own database (hubMeta/device), a file on
 // the counter PC. It opens this hub's pulls and nothing else, and an admin
 // takes it away from Settings → Café Hubs when a PC walks out of the building.
 //
-// Pulls run every two minutes from the server's start (pos/instrumentation.ts),
-// and straight after pairing. Nothing waits on one: a till keeps trading on
-// what the hub already holds, and a failed pull is shown on the hub's page.
+// Sync runs every two minutes from the server's start (pos/instrumentation.ts),
+// and straight after pairing. Nothing waits on it: a till keeps trading on what
+// the hub already holds, and a failed pull or refill is shown on the hub's page.
 
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb, hubDbPath } from './firebaseAdmin'
@@ -18,11 +19,14 @@ import { HttpError } from './auth'
 import { encodeHubValue, type HubStore } from './hubStore'
 import { stable } from '../backupCodec'
 import { BRANCHES } from '../branches'
+import { invoicePeriod } from '../invoiceFormat'
 import { timestampMs } from '../timestamps'
 import { deviceAuthHeader, normalizePairingCode, planPull, pullSpec, type PulledDoc } from '../hubSync'
+import { addBlock, needsReceipts, readBlocks, receiptsLeft } from '../receiptBlocks'
 
 const DEVICE_DOC = 'hubMeta/device'
 const PULL_DOC = 'hubMeta/pull'
+const RECEIPTS_DOC = 'hubMeta/receipts'
 export const PULL_EVERY_MS = 2 * 60_000
 
 type Fetch = typeof fetch
@@ -60,12 +64,16 @@ export interface HubSyncStatus {
   lastPullAt: number | null
   lastChanged: number
   lastError: string | null
+  /** Receipt numbers left for this café year. */
+  receiptsLeft: number
+  receiptError: string | null
 }
 
 interface SyncState {
   lastPullAt: number | null
   lastChanged: number
   lastError: string | null
+  receiptError: string | null
   running: boolean
 }
 
@@ -73,7 +81,7 @@ interface SyncState {
 // module more than once, and one process has one sync.
 function syncState(): SyncState {
   const g = globalThis as { __bigCmsHubSyncState?: SyncState }
-  g.__bigCmsHubSyncState ??= { lastPullAt: null, lastChanged: 0, lastError: null, running: false }
+  g.__bigCmsHubSyncState ??= { lastPullAt: null, lastChanged: 0, lastError: null, receiptError: null, running: false }
   return g.__bigCmsHubSyncState
 }
 
@@ -114,8 +122,12 @@ async function cloudFetch(fetchImpl: Fetch, url: string, init: RequestInit): Pro
   return { status: res.status, body }
 }
 
-/** Pairs this hub with the cloud using a code from Settings → Café Hubs, then takes a first snapshot. */
-export async function pairHub(rawCode: unknown, fetchImpl: Fetch = fetch): Promise<HubPairing> {
+/**
+ * Pairs this hub with the cloud using a code from Settings → Café Hubs, then
+ * takes a first snapshot and a first block of receipt numbers. `followUp`
+ * false leaves those to the caller (verify:hub-sync does them itself).
+ */
+export async function pairHub(rawCode: unknown, fetchImpl: Fetch = fetch, followUp = true): Promise<HubPairing> {
   hubOnly()
   const existing = await readCredential()
   if (existing && !existing.revoked) throw new HttpError(409, `This hub is already paired, for ${existing.branch}.`)
@@ -150,7 +162,7 @@ export async function pairHub(rawCode: unknown, fetchImpl: Fetch = fetch): Promi
   })
   // A new pairing takes a whole snapshot, whatever was pulled before it.
   await db.doc(PULL_DOC).set({ digest: null })
-  void pullFromCloud(fetchImpl).catch(() => { /* shown on the hub's page */ })
+  if (followUp) void syncOnce(fetchImpl)
   return { deviceId: body.deviceId, branch: body.branch, name: String(body.name ?? ''), pairedAt, cloudUrl, revoked: false }
 }
 
@@ -213,7 +225,7 @@ export async function pullFromCloud(fetchImpl: Fetch = fetch): Promise<{ unchang
     })
     if (status === 401) {
       // Only a credential the cloud refuses gets a 401 from that route: kept
-      // as unpaired, so the page says so and the hub stops asking every two minutes in vain.
+      // as unpaired, so the page says so and the hub stops asking in vain.
       await db.doc(DEVICE_DOC).update({ revoked: true })
       throw new HttpError(409, typeof body.error === 'string' ? body.error : 'The cloud no longer accepts this hub. Pair it again.')
     }
@@ -238,7 +250,56 @@ export async function pullFromCloud(fetchImpl: Fetch = fetch): Promise<{ unchang
   }
 }
 
-/** Starts pulling every two minutes. Once per process; nothing on a server that is not a hub. */
+/**
+ * Fetches a block of receipt numbers when fewer than RECEIPT_REFILL_AT are
+ * left for this café year (owner's decision S9), while the hub is online.
+ * Nothing when it has enough, or is not paired.
+ */
+export async function refillReceipts(fetchImpl: Fetch = fetch, now = new Date()): Promise<{ added: boolean; left: number }> {
+  hubOnly()
+  const state = syncState()
+  const db = adminDb()
+  const { year } = invoicePeriod(now)
+  const left = receiptsLeft(readBlocks((await db.doc(RECEIPTS_DOC).get()).data()?.blocks), year)
+  try {
+    const credential = await readCredential()
+    if (!credential || credential.revoked || !needsReceipts(readBlocks((await db.doc(RECEIPTS_DOC).get()).data()?.blocks), year)) {
+      return { added: false, left }
+    }
+    const { status, body } = await cloudFetch(fetchImpl, `${credential.cloudUrl}/api/hub-sync/receipts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: deviceAuthHeader(credential.deviceId, credential.secret) },
+      body: JSON.stringify({ have: left }),
+    })
+    if (status !== 200) {
+      throw new HttpError(502, typeof body.error === 'string' ? body.error : `The cloud answered ${status} when asked for receipt numbers.`)
+    }
+    const [block] = readBlocks([{ year: body.year, first: body.first, last: body.last, next: body.next }])
+    if (!block || block.year !== year || block.next !== block.first) {
+      throw new HttpError(502, 'The cloud sent receipt numbers this hub cannot use.')
+    }
+    const total = await db.runTransaction(async tx => {
+      const ref = db.doc(RECEIPTS_DOC)
+      const blocks = addBlock(readBlocks((await tx.get(ref)).data()?.blocks), block)
+      tx.set(ref, { blocks }, { merge: true })
+      return receiptsLeft(blocks, year)
+    })
+    state.receiptError = null
+    return { added: true, left: total }
+  } catch (err) {
+    state.receiptError = err instanceof HttpError ? err.message : 'Fetching receipt numbers failed. The hub log has the details.'
+    if (!(err instanceof HttpError)) console.error('[hub] fetching receipt numbers failed:', err)
+    throw err
+  }
+}
+
+/** A pull, then receipt numbers if they are running low. Each failure is recorded on its own. */
+async function syncOnce(fetchImpl: Fetch): Promise<void> {
+  try { await pullFromCloud(fetchImpl) } catch { /* recorded in the status */ }
+  try { await refillReceipts(fetchImpl) } catch { /* recorded in the status */ }
+}
+
+/** Starts syncing every two minutes. Once per process; nothing on a server that is not a hub. */
 export function startHubSync(fetchImpl: Fetch = fetch): void {
   if (!hubDbPath()) return
   const g = globalThis as { __bigCmsHubSyncStarted?: boolean }
@@ -246,7 +307,7 @@ export function startHubSync(fetchImpl: Fetch = fetch): void {
   g.__bigCmsHubSyncStarted = true
   const tick = async () => {
     try {
-      if (await readCredential()) await pullFromCloud(fetchImpl)
+      if (await readCredential()) await syncOnce(fetchImpl)
     } catch { /* recorded in the status */ }
     setTimeout(tick, PULL_EVERY_MS).unref?.()
   }
@@ -254,10 +315,11 @@ export function startHubSync(fetchImpl: Fetch = fetch): void {
 }
 
 /** What the hub's page shows. Never the secret. */
-export async function hubSyncStatus(): Promise<HubSyncStatus> {
+export async function hubSyncStatus(now = new Date()): Promise<HubSyncStatus> {
   hubOnly()
   const pairing = await readPairing()
   const state = syncState()
+  const blocks = readBlocks((await adminDb().doc(RECEIPTS_DOC).get()).data()?.blocks)
   return {
     paired: Boolean(pairing),
     revoked: pairing?.revoked ?? false,
@@ -268,5 +330,7 @@ export async function hubSyncStatus(): Promise<HubSyncStatus> {
     lastPullAt: state.lastPullAt,
     lastChanged: state.lastChanged,
     lastError: state.lastError,
+    receiptsLeft: receiptsLeft(blocks, invoicePeriod(now).year),
+    receiptError: state.receiptError,
   }
 }
