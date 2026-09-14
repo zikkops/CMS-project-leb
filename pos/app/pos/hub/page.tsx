@@ -2,9 +2,10 @@
 
 // The café hub's own page — POS software, stage 4.
 //
-// Only on a hub: whether it is paired with the cloud, when it last took the
-// menu and settings, how many receipt numbers it has left, and, while it is not
-// paired, where to type the code an admin gets from Settings → Café Hubs.
+// Only on a hub: whether it is paired with the cloud, when it last sent its
+// trading up and took the menu down, how many receipt numbers it has left,
+// and, while it is not paired, where to type the code an admin gets from
+// Settings → Café Hubs.
 //
 // No sign-in, on purpose. A hub that is not paired has no staff records, and
 // the admin's code is itself the authority. Once paired, the page only reports:
@@ -37,6 +38,9 @@ interface HubStatus {
   lastError: string | null
   receiptsLeft: number
   receiptError: string | null
+  lastPushAt: number | null
+  pushError: string | null
+  movesWaiting: number
 }
 
 const field: React.CSSProperties = {
@@ -51,6 +55,8 @@ const row: React.CSSProperties = {
   padding: '0.7rem 0', borderTop: '1px solid rgba(255,255,255,0.08)',
   fontSize: '0.9rem',
 }
+
+const problem: React.CSSProperties = { color: 'var(--red)', fontSize: '0.82rem', lineHeight: 1.6, marginTop: '0.8rem' }
 
 function when(ms: number | null): string {
   if (!ms) return 'not yet'
@@ -159,6 +165,11 @@ export default function HubPage() {
             <div style={row}><span style={{ opacity: 0.55 }}>Branch</span><span>{status.branch}</span></div>
             <div style={row}><span style={{ opacity: 0.55 }}>This PC</span><span>{status.name || '—'}</span></div>
             <div style={row}><span style={{ opacity: 0.55 }}>Paired</span><span>{when(status.pairedAt)}</span></div>
+            <div style={row}><span style={{ opacity: 0.55 }}>Last sent its trading up</span><span>{when(status.lastPushAt)}</span></div>
+            <div style={row}>
+              <span style={{ opacity: 0.55 }}>Stock movements waiting</span>
+              <span>{status.movesWaiting}</span>
+            </div>
             <div style={row}>
               <span style={{ opacity: 0.55 }}>Last took the menu</span>
               <span>{when(status.lastPullAt)}{status.lastPullAt && status.lastChanged > 0 ? ` · ${status.lastChanged} changed` : ''}</span>
@@ -167,12 +178,9 @@ export default function HubPage() {
               <span style={{ opacity: 0.55 }}>Receipt numbers left</span>
               <span style={{ color: status.receiptsLeft === 0 ? 'var(--red)' : undefined }}>{status.receiptsLeft}</span>
             </div>
-            {status.lastError && (
-              <p style={{ color: 'var(--red)', fontSize: '0.82rem', lineHeight: 1.6, marginTop: '0.8rem' }}>{status.lastError}</p>
-            )}
-            {status.receiptError && (
-              <p style={{ color: 'var(--red)', fontSize: '0.82rem', lineHeight: 1.6, marginTop: '0.8rem' }}>{status.receiptError}</p>
-            )}
+            {status.pushError && <p style={problem}>{status.pushError}</p>}
+            {status.lastError && <p style={problem}>{status.lastError}</p>}
+            {status.receiptError && <p style={problem}>{status.receiptError}</p>}
             {status.receiptsLeft === 0 && (
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem', lineHeight: 1.7, marginTop: '0.8rem' }}>
                 With no receipt numbers left, checks can be opened, sent and paid, but not closed, until the hub is online and fetches more.
@@ -180,8 +188,9 @@ export default function HubPage() {
             )}
             <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.8rem', lineHeight: 1.7, marginTop: '1rem' }}>
               The till works from what this hub holds, with or without the internet. While
-              it is online, the hub takes the menu, settings and staff roles every two minutes,
-              and more receipt numbers once fewer than 100 are left.
+              it is online, every two minutes the hub sends its checks, tickets, drawer and
+              stock movements up, takes the menu, settings and staff roles down, and fetches
+              receipt numbers once fewer than 100 are left.
             </p>
           </div>
         )}

@@ -79,6 +79,10 @@ const SCHEMA = `
   );
   CREATE INDEX IF NOT EXISTS docs_collection ON docs(collection);
   CREATE INDEX IF NOT EXISTS docs_branch ON docs(collection, json_extract(data, '$.branch'));
+  CREATE TABLE IF NOT EXISTS meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS changes (
     seq INTEGER PRIMARY KEY AUTOINCREMENT,
     path TEXT NOT NULL,
@@ -288,6 +292,23 @@ function mergeInto(target: Data, data: Data, now: Timestamp): Data {
     }
   }
   return target
+}
+
+/**
+ * Every increment in a write's data, as [field path, amount]. An update's keys
+ * are field paths already; a merge nests them in maps.
+ */
+function increments(data: Data, keysArePaths: boolean, prefix = ''): [string, number][] {
+  const found: [string, number][] = []
+  for (const [key, value] of Object.entries(data)) {
+    const path = prefix ? `${prefix}.${key}` : key
+    if (value instanceof Transform) {
+      if (value.kind === 'FieldValue.increment') found.push([path, value.operand])
+    } else if (!keysArePaths && isPlainObject(value)) {
+      found.push(...increments(value, false, path))
+    }
+  }
+  return found
 }
 
 /** update(): each key is a field path, and its value replaces what is at that path. */
@@ -695,6 +716,19 @@ export interface HubChange {
 
 interface DocRow { path: string; data: string; version: number }
 
+export interface HubStoreOptions {
+  /**
+   * Told of every increment a commit makes, with the document, the field and
+   * the amount. What it returns is written as a new document in
+   * `journalCollection` IN THE SAME COMMIT, so an increment and its record land
+   * together or not at all — and a transaction that runs again records nothing
+   * twice, because nothing is recorded until it commits. The hub records its
+   * stock movements this way (shared/src/hubPush.ts). Null records nothing.
+   */
+  journal?: (collection: string, id: string, field: string, delta: number) => Record<string, unknown> | null
+  journalCollection?: string
+}
+
 export class HubStore {
   private readonly listeners = new Set<(changes: HubChange[]) => void>()
   private retries = 0
@@ -705,9 +739,11 @@ export class HubStore {
     logChange: SqlStatement
     since: SqlStatement
     lastSeq: SqlStatement
+    readMeta: SqlStatement
+    writeMeta: SqlStatement
   }
 
-  constructor(private readonly sql: SqlDatabase) {
+  constructor(private readonly sql: SqlDatabase, private readonly options: HubStoreOptions = {}) {
     sql.exec(SCHEMA)
     this.stmt = {
       readDoc: sql.prepare('SELECT path, data, version FROM docs WHERE path = ?'),
@@ -718,6 +754,8 @@ export class HubStore {
       logChange: sql.prepare('INSERT INTO changes (path, collection, id, deleted, at) VALUES (?, ?, ?, ?, ?)'),
       since: sql.prepare('SELECT seq, path, collection, id, deleted, at FROM changes WHERE seq > ? ORDER BY seq LIMIT ?'),
       lastSeq: sql.prepare('SELECT COALESCE(MAX(seq), 0) AS seq FROM changes'),
+      readMeta: sql.prepare('SELECT value FROM meta WHERE key = ?'),
+      writeMeta: sql.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'),
     }
   }
 
@@ -848,6 +886,19 @@ export class HubStore {
       const current = working.has(w.path) ? working.get(w.path) ?? null : this.currentData(w.path)
       working.set(w.path, applyWrite(w, current, now))
     }
+    // Increments recorded in the same commit as the increments themselves.
+    const { journal, journalCollection } = this.options
+    if (journal && journalCollection) {
+      for (const w of writes) {
+        if (w.kind !== 'update' && !(w.kind === 'set' && w.merge)) continue
+        const { collection, id } = docParts(w.path)
+        if (collection === journalCollection) continue
+        for (const [field, delta] of increments(w.data, w.kind === 'update')) {
+          const entry = journal(collection, id, field, delta)
+          if (entry) working.set(`${journalCollection}/${autoId()}`, { ...entry, at: now })
+        }
+      }
+    }
     const encoded = [...working].map(([path, data]) => ({
       path, ...docParts(path), json: data === null ? null : JSON.stringify(encode(data, classify)),
     }))
@@ -897,6 +948,20 @@ export class HubStore {
     return Number((this.stmt.lastSeq.get() as { seq: number | bigint }).seq)
   }
 
+  /**
+   * Bookkeeping that is not data: how far the hub has sent its changes up.
+   * Kept outside the change log on purpose — recording "sent up to 40" as a
+   * document would itself be change 41, and the hub would never be done.
+   */
+  readMeta(key: string): string | null {
+    const row = this.stmt.readMeta.get(key) as { value: string } | undefined
+    return row ? row.value : null
+  }
+
+  writeMeta(key: string, value: string): void {
+    this.stmt.writeMeta.run(key, value)
+  }
+
   /** How many transactions had to run again. For the verifier and the hub's health line. */
   stats(): { retries: number } {
     return { retries: this.retries }
@@ -908,6 +973,6 @@ export function encodeHubValue(value: unknown): unknown {
   return encode(value, classify)
 }
 
-export function openHubStore(sql: SqlDatabase): HubStore {
-  return new HubStore(sql)
+export function openHubStore(sql: SqlDatabase, options: HubStoreOptions = {}): HubStore {
+  return new HubStore(sql, options)
 }

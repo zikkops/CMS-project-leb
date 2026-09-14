@@ -324,6 +324,9 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
   const sent = await C.sendCheck(staff, checkId)
   eq('Send makes one ticket, for the kitchen', sent.tickets.map(t => `${t.station} ${t.lines}`), ['Kitchen 1'])
   eq('the mug left the shelf, through a dotted increment', (await db.doc('products/p-mug').get()).data().stock[branch], 4)
+  eq('...and the hub recorded that as a movement for the cloud, in the same commit (stage 4)',
+    (await db.collection('hubStockMoves').get()).docs.map(d => d.data()).map(m => [m.collection, m.docId, m.branch, m.delta]),
+    [['products', 'p-mug', branch, -1]])
 
   const ticketId = sent.tickets[0].id
   await T.advanceTicket(staff, ticketId, 'preparing')

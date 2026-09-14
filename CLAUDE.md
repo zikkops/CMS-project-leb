@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1422
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1464
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -957,9 +957,48 @@ wraps the same React screens.
       requires `next` between `first` and `last + 1`, and the only
       upside-down block that passes is an empty used-up one, which issues
       nothing.
+  - **A hub sends its trading up**: its checks, kitchen tickets, drawer
+    shifts, branch drawer and activity, and its stock as **movements, never
+    counts** (owner's decision, 14 Sep 2026). The rules are
+    `shared/src/hubPush.ts`.
+    - **Why movements:** the cloud's count stays the true one, and deliveries
+      and stock counts entered in admin still count. A count sent up would wipe
+      out a delivery recorded while the hub was offline.
+    - **The hub's database records each stock increment as a movement IN THE
+      SAME COMMIT** (`HubStoreOptions.journal`, opened with `moveFromIncrement`
+      in `firebaseAdmin.ts`). An increment and its record land together or not
+      at all. A refused commit records nothing, and a transaction that runs
+      again records once, because nothing is recorded until it commits. Only
+      `stock.<branch>` on products and `quantity.<branch>` on supplies are
+      movements.
+    - **Sending** (`pushToCloud()`, before every pull): batches of 200 from
+      the change log, each document as it stands. The hub's place is kept in
+      the store's `meta` table, OUTSIDE the change log, because recording
+      "sent up to 40" as a document would be change 41 and the hub would never
+      be done. A batch the cloud refuses is sent again next time, never
+      skipped. Movements the cloud has are deleted from the hub.
+    - **The cloud** (`applyPush()`, `POST /api/hub-sync/push`) checks every
+      item: only what a hub is master for, only its own branch, never a
+      deletion. **One refused item refuses the whole request.** It writes
+      documents as the hub has them, and stamps activity with the hub. Each
+      movement gets a marker in the same transaction as its increment, so a
+      movement sent twice is applied once. A movement for a product the cloud
+      no longer has is marked and skipped.
+    - **A pull takes the cloud's count back once the hub's movements have
+      landed** (`planPull(..., holdLocal)` with `pendingStock()`). Until then
+      the hub keeps its own.
+    - **Not sent up:** loyalty. A hub holds no customer records and credits no
+      points. Error reports stay on the hub too.
+    - 18 mutations, all caught by name. Three first got through:
+      - "any two-part field is a movement" survived, because no test offered a
+        branch-shaped field that was not the count, like `price.Main` or a
+        supply's `stock.Main`.
+      - "the cloud does not check a hub's movements" survived, because the
+        all-or-nothing test only mixed in another branch's check, never another
+        branch's shelf.
+      - The first run of two cloud mutations did not compile, which proves
+        nothing, and they were rewritten.
   - **Not built yet:**
-    - the hub's sales, tickets and shifts going up to the cloud, with stock as
-      movements rather than counts (owner's decision, 14 Sep 2026)
     - the online POS view-only for a branch with a paired hub (owner's
       decision, 14 Sep 2026)
     - reaching the hub from a phone on the café wifi (the server listens on

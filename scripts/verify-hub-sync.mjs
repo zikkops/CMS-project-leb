@@ -386,6 +386,198 @@ console.log('\na hub pairs and fetches receipt numbers through its own code')
   eq('its page says how many are left', (await S.hubSyncStatus()).receiptsLeft, 499)
 }
 
+console.log('\nwhat a hub sends up: the rules')
+{
+  const PU = await import(url('hubPush.js'))
+  eq('a sale off a product\'s branch stock is a movement',
+    PU.moveFromIncrement('products', 'p1', `stock.${branch}`, -2), { collection: 'products', docId: 'p1', branch, delta: -2 })
+  eq('...and so is an ingredient off a supply',
+    PU.moveFromIncrement('supplies', 's1', `quantity.${branch}`, -0.25), { collection: 'supplies', docId: 's1', branch, delta: -0.25 })
+  eq('an increment that is not a branch\'s stock is not a movement',
+    [PU.moveFromIncrement('products', 'p1', 'price', 1), PU.moveFromIncrement('users', 'u1', 'points', 5),
+      PU.moveFromIncrement('products', 'p1', `stock.${branch}.extra`, 1), PU.moveFromIncrement('products', 'p1', `stock.${branch}`, 0)],
+    [null, null, null, null])
+  eq('...nor a branch-shaped field that is not that collection\'s count: a price per branch, or a supply\'s "stock"',
+    [PU.moveFromIncrement('products', 'p1', `price.${branch}`, 1), PU.moveFromIncrement('supplies', 's1', `stock.${branch}`, -1),
+      PU.moveFromIncrement('products', 'p1', `quantity.${branch}`, -1)],
+    [null, null, null])
+
+  const move = { id: 'AbCdEfGhIjKlMnOpQrSt', collection: 'products', docId: 'p1', branch, delta: -1 }
+  eq('a movement for this hub\'s branch is taken', PU.moveProblem(move, branch), null)
+  eq('THE TRAP: a hub cannot move another branch\'s stock', PU.moveProblem({ ...move, branch: otherBranch }, branch) !== null, true)
+  eq('nor anything but product and supply stock, nor an absurd or missing number, nor without an id',
+    [PU.moveProblem({ ...move, collection: 'users' }, branch) !== null, PU.moveProblem({ ...move, delta: 1e9 }, branch) !== null,
+      PU.moveProblem({ ...move, delta: Number.NaN }, branch) !== null, PU.moveProblem({ ...move, id: '' }, branch) !== null],
+    [true, true, true, true])
+
+  eq('this branch\'s check, ticket, shift and drawer are taken, and activity',
+    [PU.pushProblem({ collection: 'checks', id: 'c1', data: { branch } }, branch),
+      PU.pushProblem({ collection: 'kitchenTickets', id: 't1', data: { branch } }, branch),
+      PU.pushProblem({ collection: 'drawerShifts', id: 's1', data: { branch } }, branch),
+      PU.pushProblem({ collection: 'branchDrawers', id: branch, data: {} }, branch),
+      PU.pushProblem({ collection: 'activityLog', id: 'a1', data: { label: 'Took cash' } }, branch)],
+    [null, null, null, null, null])
+  eq('THE TRAP: another branch\'s check, or its drawer, is refused',
+    [PU.pushProblem({ collection: 'checks', id: 'c1', data: { branch: otherBranch } }, branch) !== null,
+      PU.pushProblem({ collection: 'branchDrawers', id: otherBranch, data: {} }, branch) !== null], [true, true])
+  eq('nothing a hub is not master for, never a deletion, never a path',
+    [PU.pushProblem({ collection: 'menuItems', id: 'm1', data: {} }, branch) !== null,
+      PU.pushProblem({ collection: 'users', id: 'u1', data: {} }, branch) !== null,
+      PU.pushProblem({ collection: 'checks', id: 'c1', data: null }, branch) !== null,
+      PU.pushProblem({ collection: 'checks', id: 'a/b', data: { branch } }, branch) !== null],
+    [true, true, true, true])
+
+  const spec = P.pullSpec(branch)
+  const json = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+  const local = new Map([['products/p1', { name: 'Mug', stock: { [branch]: 3 } }]])
+  const snap = [{ collection: 'products', id: 'p1', data: { name: 'Mug', stock: { [branch]: 12 } } }]
+  eq('THE TRAP: with its movements sent, a hub takes the cloud\'s count, deliveries included',
+    P.planPull(spec, local, snap, json, () => false)[0].data.stock, { [branch]: 12 })
+  eq('with movements still waiting, it keeps its own', P.planPull(spec, local, snap, json, () => true).length, 0)
+}
+
+console.log('\nthe hub\'s database records stock movements as it commits them')
+{
+  const PU = await import(url('hubPush.js'))
+  const turn = () => new Promise(r => setImmediate(r))
+  const store = H.openHubStore(new DatabaseSync(':memory:'), { journal: PU.moveFromIncrement, journalCollection: PU.MOVES_COLLECTION })
+  const movesIn = async () => (await store.collection(PU.MOVES_COLLECTION).get()).docs.map(d => d.data())
+  await store.doc('products/p1').set({ name: 'Mug', price: 12, stock: { [branch]: 10 } })
+  const before = store.lastSeq()
+  await store.doc('products/p1').update({ [`stock.${branch}`]: FieldValue.increment(-2), updatedAt: FieldValue.serverTimestamp() })
+  const moves = await movesIn()
+  eq('a sale is a movement, written in the same commit as the sale',
+    [moves.length, moves[0]?.delta, moves[0]?.docId, moves[0]?.branch, store.changesSince(before).length], [1, -2, 'p1', branch, 2])
+  await store.doc('products/p1').update({ price: FieldValue.increment(1) })
+  eq('a price going up is not a movement', (await movesIn()).length, 1)
+
+  const bad = store.batch()
+  bad.update(store.doc('products/p1'), { [`stock.${branch}`]: FieldValue.increment(-1) })
+  bad.update(store.doc('products/missing'), { a: 1 })
+  await rejects('a commit with a refused write fails', () => bad.commit(), e => e.code === 5)
+  eq('THE TRAP: a refused commit records no movement either', (await movesIn()).length, 1)
+
+  let release
+  const gate = new Promise(r => { release = r })
+  let runs = 0
+  const sale = store.runTransaction(async tx => {
+    runs++
+    await tx.get(store.doc('products/p1'))
+    if (runs === 1) await gate
+    tx.update(store.doc('products/p1'), { [`stock.${branch}`]: FieldValue.increment(-1) })
+  })
+  await turn(); await turn()
+  await store.doc('products/p1').update({ name: 'Big mug' })
+  release()
+  await sale
+  eq('THE TRAP: a transaction that runs again records its movement once', [runs, (await movesIn()).length], [2, 2])
+  eq('...and the count is what was sold', (await store.doc('products/p1').get()).data().stock, { [branch]: 7 })
+}
+
+console.log('\nthe cloud takes in what a hub sends')
+{
+  const cloudData = H.openHubStore(new DatabaseSync(':memory:'))
+  await cloudData.doc('products/p1').set({ name: 'Mug', price: 13, stock: { [branch]: 40 } })
+  for (const d of (await db.collection('hubStockMoves').get()).docs) await d.ref.delete()
+  // From here on: the sections above wrote plenty, none of it a hub's trading.
+  db.writeMeta('pushedSeq', String(db.lastSeq()))
+
+  await db.doc('checks/hub-check-1').set({ branch, status: 'closed', tableNumber: 4, lines: [], closedAt: Timestamp.fromMillis(1_700_000_000_000) })
+  await db.doc('kitchenTickets/hub-ticket-1').set({ branch, station: 'Kitchen', status: 'bumped' })
+  await db.doc(`branchDrawers/${branch}`).set({ openShiftId: null, since: null })
+  await db.collection('activityLog').add({ action: 'create', section: 'POS', label: 'Took cash', userId: 'u-till', userEmail: null })
+  await db.doc('products/p1').update({ [`stock.${branch}`]: FieldValue.increment(-1) })
+  await db.doc('hubSessions/not-sent').set({ uid: 'u-till' })
+
+  const batch = await S.collectPush(db, Number(db.readMeta('pushedSeq')))
+  eq('the batch carries this branch\'s check, ticket, drawer and activity, as they stand',
+    batch.docs.map(d => d.collection).sort(), ['activityLog', 'branchDrawers', 'checks', 'kitchenTickets'])
+  eq('...and the sale as a movement, never a count', batch.moves.map(m => [m.collection, m.docId, m.branch, m.delta]), [['products', 'p1', branch, -1]])
+  eq('THE TRAP: never the hub\'s sessions, its products or its own bookkeeping',
+    batch.docs.some(d => ['hubSessions', 'products', 'hubMeta', 'hubStockMoves'].includes(d.collection)), false)
+  eq('the batch covers everything written, sent or not', batch.toSeq, db.lastSeq())
+  eq('a Timestamp travels tagged', batch.docs.find(d => d.collection === 'checks').data.closedAt, { $fs: 'ts', s: 1_700_000_000, n: 0 })
+
+  const r1 = await D.applyPush(device, { seq: batch.toSeq, docs: batch.docs, moves: batch.moves }, cloudData)
+  eq('the cloud writes the documents and applies the movement', [r1.docs, r1.moves, r1.movesAlreadyApplied], [4, 1, 0])
+  const check = (await cloudData.doc('checks/hub-check-1').get()).data()
+  eq('the check arrives as the hub has it, its Timestamp a Timestamp', [check.tableNumber, check.closedAt instanceof Timestamp], [4, true])
+  eq('THE TRAP: the cloud adds the sale to its own count', (await cloudData.doc('products/p1').get()).data().stock, { [branch]: 39 })
+  const activity = (await cloudData.collection('activityLog').get()).docs.map(d => d.data())
+  eq('activity says which hub it came from', [activity[0].label, activity[0].hubId, activity[0].branch], ['Took cash', device.id, branch])
+
+  const r2 = await D.applyPush(device, { seq: batch.toSeq, docs: batch.docs, moves: batch.moves }, cloudData)
+  eq('THE TRAP: the same push again takes nothing twice',
+    [r2.moves, r2.movesAlreadyApplied, (await cloudData.doc('products/p1').get()).data().stock[branch]], [0, 1, 39])
+  eq('the cloud records how far the hub has sent', (await db.doc(`hubDevices/${device.id}`).get()).data().pushedSeq, batch.toSeq)
+
+  const gone = await D.applyPush(device, {
+    seq: batch.toSeq, docs: [], moves: [{ id: 'ZyXwVuTsRqPoNmLkJiHg', collection: 'products', docId: 'no-such-product', branch, delta: -1 }],
+  }, cloudData)
+  eq('a movement for a product the cloud no longer has is marked, not an error', [gone.moves, (await cloudData.doc('products/no-such-product').get()).exists], [1, false])
+
+  const mixed = [
+    { collection: 'checks', id: 'hub-check-2', data: { branch, status: 'open' } },
+    { collection: 'checks', id: 'other-branch-check', data: { branch: otherBranch, status: 'open' } },
+  ]
+  await rejects('THE TRAP: one item from another branch refuses the whole push',
+    () => D.applyPush(device, { seq: batch.toSeq + 1, docs: mixed, moves: [] }, cloudData), e => e.status === 400)
+  eq('...and none of it is written', [(await cloudData.doc('checks/hub-check-2').get()).exists, (await cloudData.doc('checks/other-branch-check').get()).exists], [false, false])
+
+  await rejects('THE TRAP: a movement off another branch\'s shelf refuses the whole push',
+    () => D.applyPush(device, {
+      seq: batch.toSeq + 1,
+      docs: [{ collection: 'checks', id: 'hub-check-3', data: { branch, status: 'open' } }],
+      moves: [{ id: 'QwErTyUiOpAsDfGhJkLz', collection: 'products', docId: 'p1', branch: otherBranch, delta: -5 }],
+    }, cloudData), e => e.status === 400)
+  eq('...and neither shelf nor check is touched',
+    [(await cloudData.doc('checks/hub-check-3').get()).exists, (await cloudData.doc('products/p1').get()).data().stock], [false, { [branch]: 39 }])
+}
+
+console.log('\nthe hub\'s own sync sends up, then takes the cloud\'s count back')
+{
+  const cloudData = H.openHubStore(new DatabaseSync(':memory:'))
+  await cloudData.doc('products/p1').set({ name: 'Mug', price: 13, stock: { [branch]: 40 } })
+  const cloud = async (href, init = {}) => {
+    const target = new URL(href)
+    const request = new Request(href, { method: init.method ?? 'GET', headers: init.headers, body: init.body })
+    const reply = (status, data) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
+    try {
+      if (target.pathname === '/api/hub-sync/push') {
+        return reply(200, await D.applyPush(await D.deviceFromRequest(request), JSON.parse(init.body), cloudData))
+      }
+      return reply(404, { error: 'Not found.' })
+    } catch (e) {
+      return reply(e.status ?? 500, { error: e.message })
+    }
+  }
+  for (const d of (await db.collection('hubStockMoves').get()).docs) await d.ref.delete()
+  db.writeMeta('pushedSeq', String(db.lastSeq()))
+
+  // The hub paired above ("Hub under test") sells two mugs and closes a check.
+  await db.doc('products/p1').update({ [`stock.${branch}`]: FieldValue.increment(-2) })
+  await db.doc('checks/hub-check-3').set({ branch, status: 'closed', tableNumber: 9 })
+  eq('a sale waits as a movement until it is sent', [(await S.pendingStock(db)).has('products/p1'), (await S.hubSyncStatus()).movesWaiting], [true, 1])
+
+  const sent = await S.pushToCloud(cloud)
+  eq('the hub sends its check and its movement', [sent.docs, sent.moves], [1, 1])
+  eq('the cloud has them', [(await cloudData.doc('checks/hub-check-3').get()).exists, (await cloudData.doc('products/p1').get()).data().stock[branch]], [true, 38])
+  eq('THE TRAP: once the cloud has a movement, the hub no longer holds it', [(await S.pendingStock(db)).size, (await S.hubSyncStatus()).movesWaiting], [0, 0])
+  const seq = db.lastSeq()
+  const again = await S.pushToCloud(cloud)
+  eq('THE TRAP: with nothing new, sending again sends nothing and writes nothing', [again.docs, again.moves, db.lastSeq()], [0, 0, seq])
+
+  // Meanwhile a delivery of ten mugs is received in admin, in the cloud.
+  await cloudData.doc('products/p1').update({ [`stock.${branch}`]: FieldValue.increment(10) })
+  const snapshot = D.encodeSnapshot([{ collection: 'products', id: 'p1', data: (await cloudData.doc('products/p1').get()).data() }])
+  await S.applySnapshot(db, branch, snapshot.docs, await S.pendingStock(db))
+  eq('THE TRAP: the hub takes the cloud\'s count, with the delivery and its own sales in it',
+    (await db.doc('products/p1').get()).data().stock[branch], 48)
+  await db.doc('products/p1').update({ [`stock.${branch}`]: FieldValue.increment(-1) })
+  await S.applySnapshot(db, branch, snapshot.docs, await S.pendingStock(db))
+  eq('...but while a sale is still waiting to go up, it keeps its own count', (await db.doc('products/p1').get()).data().stock[branch], 47)
+}
+
 } catch (err) {
   console.log(`  FAIL  the run stopped: ${String(err?.stack ?? err).split('\n').slice(0, 3).join(' | ')}`)
   fail++

@@ -16,7 +16,8 @@ import { DocumentReference, FieldValue, GeoPoint, Timestamp } from 'firebase-adm
 import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
-import { encode, stable, type Classify } from '../backupCodec'
+import { decode, encode, stable, type Classify, type Revive } from '../backupCodec'
+import type { Firestore } from 'firebase-admin/firestore'
 import { timestampMs } from '../timestamps'
 import {
   PAIRING_CODE_LENGTH, PAIRING_CODE_MINUTES, normalizePairingCode, pairingCodeFromBytes, parseDeviceAuth,
@@ -25,10 +26,12 @@ import {
 
 import { RECEIPT_BLOCK_SIZE, RECEIPT_REFILL_AT, reserveBlock, type ReceiptBlock } from '../receiptBlocks'
 import { invoicePeriod } from '../invoiceFormat'
+import { PUSH_BATCH, moveField, moveProblem, pushProblem, type PushedDoc, type StockMove } from '../hubPush'
 
 const DEVICES = 'hubDevices'
 const CODES = 'hubPairingCodes'
 const RECEIPT_BLOCKS = 'hubReceiptBlocks'
+const APPLIED_MOVES = 'hubAppliedMoves'
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex')
 
@@ -231,6 +234,90 @@ export async function reserveReceiptBlock(device: HubDevice, have: unknown, now 
     })
     return block
   })
+}
+
+export interface PushResult {
+  docs: number
+  moves: number
+  movesAlreadyApplied: number
+  seq: number
+}
+
+/**
+ * Takes in what a hub sends up (owner's decision S8): its checks, tickets,
+ * shifts, drawer and activity as they stand, and its stock movements.
+ *
+ * All or nothing: one refused item refuses the request and names it, so the
+ * hub never moves its place in the change log past something the cloud did
+ * not take. Documents are written as the hub has them — it is master for its
+ * branch's trading, and the online POS for that branch is view-only (S10). A
+ * movement is applied once however often it arrives: a marker per movement is
+ * created in the same transaction as its increment. A movement for a product
+ * or supply the cloud no longer has is marked and skipped, never allowed to
+ * stop the rest.
+ *
+ * `db` is where the data goes, a parameter so verify:hub-sync can send into a
+ * second database; the hub's own record stays in the cloud's.
+ */
+export async function applyPush(device: HubDevice, body: unknown, db: Firestore = adminDb()): Promise<PushResult> {
+  const b = (body ?? {}) as { docs?: unknown; moves?: unknown; seq?: unknown }
+  const docs = Array.isArray(b.docs) ? b.docs : []
+  const moves = Array.isArray(b.moves) ? b.moves : []
+  const seq = Number(b.seq)
+  if (!Number.isInteger(seq) || seq < 0) throw new HttpError(400, 'A push says how far the hub has sent up to.')
+  if (docs.length + moves.length > 2 * PUSH_BATCH) throw new HttpError(413, 'Too much in one push.')
+  for (const doc of docs) {
+    const problem = pushProblem(doc, device.branch)
+    if (problem) throw new HttpError(400, problem)
+  }
+  for (const move of moves) {
+    const problem = moveProblem(move, device.branch)
+    if (problem) throw new HttpError(400, problem)
+  }
+
+  const revive: Revive = (kind, data) => {
+    switch (kind) {
+      case 'ts': return new Timestamp(Number(data.s), Number(data.n))
+      case 'geo': return new GeoPoint(Number(data.lat), Number(data.lng))
+      case 'ref': return db.doc(String(data.path))
+      case 'bytes': return Buffer.from(String(data.b64), 'base64')
+      default: throw new HttpError(400, `A value of unknown kind "${kind}".`)
+    }
+  }
+
+  for (let i = 0; i < docs.length; i += 400) {
+    const batch = db.batch()
+    for (const raw of docs.slice(i, i + 400) as PushedDoc[]) {
+      const data = decode(raw.data, revive) as Record<string, unknown>
+      // An activity entry says which hub it came from, since its author signed in there.
+      batch.set(db.doc(`${raw.collection}/${raw.id}`), raw.collection === 'activityLog'
+        ? { ...data, hubId: device.id, branch: device.branch }
+        : data)
+    }
+    await batch.commit()
+  }
+
+  let applied = 0
+  let already = 0
+  for (const move of moves as StockMove[]) {
+    const marker = db.doc(`${APPLIED_MOVES}/${device.id}_${move.id}`)
+    const target = db.doc(`${move.collection}/${move.docId}`)
+    const outcome = await db.runTransaction(async tx => {
+      const [markerSnap, targetSnap] = await tx.getAll(marker, target)
+      if (markerSnap.exists) return 'already'
+      tx.create(marker, {
+        deviceId: device.id, branch: device.branch, collection: move.collection, docId: move.docId,
+        delta: move.delta, applied: targetSnap.exists, at: FieldValue.serverTimestamp(),
+      })
+      if (targetSnap.exists) tx.update(target, { [moveField(move)]: FieldValue.increment(move.delta) })
+      return 'applied'
+    })
+    if (outcome === 'applied') applied++
+    else already++
+  }
+
+  await adminDb().doc(`${DEVICES}/${device.id}`).update({ pushedSeq: seq, lastPushAt: FieldValue.serverTimestamp() })
+  return { docs: docs.length, moves: applied, movesAlreadyApplied: already, seq }
 }
 
 // Firestore's values, tagged as a backup line tags them, so the hub gets a

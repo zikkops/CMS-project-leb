@@ -1,17 +1,20 @@
 // SERVER ONLY — see firebaseAdmin.ts for the import rule.
 //
-// The café hub's side of the cloud — POS software, stage 4: pairing, pulling
-// what the cloud is master for, and fetching receipt number blocks. What to
-// pull and how to take it in is shared/src/hubSync.ts; the block rules are
-// shared/src/receiptBlocks.ts; the cloud's side is hubDevices.ts.
+// The café hub's side of the cloud — POS software, stage 4: pairing, sending
+// its trading up, pulling what the cloud is master for, and fetching receipt
+// number blocks. The rules are shared/src/hubSync.ts (pairing, pulling),
+// shared/src/hubPush.ts (sending up) and shared/src/receiptBlocks.ts; the
+// cloud's side is hubDevices.ts.
 //
 // The hub's credential lives in its own database (hubMeta/device), a file on
-// the counter PC. It opens this hub's pulls and nothing else, and an admin
+// the counter PC. It opens this hub's sync and nothing else, and an admin
 // takes it away from Settings → Café Hubs when a PC walks out of the building.
 //
 // Sync runs every two minutes from the server's start (pos/instrumentation.ts),
-// and straight after pairing. Nothing waits on it: a till keeps trading on what
-// the hub already holds, and a failed pull or refill is shown on the hub's page.
+// and straight after pairing: send up, then pull, then receipt numbers. Sending
+// first means a pull finds the hub's stock movements already in the cloud's
+// count. Nothing waits on sync: a till keeps trading on what the hub holds,
+// and each failure is shown on the hub's page.
 
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb, hubDbPath } from './firebaseAdmin'
@@ -22,11 +25,13 @@ import { BRANCHES } from '../branches'
 import { invoicePeriod } from '../invoiceFormat'
 import { timestampMs } from '../timestamps'
 import { deviceAuthHeader, normalizePairingCode, planPull, pullSpec, type PulledDoc } from '../hubSync'
+import { MOVES_COLLECTION, PUSHED_COLLECTIONS, PUSH_BATCH, type PushedDoc, type StockMove } from '../hubPush'
 import { addBlock, needsReceipts, readBlocks, receiptsLeft } from '../receiptBlocks'
 
 const DEVICE_DOC = 'hubMeta/device'
 const PULL_DOC = 'hubMeta/pull'
 const RECEIPTS_DOC = 'hubMeta/receipts'
+const PUSHED_UP_TO = 'pushedSeq'
 export const PULL_EVERY_MS = 2 * 60_000
 
 type Fetch = typeof fetch
@@ -67,6 +72,10 @@ export interface HubSyncStatus {
   /** Receipt numbers left for this café year. */
   receiptsLeft: number
   receiptError: string | null
+  lastPushAt: number | null
+  pushError: string | null
+  /** Stock movements the cloud does not have yet. */
+  movesWaiting: number
 }
 
 interface SyncState {
@@ -74,14 +83,20 @@ interface SyncState {
   lastChanged: number
   lastError: string | null
   receiptError: string | null
+  lastPushAt: number | null
+  pushError: string | null
   running: boolean
+  pushing: boolean
 }
 
 // On globalThis, as the hub's database handle is: a dev server can load this
 // module more than once, and one process has one sync.
 function syncState(): SyncState {
   const g = globalThis as { __bigCmsHubSyncState?: SyncState }
-  g.__bigCmsHubSyncState ??= { lastPullAt: null, lastChanged: 0, lastError: null, receiptError: null, running: false }
+  g.__bigCmsHubSyncState ??= {
+    lastPullAt: null, lastChanged: 0, lastError: null, receiptError: null,
+    lastPushAt: null, pushError: null, running: false, pushing: false,
+  }
   return g.__bigCmsHubSyncState
 }
 
@@ -124,8 +139,8 @@ async function cloudFetch(fetchImpl: Fetch, url: string, init: RequestInit): Pro
 
 /**
  * Pairs this hub with the cloud using a code from Settings → Café Hubs, then
- * takes a first snapshot and a first block of receipt numbers. `followUp`
- * false leaves those to the caller (verify:hub-sync does them itself).
+ * syncs straight away. `followUp` false leaves that to the caller
+ * (verify:hub-sync does it step by step).
  */
 export async function pairHub(rawCode: unknown, fetchImpl: Fetch = fetch, followUp = true): Promise<HubPairing> {
   hubOnly()
@@ -166,15 +181,103 @@ export async function pairHub(rawCode: unknown, fetchImpl: Fetch = fetch, follow
   return { deviceId: body.deviceId, branch: body.branch, name: String(body.name ?? ''), pairedAt, cloudUrl, revoked: false }
 }
 
+// ── Sending the hub's trading up ───────────────────────────────────────────
+
 /**
- * Takes a snapshot from the cloud into a hub's store, in one commit.
- * The store is a parameter so verify:hub-sync can take one into a second
- * database; the hub passes its own.
+ * The next batch to send up from a store's change log after `fromSeq`: every
+ * document the hub is master for, as it stands now, and every stock movement
+ * still waiting. `toSeq` is how far the batch covers, including changes with
+ * nothing to send (a pull's writes, a session), so the hub moves past them.
+ */
+export async function collectPush(
+  store: HubStore,
+  fromSeq: number,
+): Promise<{ docs: PushedDoc[]; moves: StockMove[]; toSeq: number }> {
+  const changes = store.changesSince(fromSeq, PUSH_BATCH)
+  if (changes.length === 0) return { docs: [], moves: [], toSeq: fromSeq }
+  const docs: PushedDoc[] = []
+  const moves: StockMove[] = []
+  const seen = new Set<string>()
+  for (const change of changes) {
+    if (change.deleted || seen.has(change.path)) continue
+    seen.add(change.path)
+    if ((PUSHED_COLLECTIONS as readonly string[]).includes(change.collection)) {
+      const snap = await store.doc(change.path).get()
+      if (snap.exists) docs.push({ collection: change.collection, id: change.id, data: encodeHubValue(snap.data()) as Record<string, unknown> })
+    } else if (change.collection === MOVES_COLLECTION) {
+      const d = (await store.doc(change.path).get()).data()
+      if (d) moves.push({ id: change.id, collection: String(d.collection), docId: String(d.docId), branch: String(d.branch), delta: Number(d.delta) })
+    }
+  }
+  return { docs, moves, toSeq: changes[changes.length - 1].seq }
+}
+
+/**
+ * Sends everything the cloud does not have yet, batch by batch, and moves the
+ * hub's place in its change log only after the cloud answers. A batch the
+ * cloud refuses stops the sending and is shown on the hub's page; it is sent
+ * again next time, never skipped.
+ */
+export async function pushToCloud(fetchImpl: Fetch = fetch): Promise<{ docs: number; moves: number }> {
+  hubOnly()
+  const state = syncState()
+  if (state.pushing) return { docs: 0, moves: 0 }
+  state.pushing = true
+  try {
+    const credential = await readCredential()
+    if (!credential || credential.revoked) return { docs: 0, moves: 0 }
+    const store = adminDb() as unknown as HubStore
+    let sentDocs = 0
+    let sentMoves = 0
+    for (let round = 0; round < 100; round++) {
+      const from = Number(store.readMeta(PUSHED_UP_TO) ?? 0)
+      const batch = await collectPush(store, from)
+      if (batch.toSeq === from) break
+      if (batch.docs.length > 0 || batch.moves.length > 0) {
+        const { status, body } = await cloudFetch(fetchImpl, `${credential.cloudUrl}/api/hub-sync/push`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: deviceAuthHeader(credential.deviceId, credential.secret) },
+          body: JSON.stringify({ seq: batch.toSeq, docs: batch.docs, moves: batch.moves }),
+        })
+        if (status !== 200) {
+          throw new HttpError(502, typeof body.error === 'string' ? body.error : `The cloud answered ${status} when sent this hub's trading.`)
+        }
+        // The cloud has these movements now, so a pull may take its count back.
+        if (batch.moves.length > 0) {
+          const done = store.batch()
+          for (const move of batch.moves) done.delete(store.doc(`${MOVES_COLLECTION}/${move.id}`))
+          await done.commit()
+        }
+        sentDocs += batch.docs.length
+        sentMoves += batch.moves.length
+      }
+      store.writeMeta(PUSHED_UP_TO, String(batch.toSeq))
+    }
+    state.lastPushAt = Date.now()
+    state.pushError = null
+    return { docs: sentDocs, moves: sentMoves }
+  } catch (err) {
+    state.pushError = err instanceof HttpError ? err.message : 'Sending to the cloud failed. The hub log has the details.'
+    if (!(err instanceof HttpError)) console.error('[hub] sending to the cloud failed:', err)
+    throw err
+  } finally {
+    state.pushing = false
+  }
+}
+
+// ── Pulling what the cloud is master for ───────────────────────────────────
+
+/**
+ * Takes a snapshot from the cloud into a hub's store, in one commit. A
+ * product's count stays the hub's only while `pending` names it: it has stock
+ * movements the cloud does not have yet (S8). The store is a parameter so
+ * verify:hub-sync can take one into a second database; the hub passes its own.
  */
 export async function applySnapshot(
   store: HubStore,
   branch: string,
   docs: readonly { collection: string; id: string; data: unknown }[],
+  pending?: ReadonlySet<string>,
 ): Promise<{ written: number; deleted: number }> {
   const spec = pullSpec(branch)
   const local = new Map<string, Record<string, unknown>>()
@@ -190,7 +293,8 @@ export async function applySnapshot(
   }))
   // Compared as they would be stored, so two Timestamps for one instant are the same.
   const same = (a: unknown, b: unknown) => stable(encodeHubValue(a)) === stable(encodeHubValue(b))
-  const writes = planPull(spec, local, snapshot, same)
+  const holdLocal = pending ? (collection: string, id: string) => pending.has(`${collection}/${id}`) : undefined
+  const writes = planPull(spec, local, snapshot, same, holdLocal)
   if (writes.length === 0) return { written: 0, deleted: 0 }
 
   const batch = store.batch()
@@ -206,6 +310,12 @@ export async function applySnapshot(
   }
 }
 
+/** Which products and supplies have stock movements the cloud does not have yet. */
+export async function pendingStock(store: HubStore): Promise<Set<string>> {
+  const waiting = (await store.collection(MOVES_COLLECTION).get()).docs
+  return new Set(waiting.map(d => `${String(d.data()?.collection)}/${String(d.data()?.docId)}`))
+}
+
 /** One pull: the snapshot, unless the cloud says it is unchanged since the last. */
 export async function pullFromCloud(fetchImpl: Fetch = fetch): Promise<{ unchanged: boolean; written: number; deleted: number }> {
   hubOnly()
@@ -218,6 +328,7 @@ export async function pullFromCloud(fetchImpl: Fetch = fetch): Promise<{ unchang
     if (credential.revoked) throw new HttpError(409, 'An admin unpaired this hub. Pair it again with a new code.')
 
     const db = adminDb()
+    const store = db as unknown as HubStore
     const last = (await db.doc(PULL_DOC).get()).data()?.digest
     const url = `${credential.cloudUrl}/api/hub-sync/pull${typeof last === 'string' ? `?digest=${encodeURIComponent(last)}` : ''}`
     const { status, body } = await cloudFetch(fetchImpl, url, {
@@ -234,7 +345,7 @@ export async function pullFromCloud(fetchImpl: Fetch = fetch): Promise<{ unchang
     let result = { unchanged: true, written: 0, deleted: 0 }
     if (body.unchanged !== true) {
       const docs = Array.isArray(body.docs) ? body.docs as { collection: string; id: string; data: unknown }[] : []
-      result = { unchanged: false, ...(await applySnapshot(db as unknown as HubStore, credential.branch, docs)) }
+      result = { unchanged: false, ...(await applySnapshot(store, credential.branch, docs, await pendingStock(store))) }
       if (typeof body.digest === 'string') await db.doc(PULL_DOC).set({ digest: body.digest, pulledAt: Timestamp.now() })
     }
     state.lastPullAt = Date.now()
@@ -250,6 +361,8 @@ export async function pullFromCloud(fetchImpl: Fetch = fetch): Promise<{ unchang
   }
 }
 
+// ── Receipt numbers ────────────────────────────────────────────────────────
+
 /**
  * Fetches a block of receipt numbers when fewer than RECEIPT_REFILL_AT are
  * left for this café year (owner's decision S9), while the hub is online.
@@ -260,12 +373,11 @@ export async function refillReceipts(fetchImpl: Fetch = fetch, now = new Date())
   const state = syncState()
   const db = adminDb()
   const { year } = invoicePeriod(now)
-  const left = receiptsLeft(readBlocks((await db.doc(RECEIPTS_DOC).get()).data()?.blocks), year)
+  const held = readBlocks((await db.doc(RECEIPTS_DOC).get()).data()?.blocks)
+  const left = receiptsLeft(held, year)
   try {
     const credential = await readCredential()
-    if (!credential || credential.revoked || !needsReceipts(readBlocks((await db.doc(RECEIPTS_DOC).get()).data()?.blocks), year)) {
-      return { added: false, left }
-    }
+    if (!credential || credential.revoked || !needsReceipts(held, year)) return { added: false, left }
     const { status, body } = await cloudFetch(fetchImpl, `${credential.cloudUrl}/api/hub-sync/receipts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: deviceAuthHeader(credential.deviceId, credential.secret) },
@@ -293,8 +405,9 @@ export async function refillReceipts(fetchImpl: Fetch = fetch, now = new Date())
   }
 }
 
-/** A pull, then receipt numbers if they are running low. Each failure is recorded on its own. */
-async function syncOnce(fetchImpl: Fetch): Promise<void> {
+/** Send up, pull, then receipt numbers. Each failure is recorded on its own and stops nothing else. */
+export async function syncOnce(fetchImpl: Fetch = fetch): Promise<void> {
+  try { await pushToCloud(fetchImpl) } catch { /* recorded in the status */ }
   try { await pullFromCloud(fetchImpl) } catch { /* recorded in the status */ }
   try { await refillReceipts(fetchImpl) } catch { /* recorded in the status */ }
 }
@@ -319,7 +432,9 @@ export async function hubSyncStatus(now = new Date()): Promise<HubSyncStatus> {
   hubOnly()
   const pairing = await readPairing()
   const state = syncState()
-  const blocks = readBlocks((await adminDb().doc(RECEIPTS_DOC).get()).data()?.blocks)
+  const db = adminDb()
+  const blocks = readBlocks((await db.doc(RECEIPTS_DOC).get()).data()?.blocks)
+  const waiting = (await db.collection(MOVES_COLLECTION).get()).size
   return {
     paired: Boolean(pairing),
     revoked: pairing?.revoked ?? false,
@@ -332,5 +447,8 @@ export async function hubSyncStatus(now = new Date()): Promise<HubSyncStatus> {
     lastError: state.lastError,
     receiptsLeft: receiptsLeft(blocks, invoicePeriod(now).year),
     receiptError: state.receiptError,
+    lastPushAt: state.lastPushAt,
+    pushError: state.pushError,
+    movesWaiting: waiting,
   }
 }

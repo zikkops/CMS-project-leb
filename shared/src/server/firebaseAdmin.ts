@@ -16,6 +16,7 @@ import { initializeApp, getApps, getApp, cert, type App } from 'firebase-admin/a
 import { getAuth, type Auth } from 'firebase-admin/auth'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { openHubStore, type HubStore, type SqlDatabase } from './hubStore'
+import { MOVES_COLLECTION, moveFromIncrement } from '../hubPush'
 
 // A build-time-ish tripwire. Next.js will usually fail the build first if this
 // module ends up in a client bundle, but an explicit throw makes the cause
@@ -148,7 +149,13 @@ function hubDb(): Firestore | null {
     const load = (process as { getBuiltinModule?: (id: string) => unknown }).getBuiltinModule
     const sqlite = load?.('node:sqlite') as { DatabaseSync: new (file: string) => SqlDatabase } | undefined
     if (!sqlite) throw new Error('The café hub needs Node 22.13 or later, for node:sqlite.')
-    g.__bigCmsHub = { path, store: openHubStore(new sqlite.DatabaseSync(path)) }
+    // Stock increments are recorded as movements in the same commit
+    // (hubPush.ts): the hub's sales reach the cloud's count as changes, never
+    // as a count that would wipe out a delivery recorded meanwhile.
+    g.__bigCmsHub = {
+      path,
+      store: openHubStore(new sqlite.DatabaseSync(path), { journal: moveFromIncrement, journalCollection: MOVES_COLLECTION }),
+    }
   }
   return g.__bigCmsHub.store as unknown as Firestore
 }

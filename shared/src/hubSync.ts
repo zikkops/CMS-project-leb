@@ -145,13 +145,17 @@ const pathOf = (collection: string, id: string) => `${collection}/${id}`
  *   answer cannot write the hub's receipt counter, or its checks.
  *
  * `local` is keyed `collection/id`. `same` compares two values; the hub passes
- * one that compares Timestamps by their instant.
+ * one that compares Timestamps by their instant. `holdLocal` says whether a
+ * document's `keepLocal` fields are still the hub's: a product keeps the hub's
+ * count only while it has stock movements the cloud does not have yet (S8).
+ * Once they have landed, the cloud's count includes them, and it is taken.
  */
 export function planPull(
   spec: readonly PullSpec[],
   local: ReadonlyMap<string, Record<string, unknown>>,
   snapshot: readonly PulledDoc[],
   same: (a: unknown, b: unknown) => boolean,
+  holdLocal: (collection: string, id: string) => boolean = () => true,
 ): PullWrite[] {
   const byCollection = new Map(spec.map(s => [s.collection, s]))
   const covered = (collection: string, id: string) => {
@@ -167,7 +171,7 @@ export function planPull(
     if (incoming.has(path)) continue
     incoming.add(path)
     const held = local.get(path)
-    const keep = byCollection.get(doc.collection)?.keepLocal ?? []
+    const keep = holdLocal(doc.collection, doc.id) ? byCollection.get(doc.collection)?.keepLocal ?? [] : []
     const data: Record<string, unknown> = { ...doc.data }
     if (held) {
       for (const field of keep) {
