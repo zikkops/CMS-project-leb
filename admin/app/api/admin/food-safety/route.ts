@@ -22,6 +22,7 @@ import {
   parseDayInput, saveDay, signDay, readDay, readHistory,
   requireBranch, requireDate, callerBranches,
 } from '@big-cms/shared/server/foodSafety'
+import { readAllergenChart } from '@big-cms/shared/server/allergens'
 
 export const runtime = 'nodejs'
 
@@ -75,6 +76,11 @@ export async function GET(request: Request): Promise<Response> {
       const reviewer = await isReviewer(request)
       const result = await readDay(branch, date, reviewer)
       return Response.json({ ok: true, ...result, reviewer, branches: callerBranches(caller) })
+    }
+
+    if (view === 'allergens') {
+      // Names and allergen keys only — built from recipes, sent without them.
+      return Response.json({ ok: true, ...(await readAllergenChart()) })
     }
 
     if (view === 'units') {

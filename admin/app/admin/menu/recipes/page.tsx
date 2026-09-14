@@ -29,6 +29,8 @@ import { todayYmd } from '@big-cms/shared/dates'
 import { BRAND } from '@big-cms/shared/brand'
 import { formatUsd } from '@big-cms/shared/money'
 import { stationForSection } from '@big-cms/shared/checks'
+import { ALLERGENS_EU14 } from '@big-cms/shared/foodSafety'
+import { dishAllergens, readAllergenKeys, type AllergenSupply } from '@big-cms/shared/allergens'
 import {
   lineConsumption, consumptionCost, dishMargin, describeQty, recipeProblems, suggestedPrice, targetMarginFor,
   type Recipe, type OptionAdjustment, type RecipeSupply, type ConsumptionCost,
@@ -46,6 +48,11 @@ interface MenuItemDoc {
 }
 interface CategoryDoc { id: string; name: string; order: number; section: string }
 interface GroupDoc { id: string; name: string; options: { id: string; name: string }[] }
+interface StoredRecipeView extends Recipe {
+  extraAllergens: string[]
+  allergensConfirmed: boolean
+  allergensConfirmedByEmail: string | null
+}
 
 // The editor works in strings, because an input being typed into is not a
 // number yet. They become a Recipe only when costed or saved.
@@ -57,11 +64,17 @@ interface DraftAdjustment {
   fromSupplyId: string
   toSupplyId: string
 }
-interface Draft { lines: DraftLine[]; adjustments: Record<string, DraftAdjustment> }
+interface Draft {
+  lines: DraftLine[]
+  adjustments: Record<string, DraftAdjustment>
+  extraAllergens: string[]
+  /** Cleared by any change to what the dish is made of — see RecipeEditor. */
+  allergensConfirmed: boolean
+}
 
 const NO_ADJUSTMENT: DraftAdjustment = { kind: 'none', supplyId: '', qty: '', fromSupplyId: '', toSupplyId: '' }
 
-function toDraft(recipe: Recipe | undefined): Draft {
+function toDraft(recipe: StoredRecipeView | undefined): Draft {
   const adjustments: Record<string, DraftAdjustment> = {}
   for (const [optionId, list] of Object.entries(recipe?.adjustments ?? {})) {
     const a = list[0]
@@ -73,8 +86,12 @@ function toDraft(recipe: Recipe | undefined): Draft {
   return {
     lines: (recipe?.lines ?? []).map(l => ({ supplyId: l.supplyId, qty: String(l.qty) })),
     adjustments,
+    extraAllergens: recipe?.extraAllergens ?? [],
+    allergensConfirmed: recipe?.allergensConfirmed ?? false,
   }
 }
+
+const ALLERGEN_LABEL = new Map(ALLERGENS_EU14.map(a => [a.key, a.label]))
 
 function toRecipe(draft: Draft): Recipe {
   const adjustments: Record<string, OptionAdjustment[]> = {}
@@ -196,13 +213,14 @@ function SupplySelect({ value, onChange, supplies, only, placeholder }: {
 }
 
 function RecipeEditor({
-  item, groups, supplies, supplyList, draft, onChange, vatRate, target,
+  item, groups, supplies, supplyList, allergenSupplies, draft, onChange: onDraftChange, vatRate, target,
   saving, error, hasSaved, onSave, onDelete, onClose, isMobile,
 }: {
   item: MenuItemDoc
   groups: GroupDoc[]
   supplies: Record<string, RecipeSupply>
   supplyList: RecipeSupply[]
+  allergenSupplies: Record<string, AllergenSupply>
   draft: Draft
   onChange: (next: Draft) => void
   vatRate: number
@@ -215,8 +233,15 @@ function RecipeEditor({
   onClose: () => void
   isMobile: boolean
 }) {
+  // Any change to what the dish is made of clears the allergen confirmation.
+  // A tick given for the old ingredient list says nothing about the new one.
+  const onChange = (next: Draft) => {
+    const madeOf = (d: Draft) => JSON.stringify([d.lines, d.adjustments, d.extraAllergens])
+    onDraftChange(next.allergensConfirmed && madeOf(next) !== madeOf(draft) ? { ...next, allergensConfirmed: false } : next)
+  }
   const recipe = toRecipe(draft)
   const problems = recipeProblems(recipe, supplies)
+  const allergens = dishAllergens({ recipe, extraAllergens: draft.extraAllergens, confirmed: draft.allergensConfirmed }, allergenSupplies)
   const base = costOf(recipe, supplies)
   const usedSupplyIds = [...new Set(draft.lines.map(l => l.supplyId).filter(Boolean))]
 
@@ -348,6 +373,37 @@ function RecipeEditor({
           <CostSummary price={item.price} cost={base} vatRate={vatRate} target={target} supplies={supplies} />
         </div>
 
+        {/* ── Allergens ───────────────────────────────────────────────── */}
+        <div style={{ marginTop: '1rem', padding: '0.9rem 1rem', border: `1px solid ${allergens.verified ? 'rgba(var(--teal-rgb),0.35)' : 'rgba(var(--red-rgb),0.35)'}`, borderRadius: '6px' }}>
+          <p style={{ ...lbl, marginBottom: '0.4rem' }}>Allergens, as written</p>
+          <p style={{ fontSize: '0.82rem', fontFamily: 'var(--font-inter)', color: allergens.verified ? 'var(--offwhite)' : 'var(--red)' }}>
+            {allergens.verified
+              ? (allergens.contains.length > 0 ? `Contains ${allergens.contains.map(k => ALLERGEN_LABEL.get(k)).join(', ')}` : 'None of the listed allergens')
+              : `Not verified${allergens.contains.length > 0 ? ` — contains at least ${allergens.contains.map(k => ALLERGEN_LABEL.get(k)).join(', ')}` : ''}`}
+          </p>
+          {allergens.reasons.map(r => <p key={r} style={{ ...muted, color: 'var(--brand-secondary)' }}>{r}</p>)}
+
+          <p style={{ ...muted, marginTop: '0.7rem' }}>Also in it, from things not in supplies (bought-in bread, a "may contain" warning):</p>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '0.25rem 0.8rem', marginTop: '0.35rem' }}>
+            {ALLERGENS_EU14.map(a => (
+              <label key={a.key} style={{ fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.8)', fontFamily: 'var(--font-inter)', display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                <input type="checkbox" checked={draft.extraAllergens.includes(a.key)}
+                  onChange={e => onChange({ ...draft, extraAllergens: e.target.checked ? [...draft.extraAllergens, a.key] : draft.extraAllergens.filter(k => k !== a.key) })} />
+                {a.label}
+              </label>
+            ))}
+          </div>
+
+          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', marginTop: '0.8rem', fontSize: '0.78rem', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)' }}>
+            <input type="checkbox" checked={draft.allergensConfirmed} style={{ marginTop: '0.15rem' }}
+              onChange={e => onDraftChange({ ...draft, allergensConfirmed: e.target.checked })} />
+            <span>
+              I confirm this recipe lists every ingredient — cooking oil, sauces, garnishes and dressings included.
+              <span style={{ ...muted, display: 'block' }}>Saved with the recipe, under your name. Changing an ingredient clears it.</span>
+            </span>
+          </label>
+        </div>
+
         {problems.length > 0 && (
           <ul style={{ marginTop: '1rem', paddingLeft: '1.1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             {problems.map(p => (
@@ -398,11 +454,12 @@ export default function RecipesPage() {
   const [categories, setCategories] = useState<CategoryDoc[]>([])
   const [groups, setGroups]         = useState<Record<string, GroupDoc>>({})
   const [supplies, setSupplies]     = useState<Record<string, RecipeSupply>>({})
-  const [recipes, setRecipes]       = useState<Record<string, Recipe>>({})
+  const [recipes, setRecipes]       = useState<Record<string, StoredRecipeView>>({})
+  const [allergenSupplies, setAllergenSupplies] = useState<Record<string, AllergenSupply>>({})
   const [loading, setLoading]       = useState(true)
   const [loadError, setLoadError]   = useState('')
   const [editingId, setEditingId]   = useState<string | null>(null)
-  const [draft, setDraft]           = useState<Draft>({ lines: [], adjustments: {} })
+  const [draft, setDraft]           = useState<Draft>({ lines: [], adjustments: {}, extraAllergens: [], allergensConfirmed: false })
   const [saving, setSaving]         = useState(false)
   const [saveError, setSaveError]   = useState('')
 
@@ -445,8 +502,17 @@ export default function RecipesPage() {
           }]
         })))
         setSupplies(Object.fromEntries(supplySnap.docs.map(d => [d.id, toSupply(d.id, d.data() as Record<string, unknown>)])))
-        const list = ((recipeData as { recipes?: (Recipe & { menuItemId: string })[] }).recipes ?? [])
-        setRecipes(Object.fromEntries(list.map(r => [r.menuItemId, { lines: r.lines, adjustments: r.adjustments }])))
+        setAllergenSupplies(Object.fromEntries(supplySnap.docs.map(d => {
+          const x = d.data() as Record<string, unknown>
+          // Absent or null is "not checked" — only a list is an answer.
+          return [d.id, { id: d.id, name: String(x.name ?? d.id), allergens: Array.isArray(x.allergens) ? readAllergenKeys(x.allergens) : null }]
+        })))
+        const list = ((recipeData as { recipes?: (StoredRecipeView & { menuItemId: string })[] }).recipes ?? [])
+        setRecipes(Object.fromEntries(list.map(r => [r.menuItemId, {
+          lines: r.lines, adjustments: r.adjustments,
+          extraAllergens: r.extraAllergens ?? [], allergensConfirmed: Boolean(r.allergensConfirmed),
+          allergensConfirmedByEmail: r.allergensConfirmedByEmail ?? null,
+        }])))
       } catch (err) {
         if (alive) setLoadError(err instanceof Error ? err.message : 'Could not load recipes.')
       } finally {
@@ -503,8 +569,14 @@ export default function RecipesPage() {
     setSaveError('')
     try {
       const recipe = toRecipe(draft)
-      await unwrap(await authedFetch('/api/admin/recipes', 'PUT', { menuItemId: editingId, ...recipe }))
-      setRecipes(r => ({ ...r, [editingId]: recipe }))
+      await unwrap(await authedFetch('/api/admin/recipes', 'PUT', {
+        menuItemId: editingId, ...recipe,
+        extraAllergens: draft.extraAllergens, allergensConfirmed: draft.allergensConfirmed,
+      }))
+      setRecipes(r => ({ ...r, [editingId]: {
+        ...recipe, extraAllergens: draft.extraAllergens, allergensConfirmed: draft.allergensConfirmed,
+        allergensConfirmedByEmail: draft.allergensConfirmed ? (r[editingId]?.allergensConfirmedByEmail ?? null) : null,
+      } }))
       setEditingId(null)
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Could not save the recipe.')
@@ -592,6 +664,7 @@ export default function RecipesPage() {
           groups={editingItem.modifierGroupIds.map(id => groups[id]).filter((g): g is GroupDoc => Boolean(g))}
           supplies={supplies}
           supplyList={supplyList}
+          allergenSupplies={allergenSupplies}
           draft={draft}
           onChange={setDraft}
           vatRate={vatRate}

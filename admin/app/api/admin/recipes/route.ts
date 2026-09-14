@@ -9,7 +9,7 @@
 // collection has no Firestore rule, so this route is the only way in.
 
 import { requireRole, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
-import { parseRecipeInput, saveRecipe, listRecipes, deleteRecipe } from '@big-cms/shared/server/recipes'
+import { parseRecipeInput, parseAllergenFields, saveRecipe, listRecipes, deleteRecipe } from '@big-cms/shared/server/recipes'
 import { logCreate, logUpdate, logDelete } from '@big-cms/shared/server/activityLog'
 
 export const runtime = 'nodejs'
@@ -38,7 +38,7 @@ export async function PUT(request: Request): Promise<Response> {
     const caller: Caller = await requireRole(request, ['admin'])
     const body = await readBody(request)
     const recipe = parseRecipeInput(body)
-    const { name, before } = await saveRecipe(caller, body.menuItemId, recipe)
+    const { name, before } = await saveRecipe(caller, body.menuItemId, recipe, parseAllergenFields(body))
 
     if (before) {
       await logUpdate(caller, 'Recipe', name, before, { menuItemId: before.menuItemId, ...recipe })

@@ -20,7 +20,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'food-safety-verify-'))
 execSync(
-  `npx tsc shared/src/foodSafety.ts --outDir ${out} --module esnext --target es2022 ` +
+  `npx tsc shared/src/foodSafety.ts shared/src/allergens.ts --outDir ${out} --module esnext --target es2022 ` +
   `--skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
@@ -30,6 +30,7 @@ for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
 }
 
 const F = await import(`file://${join(out, 'foodSafety.js')}`)
+const A = await import(`file://${join(out, 'allergens.js')}`)
 
 let pass = 0, fail = 0
 const eq = (name, got, want) => {
@@ -161,6 +162,54 @@ console.log('\nwho may write a day')
   eq('signed on the day: on time', F.signedLate('2026-09-10', '2026-09-10'), false)
   eq('signed two days on: late, and says so', F.signedLate('2026-09-10', '2026-09-12'), true)
   eq('every limit has a name a person reads', Object.keys(F.LIMIT_LABELS).sort(), Object.keys(F.UK_SFBB_LIMITS).sort())
+}
+
+console.log('\nwhat a dish contains')
+{
+  // An oat drink can carry gluten; the beans were checked and carry nothing;
+  // nobody has checked the syrup yet.
+  const S = {
+    milk:  { id: 'milk',  name: 'Whole milk',    allergens: ['milk'] },
+    oat:   { id: 'oat',   name: 'Oat drink',     allergens: ['gluten'] },
+    beans: { id: 'beans', name: 'Coffee beans',  allergens: [] },
+    syrup: { id: 'syrup', name: 'Vanilla syrup', allergens: null },
+  }
+  const latte = {
+    lines: [{ supplyId: 'beans', qty: 18 }, { supplyId: 'milk', qty: 220 }],
+    adjustments: {
+      oat: [{ kind: 'replace', fromSupplyId: 'milk', toSupplyId: 'oat' }],
+      syrup: [{ kind: 'add', supplyId: 'syrup', qty: 15 }],
+      shot: [{ kind: 'add', supplyId: 'beans', qty: 18 }],
+    },
+  }
+  const confirmed = { recipe: latte, confirmed: true }
+
+  eq('a checked, confirmed recipe is verified', A.dishAllergens(confirmed, S), { verified: true, contains: ['milk'], reasons: [] })
+  const unconfirmed = A.dishAllergens({ recipe: latte, confirmed: false }, S)
+  eq('THE TRAP: unconfirmed is not verified — the dressing may not be in the recipe', unconfirmed.verified, false)
+  eq('...but what IS known is still shown', unconfirmed.contains, ['milk'])
+  eq('...and it says why', unconfirmed.reasons[0].includes('every ingredient'), true)
+  eq('no recipe: not verified, and never "contains nothing"',
+    A.dishAllergens({ recipe: null, confirmed: true }, S), { verified: false, contains: [], reasons: ['No recipe — its ingredients are not known.'] })
+  eq('"checked, contains none" is an answer: an espresso verifies with nothing in it',
+    A.dishAllergens({ recipe: { lines: [{ supplyId: 'beans', qty: 18 }] }, confirmed: true }, S), { verified: true, contains: [], reasons: [] })
+  eq('THE TRAP: an ingredient nobody checked makes the dish unverified',
+    A.optionAllergenChange(confirmed, S, 'syrup').reasons, ['Vanilla syrup has not been checked for allergens.'])
+  eq('an ingredient no longer in supplies makes it unverified',
+    A.dishAllergens({ recipe: { lines: [{ supplyId: 'gone', qty: 1 }] }, confirmed: true }, S).verified, false)
+  eq('a recipe with no ingredients is not verified',
+    A.dishAllergens({ recipe: { lines: [] }, confirmed: true }, S).verified, false)
+  eq('oat for whole milk: takes milk out, brings gluten in',
+    A.optionAllergenChange(confirmed, S, 'oat'), { adds: ['gluten'], removes: ['milk'], verified: true, reasons: [] })
+  eq('an extra shot changes nothing', A.optionAllergenChange(confirmed, S, 'shot'), { adds: [], removes: [], verified: true, reasons: [] })
+  eq('allergens from outside supplies count, in list order',
+    A.dishAllergens({ ...confirmed, extraAllergens: ['sesame', 'milk'] }, S).contains, ['milk', 'sesame'])
+  eq('a key that is not an allergen is ignored', A.dishAllergens({ ...confirmed, extraAllergens: ['plutonium'] }, S).contains, ['milk'])
+
+  eq('THE TRAP: an allergen the café does not track is never dropped',
+    A.splitTracked(['milk', 'sesame'], ['milk']), { tracked: ['milk'], others: ['sesame'] })
+  eq('keys from a request: known ones, once each, in order', A.readAllergenKeys(['milk', 'milk', 'x', 3, 'eggs']), ['eggs', 'milk'])
+  eq('not a list: nothing', A.readAllergenKeys('milk'), [])
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

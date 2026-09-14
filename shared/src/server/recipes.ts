@@ -27,6 +27,7 @@ import {
   recipeProblems,
   type Recipe, type RecipeLine, type OptionAdjustment, type RecipeSupply,
 } from '../recipes'
+import { readAllergenKeys } from '../allergens'
 
 const RECIPES = 'recipes'
 
@@ -38,6 +39,11 @@ export const RECIPE_LIMITS = {
 
 export interface StoredRecipe extends Recipe {
   menuItemId: string
+  /** Allergens from things not in supplies. */
+  extraAllergens?: string[]
+  /** Somebody confirmed the recipe lists every ingredient (shared/src/allergens.ts). */
+  allergensConfirmed?: boolean
+  allergensConfirmedByEmail?: string | null
 }
 
 /** A document id from a request: non-empty, bounded, and unable to name another path. */
@@ -93,6 +99,16 @@ export function parseRecipeInput(body: Record<string, unknown>): Recipe {
   }
 
   return { lines, adjustments }
+}
+
+/**
+ * The allergen half of a recipe save. The confirmation is a tick the saver
+ * gives: the page clears it whenever the ingredients change, and a save
+ * without it clears any confirmation already stored — so a changed recipe is
+ * never left carrying somebody else's word that the old one was complete.
+ */
+export function parseAllergenFields(body: Record<string, unknown>): { extraAllergens: string[]; confirmed: boolean } {
+  return { extraAllergens: readAllergenKeys(body.extraAllergens), confirmed: body.allergensConfirmed === true }
 }
 
 /** A supply document as the recipe arithmetic reads it. Missing fields stay missing. */
@@ -151,6 +167,11 @@ export async function listRecipes(): Promise<StoredRecipe[]> {
       adjustments: (data.adjustments && typeof data.adjustments === 'object')
         ? (data.adjustments as Record<string, OptionAdjustment[]>)
         : {},
+      extraAllergens: readAllergenKeys(data.extraAllergens),
+      allergensConfirmed: Boolean(data.allergensConfirmed),
+      allergensConfirmedByEmail: data.allergensConfirmed && typeof data.allergensConfirmed === 'object'
+        ? String((data.allergensConfirmed as { byEmail?: unknown }).byEmail ?? '')
+        : null,
     }
   })
 }
@@ -159,6 +180,7 @@ export async function saveRecipe(
   caller: Caller,
   rawMenuItemId: unknown,
   recipe: Recipe,
+  allergens: { extraAllergens: string[]; confirmed: boolean } = { extraAllergens: [], confirmed: false },
 ): Promise<{ name: string; before: StoredRecipe | null }> {
   const menuItemId = docId(rawMenuItemId, 'menu item')
   const { name, optionIds } = await readMenuItemOptions(menuItemId)
@@ -191,6 +213,10 @@ export async function saveRecipe(
     updatedAt: FieldValue.serverTimestamp(),
     updatedBy: caller.uid,
     updatedByEmail: caller.email ?? '',
+    extraAllergens: allergens.extraAllergens,
+    allergensConfirmed: allergens.confirmed
+      ? { by: caller.uid, byEmail: caller.email ?? '', at: FieldValue.serverTimestamp() }
+      : null,
   })
 
   const before = previous.exists

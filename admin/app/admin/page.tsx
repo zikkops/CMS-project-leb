@@ -217,6 +217,7 @@ export default function AdminPage() {
       color: 'var(--teal)',
       cards: [
         { label: 'Food Safety Diary',    icon: faTemperatureHalf, daily: true,  desc: 'Opening and closing checks and fridge, freezer and hot-holding temperatures — signed each day by a manager', href: '/admin/food-safety',          access: SECTION_ACCESS.foodSafety },
+        { label: 'Allergen Chart',       icon: faTriangleExclamation, daily: true, desc: 'What each dish contains, whether that is verified, and what each option changes — for answering a customer', href: '/admin/food-safety/allergens', access: SECTION_ACCESS.foodSafety },
         { label: 'Food Safety History',  icon: faShieldHalved,    daily: false, desc: 'Which days were signed, by whom, readings out of range and days nobody signed',                       href: '/admin/food-safety/history',  access: SECTION_ACCESS.foodSafetyReview },
         { label: 'Food Safety Settings', icon: faGear,            daily: false, desc: 'Fridges, freezers and hot holding per branch, the checklists, limits and allergens tracked',          href: '/admin/food-safety/settings', access: SECTION_ACCESS.foodSafetyReview },
       ],

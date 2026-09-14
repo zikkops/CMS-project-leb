@@ -9,6 +9,7 @@ import { listTemplateItems, listProviders, UNIT_LABELS, translateToArabic } from
 import { STOCKED_BRANCHES, PRIMARY_BRANCH, branchColor, emptyStock } from '@big-cms/shared/branches'
 import { SUPPLY_CATEGORY_COLOR as CAT_COLOR, type SupplyCategory as Category } from '@big-cms/shared/departments'
 import { suggestedFactor, describeQty, normalizeUnit } from '@big-cms/shared/recipes'
+import { ALLERGENS_EU14 } from '@big-cms/shared/foodSafety'
 
 
 // The branches that hold consumable stock, from configuration. This was a
@@ -39,6 +40,8 @@ interface Supply {
   recipeUnit?: string | null
   recipeUnitsPerPurchaseUnit?: number | null
   yieldPercent?: number | null
+  // null or absent: nobody has checked it. [] : checked, contains none.
+  allergens?: string[] | null
 }
 
 const CATEGORIES: Category[] = ['Kitchen', 'Bar', 'Cleaning', 'Other']
@@ -67,6 +70,7 @@ const EMPTY_FORM = {
   name: '', nameAr: '', category: 'Kitchen' as Category, unit: 'pieces', threshold: 5, provider: '', vatable: true,
   // Strings while being typed; the route turns blank into "not set".
   recipeUnit: '', recipeUnitsPerPurchaseUnit: '', yieldPercent: '',
+  allergens: null as string[] | null,
 }
 
 const inp: React.CSSProperties = {
@@ -150,6 +154,7 @@ export default function SuppliesPage() {
       recipeUnit: s.recipeUnit ?? '',
       recipeUnitsPerPurchaseUnit: s.recipeUnitsPerPurchaseUnit != null ? String(s.recipeUnitsPerPurchaseUnit) : '',
       yieldPercent: s.yieldPercent != null ? String(s.yieldPercent) : '',
+      allergens: Array.isArray(s.allergens) ? s.allergens : null,
     })
     setFormQty({ ...EMPTY_QTY, ...s.quantity })
     setEditing(s); setModal('edit')
@@ -176,6 +181,9 @@ export default function SuppliesPage() {
       recipeUnit: form.recipeUnit || null,
       recipeUnitsPerPurchaseUnit: form.recipeUnit ? form.recipeUnitsPerPurchaseUnit : '',
       yieldPercent: form.yieldPercent,
+      // Sent every time for the same reason: the route replaces the whole item,
+      // and leaving this out would turn a checked item back into an unchecked one.
+      allergens: form.allergens,
     }
     // Quantity is deliberately not sent on an edit — it is only ever set by
     // a submitted Daily Inventory Count or a received delivery, and the route
@@ -510,6 +518,43 @@ export default function SuppliesPage() {
                   value={form.yieldPercent} onChange={e => setForm(f => ({ ...f, yieldPercent: e.target.value }))} />
                 <p style={{ fontSize: '0.62rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.25rem' }}>
                   Onions trimmed to 85% usable: enter 85, and recipes buy enough to allow for it. Blank means all of it is used.
+                </p>
+              </div>
+
+              <div>
+                <label style={lbl}>Allergens</label>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                  {([['unchecked', 'Not checked yet'], ['checked', 'Checked']] as const).map(([value, label]) => {
+                    const active = value === 'checked' ? form.allergens !== null : form.allergens === null
+                    return (
+                      <button key={value} type="button"
+                        onClick={() => setForm(f => ({ ...f, allergens: value === 'checked' ? (f.allergens ?? []) : null }))}
+                        style={{ ...inp, width: 'auto', cursor: 'pointer', background: active ? 'rgba(var(--teal-rgb),0.2)' : 'transparent', borderColor: active ? 'var(--teal)' : 'rgba(255,255,255,0.12)' }}>
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+                {form.allergens !== null && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem 0.8rem' }}>
+                    {ALLERGENS_EU14.map(a => (
+                      <label key={a.key} style={{ fontSize: '0.75rem', color: 'var(--offwhite)', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                        <input type="checkbox" checked={form.allergens?.includes(a.key) ?? false}
+                          onChange={e => setForm(f => ({
+                            ...f,
+                            allergens: e.target.checked ? [...(f.allergens ?? []), a.key] : (f.allergens ?? []).filter(k => k !== a.key),
+                          }))} />
+                        {a.label}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <p style={{ fontSize: '0.62rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.25rem' }}>
+                  {form.allergens === null
+                    ? 'Every dish using an unchecked item shows as "not verified" on the allergen chart. Check the label.'
+                    : form.allergens.length === 0
+                      ? 'Checked, and contains none of these. Read the label, including "may contain".'
+                      : 'From the label, including "may contain" warnings.'}
                 </p>
               </div>
 

@@ -152,6 +152,17 @@ seeded, so start in settings.
    earlier days in the range as **Missed**.
 6. Change a limit in settings: the signed day is still shown against the limit
    it was signed with.
+7. **Allergen Chart** (`/admin/food-safety/allergens`): with nothing done yet,
+   **every dish should read Not verified in red** — never a clean row. That is
+   the point, not a bug.
+8. In **Supplies**, open Whole Milk → Allergens → **Checked**, tick Milk, save.
+   Open Coffee Beans → **Checked**, tick nothing, save ("contains none").
+   In **Recipes & Costing**, open the Latte: it should say not verified because
+   nobody confirmed the recipe is complete. Tick the confirmation and save. The
+   chart should now show the Latte as containing Milk, verified — and Vanilla
+   syrup (unchecked) listed against the syrup option as not verified.
+9. Change an ingredient quantity in the Latte recipe: the confirmation tick
+   clears before you save.
 
 ### Daily counts — `/admin/supplies/daily`, `.../history`
 - Submit a count, then open it in the history: **Expected, Counted, Variance

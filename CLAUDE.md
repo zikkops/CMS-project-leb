@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 22 checks, 16 verifiers, 996
+is the only thing that shows it. Currently 22 checks, 16 verifiers, 1012
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -386,9 +386,26 @@ database.
 Scoped in the vault (`Food Safety - Scope.md`) from a full read of the FSA's
 *Safer Food, Better Business for caterers* (UK, 2015 edition, Open Government
 Licence — structure and numbers used, wording our own, no logos or photos) and
-from research into Lebanese requirements. Built: the diary. Not yet: safe
-method cards, training and cleaning records, the 4-weekly review, allergens,
-recall. Behind the `foodSafety` module, **off by default**.
+from research into Lebanese requirements. Built: the diary and allergens.
+Not yet: safe method cards, training and cleaning records, the 4-weekly
+review, recall. Behind the `foodSafety` module, **off by default**.
+
+- **Allergens come from ingredients, through recipes** (owner's decision,
+  14 Sep 2026), in `shared/src/allergens.ts`. A supply's `allergens` is
+  `null` (nobody checked) or a list, where `[]` is "checked, contains none". The
+  supplies form sends it on every save, and a request without it reads as
+  **not checked, never none**. **A dish is verified only when its recipe
+  exists, every ingredient is checked, AND an admin has ticked that the recipe
+  lists every ingredient**, oils, sauces and garnishes included. The demo's
+  recipes list only mains, which is exactly how a dish reads allergen-free while
+  its dressing carries mustard. Unverified shows "at least these", in red. Any
+  change to the ingredients clears the tick. The tick is stored with who gave it
+  (`recipes/{id}.allergensConfirmed`). `extraAllergens` covers things not in
+  supplies. **The tracked-allergen setting picks the chart's columns but never
+  hides an allergen**: an untracked one goes in `others`. The staff chart at
+  `/admin/food-safety/allergens` is for the floor, built on the server from
+  recipes and sent **without quantities or costs**, because recipes are
+  admin-only.
 
 - **Every limit is a setting with a UK default, never a constant.** The pack's
   temperatures are UK law; the client is in Lebanon. `readLimits()` reads them
@@ -421,7 +438,7 @@ recall. Behind the `foodSafety` module, **off by default**.
   `foodSafetyUnits`, behind `/api/admin/food-safety`; **no Firestore rule, so
   no rules deploy**. Sections `foodSafety` (floor) and `foodSafetyReview`
   (managers, admins); limits and the allergen list are admin-only in the route.
-  Units are retired, never deleted. `npm run verify:food-safety`, 17 mutations
+  Units are retired, never deleted. `npm run verify:food-safety`, 28 mutations
   caught by name.
 
 ## Seeding a POS history (Sep 2026)

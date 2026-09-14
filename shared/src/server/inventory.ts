@@ -13,6 +13,7 @@ import { FieldValue, FieldPath } from 'firebase-admin/firestore'
 import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
+import { readAllergenKeys } from '../allergens'
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -60,6 +61,12 @@ export interface SupplyInput {
   recipeUnitsPerPurchaseUnit: number | null
   /** Usable share of what is bought, above 0 and at most 100. Null means all of it. */
   yieldPercent: number | null
+  /**
+   * Allergen keys. null means nobody has checked this item; [] means checked
+   * and contains none. The difference is the whole allergen chart: an unchecked
+   * ingredient makes every dish using it "not verified" (shared/src/allergens.ts).
+   */
+  allergens: string[] | null
 }
 
 /** Blank clears an optional number; anything else must be a real one in range. */
@@ -85,6 +92,9 @@ export function parseSupplyInput(body: Record<string, unknown>): SupplyInput {
       n => n > 0 && n <= 1_000_000, 'must be a number above zero.'),
     yieldPercent: optionalNumber(body.yieldPercent, 'Usable share',
       n => n > 0 && n <= 100, 'must be above 0% and at most 100%.'),
+    // A form that does not send allergens leaves the item "not checked", never
+    // "contains none": failing towards unverified is the only safe direction.
+    allergens: Array.isArray(body.allergens) ? readAllergenKeys(body.allergens) : null,
   }
 
   return {
