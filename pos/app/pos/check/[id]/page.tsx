@@ -30,7 +30,7 @@ import {
   faArrowLeft, faPaperPlane, faPlus, faMinus, faEllipsisVertical, faTrashCan, faNoteSticky,
   faChair, faLayerGroup, faSliders, faBan, faRotateLeft, faPercent, faUserTag, faArrowRightArrowLeft,
   faCashRegister, faXmark, faUtensils, faBagShopping, faCheck, faPen, faHourglassHalf, faUserGroup,
-  faClock, faCircleCheck, faTriangleExclamation,
+  faClock, faCircleCheck, faTriangleExclamation, faWheatAwnCircleExclamation,
 } from '@fortawesome/free-solid-svg-icons'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import {
@@ -54,6 +54,11 @@ import {
   type DraftLine, type PosMenuItem, type PosProduct,
 } from '../../../lib/usePos'
 import { PosButton, Chip, StatusBadge, SectionLabel, kindColour, type Tone } from '../../../lib/posUi'
+import { useAllergenChart, readDishAllergens, type ChartDish, type DishAnswer } from '../../../lib/useAllergens'
+import { AllergenAnswer } from '../../../lib/allergenView'
+
+/** Whether this device shows allergens on the menu. Per device, like the floor's readings. */
+const ALLERGENS_KEY = 'pos-show-allergens'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 900) {
@@ -271,12 +276,14 @@ function DraftRow({ draft, locked, onRemove, onNote, onQuantity }: {
 
 /** Choosing modifiers for one item, before it joins the draft. */
 function ModifierSheet({
-  item, groups, onCancel, onAdd,
+  item, groups, onCancel, onAdd, allergens,
 }: {
   item: PosMenuItem
   groups: ModifierGroup[]
   onCancel: () => void
   onAdd: (optionIds: string[], label: string) => void
+  /** Show what the dish contains as chosen — asked of the server on every change. */
+  allergens: boolean
 }) {
   const [chosen, setChosen] = useState<Record<string, string[]>>({})
 
@@ -308,11 +315,58 @@ function ModifierSheet({
     sum + (chosen[g.id] ?? []).reduce((s, id) =>
       s + (g.options.find(o => o.id === id)?.priceDelta ?? 0), 0), 0)
 
+  // Asked of the server for the WHOLE choice, each time it changes. Options do
+  // not add up: oat milk takes milk out, extra cream adds nothing on its own,
+  // and together the drink still has milk in it. So the chart's per-option
+  // lines are never combined on this screen.
+  const selectionKey = [...allIds].sort().join('|')
+  const [answer, setAnswer] = useState<{ key: string; dish: DishAnswer | null; error: string } | null>(null)
+  useEffect(() => {
+    if (!allergens) return
+    let live = true
+    readDishAllergens(item.id, selectionKey ? selectionKey.split('|') : [])
+      .then(dish => { if (live) setAnswer({ key: selectionKey, dish, error: '' }) })
+      .catch(e => { if (live) setAnswer({ key: selectionKey, dish: null, error: e instanceof Error ? e.message : 'Could not check allergens.' }) })
+    return () => { live = false }
+  }, [allergens, item.id, selectionKey])
+  // An answer for a choice that has since changed is never shown, not even for a moment.
+  const current = answer && answer.key === selectionKey ? answer : null
+
   return (
     <div style={sheet} onClick={onCancel}>
       <div style={sheetInner} onClick={e => e.stopPropagation()}>
         <h2 style={{ ...sheetTitle, marginBottom: '0.2rem' }}>{item.name}</h2>
         <p style={{ fontSize: '0.9rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginBottom: '0.6rem' }}>{money(item.price)}</p>
+
+        {allergens && (
+          <div style={{
+            margin: '0.2rem 0 0.4rem', padding: '0.75rem 0.9rem', borderRadius: '10px',
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.12)',
+          }}>
+            <p style={{
+              display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.5rem',
+              fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.55)',
+            }}>
+              <FontAwesomeIcon icon={faWheatAwnCircleExclamation} />
+              {allIds.length > 0 ? 'Allergens with these options' : 'Allergens'}
+            </p>
+            {current?.dish ? (
+              <>
+                <AllergenAnswer size="md" verified={current.dish.verified} contains={current.dish.contains} others={current.dish.others} />
+                {current.dish.reasons.map(r => (
+                  <p key={r} style={{ fontSize: '0.88rem', color: 'var(--red)', marginTop: '0.4rem', lineHeight: 1.45 }}>{r}</p>
+                ))}
+              </>
+            ) : current?.error ? (
+              <p style={{ fontSize: '0.92rem', color: 'var(--red)', lineHeight: 1.5 }}>
+                <FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.4rem' }} />
+                {current.error} Ask the kitchen — do not guess.
+              </p>
+            ) : (
+              <p style={{ fontSize: '0.92rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>Checking…</p>
+            )}
+          </div>
+        )}
 
         {groups.map(g => (
           <div key={g.id}>
@@ -367,6 +421,7 @@ function MenuPicker({
   guestCount, seat, onSeat, course, onCourse,
   categories, activeCategory, onCategory,
   items, products, hasOptions, onPick, onProduct, locked, columns,
+  allergenMap, allergenControl, allergenNote,
 }: {
   guestCount: number
   seat: number | null
@@ -383,6 +438,10 @@ function MenuPicker({
   onProduct: (p: PosProduct) => void
   locked: boolean
   columns: number
+  /** Present only while allergens are shown and the chart has loaded. */
+  allergenMap: Map<string, ChartDish> | null
+  allergenControl: React.ReactNode
+  allergenNote: React.ReactNode
 }) {
   const colourOf = new Map(categories.map((c, i) => [c.id, kindColour(i)]))
   const tileColour = activeCategory === 'retail' ? 'var(--brand-secondary)' : (colourOf.get(activeCategory) ?? 'var(--teal)')
@@ -418,7 +477,7 @@ function MenuPicker({
         ))}
       </div>
 
-      <SectionLabel icon={faUtensils}>Menu</SectionLabel>
+      <SectionLabel icon={faUtensils} right={allergenControl}>Menu</SectionLabel>
       {/* Wrapped, not a sideways scroll: a tab scrolled out of sight is a
           category nobody knows is there. */}
       <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '0.9rem' }}>
@@ -428,6 +487,7 @@ function MenuPicker({
         {/* The differentiator, one tab along from the coffee. */}
         <Chip label="Retail" icon={faBagShopping} active={activeCategory === 'retail'} onClick={() => onCategory('retail')} colour="var(--brand-secondary)" />
       </div>
+      {allergenNote}
 
       {activeCategory === 'retail' ? (
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gap: '0.6rem' }}>
@@ -467,6 +527,14 @@ function MenuPicker({
                   </span>
                 )}
               </span>
+              {/* A dish missing from the chart reads as not verified, never as clean. */}
+              {allergenMap && (
+                <AllergenAnswer
+                  verified={allergenMap.get(i.id)?.verified ?? false}
+                  contains={allergenMap.get(i.id)?.contains ?? []}
+                  others={allergenMap.get(i.id)?.others ?? []}
+                />
+              )}
             </button>
           ))}
           {items.length === 0 && (
@@ -501,6 +569,27 @@ export default function CheckPage() {
   // points land when it closes. Off, the button is not there.
   const { on: loyaltyOn } = useFeature('loyalty')
   const { settings: business } = useBusinessSettings()
+  // Food safety, slice 7: allergens on the menu, for when a customer asks. Off
+  // with the module, and a toggle per device on top — most orders are not an
+  // allergen question, and chips on every tile are noise until one is.
+  const { on: allergensOn } = useFeature('foodSafety')
+  const [showAllergens, setShowAllergens] = useState<boolean>(() => {
+    try { return typeof window !== 'undefined' && window.localStorage.getItem(ALLERGENS_KEY) === '1' }
+    catch { return false }
+  })
+  const allergensShown = allergensOn && showAllergens
+  const allergenChart = useAllergenChart(allergensShown)
+  const allergenMap = useMemo(
+    () => (allergensShown && allergenChart.dishes ? new Map(allergenChart.dishes.map(d => [d.menuItemId, d])) : null),
+    [allergensShown, allergenChart.dishes],
+  )
+  function toggleAllergens() {
+    setShowAllergens(prev => {
+      const next = !prev
+      try { window.localStorage.setItem(ALLERGENS_KEY, next ? '1' : '0') } catch { /* private mode: lasts the visit */ }
+      return next
+    })
+  }
 
   const [drafts, setDrafts] = useState<DraftLine[]>([])
   const [picking, setPicking] = useState(false)
@@ -706,6 +795,27 @@ export default function CheckPage() {
       onProduct={addProduct}
       locked={draftsLocked}
       columns={columns}
+      allergenMap={allergenMap}
+      allergenControl={allergensOn ? (
+        <Chip label="Allergens" icon={faWheatAwnCircleExclamation} size="sm" colour="var(--brand-secondary)"
+          active={showAllergens} onClick={toggleAllergens} />
+      ) : null}
+      allergenNote={!allergensShown ? null : allergenChart.error ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', margin: '-0.3rem 0 0.9rem' }}>
+          <span style={{ fontSize: '0.92rem', color: 'var(--red)' }}>
+            <FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.4rem' }} />
+            {allergenChart.error} Ask the kitchen — do not guess.
+          </span>
+          <PosButton icon={faRotateLeft} label="Try again" size="sm" onClick={allergenChart.retry} />
+        </div>
+      ) : allergenChart.loading ? (
+        <p style={{ fontSize: '0.92rem', color: 'rgba(var(--offwhite-rgb),0.55)', margin: '-0.3rem 0 0.9rem' }}>Loading allergens…</p>
+      ) : (
+        <p style={{ fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.65)', margin: '-0.3rem 0 0.9rem', lineHeight: 1.5 }}>
+          Allergens as the dish comes, without options. <strong style={{ color: 'var(--red)' }}>Not verified</strong> means
+          there may be more than is listed — check with the kitchen.
+        </p>
+      )}
     />
   )
 
@@ -902,6 +1012,7 @@ export default function CheckPage() {
         <ModifierSheet
           item={modifierFor}
           groups={groupsOf(modifierFor)}
+          allergens={allergensShown}
           onCancel={() => setModifierFor(null)}
           onAdd={(ids, label) => addDraft(modifierFor, ids, label)}
         />

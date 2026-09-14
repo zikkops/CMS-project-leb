@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 23 checks, 17 verifiers, 1042
+is the only thing that shows it. Currently 23 checks, 17 verifiers, 1054
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -407,6 +407,17 @@ review, recall. Behind the `foodSafety` module, **off by default**.
   `/admin/food-safety/allergens` is for the floor, built on the server from
   recipes and sent **without quantities or costs**, because recipes are
   admin-only.
+- **The till has it too**, behind `pos` and the module switch
+  (`/api/pos/allergens`): an Allergens button on the floor opens
+  `/pos/allergens`, and a per-device toggle on the order screen puts chips on
+  every menu tile. **Options do not add up.** Oat milk takes milk out, extra
+  cream adds nothing on its own, and together the drink still has milk in it.
+  So the options sheet asks the server about the WHOLE choice
+  (`readDishAllergens()`, only the supplies it uses) and never combines the
+  chart's per-option lines. How an answer is said is `staffAnswer()`: an
+  unverified dish that lists nothing is never "none". For a customer's one
+  allergy, `allergenVerdict()` gives free / can't be sure / contains, and
+  "free" needs a verified dish.
 
 - **Every limit is a setting with a UK default, never a constant.** The pack's
   temperatures are UK law; the client is in Lebanon. `readLimits()` reads them
@@ -439,7 +450,7 @@ review, recall. Behind the `foodSafety` module, **off by default**.
   `foodSafetyUnits`, behind `/api/admin/food-safety`; **no Firestore rule, so
   no rules deploy**. Sections `foodSafety` (floor) and `foodSafetyReview`
   (managers, admins); limits and the allergen list are admin-only in the route.
-  Units are retired, never deleted. `npm run verify:food-safety`, 28 mutations
+  Units are retired, never deleted. `npm run verify:food-safety`, 32 mutations
   caught by name.
 
 ## Admin navigation (Sep 2026)

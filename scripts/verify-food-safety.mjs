@@ -206,10 +206,48 @@ console.log('\nwhat a dish contains')
     A.dishAllergens({ ...confirmed, extraAllergens: ['sesame', 'milk'] }, S).contains, ['milk', 'sesame'])
   eq('a key that is not an allergen is ignored', A.dishAllergens({ ...confirmed, extraAllergens: ['plutonium'] }, S).contains, ['milk'])
 
+  // Cream brings milk, and with whole milk already in the drink it changes
+  // nothing on its own. Oat takes the milk out. Chosen together, the drink
+  // still has milk in it — in the cream.
+  const withCream = { ...S, cream: { id: 'cream', name: 'Whipped cream', allergens: ['milk'] } }
+  const mocha = { ...latte, adjustments: { ...latte.adjustments, cream: [{ kind: 'add', supplyId: 'cream', qty: 30 }] } }
+  const both = { recipe: mocha, confirmed: true }
+  eq('cream on its own changes nothing', A.optionAllergenChange(both, withCream, 'cream'), { adds: [], removes: [], verified: true, reasons: [] })
+  eq('THE TRAP: oat and cream together still contain milk',
+    A.dishAllergens(both, withCream, ['oat', 'cream']).contains.includes('milk'), true)
+  // Which is why the till asks the server about a choice instead of adding up
+  // the chart's per-option lines. Added up, they say the milk is gone:
+  const summed = new Set(A.dishAllergens(both, withCream).contains)
+  for (const id of ['oat', 'cream']) {
+    const c = A.optionAllergenChange(both, withCream, id)
+    c.removes.forEach(k => summed.delete(k))
+    c.adds.forEach(k => summed.add(k))
+  }
+  eq('...and adding up the per-option lines would have said no milk', summed.has('milk'), false)
+
   eq('THE TRAP: an allergen the café does not track is never dropped',
     A.splitTracked(['milk', 'sesame'], ['milk']), { tracked: ['milk'], others: ['sesame'] })
   eq('keys from a request: known ones, once each, in order', A.readAllergenKeys(['milk', 'milk', 'x', 3, 'eggs']), ['eggs', 'milk'])
   eq('not a list: nothing', A.readAllergenKeys('milk'), [])
+}
+
+console.log('\nwhat the till says')
+{
+  eq('THE TRAP: unverified with nothing listed is unverified, never "none"',
+    A.staffAnswer({ verified: false, contains: [] }), { kind: 'unverified', keys: [] })
+  eq('unverified keeps what is known', A.staffAnswer({ verified: false, contains: ['milk'] }), { kind: 'unverified', keys: ['milk'] })
+  eq('verified and empty is the only "none"', A.staffAnswer({ verified: true, contains: [], others: [] }), { kind: 'none', keys: [] })
+  eq('THE TRAP: an allergen the café does not track still stops "none"',
+    A.staffAnswer({ verified: true, contains: [], others: ['sesame'] }), { kind: 'contains', keys: ['sesame'] })
+  eq('tracked and untracked together, once each, in list order',
+    A.staffAnswer({ verified: true, contains: ['milk'], others: ['eggs', 'milk'] }).keys, ['eggs', 'milk'])
+
+  eq('THE TRAP: unverified and not listing nuts is unknown, never free of nuts',
+    A.allergenVerdict({ verified: false, contains: ['milk'] }, 'nuts'), 'unknown')
+  eq('verified and not listing it: free', A.allergenVerdict({ verified: true, contains: ['milk'] }, 'nuts'), 'free')
+  eq('listed, verified or not: contains', A.allergenVerdict({ verified: false, contains: ['nuts'] }, 'nuts'), 'contains')
+  eq('an untracked allergen still counts for the customer',
+    A.allergenVerdict({ verified: true, contains: [], others: ['sesame'] }, 'sesame'), 'contains')
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

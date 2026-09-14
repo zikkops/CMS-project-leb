@@ -115,6 +115,45 @@ export function splitTracked(contains: readonly string[], tracked: readonly stri
   return { tracked: contains.filter(k => t.has(k)), others: contains.filter(k => !t.has(k)) }
 }
 
+export interface StaffAnswer {
+  /** 'none' only for a verified dish with nothing in it. */
+  kind: 'unverified' | 'contains' | 'none'
+  /** Every allergen known to be present, tracked or not. Unverified: at least these. */
+  keys: string[]
+}
+
+/**
+ * What a member of staff tells a customer, in one of three shapes.
+ *
+ * Decided here rather than by whichever screen draws it, because the till has
+ * room on a menu tile for a word and a few chips and nothing else, and the
+ * shortest honest answer is the one that gets shortened wrongly. An unverified
+ * dish with nothing listed is NOT "none" — nothing is known. And an allergen
+ * outside the tracked list still stops "none".
+ */
+export function staffAnswer(d: { verified: boolean; contains: readonly string[]; others?: readonly string[] }): StaffAnswer {
+  const keys = ordered([...d.contains, ...(d.others ?? [])])
+  if (!d.verified) return { kind: 'unverified', keys }
+  return { kind: keys.length > 0 ? 'contains' : 'none', keys }
+}
+
+/**
+ * For a customer allergic to one thing: does this dish, as it comes, contain it?
+ *
+ * 'free' only for a verified dish — an unverified one that lists nothing about
+ * nuts has simply not been shown to be free of them, and that is 'unknown'.
+ * An allergen on the untracked list counts: a customer's allergy is not
+ * governed by which columns the café chose.
+ */
+export function allergenVerdict(
+  d: { verified: boolean; contains: readonly string[]; others?: readonly string[] },
+  key: string,
+): 'contains' | 'unknown' | 'free' {
+  const answer = staffAnswer(d)
+  if (answer.keys.includes(key)) return 'contains'
+  return answer.kind === 'unverified' ? 'unknown' : 'free'
+}
+
 /** Allergen keys from untrusted input: known keys only, once each, in list order. */
 export function readAllergenKeys(raw: unknown): string[] {
   return Array.isArray(raw) ? ordered(raw.filter((k): k is string => typeof k === 'string')) : []

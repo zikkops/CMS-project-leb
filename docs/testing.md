@@ -163,6 +163,17 @@ seeded, so start in settings.
    syrup (unchecked) listed against the syrup option as not verified.
 9. Change an ingredient quantity in the Latte recipe: the confirmation tick
    clears before you save.
+10. **On the till** (`pos.`, module on): the floor has an **Allergens** button.
+    Pick **Milk** under "The customer can't have": the Latte is under
+    **Contains milk**, and a dish nobody has checked is under **Can't be
+    sure**, never under free.
+11. Open a table. Next to **Menu**, turn on **Allergens**: every tile shows its
+    chips, or a red **Not verified**. Leave it on and reload; it stays on for
+    this device.
+12. Tap the Latte and choose oat milk: the box says what the drink contains
+    *with these options* and changes as you tap. To see the trap, give the
+    Latte an "add cream" option whose supply carries milk, and choose oat and
+    cream together. It must still say **Milk**.
 
 ### Daily counts — `/admin/supplies/daily`, `.../history`
 - Submit a count, then open it in the history: **Expected, Counted, Variance

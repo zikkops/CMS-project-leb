@@ -25,7 +25,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faPlus, faCashRegister, faReceipt, faFire, faChartColumn, faPen, faClock, faXmark, faCheck,
   faDoorOpen, faStore, faMoneyBillWave, faCircleCheck, faTableCells, faScaleBalanced, faRotateLeft,
-  faTriangleExclamation, faUserGroup, type IconDefinition,
+  faTriangleExclamation, faUserGroup, faWheatAwnCircleExclamation, type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useFeature } from '@big-cms/shared/useFeatures'
@@ -199,6 +199,7 @@ const READING_LOOK: Record<ReadingKey, { icon: IconDefinition; colour: string }>
 
 export default function FloorPage() {
   const { checking, blocked } = useRequireRole(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
+  const { on: allergensOn } = useFeature('foodSafety')
   const isMobile = useIsMobile()
   const router = useRouter()
   const now = useNow()
@@ -346,6 +347,8 @@ export default function FloorPage() {
                 here rather than only from a home-screen icon. */}
             <PosButton icon={faStore} label="Counter" tone="neutral" onClick={() => router.push('/pos/counter')} />
             <PosButton icon={faReceipt} label="Closed" tone="neutral" onClick={() => router.push('/pos/closed')} />
+            {/* Food safety, slice 7: what to tell a customer who asks. */}
+            {allergensOn && <PosButton icon={faWheatAwnCircleExclamation} label="Allergens" tone="neutral" onClick={() => router.push('/pos/allergens')} />}
             {/* The pass, for whoever is carrying the device that is also the
                 kitchen screen. Gated separately — a waiter without the KDS
                 section lands on its own explanation, not a blank page. */}
