@@ -230,6 +230,19 @@ export interface CheckLine {
    * so no ticket was fired for it. sentAt is when it was taken.
    */
   madeOffline?: boolean
+  /**
+   * What ONE serving takes off the ingredient shelf, snapshotted when the line
+   * was added (recipes, Sep 2026) — only for a dish with a recipe, and only
+   * while the `recipes` switch is on. Quantity multiplies it wherever stock
+   * moves. Absent means the line consumes nothing. Same shape as Consumption
+   * in recipes.ts, spelled out rather than imported so the verifier that
+   * transpiles this module does not need that one.
+   */
+  consumesPerServing?: { supplyId: string; qty: number; unitCostUsd: number | null }[]
+  /** Ingredients the recipe uses that could not be measured: no conversion set. */
+  consumesUnknown?: string[]
+  /** What a wasted void cost, from the snapshot; null when it could not be costed. */
+  voidWasteUsd?: number | null
 }
 
 /**

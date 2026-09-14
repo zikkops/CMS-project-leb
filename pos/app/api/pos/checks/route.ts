@@ -101,7 +101,9 @@ export async function PATCH(request: Request): Promise<Response> {
         )
         await logActivity(caller, 'delete', 'POS',
           `Voided an item${result.wasSent ? ' after it was sent' : ''} — ${result.label}` +
-          (result.restored > 0 ? ` — ${result.restored} back on the shelf` : ''))
+          (result.restored > 0 ? ` — ${result.restored} back on the shelf` : '') +
+          (result.ingredients === 'return' ? ' — ingredients back in stock' : '') +
+          (result.ingredients === 'waste' ? ' — ingredients recorded as waste' : ''))
         return Response.json({ ok: true, ...result })
       }
       case 'move': {
@@ -169,11 +171,15 @@ export async function PATCH(request: Request): Promise<Response> {
       case 'refund': {
         // Logged, and the entry names the receipt rather than a document id —
         // "which refund was that" is asked with a piece of paper in hand.
-        const result = await refundCheck(caller, checkId, String(body.reason ?? ''))
+        // The reason is a choice, as for a void: it decides what goes back on
+        // the shelf. The note is free text beside it, required for Other.
+        const result = await refundCheck(caller, checkId, String(body.reasonKey ?? ''), String(body.note ?? ''))
         await logActivity(caller, 'update', 'POS',
           `Refunded receipt ${result.receiptNumber} (table ${result.tableNumber})` +
           (result.restored > 0 ? ` — ${result.restored} item(s) back on the shelf` : '') +
-          ` — ${String(body.reason ?? '').trim()}`)
+          (result.ingredients === 'return' ? ' — ingredients back in stock' : '') +
+          (result.ingredients === 'waste' ? ' — ingredients recorded as waste' : '') +
+          ` — ${result.label}`)
         return Response.json({ ok: true, ...result })
       }
       default:

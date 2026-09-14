@@ -156,6 +156,20 @@ export async function deleteSupply(id: string): Promise<{ name: string }> {
       `Unlink or delete them in the Weekly Orders template first.`)
   }
 
+  // The same guard for recipes (Sep 2026). A recipe pointing at a deleted
+  // supply cannot be costed, and with the `recipes` switch on its sales would
+  // try to take ingredients off a shelf that no longer exists.
+  const inRecipes = await db.collection('recipes')
+    .where('supplyIds', 'array-contains', id).limit(5).get()
+  if (!inRecipes.empty) {
+    const itemIds = inRecipes.docs.map(d => d.id)
+    const items = await db.getAll(...itemIds.map(itemId => db.doc(`menuItems/${itemId}`)))
+    const names = items.map((s, i) => String(s.data()?.name ?? itemIds[i])).join(', ')
+    throw new HttpError(409,
+      `${inRecipes.size} recipe(s) still use this item (${names}). ` +
+      `Remove it from those recipes in Recipes & Costing first.`)
+  }
+
   const name = String(snap.data()?.name ?? id)
   await ref.delete()
   return { name }

@@ -302,6 +302,20 @@ export function stockMoves(lines: readonly (readonly Consumption[])[]): { supply
   return [...total].map(([supplyId, qty]) => ({ supplyId, qty: roundQty(qty) })).sort(bySupplyId)
 }
 
+/**
+ * A per-serving snapshot scaled to a whole line.
+ *
+ * A check line stores what ONE serving takes, resolved when the line is added,
+ * like its price — and the quantity multiplies it wherever stock moves: Send,
+ * a void, a refund. Nothing changes a line's quantity after it is added today,
+ * but a snapshot that already carried the quantity would be silently wrong the
+ * day something does. The cost per purchase unit is carried, not multiplied.
+ */
+export function scaleConsumption(perServing: readonly Consumption[], quantity: number): Consumption[] {
+  if (!Number.isInteger(quantity) || quantity <= 0) return []
+  return perServing.map(c => ({ ...c, qty: roundQty(c.qty * quantity) }))
+}
+
 export interface ReasonFlags {
   /** The item was never made and its ingredients are still usable. */
   returnsToStock: boolean
@@ -332,6 +346,71 @@ export function ingredientOutcome(wasSent: boolean, reason: ReasonFlags): Ingred
   if (reason.isWaste) return 'waste'
   if (reason.returnsToStock) return 'return'
   return 'kept'
+}
+
+// ── Check lines ───────────────────────────────────────────────────────────
+// The till never works out what comes off or back onto the shelf inline. It
+// asks these, and applies the answer. A void or a refund deciding stock inside
+// a transaction is exactly the shape of code nothing can assert on.
+
+/** A check line as far as ingredients are concerned. */
+export interface ConsumingLine {
+  status?: string
+  quantity: number
+  consumesPerServing?: readonly Consumption[] | null
+  consumesUnknown?: readonly string[] | null
+}
+
+/**
+ * What one check line took off the shelf: its per-serving snapshot times its
+ * quantity. No snapshot — merchandise, a dish with no recipe, or a line added
+ * while the `recipes` switch was off — took nothing.
+ */
+export function lineTaken(line: ConsumingLine): Consumption[] {
+  if (!line.consumesPerServing || line.consumesPerServing.length === 0) return []
+  return scaleConsumption(line.consumesPerServing, line.quantity)
+}
+
+/** One stock move per supply for the lines a Send fires. */
+export function sendMoves(lines: readonly ConsumingLine[]): { supplyId: string; qty: number }[] {
+  return stockMoves(lines.map(lineTaken))
+}
+
+export interface ReversalPlan {
+  /** What happened to the ingredients, or null when no line carried any. */
+  outcome: IngredientOutcome | null
+  /** Stock to put back, one move per supply. Empty unless the outcome is 'return'. */
+  returns: { supplyId: string; qty: number }[]
+  /** What was wasted: 0 when nothing was, null when a wasted line cannot be costed. */
+  wasteUsd: number | null
+}
+
+/**
+ * What a void or a refund does to ingredients.
+ *
+ * A void passes its one line; a refund passes every line on the check. Lines
+ * already voided are skipped — whatever they did to stock happened when they
+ * were voided. Waste is valued from each line's own snapshot, and a wasted line
+ * that cannot be costed makes the whole figure unknown rather than smaller.
+ */
+export function reversalPlan(lines: readonly ConsumingLine[], wasSent: boolean, reason: ReasonFlags): ReversalPlan {
+  const carrying = lines
+    .filter(l => l.status !== 'void')
+    .map(l => ({ line: l, consumes: lineTaken(l) }))
+    .filter(t => t.consumes.length > 0 || (t.line.consumesUnknown?.length ?? 0) > 0)
+  if (carrying.length === 0) return { outcome: null, returns: [], wasteUsd: 0 }
+
+  const outcome = ingredientOutcome(wasSent, reason)
+  if (outcome === 'return') return { outcome, returns: stockMoves(carrying.map(t => t.consumes)), wasteUsd: 0 }
+  if (outcome !== 'waste') return { outcome, returns: [], wasteUsd: 0 }
+
+  let total = 0
+  for (const t of carrying) {
+    const cost = consumptionCost({ consumes: t.consumes, unknown: [...(t.line.consumesUnknown ?? [])] })
+    if (cost.costUsd === null) return { outcome, returns: [], wasteUsd: null }
+    total += cost.costUsd
+  }
+  return { outcome, returns: [], wasteUsd: r2(total) }
 }
 
 // ── The daily count ───────────────────────────────────────────────────────

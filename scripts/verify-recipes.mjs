@@ -197,6 +197,21 @@ console.log('\none stock move per supply for a whole Send')
   eq('nothing sent, nothing moved', R.stockMoves([]), [])
 }
 
+console.log('\na serving snapshot scaled to a line')
+{
+  // A check line stores what ONE serving takes; the quantity multiplies it
+  // wherever stock moves, so the snapshot cannot go stale if a quantity ever
+  // becomes editable.
+  const perServing = R.lineConsumption(latte, [], 1, S).consumes
+  eq('three servings take three times one', R.scaleConsumption(perServing, 3).map(c => c.qty), [0.054, 0.158502])
+  eq('...exactly what consuming three at once takes',
+    R.scaleConsumption(perServing, 3), R.lineConsumption(latte, [], 3, S).consumes)
+  eq('the cost per purchase unit is carried, not multiplied',
+    R.scaleConsumption(perServing, 3).map(c => c.unitCostUsd), [22, 4.2])
+  eq('a quantity of 0 takes nothing', R.scaleConsumption(perServing, 0), [])
+  eq('a fractional quantity is refused', R.scaleConsumption(perServing, 2.5), [])
+}
+
 console.log('\nvoids and refunds follow their cause')
 eq('never sent: nothing was taken', R.ingredientOutcome(false, { returnsToStock: true, isWaste: false }), 'nothing-taken')
 eq('changed their mind before it was made: back on the shelf', R.ingredientOutcome(true, { returnsToStock: true, isWaste: false }), 'return')
@@ -204,6 +219,40 @@ eq('already made: waste', R.ingredientOutcome(true, { returnsToStock: false, isW
 eq('eaten and not wasted: kept', R.ingredientOutcome(true, { returnsToStock: false, isWaste: false }), 'kept')
 eq('THE TRAP: a reason claiming both is waste, never invented stock',
   R.ingredientOutcome(true, { returnsToStock: true, isWaste: true }), 'waste')
+
+console.log('\nwhat a Send takes, and what a void or refund gives back')
+{
+  const perServing = R.lineConsumption(latte, [], 1, S).consumes
+  const oatServing = R.lineConsumption(latte, ['opt-oat'], 1, S).consumes
+  const drafts = [
+    { status: 'draft', quantity: 2, consumesPerServing: perServing },
+    { status: 'draft', quantity: 1, consumesPerServing: oatServing },
+    { status: 'draft', quantity: 4 },                                  // merchandise: no snapshot
+    { status: 'draft', quantity: 3, consumesPerServing: [] },          // a dish with no ingredients
+  ]
+  eq('a Send takes each dish times its quantity, one move per supply', R.sendMoves(drafts), [
+    { supplyId: 'beans', qty: 0.054 }, { supplyId: 'milk', qty: 0.105668 }, { supplyId: 'oat', qty: 0.2 },
+  ])
+  eq('a line with no snapshot takes nothing', R.lineTaken(drafts[2]), [])
+
+  const sent = { status: 'sent', quantity: 2, consumesPerServing: perServing }
+  const changedMind = { returnsToStock: true, isWaste: false }
+  const madeWrong = { returnsToStock: false, isWaste: true }
+  eq('changed their mind before it was made: the ingredients come back',
+    R.reversalPlan([sent], true, changedMind),
+    { outcome: 'return', returns: [{ supplyId: 'beans', qty: 0.036 }, { supplyId: 'milk', qty: 0.105668 }], wasteUsd: 0 })
+  eq('already made: nothing comes back, and the waste is valued',
+    R.reversalPlan([sent], true, madeWrong), { outcome: 'waste', returns: [], wasteUsd: 1.24 })
+  eq('never sent: nothing was taken, so nothing comes back',
+    R.reversalPlan([{ ...sent, status: 'draft' }], false, changedMind), { outcome: 'nothing-taken', returns: [], wasteUsd: 0 })
+  eq('a refund skips lines already voided',
+    R.reversalPlan([sent, { ...sent, status: 'void' }], true, changedMind).returns,
+    [{ supplyId: 'beans', qty: 0.036 }, { supplyId: 'milk', qty: 0.105668 }])
+  eq('THE TRAP: waste that cannot be costed is unknown, not smaller',
+    R.reversalPlan([sent, { ...sent, consumesUnknown: ['syrup'] }], true, madeWrong).wasteUsd, null)
+  eq('nothing carrying ingredients: no outcome at all',
+    R.reversalPlan([{ status: 'sent', quantity: 1 }], true, madeWrong), { outcome: null, returns: [], wasteUsd: 0 })
+}
 
 console.log('\ncounted against expected')
 eq('half a gallon short', R.countVariance(2.5, 2, 4.2), { varianceQty: -0.5, varianceUsd: -2.1 })

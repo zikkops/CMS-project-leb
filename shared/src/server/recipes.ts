@@ -185,6 +185,9 @@ export async function saveRecipe(
     menuItemId,
     lines: recipe.lines,
     adjustments: recipe.adjustments ?? {},
+    // Every supply this recipe can touch, so "is this supply used anywhere?"
+    // is one array-contains query — see deleteSupply() in inventory.ts.
+    supplyIds: [...new Set(referenced.filter(Boolean))].sort(),
     updatedAt: FieldValue.serverTimestamp(),
     updatedBy: caller.uid,
     updatedByEmail: caller.email ?? '',

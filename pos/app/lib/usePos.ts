@@ -545,8 +545,12 @@ export async function setStaffMeal(checkId: string, on: boolean): Promise<void> 
   await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'staffMeal', on }))
 }
 
-export async function refundCheck(checkId: string, reason: string): Promise<void> {
-  await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'refund', reason }))
+/**
+ * A refund follows its cause, like a void (owner's decision, 14 Sep 2026): the
+ * reason decides what goes back on the shelf. `note` is required for Other.
+ */
+export async function refundCheck(checkId: string, reasonKey: string, note: string): Promise<void> {
+  await unwrap(await authedFetch('/api/pos/checks', 'PATCH', { checkId, action: 'refund', reasonKey, note }))
 }
 
 export interface PayResult {

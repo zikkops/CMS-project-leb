@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { BRAND } from '@big-cms/shared/brand'
-import { checkTotals, type Check } from '@big-cms/shared/checks'
+import { checkTotals, VOID_REASONS, type Check } from '@big-cms/shared/checks'
 import { ymdInZone } from '@big-cms/shared/dates'
 import { useClosedChecks, refundCheck } from '../../lib/usePos'
 
@@ -234,6 +234,99 @@ function ClosedRow({ check, isMobile, onRefund }: {
   )
 }
 
+/**
+ * Why a check is being refunded — a choice, not free text.
+ *
+ * The same reasons a void uses, because the question is the same one: does the
+ * thing still exist? Changed their mind before it was made puts merchandise and
+ * ingredients back; made, spilled or broken does not, and the ingredients count
+ * as waste (owner's decision, 14 Sep 2026). It used to be a window.prompt, and
+ * every refund put all the merchandise back whatever had happened to it.
+ *
+ * Module scope: see CONTRIBUTING.md gotcha #2.
+ */
+function RefundPanel({ check, busy, error, onConfirm, onCancel }: {
+  check: Check
+  busy: boolean
+  error: string
+  onConfirm: (reasonKey: string, note: string) => void
+  onCancel: () => void
+}) {
+  const [reasonKey, setReasonKey] = useState('')
+  const [note, setNote] = useState('')
+  const reason = VOID_REASONS.find(r => r.key === reasonKey)
+  const needsNote = reason?.key === 'other' && !note.trim()
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget && !busy) onCancel() }} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 100,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+    }}>
+      <div style={{
+        background: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px',
+        width: '100%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto', padding: '1.4rem',
+      }}>
+        <p style={{
+          fontFamily: 'var(--font-cinzel)', fontSize: '1.15rem', color: 'var(--offwhite)', marginBottom: '0.25rem',
+        }}>Refund {check.receiptNumber ?? `table ${check.tableNumber}`}</p>
+        <p style={{
+          fontSize: '0.64rem', letterSpacing: '0.14em', textTransform: 'uppercase',
+          color: 'rgba(var(--offwhite-rgb),0.35)', margin: '1rem 0 0.5rem',
+        }}>Why?</p>
+
+        <div style={{ display: 'grid', gap: '0.4rem' }}>
+          {VOID_REASONS.map(r => {
+            const chosen = r.key === reasonKey
+            return (
+              <button key={r.key} type="button" onClick={() => setReasonKey(r.key)} disabled={busy} style={{
+                textAlign: 'left', padding: '0.65rem 0.8rem', borderRadius: '4px', cursor: 'pointer',
+                background: chosen ? 'rgba(var(--teal-rgb),0.12)' : 'transparent',
+                border: `1px solid ${chosen ? 'rgba(var(--teal-rgb),0.5)' : 'rgba(255,255,255,0.1)'}`,
+                color: chosen ? 'var(--teal)' : 'var(--offwhite)',
+                fontFamily: 'var(--font-inter)', fontSize: '0.84rem',
+              }}>{r.label}</button>
+            )
+          })}
+        </div>
+
+        {reason && (
+          <p style={{ fontSize: '0.74rem', color: 'rgba(var(--offwhite-rgb),0.5)', lineHeight: 1.6, marginTop: '0.7rem' }}>
+            {reason.returnsToStock && !reason.isWaste
+              ? 'Merchandise goes back on the shelf, and the ingredients for anything not yet made go back into stock.'
+              : 'Nothing goes back on the shelf. Any ingredients are recorded as waste.'}
+          </p>
+        )}
+
+        <input value={note} onChange={e => setNote(e.target.value)} disabled={busy}
+          placeholder={reason?.key === 'other' ? 'Say what happened (required)' : 'A note (optional)'}
+          style={{
+            width: '100%', boxSizing: 'border-box', marginTop: '0.8rem', padding: '0.6rem 0.7rem',
+            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '4px',
+            color: 'var(--offwhite)', fontFamily: 'var(--font-inter)', fontSize: '0.84rem', outline: 'none',
+          }} />
+
+        {error && (
+          <p style={{ color: 'var(--red)', fontSize: '0.78rem', marginTop: '0.7rem', lineHeight: 1.5 }}>{error}</p>
+        )}
+
+        <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.1rem' }}>
+          <button type="button" onClick={() => onConfirm(reasonKey, note)} disabled={busy || !reason || needsNote} style={{
+            flex: 1, padding: '0.75rem', borderRadius: '4px', border: 'none', fontWeight: 700,
+            background: 'var(--red)', color: '#fff', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
+            cursor: busy || !reason || needsNote ? 'not-allowed' : 'pointer',
+            opacity: busy || !reason || needsNote ? 0.5 : 1,
+          }}>{busy ? 'Refunding…' : 'Refund'}</button>
+          <button type="button" onClick={onCancel} disabled={busy} style={{
+            padding: '0.75rem 1rem', borderRadius: '4px', background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(var(--offwhite-rgb),0.6)',
+            fontFamily: 'var(--font-inter)', fontSize: '0.85rem', cursor: 'pointer',
+          }}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ClosedChecksPage() {
   const { checking, blocked } = useRequireRole(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
   const isMobile = useIsMobile()
@@ -241,14 +334,29 @@ export default function ClosedChecksPage() {
   const [branch] = useState(BRAND.branches[0] ?? '')
   const { checks, error } = useClosedChecks(branch)
   const [failed, setFailed] = useState('')
+  const [refunding, setRefunding] = useState<Check | null>(null)
+  const [refundBusy, setRefundBusy] = useState(false)
+  const [refundError, setRefundError] = useState('')
 
-  async function handleRefund(check: Check) {
-    const reason = window.prompt(
-      `Refund ${check.receiptNumber ?? `table ${check.tableNumber}`}? Why?`)
-    if (!reason?.trim()) return
+  function handleRefund(check: Check) {
     setFailed('')
-    try { await refundCheck(check.id, reason.trim()) }
-    catch (err) { setFailed(err instanceof Error ? err.message : 'Could not refund that check.') }
+    setRefundError('')
+    setRefunding(check)
+  }
+
+  async function confirmRefund(reasonKey: string, note: string) {
+    if (!refunding) return
+    setRefundBusy(true)
+    setRefundError('')
+    try {
+      await refundCheck(refunding.id, reasonKey, note.trim())
+      setRefunding(null)
+    } catch (err) {
+      // Shown inside the panel, where the choice that caused it still is.
+      setRefundError(err instanceof Error ? err.message : 'Could not refund that check.')
+    } finally {
+      setRefundBusy(false)
+    }
   }
 
   // Grouped by the day they closed, so a service reads as a service.
@@ -288,8 +396,8 @@ export default function ClosedChecksPage() {
           Receipts for what was ordered and sent, newest first. Tap one to see
           its lines, who closed it and when, and to refund it.
           {' '}Not a sales report — VAT, service and payment are not part of
-          this version, so a refund here records the reversal and returns
-          merchandise to stock rather than moving money.
+          this version, so a refund here records the reversal and returns to
+          stock only what its reason says still exists, rather than moving money.
         </p>
 
         {failed && (
@@ -337,6 +445,11 @@ export default function ClosedChecksPage() {
           )
         })}
       </div>
+
+      {refunding && (
+        <RefundPanel check={refunding} busy={refundBusy} error={refundError}
+          onConfirm={confirmRefund} onCancel={() => setRefunding(null)} />
+      )}
     </main>
   )
 }

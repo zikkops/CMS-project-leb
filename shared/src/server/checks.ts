@@ -17,7 +17,7 @@ import { FieldValue, Timestamp, type Transaction } from 'firebase-admin/firestor
 import { randomUUID } from 'node:crypto'
 import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
-import { BRANCHES } from '../branches'
+import { BRANCHES, STOCKED_BRANCHES } from '../branches'
 import {
   CHECK_LIMITS, stationForSection, voidReason, BATCH_KEY_PATTERN, batchAlreadyApplied,
   checkTotals, closeBlockedReason, discountReason,
@@ -40,6 +40,11 @@ import { effectivePrice } from '../productPricing'
 import { toTicketLines } from '../tickets'
 import { readSettings } from './settings'
 import { issueInvoiceNumber } from './invoiceNumber'
+import { toRecipeSupply } from './recipes'
+import {
+  lineConsumption, sendMoves, reversalPlan,
+  type Recipe, type RecipeSupply,
+} from '../recipes'
 
 const CHECKS = 'checks'
 const TICKETS = 'kitchenTickets'
@@ -165,6 +170,31 @@ async function buildLines(caller: Caller, requests: LineRequest[]): Promise<Chec
     groupSnaps.filter(s => s.exists)
       .map(s => [s.id, { id: s.id, ...(s.data() as Omit<ModifierGroup, 'id'>) }]))
 
+  // Recipes (Sep 2026). With the `recipes` switch on, each dish's recipe is
+  // resolved here — before the transaction, like the price — and what ONE
+  // serving takes is snapshotted onto the line. Send and void apply that
+  // snapshot, so a recipe edited between adding and sending changes nothing
+  // already on a check. Off, there are no extra reads and no new fields:
+  // Send behaves exactly as it did before recipes existed.
+  const recipesOn = menuIds.length > 0 && await serverFeatureOn('recipes')
+  const recipeSnaps = recipesOn ? await db.getAll(...menuIds.map(id => db.doc(`recipes/${id}`))) : []
+  const recipeById = new Map<string, Recipe>(recipeSnaps.filter(s => s.exists).map((s): [string, Recipe] => {
+    const d = s.data() ?? {}
+    return [s.id, {
+      lines: Array.isArray(d.lines) ? d.lines : [],
+      adjustments: d.adjustments && typeof d.adjustments === 'object' ? d.adjustments : {},
+    }]
+  }))
+  const recipeSupplyIds = [...new Set([...recipeById.values()].flatMap(r => [
+    ...r.lines.map(l => l.supplyId),
+    ...Object.values(r.adjustments ?? {}).flat().flatMap(a => (a.kind === 'add' ? [a.supplyId] : [a.toSupplyId])),
+  ]).filter(Boolean))]
+  const recipeSupplySnaps = recipeSupplyIds.length
+    ? await db.getAll(...recipeSupplyIds.map(id => db.doc(`supplies/${id}`)))
+    : []
+  const recipeSupplies: Record<string, RecipeSupply> = Object.fromEntries(
+    recipeSupplySnaps.filter(s => s.exists).map(s => [s.id, toRecipeSupply(s.id, s.data() ?? {})]))
+
   return requests.map((req, i) => {
     const where = `Item ${i + 1}`
 
@@ -218,11 +248,20 @@ async function buildLines(caller: Caller, requests: LineRequest[]): Promise<Chec
       throw new HttpError(400, `${data.name ?? where}: a chosen option is not offered on that item.`)
     }
 
+    // Set only when there is something to record: Firestore refuses
+    // undefined, and a line without these fields consumes nothing.
+    const recipe = recipeById.get(req.refId)
+    const consumption = recipe
+      ? lineConsumption(recipe, selections.map(s => s.optionId), 1, recipeSupplies)
+      : null
+
     return line(caller, req, {
       name: String(data.name ?? ''),
       unitPrice: Number(data.price ?? 0),
       station: stationForSection(sectionByCategory.get(String(data.categoryId ?? ''))),
       modifiers: selections,
+      ...(consumption && consumption.consumes.length > 0 ? { consumesPerServing: consumption.consumes } : {}),
+      ...(consumption && consumption.unknown.length > 0 ? { consumesUnknown: consumption.unknown } : {}),
     })
   })
 }
@@ -230,7 +269,8 @@ async function buildLines(caller: Caller, requests: LineRequest[]): Promise<Chec
 function line(
   caller: Caller,
   req: LineRequest,
-  looked: Pick<CheckLine, 'name' | 'unitPrice' | 'station' | 'modifiers'>,
+  looked: Pick<CheckLine, 'name' | 'unitPrice' | 'station' | 'modifiers'>
+    & Partial<Pick<CheckLine, 'consumesPerServing' | 'consumesUnknown'>>,
 ): CheckLine {
   return {
     id: randomUUID(),
@@ -466,6 +506,14 @@ export async function addLines(
       ...(batchKey ? { batchKey } : {}),
       ...(madeOfflineAt ? { status: 'sent' as const, sentAt: madeOfflineAt, madeOffline: true } : {}),
     }))
+    // Ingredients for orders made during the outage, read before any write
+    // as a transaction requires. See sendCheck() for why a missing supply is
+    // skipped rather than allowed to fail the batch.
+    const offlineMoves = madeOfflineAt && (STOCKED_BRANCHES as readonly string[]).includes(check.branch) ? sendMoves(stamped) : []
+    const offlineSupplies = offlineMoves.length
+      ? await tx.getAll(...offlineMoves.map(m => adminDb().doc(`supplies/${m.supplyId}`)))
+      : []
+
     if (madeOfflineAt) {
       // Off the shelf now, as a Send would have taken it — see sendCheck().
       for (const l of stamped) {
@@ -474,6 +522,10 @@ export async function addLines(
           [`stock.${check.branch}`]: FieldValue.increment(-l.quantity),
         })
       }
+      offlineMoves.forEach((m, i) => {
+        if (!offlineSupplies[i]?.exists) return
+        tx.update(offlineSupplies[i].ref, { [`quantity.${check.branch}`]: FieldValue.increment(-m.qty) })
+      })
     }
     tx.update(adminDb().doc(`${CHECKS}/${checkId}`), {
       lines: [...check.lines, ...stamped],
@@ -514,6 +566,18 @@ export async function sendCheck(
       const station = String(t.station ?? '')
       roundsSoFar.set(station, Math.max(roundsSoFar.get(station) ?? 0, Number(t.round ?? 0)))
     })
+
+    // ── Ingredients (recipes, Sep 2026): read before the first write ───
+    // One move per supply for the whole Send, from each line's per-serving
+    // snapshot times its quantity. A supply deleted since the line was added
+    // is skipped, never allowed to fail the Send: a waiter's order must not
+    // stop because an ingredient's record is gone — and deleting a supply a
+    // recipe uses is refused anyway. A branch holding no consumable stock
+    // moves none.
+    const ingredientMoves = (STOCKED_BRANCHES as readonly string[]).includes(check.branch) ? sendMoves(drafts) : []
+    const ingredientSnaps = ingredientMoves.length
+      ? await tx.getAll(...ingredientMoves.map(m => db.doc(`supplies/${m.supplyId}`)))
+      : []
 
     const byStation = new Map<string, CheckLine[]>()
     for (const l of drafts) {
@@ -566,6 +630,13 @@ export async function sendCheck(
         [`stock.${check.branch}`]: FieldValue.increment(-l.quantity),
       })
     }
+    // Negative ingredient stock is allowed, as merchandise is (owner's
+    // decision): the order has been taken, and a stale count must not stop
+    // the kitchen being told about it.
+    ingredientMoves.forEach((m, i) => {
+      if (!ingredientSnaps[i]?.exists) return
+      tx.update(ingredientSnaps[i].ref, { [`quantity.${check.branch}`]: FieldValue.increment(-m.qty) })
+    })
 
     // Every draft becomes sent, merchandise included: it has left the shelf
     // even though no pass ever saw it, and leaving it draft would block the
@@ -594,7 +665,7 @@ export async function voidLine(
   lineId: string,
   reasonKey: string,
   note: string,
-): Promise<{ wasSent: boolean; restored: number; label: string }> {
+): Promise<{ wasSent: boolean; restored: number; label: string; ingredients: 'nothing-taken' | 'return' | 'waste' | 'kept' | null }> {
   const db = adminDb()
 
   const reason = voidReason(reasonKey)
@@ -621,6 +692,15 @@ export async function voidLine(
       ? await tx.get(db.collection(TICKETS).where('checkId', '==', checkId))
       : null
 
+    // What the void does to ingredients, decided by the pure plan: never
+    // sent took nothing, not made goes back, made and lost is waste, valued
+    // from the line's own snapshot. Supplies are read now, before any write.
+    const plan = reversalPlan([target], wasSent, reason)
+    const returnMoves = (STOCKED_BRANCHES as readonly string[]).includes(check.branch) ? plan.returns : []
+    const returnSnaps = returnMoves.length
+      ? await tx.getAll(...returnMoves.map(m => db.doc(`supplies/${m.supplyId}`)))
+      : []
+
     // Back on the shelf only when the item still exists. "Changed their mind"
     // hands a board game back; "damaged" does not, and crediting stock for it
     // would invent a copy that is not there.
@@ -634,6 +714,10 @@ export async function voidLine(
       })
       restored = target.quantity
     }
+    returnMoves.forEach((m, i) => {
+      if (!returnSnaps[i]?.exists) return
+      tx.update(returnSnaps[i].ref, { [`quantity.${check.branch}`]: FieldValue.increment(m.qty) })
+    })
 
     tx.update(db.doc(`${CHECKS}/${checkId}`), {
       lines: check.lines.map(l =>
@@ -646,6 +730,7 @@ export async function voidLine(
               // Copied, not looked up later: changing the reason list must not
               // re-classify a void that already happened.
               voidWasWaste: reason.isWaste,
+              ...(plan.outcome === 'waste' ? { voidWasteUsd: plan.wasteUsd } : {}),
             }
           : l),
       updatedAt: FieldValue.serverTimestamp(),
@@ -664,7 +749,7 @@ export async function voidLine(
       }
     }
 
-    return { wasSent, restored, label }
+    return { wasSent, restored, label, ingredients: plan.outcome }
   })
 }
 
@@ -1150,11 +1235,28 @@ export async function closeCheck(
 export async function refundCheck(
   caller: Caller,
   checkId: string,
-  reason: string,
-): Promise<{ tableNumber: number; receiptNumber: string; restored: number }> {
+  reasonKey: string,
+  note: string,
+): Promise<{
+  tableNumber: number
+  receiptNumber: string
+  restored: number
+  label: string
+  ingredients: 'nothing-taken' | 'return' | 'waste' | 'kept' | null
+}> {
   const db = adminDb()
-  const trimmed = reason.trim()
-  if (!trimmed) throw new HttpError(400, 'A refund needs a reason.')
+  // A refund follows its cause, exactly as a void does (owner's decision,
+  // 14 Sep 2026): changed their mind before anything was made gives the
+  // goods back; already made is waste. It used to take free text and put
+  // every piece of merchandise back whatever had happened to it — a
+  // broken mug restocked as if it were still on the shelf.
+  const reason = voidReason(reasonKey)
+  if (!reason) throw new HttpError(400, 'Choose a reason for the refund.')
+  const trimmedNote = note.trim().slice(0, CHECK_LIMITS.noteLength)
+  if (reason.key === 'other' && !trimmedNote) {
+    throw new HttpError(400, 'Say what happened when the reason is Other.')
+  }
+  const label = trimmedNote ? `${reason.label} — ${trimmedNote}` : reason.label
 
   return db.runTransaction(async tx => {
     const check = await readCheck(tx, checkId)
@@ -1175,6 +1277,14 @@ export async function refundCheck(
     const memberRef = takeBack > 0 && check.loyalty ? db.doc(`users/${check.loyalty.uid}`) : null
     const memberExists = memberRef ? (await tx.get(memberRef)).exists : false
 
+    // Ingredients: every line still on a closed check was sent, so the
+    // reason alone decides. Read before any write.
+    const plan = reversalPlan(check.lines, true, reason)
+    const returnMoves = (STOCKED_BRANCHES as readonly string[]).includes(check.branch) ? plan.returns : []
+    const returnSnaps = returnMoves.length
+      ? await tx.getAll(...returnMoves.map(m => db.doc(`supplies/${m.supplyId}`)))
+      : []
+
     if (check.status === 'refunded') {
       // Checked INSIDE the transaction: two taps on Refund would otherwise
       // both pass and put the merchandise back twice.
@@ -1187,23 +1297,30 @@ export async function refundCheck(
       throw new HttpError(409, `Open the drawer at ${check.branch} first — a cash refund comes out of it.`)
     }
 
-    // Merchandise goes back on the shelf. Food does not — it was made and it
-    // is gone, and returning it to a count would inflate a number nobody can
-    // reconcile against a bin.
+    // Merchandise goes back on the shelf only when the reason says it still
+    // exists, and ingredients for food come back on the same terms. Anything
+    // already made, spilled or broken stays gone; its ingredients are waste.
     let restored = 0
     for (const l of check.lines) {
-      if (l.source !== 'product' || l.status === 'void') continue
+      if (l.source !== 'product' || l.status === 'void' || !reason.returnsToStock) continue
       tx.update(db.doc(`products/${l.refId}`), {
         [`stock.${check.branch}`]: FieldValue.increment(l.quantity),
       })
       restored += l.quantity
     }
+    returnMoves.forEach((m, i) => {
+      if (!returnSnaps[i]?.exists) return
+      tx.update(returnSnaps[i].ref, { [`quantity.${check.branch}`]: FieldValue.increment(m.qty) })
+    })
 
     tx.update(db.doc(`${CHECKS}/${checkId}`), {
       status: 'refunded',
       refundedAt: FieldValue.serverTimestamp(),
       refundedBy: caller.email ?? caller.uid,
-      refundReason: trimmed.slice(0, CHECK_LIMITS.noteLength),
+      refundReason: label,
+      refundReasonKey: reason.key,
+      refundWasWaste: reason.isWaste,
+      ...(plan.outcome === 'waste' ? { refundWasteUsd: plan.wasteUsd } : {}),
       ...(refundShift ? { refundShiftId: refundShift } : {}),
     })
 
@@ -1232,6 +1349,8 @@ export async function refundCheck(
       tableNumber: check.tableNumber,
       receiptNumber: check.receiptNumber ?? checkId,
       restored,
+      label,
+      ingredients: plan.outcome,
     }
   })
 }

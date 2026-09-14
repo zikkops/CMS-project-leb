@@ -873,11 +873,20 @@ export default function CheckPage() {
 
             <div style={{ display: 'grid', gap: '0.4rem' }}>
               {VOID_REASONS.map(r => {
-                // Merchandise is the only thing where this changes stock, so
-                // it is the only place the consequence is worth spelling out.
-                // Saying "goes back on the shelf" under a cappuccino would be
-                // noise at best and a lie at worst.
-                const showsStock = lineMenu.source === 'product' && lineMenu.status === 'sent'
+                // The consequence is spelled out only where stock actually
+                // moves: merchandise, and — with the `recipes` switch on — a
+                // dish whose ingredients were snapshotted when it was added.
+                // "Goes back into stock" under a cappuccino with no recipe
+                // would be noise at best and a lie at worst.
+                const sent = lineMenu.status === 'sent'
+                const showsStock = lineMenu.source === 'product' && sent
+                const showsIngredients = lineMenu.source === 'menu' && sent
+                  && ((lineMenu.consumesPerServing?.length ?? 0) > 0 || (lineMenu.consumesUnknown?.length ?? 0) > 0)
+                // Waste first, the same precedence as ingredientOutcome() in
+                // recipes.ts, so the hint cannot promise what the server won't do.
+                const ingredientHint = r.isWaste
+                  ? 'ingredients recorded as waste'
+                  : r.returnsToStock ? 'ingredients go back into stock' : 'ingredients used'
                 return (
                   <button
                     key={r.key}
@@ -902,6 +911,14 @@ export default function CheckPage() {
                         color: r.returnsToStock ? 'var(--teal)' : 'rgba(var(--red-rgb),0.7)',
                       }}>
                         {r.returnsToStock ? 'goes back on the shelf' : 'not returned to stock'}
+                      </span>
+                    )}
+                    {showsIngredients && (
+                      <span style={{
+                        fontSize: '0.68rem',
+                        color: ingredientHint === 'ingredients go back into stock' ? 'var(--teal)' : 'rgba(var(--red-rgb),0.7)',
+                      }}>
+                        {ingredientHint}
                       </span>
                     )}
                   </button>
