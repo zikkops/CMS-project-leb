@@ -250,5 +250,80 @@ console.log('\nwhat the till says')
     A.allergenVerdict({ verified: true, contains: [], others: ['sesame'] }, 'sesame'), 'contains')
 }
 
+console.log('\nonly an admin says what an ingredient contains')
+{
+  const bread = { lines: [{ supplyId: 'bread', qty: 1 }] }
+  const asked = proposed => ({ bread: { id: 'bread', name: 'Bread', allergens: ['gluten'], proposed } })
+  const dish = S => A.dishAllergens({ recipe: bread, confirmed: true }, S)
+
+  eq('nothing waiting: verified as before', dish({ bread: { id: 'bread', name: 'Bread', allergens: ['gluten'] } }).verified, true)
+  eq('THE TRAP: a waiting change makes the dish not verified', dish(asked(['gluten', 'sesame'])).verified, false)
+  eq('...what it would add shows already', dish(asked(['gluten', 'sesame'])).contains, ['gluten', 'sesame'])
+  eq('...and it says why', dish(asked(['gluten', 'sesame'])).reasons, ['Bread has an allergen change waiting for an admin.'])
+  eq('THE TRAP: a request to take an allergen out takes nothing out until accepted', dish(asked([])).contains, ['gluten'])
+  eq('...and that dish is not verified either', dish(asked([])).verified, false)
+  eq('a request to mark it not checked keeps what is known', dish(asked(null)).contains, ['gluten'])
+  eq('...and is not verified', dish(asked(null)).verified, false)
+
+  const inForce = { allergens: ['gluten'] }
+  const waiting = { allergens: ['gluten'], proposed: ['gluten', 'sesame'] }
+  eq('an admin sets the list', A.supplyAllergenWrite(inForce, ['gluten', 'sesame'], true), { allergens: ['gluten', 'sesame'], outcome: 'set' })
+  eq('THE TRAP: anyone else asks, and what is in force does not move',
+    A.supplyAllergenWrite(inForce, [], false), { allergens: ['gluten'], proposed: [], outcome: 'proposed' })
+  eq('...including on a new item, which stays not checked', A.supplyAllergenWrite({ allergens: null }, ['milk'], false),
+    { allergens: null, proposed: ['milk'], outcome: 'proposed' })
+  eq('the form re-sent unchanged by a barista leaves a request waiting',
+    A.supplyAllergenWrite(waiting, ['gluten'], false), { allergens: ['gluten'], proposed: ['gluten', 'sesame'], outcome: 'unchanged' })
+  eq('an admin saving the requested list accepts it',
+    A.supplyAllergenWrite(waiting, ['sesame', 'gluten'], true), { allergens: ['sesame', 'gluten'], outcome: 'accepted' })
+  eq('THE TRAP: an admin saving something else does not throw a waiting request away',
+    A.supplyAllergenWrite(waiting, ['gluten'], true), { allergens: ['gluten'], proposed: ['gluten', 'sesame'], outcome: 'unchanged' })
+  eq('"not checked" and "contains none" are different answers', A.sameAllergens(null, []), false)
+  eq('the same keys in any order are the same answer', A.sameAllergens(['milk', 'eggs'], ['eggs', 'milk']), true)
+  eq('accept puts the request in force', A.decideAllergenRequest({ allergens: ['gluten'], proposed: [] }, 'accept'), { allergens: [] })
+  eq('reject keeps what was in force', A.decideAllergenRequest({ allergens: ['gluten'], proposed: [] }, 'reject'), { allergens: ['gluten'] })
+  eq('nothing waiting: nothing to decide', A.decideAllergenRequest(inForce, 'accept'), null)
+  eq('a stored request reads back', A.readProposedAllergens({ keys: ['sesame'], byEmail: 'sam@example.com' }), ['sesame'])
+  eq('no request: nothing waiting', A.readProposedAllergens(undefined), undefined)
+  eq('THE TRAP: a malformed request counts as waiting, never as nothing', A.readProposedAllergens({ keys: 'sesame' }), null)
+}
+
+console.log('\nan option nobody accounted for')
+{
+  const S2 = { milk: { id: 'milk', name: 'Whole milk', allergens: ['milk'] } }
+  const flat = { recipe: { lines: [{ supplyId: 'milk', qty: 200 }], adjustments: {} }, confirmed: true,
+    optionNames: { hazelnut: 'Hazelnut syrup', ice: 'No ice' } }
+  eq('THE TRAP: an option with no recipe change is not verified', A.dishAllergens(flat, S2, ['hazelnut']).verified, false)
+  eq('...and it names the option', A.dishAllergens(flat, S2, ['hazelnut']).reasons,
+    ['Hazelnut syrup has no recipe change, and nobody has said it adds no ingredient.'])
+  eq('...on the chart line too', A.optionAllergenChange(flat, S2, 'hazelnut').verified, false)
+  eq('an option an admin marked as adding nothing verifies', A.dishAllergens({ ...flat, noChangeOptions: ['ice'] }, S2, ['ice']).verified, true)
+  eq('the dish as it comes is unaffected by its options', A.dishAllergens(flat, S2).verified, true)
+}
+
+console.log('\ncorrections to a day before it is signed')
+{
+  eq('stamps and field order are not a change', F.sameEntry({ key: 'a', done: true, by: 'sam', at: '07:00' }, { done: true, key: 'a' }), true)
+  eq('a different answer is a change', F.sameEntry({ key: 'a', done: true }, { key: 'a', done: false }), false)
+
+  const prev = [
+    { unitId: 'f1', tempC: 9, note: 'door left open', by: 'sam', at: '07:00' },
+    { unitId: 'f2', tempC: 3, by: 'sam', at: '07:01' },
+    { unitId: 'f3', tempC: 4, by: 'sam', at: '07:02' },
+  ]
+  const next = [{ unitId: 'f1', tempC: 4 }, { tempC: 3, unitId: 'f2' }, { unitId: 'f4', tempC: 2 }]
+  eq('THE TRAP: 9 °C made 4 °C is kept, with who read the 9 — and a removed reading too',
+    F.changedEntries(prev, next, r => r.unitId).map(r => [r.unitId, r.tempC, r.by]), [['f1', 9, 'sam'], ['f3', 4, 'sam']])
+  eq('nothing changed: nothing kept', F.changedEntries(prev, prev, r => r.unitId), [])
+
+  eq('THE TRAP: an answer to a check since removed from the list is kept',
+    F.withRetiredAnswers(
+      [{ key: 'fridge', done: true }, { key: 'unknown', done: false }],
+      [{ key: 'probe', done: true, note: 'ok', by: 'sam', at: '07:00' }, { key: 'fridge', done: false }],
+      new Set(['fridge']),
+    ),
+    [{ key: 'fridge', done: true }, { key: 'probe', done: true, note: 'ok' }])
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

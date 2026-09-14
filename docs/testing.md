@@ -174,6 +174,21 @@ seeded, so start in settings.
     *with these options* and changes as you tap. To see the trap, give the
     Latte an "add cream" option whose supply carries milk, and choose oat and
     cream together. It must still say **Milk**.
+13. **Only admins set allergens.** Sign in as a barista or manager, open Whole
+    Milk in Supplies, untick Milk and save: you are told it is waiting for an
+    admin. The item shows **Allergen change waiting**, and the chart and the
+    till show every milk dish as **Not verified**, still listing Milk. Sign in as
+    an admin: the Supplies page lists the waiting change. **Reject** it and the
+    dishes are verified again with Milk. Repeat, **Accept**, and check
+    `/admin/logs` shows before and after under Allergens.
+14. **Options.** On a verified dish with an option that has no recipe change,
+    the Recipes page says it is not verified with that option, and so does the
+    till when the option is chosen. Tick **Adds no ingredient** for it, save,
+    and choosing it verifies.
+15. **Corrections before signing.** On today's diary, record a fridge at 9 °C
+    with an action and save, then change it to 4 °C and save. The day shows
+    **Corrected after it was first entered**, with 9 °C and who entered it.
+    With the module switched off, `/api/admin/food-safety` answers 404.
 
 ### Daily counts — `/admin/supplies/daily`, `.../history`
 - Submit a count, then open it in the history: **Expected, Counted, Variance

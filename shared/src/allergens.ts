@@ -16,15 +16,31 @@
 // only the main ingredients, which is exactly how a dish would read allergen-free
 // while its dressing carries mustard. Same rule as "cost unknown", with far more
 // at stake than a margin.
+//
+// ── Who may say what an ingredient contains ────────────────────────────────
+// Only an admin sets an ingredient's allergens or accepts a change (owner's
+// decision, 14 Sep 2026). Anyone else's edit is a REQUEST, and while one waits
+// every dish using that ingredient is not verified — showing what the request
+// would add, and taking nothing away until an admin accepts it.
+//
+// ── Options ────────────────────────────────────────────────────────────────
+// An option with no recipe change is not verified unless an admin has said it
+// adds no ingredient. "Hazelnut syrup" added to the menu after the recipe was
+// confirmed would otherwise read as changing nothing.
 
 import { resolveLines, type Recipe } from './recipes'
 import { ALLERGENS_EU14 } from './foodSafety'
 
+/** Allergen keys, or null for "nobody has checked". [] is "checked, contains none". */
+export type AllergenList = readonly string[] | null
+
 export interface AllergenSupply {
   id: string
   name: string
-  /** Allergen keys. null means nobody has checked this ingredient yet — not "none". */
-  allergens: readonly string[] | null
+  /** The accepted allergen keys. null means nobody has checked this ingredient yet — not "none". */
+  allergens: AllergenList
+  /** A change waiting for an admin. Absent: nothing waiting. null: a request to mark it "not checked". */
+  proposed?: AllergenList
 }
 
 export interface DishAllergenInput {
@@ -33,6 +49,10 @@ export interface DishAllergenInput {
   extraAllergens?: readonly string[]
   /** Somebody confirmed the recipe lists every ingredient. */
   confirmed: boolean
+  /** Options an admin said add no ingredient ("no ice", "extra hot"). */
+  noChangeOptions?: readonly string[]
+  /** Option names, for the reasons a person reads. */
+  optionNames?: Readonly<Record<string, string>>
 }
 
 export interface DishAllergens {
@@ -68,11 +88,24 @@ export function dishAllergens(
   if (!input.recipe) {
     reasons.push('No recipe — its ingredients are not known.')
   } else {
-    const lines = resolveLines(input.recipe, optionIds)
+    const chosen = [...new Set(optionIds)]
+    const noChange = new Set(input.noChangeOptions ?? [])
+    for (const id of chosen) {
+      if ((input.recipe.adjustments?.[id] ?? []).length > 0 || noChange.has(id)) continue
+      reasons.push(`${input.optionNames?.[id] ?? 'An option'} has no recipe change, and nobody has said it adds no ingredient.`)
+    }
+
+    const lines = resolveLines(input.recipe, chosen)
     if (lines.length === 0) reasons.push('The recipe has no ingredients.')
     for (const line of lines) {
       const supply = supplies[line.supplyId]
       if (!supply) { reasons.push('An ingredient is no longer in supplies.'); continue }
+      if (supply.proposed !== undefined) {
+        // What the request would add counts already; what it would take away
+        // does not, until an admin accepts it.
+        reasons.push(`${supply.name} has an allergen change waiting for an admin.`)
+        for (const k of supply.proposed ?? []) found.add(k)
+      }
       if (supply.allergens === null) { reasons.push(`${supply.name} has not been checked for allergens.`); continue }
       for (const k of supply.allergens) found.add(k)
     }
@@ -152,6 +185,75 @@ export function allergenVerdict(
   const answer = staffAnswer(d)
   if (answer.keys.includes(key)) return 'contains'
   return answer.kind === 'unverified' ? 'unknown' : 'free'
+}
+
+// ── Requests for a change ──────────────────────────────────────────────────
+
+/** The same answer: both "not checked", or the same keys in any order. */
+export function sameAllergens(a: AllergenList | undefined, b: AllergenList | undefined): boolean {
+  if (a === undefined || b === undefined || a === null || b === null) return a === b
+  const x = ordered(a)
+  const y = ordered(b)
+  return x.length === y.length && x.every((k, i) => k === y[i])
+}
+
+export interface AllergenWrite {
+  /** What the ingredient's accepted allergens become. */
+  allergens: AllergenList
+  /** What is left waiting for an admin; undefined when nothing is. */
+  proposed: AllergenList | undefined
+  outcome: 'unchanged' | 'set' | 'proposed' | 'accepted'
+}
+
+/**
+ * What saving an ingredient does to its allergens.
+ *
+ * An admin's save is in force. If it matches a waiting request, that request
+ * is accepted; if it does not, the request is left waiting — an admin fixing
+ * a unit must not throw away a barista's report that the bread now has sesame
+ * in it by pressing Save on a form that never showed it.
+ *
+ * Anyone else's save never moves the accepted list. A different list becomes
+ * the request. The accepted list sent back unchanged (the form re-sent while
+ * editing a unit) leaves any waiting request as it was.
+ */
+export function supplyAllergenWrite(
+  stored: { allergens: AllergenList; proposed?: AllergenList },
+  sent: AllergenList,
+  admin: boolean,
+): AllergenWrite {
+  if (admin) {
+    const accepted = stored.proposed !== undefined && sameAllergens(sent, stored.proposed)
+    return {
+      allergens: sent,
+      proposed: accepted ? undefined : stored.proposed,
+      outcome: accepted ? 'accepted' : sameAllergens(sent, stored.allergens) ? 'unchanged' : 'set',
+    }
+  }
+  if (sameAllergens(sent, stored.allergens) || sameAllergens(sent, stored.proposed)) {
+    return { allergens: stored.allergens, proposed: stored.proposed, outcome: 'unchanged' }
+  }
+  return { allergens: stored.allergens, proposed: sent, outcome: 'proposed' }
+}
+
+/** An admin's decision on a waiting request; null when nothing is waiting. */
+export function decideAllergenRequest(
+  stored: { allergens: AllergenList; proposed?: AllergenList },
+  decision: 'accept' | 'reject',
+): { allergens: AllergenList; proposed: undefined } | null {
+  if (stored.proposed === undefined) return null
+  return { allergens: decision === 'accept' ? stored.proposed : stored.allergens, proposed: undefined }
+}
+
+/**
+ * A stored request, from document data. Absent: nothing waiting. Present but
+ * malformed counts as a request to mark it "not checked" — waiting, never
+ * nothing, because nothing is the answer that verifies a dish.
+ */
+export function readProposedAllergens(raw: unknown): AllergenList | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const keys = (raw as { keys?: unknown }).keys
+  return Array.isArray(keys) ? readAllergenKeys(keys) : null
 }
 
 /** Allergen keys from untrusted input: known keys only, once each, in list order. */

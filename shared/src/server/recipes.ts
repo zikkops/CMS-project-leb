@@ -44,6 +44,8 @@ export interface StoredRecipe extends Recipe {
   /** Somebody confirmed the recipe lists every ingredient (shared/src/allergens.ts). */
   allergensConfirmed?: boolean
   allergensConfirmedByEmail?: string | null
+  /** Options an admin said add no ingredient. Any other option with no recipe change is not verified. */
+  noChangeOptions?: string[]
 }
 
 /** A document id from a request: non-empty, bounded, and unable to name another path. */
@@ -107,8 +109,15 @@ export function parseRecipeInput(body: Record<string, unknown>): Recipe {
  * without it clears any confirmation already stored — so a changed recipe is
  * never left carrying somebody else's word that the old one was complete.
  */
-export function parseAllergenFields(body: Record<string, unknown>): { extraAllergens: string[]; confirmed: boolean } {
-  return { extraAllergens: readAllergenKeys(body.extraAllergens), confirmed: body.allergensConfirmed === true }
+export interface AllergenFields { extraAllergens: string[]; confirmed: boolean; noChangeOptions: string[] }
+
+export function parseAllergenFields(body: Record<string, unknown>): AllergenFields {
+  const ids = Array.isArray(body.noChangeOptions) ? (body.noChangeOptions as unknown[]) : []
+  return {
+    extraAllergens: readAllergenKeys(body.extraAllergens),
+    confirmed: body.allergensConfirmed === true,
+    noChangeOptions: [...new Set(ids.filter((x): x is string => typeof x === 'string' && x.length > 0 && x.length <= 128))],
+  }
 }
 
 /** A supply document as the recipe arithmetic reads it. Missing fields stay missing. */
@@ -169,6 +178,7 @@ export async function listRecipes(): Promise<StoredRecipe[]> {
         : {},
       extraAllergens: readAllergenKeys(data.extraAllergens),
       allergensConfirmed: Boolean(data.allergensConfirmed),
+      noChangeOptions: Array.isArray(data.noChangeOptions) ? (data.noChangeOptions as unknown[]).filter((x): x is string => typeof x === 'string') : [],
       allergensConfirmedByEmail: data.allergensConfirmed && typeof data.allergensConfirmed === 'object'
         ? String((data.allergensConfirmed as { byEmail?: unknown }).byEmail ?? '')
         : null,
@@ -180,7 +190,7 @@ export async function saveRecipe(
   caller: Caller,
   rawMenuItemId: unknown,
   recipe: Recipe,
-  allergens: { extraAllergens: string[]; confirmed: boolean } = { extraAllergens: [], confirmed: false },
+  allergens: AllergenFields = { extraAllergens: [], confirmed: false, noChangeOptions: [] },
 ): Promise<{ name: string; before: StoredRecipe | null }> {
   const menuItemId = docId(rawMenuItemId, 'menu item')
   const { name, optionIds } = await readMenuItemOptions(menuItemId)
@@ -188,6 +198,11 @@ export async function saveRecipe(
   if (Object.keys(recipe.adjustments ?? {}).some(id => !optionIds.has(id))) {
     throw new HttpError(400,
       `${name} no longer offers one of the options this recipe adjusts. Reload the recipe and try again.`)
+  }
+
+  if (allergens.noChangeOptions.some(id => !optionIds.has(id))) {
+    throw new HttpError(400,
+      `${name} no longer offers one of the options marked as adding no ingredient. Reload the recipe and try again.`)
   }
 
   const referenced = [
@@ -214,6 +229,9 @@ export async function saveRecipe(
     updatedBy: caller.uid,
     updatedByEmail: caller.email ?? '',
     extraAllergens: allergens.extraAllergens,
+    // An option that adjusts the recipe already says what it adds; the mark is
+    // only for the ones that do not.
+    noChangeOptions: allergens.noChangeOptions.filter(id => !(recipe.adjustments?.[id]?.length)).sort(),
     allergensConfirmed: allergens.confirmed
       ? { by: caller.uid, byEmail: caller.email ?? '', at: FieldValue.serverTimestamp() }
       : null,

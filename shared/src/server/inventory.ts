@@ -13,7 +13,10 @@ import { FieldValue, FieldPath } from 'firebase-admin/firestore'
 import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
-import { readAllergenKeys } from '../allergens'
+import {
+  readAllergenKeys, readProposedAllergens, supplyAllergenWrite, decideAllergenRequest, sameAllergens,
+  type AllergenList, type AllergenWrite,
+} from '../allergens'
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -111,9 +114,38 @@ export function parseSupplyInput(body: Record<string, unknown>): SupplyInput {
   }
 }
 
-export async function createSupply(input: SupplyInput, initialQty: number): Promise<{ id: string }> {
+/** What a save did to an item's allergens, for the activity log. */
+export interface AllergenChange {
+  outcome: AllergenWrite['outcome']
+  before: AllergenList
+  after: AllergenList
+  proposed: AllergenList | undefined
+}
+
+/** A request for an allergen change, as stored. Only this file writes one. */
+function allergenRequest(caller: Caller, keys: AllergenList) {
+  return { keys, by: caller.uid, byEmail: caller.email ?? '', at: FieldValue.serverTimestamp() }
+}
+
+function storedAllergens(data: Record<string, unknown>): { allergens: AllergenList; proposed: AllergenList | undefined } {
+  return {
+    allergens: Array.isArray(data.allergens) ? readAllergenKeys(data.allergens) : null,
+    proposed: readProposedAllergens(data.allergensProposed),
+  }
+}
+
+/**
+ * Only an admin sets allergens (owner's decision, 14 Sep 2026). Anyone else
+ * with the supplies section can still create the item: its allergens stay "not
+ * checked", and what they entered waits as a request.
+ */
+export async function createSupply(input: SupplyInput, initialQty: number, caller: Caller): Promise<{ id: string; allergens: AllergenChange }> {
+  const { allergens: sent, ...rest } = input
+  const write = supplyAllergenWrite({ allergens: null }, sent, caller.role === 'admin')
   const ref = await adminDb().collection('supplies').add({
-    ...input,
+    ...rest,
+    allergens: write.allergens,
+    ...(write.outcome === 'proposed' ? { allergensProposed: allergenRequest(caller, write.proposed ?? null) } : {}),
     // Every configured branch, and only those. The client's seedFromTemplates
     // hardcoded { Beirut, Zouk, Broummana } — the original café's branches —
     // so in any other deployment it created stock keys for branches that do
@@ -121,16 +153,70 @@ export async function createSupply(input: SupplyInput, initialQty: number): Prom
     quantity: Object.fromEntries(BRANCHES.map(b => [b, count(initialQty, 'Quantity')])),
     updatedAt: FieldValue.serverTimestamp(),
   })
-  return { id: ref.id }
+  return { id: ref.id, allergens: { outcome: write.outcome, before: null, after: write.allergens, proposed: write.proposed } }
 }
 
-export async function updateSupply(id: string, input: SupplyInput): Promise<void> {
-  const ref = adminDb().doc(`supplies/${id}`)
-  if (!(await ref.get()).exists) throw new HttpError(404, 'That item no longer exists.')
-  // `quantity` is deliberately absent: it is only ever set by a submitted
-  // daily count or a received delivery. Editing an item must not become a
-  // back door for adjusting stock without a count behind it.
-  await ref.update({ ...input, updatedAt: FieldValue.serverTimestamp() })
+export async function updateSupply(id: string, input: SupplyInput, caller: Caller): Promise<{ allergens: AllergenChange }> {
+  const db = adminDb()
+  const ref = db.doc(`supplies/${id}`)
+  // A transaction, because the allergen decision reads what is stored: two
+  // saves at once must not both be judged against the same stale request.
+  return db.runTransaction(async tx => {
+    const snap = await tx.get(ref)
+    if (!snap.exists) throw new HttpError(404, 'That item no longer exists.')
+    const stored = storedAllergens(snap.data() ?? {})
+    const { allergens: sent, ...rest } = input
+    const write = supplyAllergenWrite(stored, sent, caller.role === 'admin')
+    // `quantity` is deliberately absent: it is only ever set by a submitted
+    // daily count or a received delivery. Editing an item must not become a
+    // back door for adjusting stock without a count behind it.
+    tx.update(ref, {
+      ...rest,
+      allergens: write.allergens,
+      // Written only when this save makes the request, so a waiting request
+      // keeps the name of whoever actually asked.
+      ...(write.outcome === 'proposed' ? { allergensProposed: allergenRequest(caller, write.proposed ?? null) } : {}),
+      ...(write.outcome === 'accepted' ? { allergensProposed: FieldValue.delete() } : {}),
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+    return { allergens: { outcome: write.outcome, before: stored.allergens, after: write.allergens, proposed: write.proposed } }
+  })
+}
+
+/**
+ * An admin accepts or rejects a waiting request. `expected` is the request the
+ * admin was looking at: if it has been changed since, nothing is decided,
+ * because accepting a list you did not read is not accepting it.
+ */
+export async function decideSupplyAllergens(
+  id: string, decision: 'accept' | 'reject', expected: AllergenList, caller: Caller,
+): Promise<{ name: string; before: AllergenList; after: AllergenList; requestedBy: string }> {
+  const db = adminDb()
+  const ref = db.doc(`supplies/${id}`)
+  return db.runTransaction(async tx => {
+    const snap = await tx.get(ref)
+    if (!snap.exists) throw new HttpError(404, 'That item no longer exists.')
+    const data = snap.data() ?? {}
+    const stored = storedAllergens(data)
+    const result = decideAllergenRequest(stored, decision)
+    if (!result) throw new HttpError(409, 'There is no allergen change waiting on this item.')
+    if (!sameAllergens(stored.proposed, expected)) {
+      throw new HttpError(409, 'The requested change was edited while you were looking at it. Reload and check it again.')
+    }
+    tx.update(ref, {
+      allergens: result.allergens,
+      allergensProposed: FieldValue.delete(),
+      allergensDecided: { decision, by: caller.uid, byEmail: caller.email ?? '', at: FieldValue.serverTimestamp() },
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+    const request = data.allergensProposed as { byEmail?: unknown } | undefined
+    return {
+      name: String(data.name ?? id),
+      before: stored.allergens,
+      after: result.allergens,
+      requestedBy: typeof request?.byEmail === 'string' ? request.byEmail : '',
+    }
+  })
 }
 
 export async function setThreshold(id: string, threshold: number): Promise<void> {

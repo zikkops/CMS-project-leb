@@ -1,7 +1,8 @@
 // Supplies and the daily count. Phase 00 standing rule.
 //
 // POST    create a supply, or seed supplies from the order template
-// PATCH   edit a supply, change a threshold, or save/submit a daily count
+// PATCH   edit a supply, change a threshold, save/submit a daily count, or
+//         (admins) accept or reject an allergen change somebody asked for
 // DELETE  remove a supply
 //
 // Two different sections gate this file, because two different jobs share the
@@ -9,13 +10,18 @@
 // what was on the shelf. Kitchen crew and baristas hold both, but a future
 // grant could separate them, and the route should honour that split rather
 // than flatten it.
+//
+// Allergens are the exception to the section: only an admin sets them or
+// accepts a change (owner's decision, 14 Sep 2026). Anyone else's edit is
+// stored as a request — supplyAllergenWrite() in shared/src/allergens.ts.
 
-import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
+import { requireSection, requireRole, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import {
-  parseSupplyInput, createSupply, updateSupply, setThreshold, deleteSupply,
-  seedSuppliesFromTemplates, parseCountInput, saveCount,
+  parseSupplyInput, createSupply, updateSupply, setThreshold, deleteSupply, decideSupplyAllergens,
+  seedSuppliesFromTemplates, parseCountInput, saveCount, type AllergenChange,
 } from '@big-cms/shared/server/inventory'
 import { logCreate, logUpdate, logDelete, logActivity } from '@big-cms/shared/server/activityLog'
+import { readAllergenKeys, type AllergenList } from '@big-cms/shared/allergens'
 
 export const runtime = 'nodejs'
 
@@ -27,6 +33,21 @@ async function readBody(request: Request): Promise<Record<string, unknown>> {
   } catch {
     throw new HttpError(400, 'Invalid request body.')
   }
+}
+
+const listOf = (keys: AllergenList | undefined) =>
+  keys === undefined ? 'nothing' : keys === null ? 'not checked' : keys.length === 0 ? 'contains none' : keys.join(', ')
+
+/**
+ * Every allergen change is logged with what it was and what it became. The
+ * item log only says "edited", and "edited" is not an audit of a milk tag.
+ */
+async function logAllergens(caller: Caller, name: string, change: AllergenChange): Promise<void> {
+  if (change.outcome === 'unchanged') return
+  const label = change.outcome === 'proposed'
+    ? `${name}: asked for allergens "${listOf(change.proposed)}" (in force: "${listOf(change.before)}") — waiting for an admin`
+    : `${name}: allergens "${listOf(change.before)}" → "${listOf(change.after)}"${change.outcome === 'accepted' ? ', accepting the change asked for' : ''}`
+  await logActivity(caller, 'update', 'Allergens', label)
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -43,10 +64,11 @@ export async function POST(request: Request): Promise<Response> {
 
     const caller: Caller = await requireSection(request, 'supplies')
     const input = parseSupplyInput(body)
-    const result = await createSupply(input, Number(body.quantity ?? 0))
+    const result = await createSupply(input, Number(body.quantity ?? 0), caller)
 
     await logCreate(caller, 'Inventory', input.name, { category: input.category, unit: input.unit })
-    return Response.json({ ok: true, ...result })
+    await logAllergens(caller, input.name, result.allergens)
+    return Response.json({ ok: true, id: result.id, allergens: result.allergens.outcome })
   } catch (err) {
     return toResponse(err)
   }
@@ -70,6 +92,22 @@ export async function PATCH(request: Request): Promise<Response> {
       return Response.json({ ok: true, ...result })
     }
 
+    if (body.action === 'allergens') {
+      const caller: Caller = await requireRole(request, ['admin'])
+      const id = typeof body.id === 'string' ? body.id.trim() : ''
+      if (!id) throw new HttpError(400, 'Missing item id.')
+      const decision = body.decision === 'accept' ? 'accept' : body.decision === 'reject' ? 'reject' : null
+      if (!decision) throw new HttpError(400, 'Accept or reject the change.')
+      // The request the admin was looking at. If it has changed since, nothing
+      // is decided — see decideSupplyAllergens().
+      const expected = Array.isArray(body.expected) ? readAllergenKeys(body.expected) : null
+      const r = await decideSupplyAllergens(id, decision, expected, caller)
+      await logActivity(caller, 'update', 'Allergens', decision === 'accept'
+        ? `${r.name}: accepted the change asked for by ${r.requestedBy || 'staff'} — "${listOf(r.before)}" → "${listOf(r.after)}"`
+        : `${r.name}: rejected the change asked for by ${r.requestedBy || 'staff'} — still "${listOf(r.after)}"`)
+      return Response.json({ ok: true })
+    }
+
     const caller: Caller = await requireSection(request, 'supplies')
     const id = typeof body.id === 'string' ? body.id.trim() : ''
     if (!id) throw new HttpError(400, 'Missing item id.')
@@ -82,9 +120,10 @@ export async function PATCH(request: Request): Promise<Response> {
     }
 
     const input = parseSupplyInput(body)
-    await updateSupply(id, input)
+    const { allergens } = await updateSupply(id, input, caller)
     await logUpdate(caller, 'Inventory', input.name, { edited: false }, { edited: true })
-    return Response.json({ ok: true })
+    await logAllergens(caller, input.name, allergens)
+    return Response.json({ ok: true, allergens: allergens.outcome })
   } catch (err) {
     return toResponse(err)
   }

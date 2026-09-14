@@ -30,7 +30,7 @@ import { BRAND } from '@big-cms/shared/brand'
 import { formatUsd } from '@big-cms/shared/money'
 import { stationForSection } from '@big-cms/shared/checks'
 import { ALLERGENS_EU14 } from '@big-cms/shared/foodSafety'
-import { dishAllergens, readAllergenKeys, type AllergenSupply } from '@big-cms/shared/allergens'
+import { dishAllergens, readAllergenKeys, readProposedAllergens, type AllergenSupply } from '@big-cms/shared/allergens'
 import {
   lineConsumption, consumptionCost, dishMargin, describeQty, recipeProblems, suggestedPrice, targetMarginFor,
   type Recipe, type OptionAdjustment, type RecipeSupply, type ConsumptionCost,
@@ -52,6 +52,7 @@ interface StoredRecipeView extends Recipe {
   extraAllergens: string[]
   allergensConfirmed: boolean
   allergensConfirmedByEmail: string | null
+  noChangeOptions: string[]
 }
 
 // The editor works in strings, because an input being typed into is not a
@@ -70,6 +71,8 @@ interface Draft {
   extraAllergens: string[]
   /** Cleared by any change to what the dish is made of — see RecipeEditor. */
   allergensConfirmed: boolean
+  /** Options with no recipe change that an admin says add no ingredient. */
+  noChangeOptions: string[]
 }
 
 const NO_ADJUSTMENT: DraftAdjustment = { kind: 'none', supplyId: '', qty: '', fromSupplyId: '', toSupplyId: '' }
@@ -88,6 +91,7 @@ function toDraft(recipe: StoredRecipeView | undefined): Draft {
     adjustments,
     extraAllergens: recipe?.extraAllergens ?? [],
     allergensConfirmed: recipe?.allergensConfirmed ?? false,
+    noChangeOptions: recipe?.noChangeOptions ?? [],
   }
 }
 
@@ -236,12 +240,16 @@ function RecipeEditor({
   // Any change to what the dish is made of clears the allergen confirmation.
   // A tick given for the old ingredient list says nothing about the new one.
   const onChange = (next: Draft) => {
-    const madeOf = (d: Draft) => JSON.stringify([d.lines, d.adjustments, d.extraAllergens])
+    const madeOf = (d: Draft) => JSON.stringify([d.lines, d.adjustments, d.extraAllergens, d.noChangeOptions])
     onDraftChange(next.allergensConfirmed && madeOf(next) !== madeOf(draft) ? { ...next, allergensConfirmed: false } : next)
   }
   const recipe = toRecipe(draft)
   const problems = recipeProblems(recipe, supplies)
   const allergens = dishAllergens({ recipe, extraAllergens: draft.extraAllergens, confirmed: draft.allergensConfirmed }, allergenSupplies)
+  // Options with no recipe change that nobody has marked. Each reads "not
+  // verified" on the chart and on the till (shared/src/allergens.ts).
+  const unaccountedOptions = groups.flatMap(g => g.options).filter(o =>
+    (draft.adjustments[o.id]?.kind ?? 'none') === 'none' && !draft.noChangeOptions.includes(o.id))
   const base = costOf(recipe, supplies)
   const usedSupplyIds = [...new Set(draft.lines.map(l => l.supplyId).filter(Boolean))]
 
@@ -335,6 +343,23 @@ function RecipeEditor({
                           <option value="replace" style={optionStyle}>Replaces</option>
                         </select>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                          {a.kind === 'none' && (
+                            <label style={{
+                              ...muted, display: 'flex', gap: '0.35rem', alignItems: 'center', paddingTop: '0.45rem',
+                              color: draft.noChangeOptions.includes(option.id) ? 'rgba(var(--offwhite-rgb),0.7)' : 'var(--brand-secondary)',
+                            }}>
+                              <input type="checkbox" checked={draft.noChangeOptions.includes(option.id)}
+                                onChange={e => onChange({
+                                  ...draft,
+                                  noChangeOptions: e.target.checked
+                                    ? [...draft.noChangeOptions, option.id]
+                                    : draft.noChangeOptions.filter(id => id !== option.id),
+                                })} />
+                              {draft.noChangeOptions.includes(option.id)
+                                ? 'Adds no ingredient'
+                                : 'Adds no ingredient — until ticked, not verified for allergens'}
+                            </label>
+                          )}
                           {a.kind === 'add' && (
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px', gap: '0.4rem' }}>
                               <SupplySelect value={a.supplyId} onChange={id => setAdjustment(option.id, { supplyId: id })}
@@ -382,6 +407,12 @@ function RecipeEditor({
               : `Not verified${allergens.contains.length > 0 ? ` — contains at least ${allergens.contains.map(k => ALLERGEN_LABEL.get(k)).join(', ')}` : ''}`}
           </p>
           {allergens.reasons.map(r => <p key={r} style={{ ...muted, color: 'var(--brand-secondary)' }}>{r}</p>)}
+          {unaccountedOptions.length > 0 && (
+            <p style={{ ...muted, color: 'var(--red)' }}>
+              Not verified with {unaccountedOptions.map(o => o.name).join(', ')}: no recipe change, and not marked as
+              adding no ingredient. Say what each adds under Options, or tick &quot;Adds no ingredient&quot;.
+            </p>
+          )}
 
           <p style={{ ...muted, marginTop: '0.7rem' }}>Also in it, from things not in supplies (bought-in bread, a "may contain" warning):</p>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '0.25rem 0.8rem', marginTop: '0.35rem' }}>
@@ -459,7 +490,7 @@ export default function RecipesPage() {
   const [loading, setLoading]       = useState(true)
   const [loadError, setLoadError]   = useState('')
   const [editingId, setEditingId]   = useState<string | null>(null)
-  const [draft, setDraft]           = useState<Draft>({ lines: [], adjustments: {}, extraAllergens: [], allergensConfirmed: false })
+  const [draft, setDraft]           = useState<Draft>({ lines: [], adjustments: {}, extraAllergens: [], allergensConfirmed: false, noChangeOptions: [] })
   const [saving, setSaving]         = useState(false)
   const [saveError, setSaveError]   = useState('')
 
@@ -505,13 +536,18 @@ export default function RecipesPage() {
         setAllergenSupplies(Object.fromEntries(supplySnap.docs.map(d => {
           const x = d.data() as Record<string, unknown>
           // Absent or null is "not checked" — only a list is an answer.
-          return [d.id, { id: d.id, name: String(x.name ?? d.id), allergens: Array.isArray(x.allergens) ? readAllergenKeys(x.allergens) : null }]
+          return [d.id, {
+            id: d.id, name: String(x.name ?? d.id), allergens: Array.isArray(x.allergens) ? readAllergenKeys(x.allergens) : null,
+            // A change waiting for an admin (Supplies) makes a dish not verified.
+            proposed: readProposedAllergens(x.allergensProposed),
+          }]
         })))
         const list = ((recipeData as { recipes?: (StoredRecipeView & { menuItemId: string })[] }).recipes ?? [])
         setRecipes(Object.fromEntries(list.map(r => [r.menuItemId, {
           lines: r.lines, adjustments: r.adjustments,
           extraAllergens: r.extraAllergens ?? [], allergensConfirmed: Boolean(r.allergensConfirmed),
           allergensConfirmedByEmail: r.allergensConfirmedByEmail ?? null,
+          noChangeOptions: r.noChangeOptions ?? [],
         }])))
       } catch (err) {
         if (alive) setLoadError(err instanceof Error ? err.message : 'Could not load recipes.')
@@ -572,9 +608,11 @@ export default function RecipesPage() {
       await unwrap(await authedFetch('/api/admin/recipes', 'PUT', {
         menuItemId: editingId, ...recipe,
         extraAllergens: draft.extraAllergens, allergensConfirmed: draft.allergensConfirmed,
+        noChangeOptions: draft.noChangeOptions,
       }))
       setRecipes(r => ({ ...r, [editingId]: {
         ...recipe, extraAllergens: draft.extraAllergens, allergensConfirmed: draft.allergensConfirmed,
+        noChangeOptions: draft.noChangeOptions,
         allergensConfirmedByEmail: draft.allergensConfirmed ? (r[editingId]?.allergensConfirmedByEmail ?? null) : null,
       } }))
       setEditingId(null)

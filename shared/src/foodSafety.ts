@@ -389,3 +389,57 @@ export function signedLate(date: string, signedOn: string): boolean {
   const next = addDays(date, 1)
   return Boolean(next) && DAY.test(signedOn) && signedOn > next
 }
+
+// ── Corrections to a day before it is signed ──────────────────────────────
+
+function canonical(x: object): string {
+  const rest: Record<string, unknown> = { ...(x as Record<string, unknown>) }
+  delete rest.by
+  delete rest.at
+  return JSON.stringify(Object.keys(rest).sort().map(k => [k, rest[k]]))
+}
+
+/**
+ * Two diary entries say the same thing — ignoring who stamped them, and the
+ * order the fields come back in, which Firestore does not promise to keep.
+ */
+export function sameEntry(a: object, b: object): boolean {
+  return canonical(a) === canonical(b)
+}
+
+/**
+ * The stored entries a save is about to change or remove, as they stood.
+ *
+ * A signed day's amendments keep a whole copy. An unsigned day is saved many
+ * times as the day goes on and most saves only add, so it keeps just what
+ * changed — which is still "the fridge read 9 °C at 07:00, by Sam" when
+ * somebody later makes it 4 °C, and that is the line an inspector needs.
+ */
+export function changedEntries<P extends object, N extends object>(
+  prev: readonly P[],
+  next: readonly N[],
+  keyOf: (x: P | N) => string,
+): P[] {
+  const after = new Map(next.map(n => [keyOf(n), n]))
+  return prev.filter(p => {
+    const n = after.get(keyOf(p))
+    return !n || !sameEntry(p, n)
+  })
+}
+
+/**
+ * Today's answers from the browser, plus stored answers to checks no longer on
+ * the list. The browser only sends the checks it shows, so removing a check in
+ * settings at 14:00 would otherwise delete the 07:00 answer to it at the next
+ * save — a record lost by editing a template.
+ */
+export function withRetiredAnswers(
+  sent: readonly CheckAnswer[],
+  stored: readonly CheckAnswer[],
+  currentKeys: ReadonlySet<string>,
+): CheckAnswer[] {
+  return [
+    ...sent.filter(a => currentKeys.has(a.key)),
+    ...stored.filter(a => !currentKeys.has(a.key)).map(a => ({ key: a.key, done: a.done, ...(a.note ? { note: a.note } : {}) })),
+  ]
+}

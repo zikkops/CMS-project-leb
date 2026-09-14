@@ -5,6 +5,7 @@ import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp
 import { db } from '@big-cms/shared/firebase'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { readProposedAllergens } from '@big-cms/shared/allergens'
 import { listTemplateItems, listProviders, UNIT_LABELS, translateToArabic } from '@big-cms/shared/weeklyOrders'
 import { STOCKED_BRANCHES, PRIMARY_BRANCH, branchColor, emptyStock } from '@big-cms/shared/branches'
 import { SUPPLY_CATEGORY_COLOR as CAT_COLOR, type SupplyCategory as Category } from '@big-cms/shared/departments'
@@ -42,6 +43,8 @@ interface Supply {
   yieldPercent?: number | null
   // null or absent: nobody has checked it. [] : checked, contains none.
   allergens?: string[] | null
+  // A change somebody who is not an admin asked for. Written only by the server.
+  allergensProposed?: { keys?: string[] | null; byEmail?: string } | null
 }
 
 const CATEGORIES: Category[] = ['Kitchen', 'Bar', 'Cleaning', 'Other']
@@ -65,6 +68,12 @@ const S_COLOR  = { ok: 'var(--teal)', low: 'var(--brand-secondary)', out: 'var(-
 const S_BG     = { ok: 'rgba(var(--teal-rgb),0.06)',   low: 'rgba(var(--brand-secondary-rgb),0.08)',  out: 'rgba(var(--red-rgb),0.09)'  }
 const S_BORDER = { ok: 'rgba(var(--teal-rgb),0.18)',   low: 'rgba(var(--brand-secondary-rgb),0.26)',  out: 'rgba(var(--red-rgb),0.32)'  }
 const S_LABEL  = { ok: 'OK', low: 'Low', out: 'Out' }
+
+function allergenText(keys: readonly string[] | null | undefined): string {
+  if (keys === undefined || keys === null) return 'not checked'
+  if (keys.length === 0) return 'contains none'
+  return keys.map(k => ALLERGENS_EU14.find(a => a.key === k)?.label ?? k).join(', ')
+}
 
 const EMPTY_FORM = {
   name: '', nameAr: '', category: 'Kitchen' as Category, unit: 'pieces', threshold: 5, provider: '', vatable: true,
@@ -109,7 +118,11 @@ function recipeMeasurement(form: { unit: string; recipeUnit: string; recipeUnits
 }
 
 export default function SuppliesPage() {
-  const { checking } = useRequireRole(SECTION_ACCESS.supplies)
+  const { checking, role } = useRequireRole(SECTION_ACCESS.supplies)
+  // Only an admin changes allergens or accepts a change (owner's decision,
+  // 14 Sep 2026). The route decides; this only shapes what the form says.
+  const isAdmin = role === 'admin'
+  const [deciding, setDeciding] = useState(false)
   const [supplies, setSupplies]     = useState<Supply[]>([])
   const [loading, setLoading]       = useState(true)
   const [modal, setModal]           = useState<'add' | 'edit' | null>(null)
@@ -188,12 +201,28 @@ export default function SuppliesPage() {
     // Quantity is deliberately not sent on an edit — it is only ever set by
     // a submitted Daily Inventory Count or a received delivery, and the route
     // enforces that rather than relying on this call omitting the field.
-    if (editing) {
-      await unwrap(await authedFetch('/api/admin/inventory', 'PATCH', { id: editing.id, ...data }))
-    } else {
-      await unwrap(await authedFetch('/api/admin/inventory', 'POST', { ...data, quantity: formQty }))
-    }
+    const result = editing
+      ? await unwrap(await authedFetch('/api/admin/inventory', 'PATCH', { id: editing.id, ...data }))
+      : await unwrap(await authedFetch('/api/admin/inventory', 'POST', { ...data, quantity: formQty }))
     setSaving(false); setModal(null); load()
+    if (result.allergens === 'proposed') {
+      alert('Saved. Only an admin changes allergens, so your change is waiting for one to accept it. Until then, dishes using this item show as not verified.')
+    }
+  }
+
+  /** An admin's decision on a waiting allergen change — on the request as shown, never a newer one. */
+  async function decide(s: Supply, decision: 'accept' | 'reject') {
+    setDeciding(true)
+    try {
+      await unwrap(await authedFetch('/api/admin/inventory', 'PATCH', {
+        action: 'allergens', id: s.id, decision, expected: readProposedAllergens(s.allergensProposed) ?? null,
+      }))
+      setModal(null); load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not record that decision.')
+    } finally {
+      setDeciding(false)
+    }
   }
 
   async function deleteItem(id: string) {
@@ -338,6 +367,31 @@ export default function SuppliesPage() {
           </div>
         </div>
 
+        {/* Allergen changes waiting — a request nobody decides keeps dishes unverified forever */}
+        {(() => {
+          const waiting = supplies.filter(s => s.allergensProposed)
+          if (waiting.length === 0) return null
+          return (
+            <div style={{
+              border: '1px solid rgba(var(--brand-secondary-rgb),0.4)', background: 'rgba(var(--brand-secondary-rgb),0.08)',
+              borderRadius: '6px', padding: '0.8rem 1rem', marginBottom: '1.25rem', fontSize: '0.8rem', color: 'var(--offwhite)',
+            }}>
+              <strong style={{ color: 'var(--brand-secondary)' }}>
+                {waiting.length} allergen {waiting.length === 1 ? 'change is' : 'changes are'} waiting for an admin:
+              </strong>{' '}
+              {waiting.map((s, i) => (
+                <span key={s.id}>
+                  {i > 0 && ', '}
+                  <button type="button" onClick={() => openEdit(s)} style={{ background: 'none', border: 'none', color: 'var(--teal)', cursor: 'pointer', padding: 0, fontSize: 'inherit' }}>{s.name}</button>
+                </span>
+              ))}
+              <span style={{ display: 'block', color: 'rgba(var(--offwhite-rgb),0.55)', marginTop: '0.25rem' }}>
+                Until {isAdmin ? 'you accept or reject each one' : 'an admin decides'}, every dish using them shows as not verified.
+              </span>
+            </div>
+          )
+        })()}
+
         {/* Groups */}
         {visible.length === 0 ? (
           <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.2)', fontSize: '0.88rem' }}>
@@ -375,6 +429,7 @@ export default function SuppliesPage() {
                             <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.2rem', flexWrap: 'wrap' }}>
                               {groupBy !== 'category' && <span style={{ fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: CAT_COLOR[s.category] }}>{s.category}</span>}
                               {groupBy !== 'provider' && s.provider && <span style={{ fontSize: '0.6rem', color: 'rgba(var(--offwhite-rgb),0.28)' }}>{s.provider}</span>}
+                              {s.allergensProposed && <span style={{ fontSize: '0.6rem', color: 'var(--brand-secondary)', fontWeight: 600 }}>Allergen change waiting</span>}
                             </div>
                           </div>
                           <span style={{ background: `${S_COLOR[st]}20`, color: S_COLOR[st], border: `1px solid ${S_COLOR[st]}40`, borderRadius: '3px', padding: '0.1rem 0.45rem', fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap', flexShrink: 0 }}>
@@ -523,6 +578,24 @@ export default function SuppliesPage() {
 
               <div>
                 <label style={lbl}>Allergens</label>
+                {editing?.allergensProposed && (
+                  <div style={{ border: '1px solid rgba(var(--brand-secondary-rgb),0.45)', borderRadius: '4px', padding: '0.6rem 0.7rem', marginBottom: '0.6rem', fontSize: '0.75rem', color: 'var(--offwhite)' }}>
+                    <p>
+                      <strong style={{ color: 'var(--brand-secondary)' }}>Change waiting for an admin</strong>
+                      {editing.allergensProposed.byEmail ? <> from {editing.allergensProposed.byEmail}</> : null}
+                    </p>
+                    <p style={{ marginTop: '0.2rem' }}>In force: {allergenText(Array.isArray(editing.allergens) ? editing.allergens : null)}</p>
+                    <p>Asked for: {allergenText(readProposedAllergens(editing.allergensProposed))}</p>
+                    {isAdmin && (
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        <button type="button" disabled={deciding} onClick={() => decide(editing, 'reject')}
+                          style={{ ...inp, width: 'auto', cursor: 'pointer' }}>Reject</button>
+                        <button type="button" disabled={deciding} onClick={() => decide(editing, 'accept')}
+                          style={{ ...inp, width: 'auto', cursor: 'pointer', borderColor: 'var(--teal)', color: 'var(--teal)' }}>Accept</button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
                   {([['unchecked', 'Not checked yet'], ['checked', 'Checked']] as const).map(([value, label]) => {
                     const active = value === 'checked' ? form.allergens !== null : form.allergens === null
@@ -556,6 +629,11 @@ export default function SuppliesPage() {
                       ? 'Checked, and contains none of these. Read the label, including "may contain".'
                       : 'From the label, including "may contain" warnings.'}
                 </p>
+                {!isAdmin && (
+                  <p style={{ fontSize: '0.62rem', color: 'var(--brand-secondary)', marginTop: '0.25rem' }}>
+                    Only an admin changes allergens. A change you save is sent to an admin to accept; until then, dishes using this item show as not verified.
+                  </p>
+                )}
               </div>
 
               {/* Per-branch initial quantities — add-only; existing items' quantities

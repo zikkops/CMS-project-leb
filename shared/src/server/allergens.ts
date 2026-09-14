@@ -10,11 +10,12 @@
 //
 // Every decision is shared/src/allergens.ts (verify:food-safety).
 
+import type { DocumentSnapshot } from 'firebase-admin/firestore'
 import { adminDb } from './firebaseAdmin'
 import { HttpError } from './auth'
 import { readFoodSafetySettings } from './foodSafety'
 import {
-  dishAllergens, optionAllergenChange, splitTracked, readAllergenKeys,
+  dishAllergens, optionAllergenChange, splitTracked, readAllergenKeys, readProposedAllergens,
   type AllergenSupply, type DishAllergenInput,
 } from '../allergens'
 import { resolveLines, type Recipe, type RecipeLine, type OptionAdjustment } from '../recipes'
@@ -57,17 +58,25 @@ export interface DishAnswer {
 /** A dish has a handful of options; this only bounds a hostile request. */
 const MAX_OPTIONS = 30
 
+const stringIds = (raw: unknown): string[] =>
+  Array.isArray(raw) ? [...new Set(raw.filter((x): x is string => typeof x === 'string'))] : []
+
 function allergenSupply(id: string, data: Record<string, unknown>): AllergenSupply {
-  // Absent or null is "not checked". Only an actual list, even an empty one,
-  // is an answer.
   return {
     id,
     name: String(data.name ?? id),
+    // Absent or null is "not checked". Only an actual list, even an empty one,
+    // is an answer.
     allergens: Array.isArray(data.allergens) ? readAllergenKeys(data.allergens) : null,
+    // A change waiting for an admin makes every dish using this not verified.
+    proposed: readProposedAllergens(data.allergensProposed),
   }
 }
 
-function dishInput(r: Record<string, unknown> | undefined): { input: DishAllergenInput; confirmedByEmail: string | null } {
+function dishInput(
+  r: Record<string, unknown> | undefined,
+  optionNames: Record<string, string>,
+): { input: DishAllergenInput; confirmedByEmail: string | null } {
   const recipe: Recipe | null = r
     ? {
         lines: Array.isArray(r.lines) ? (r.lines as RecipeLine[]) : [],
@@ -78,7 +87,13 @@ function dishInput(r: Record<string, unknown> | undefined): { input: DishAllerge
     ? (r.allergensConfirmed as { byEmail?: unknown })
     : null
   return {
-    input: { recipe, extraAllergens: readAllergenKeys(r?.extraAllergens), confirmed: Boolean(confirmation) },
+    input: {
+      recipe,
+      extraAllergens: readAllergenKeys(r?.extraAllergens),
+      confirmed: Boolean(confirmation),
+      noChangeOptions: stringIds(r?.noChangeOptions),
+      optionNames,
+    },
     confirmedByEmail: confirmation && typeof confirmation.byEmail === 'string' ? confirmation.byEmail : null,
   }
 }
@@ -90,6 +105,8 @@ function requireId(raw: unknown, what: string): string {
   }
   return raw
 }
+
+const usableId = (id: unknown): id is string => typeof id === 'string' && id.length > 0 && !id.includes('/')
 
 export function parseDishRequest(item: string | null, options: string[]): { menuItemId: string; optionIds: string[] } {
   if (options.length > MAX_OPTIONS) throw new HttpError(400, 'Too many options.')
@@ -123,11 +140,13 @@ export async function readAllergenChart(): Promise<{ tracked: string[]; dishes: 
 
   const dishes = items.docs.map(doc => {
     const item = doc.data()
-    const { input, confirmedByEmail } = dishInput(recipeById.get(doc.id))
+    const groupIds = Array.isArray(item.modifierGroupIds) ? (item.modifierGroupIds as unknown[]).map(String) : []
+    const optionNames: Record<string, string> = {}
+    for (const gid of groupIds) for (const o of groupById.get(gid)?.options ?? []) optionNames[o.id] = o.name
 
+    const { input, confirmedByEmail } = dishInput(recipeById.get(doc.id), optionNames)
     const base = dishAllergens(input, supplyMap)
     const split = splitTracked(base.contains, settings.allergens)
-    const groupIds = Array.isArray(item.modifierGroupIds) ? (item.modifierGroupIds as unknown[]).map(String) : []
 
     const options: ChartOption[] = []
     for (const gid of groupIds) {
@@ -181,26 +200,37 @@ export async function readDishAllergens(menuItemId: string, optionIds: string[])
     readFoodSafetySettings(),
   ])
   if (!item.exists) throw new HttpError(404, 'That item is not on the menu.')
+  const itemData = item.data() ?? {}
+  const recipeData = recipe.exists ? recipe.data() : undefined
 
-  const { input } = dishInput(recipe.exists ? recipe.data() : undefined)
   // An id that could not be a document is left out of the map, which reads as
   // "no longer in supplies" — not verified, rather than a crash or a pass.
-  const ids = input.recipe
-    ? [...new Set(resolveLines(input.recipe, optionIds).map(l => l.supplyId))].filter(id => typeof id === 'string' && id.length > 0 && !id.includes('/'))
-    : []
-  const snaps = ids.length > 0 ? await db.getAll(...ids.map(id => db.doc(`supplies/${id}`))) : []
+  const lines = dishInput(recipeData, {}).input.recipe
+  const supplyIds = lines ? [...new Set(resolveLines(lines, optionIds).map(l => l.supplyId))].filter(usableId) : []
+  const groupIds = Array.isArray(itemData.modifierGroupIds) ? (itemData.modifierGroupIds as unknown[]).filter(usableId) : []
+
+  const none: DocumentSnapshot[] = []
+  const [supplySnaps, groupSnaps] = await Promise.all([
+    supplyIds.length > 0 ? db.getAll(...supplyIds.map(id => db.doc(`supplies/${id}`))) : Promise.resolve(none),
+    groupIds.length > 0 ? db.getAll(...groupIds.map(id => db.doc(`modifierGroups/${id}`))) : Promise.resolve(none),
+  ])
 
   const supplyMap: Record<string, AllergenSupply> = {}
-  for (const s of snaps) {
+  for (const s of supplySnaps) {
     const data = s.data()
     if (data) supplyMap[s.id] = allergenSupply(s.id, data)
   }
+  const optionNames: Record<string, string> = {}
+  for (const g of groupSnaps) {
+    const options = Array.isArray(g.data()?.options) ? (g.data()?.options as { id?: unknown; name?: unknown }[]) : []
+    for (const o of options) if (typeof o.id === 'string') optionNames[o.id] = String(o.name ?? '')
+  }
 
-  const result = dishAllergens(input, supplyMap, optionIds)
+  const result = dishAllergens(dishInput(recipeData, optionNames).input, supplyMap, optionIds)
   const split = splitTracked(result.contains, settings.allergens)
   return {
     menuItemId,
-    name: String(item.data()?.name ?? menuItemId),
+    name: String(itemData.name ?? menuItemId),
     verified: result.verified,
     contains: split.tracked,
     others: split.others,

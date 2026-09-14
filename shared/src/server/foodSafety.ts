@@ -23,6 +23,7 @@ import { todayYmd } from '../dates'
 import { timestampMs } from '../timestamps'
 import {
   readLimits, readingProblem, signingBlockers, judgeReading, dayAccess, signedLate, missedDays, addDays,
+  sameEntry, changedEntries, withRetiredAnswers,
   DEFAULT_OPENING_CHECKS, DEFAULT_CLOSING_CHECKS, ALLERGENS_EU14, LIMIT_BOUNDS, LIMIT_LABELS, UK_SFBB_LIMITS, UNIT_KINDS,
   type FoodSafetyLimits, type LimitKey, type ChecklistItem, type CheckAnswer, type UnitReading,
   type DiaryUnit, type UnitKind, type DayAccess,
@@ -302,10 +303,11 @@ function stamp<T extends object>(next: T[], prev: (T & Stamped)[], keyOf: (x: T)
   const before = new Map(prev.map(p => [keyOf(p), p]))
   return next.map(item => {
     const old = before.get(keyOf(item))
-    if (old) {
-      const { by, at, ...rest } = old
-      if (JSON.stringify(rest) === JSON.stringify(item)) return { ...item, by, at }
-    }
+    // Compared without the stamps and without field order. Firestore does not
+    // promise to hand a map's fields back in the order they were written, and
+    // comparing JSON as written can re-stamp an untouched answer to whoever
+    // saved last.
+    if (old && sameEntry(old, item)) return { ...item, by: old.by, at: old.at }
     return { ...item, by: who(caller), at: now }
   })
 }
@@ -330,8 +332,6 @@ export async function saveDay(caller: Caller, input: DayInput, reviewer: boolean
   }
   const openingKeys = new Set(settings.openingChecks.map(c => c.key))
   const closingKeys = new Set(settings.closingChecks.map(c => c.key))
-  const opening = input.opening.filter(a => openingKeys.has(a.key))
-  const closing = input.closing.filter(a => closingKeys.has(a.key))
 
   return db.runTransaction(async tx => {
     const ref = dayRef(input.branch, input.date)
@@ -353,6 +353,10 @@ export async function saveDay(caller: Caller, input: DayInput, reviewer: boolean
     const prevOpening = (stored?.opening ?? []) as StoredAnswer[]
     const prevClosing = (stored?.closing ?? []) as StoredAnswer[]
     const prevReadings = (stored?.readings ?? []) as StoredReading[]
+    // Today's checks come from the browser; answers to checks since removed
+    // from the list are kept from what is stored (withRetiredAnswers).
+    const opening = withRetiredAnswers(input.opening, prevOpening, openingKeys)
+    const closing = withRetiredAnswers(input.closing, prevClosing, closingKeys)
 
     const doc: Record<string, unknown> = {
       branch: input.branch,
@@ -363,6 +367,21 @@ export async function saveDay(caller: Caller, input: DayInput, reviewer: boolean
       problems: input.problems,
       updatedAt: FieldValue.serverTimestamp(),
       updatedByEmail: who(caller),
+    }
+    if (access === 'edit' && stored) {
+      // An unsigned day keeps its corrections too: each entry this save
+      // changes or removes, as it stood and with who entered it. Additions are
+      // not corrections, so the ordinary run of saves through a day adds nothing.
+      const oldProblems = typeof stored.problems === 'string' ? stored.problems : ''
+      const before = {
+        opening: changedEntries(prevOpening, opening, a => a.key),
+        closing: changedEntries(prevClosing, closing, a => a.key),
+        readings: changedEntries(prevReadings, readings, r => r.unitId),
+        ...(oldProblems && oldProblems !== input.problems ? { problems: oldProblems } : {}),
+      }
+      if (before.opening.length + before.closing.length + before.readings.length > 0 || 'problems' in before) {
+        doc.edits = FieldValue.arrayUnion({ by: who(caller), at: now, before })
+      }
     }
     if (access === 'amend') {
       // What the day said before, kept whole. An inspector reading an amended

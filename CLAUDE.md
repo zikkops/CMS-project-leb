@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 23 checks, 17 verifiers, 1054
+is the only thing that shows it. Currently 23 checks, 17 verifiers, 1086
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -418,6 +418,36 @@ review, recall. Behind the `foodSafety` module, **off by default**.
   unverified dish that lists nothing is never "none". For a customer's one
   allergy, `allergenVerdict()` gives free / can't be sure / contains, and
   "free" needs a verified dish.
+- **Only an admin sets an ingredient's allergens or accepts a change**
+  (owner's decision, 14 Sep 2026). The supplies section is open to baristas and
+  kitchen crew, and until then any of them could untick Milk on Whole Milk and
+  turn every milk dish into verified, no milk. Now anyone else's save is stored
+  as `supplies/{id}.allergensProposed`, a request, and never moves
+  `allergens` (`supplyAllergenWrite()`). **While a request waits, every dish
+  using the ingredient is not verified**, showing what the request would add
+  and taking nothing away. An admin saving the requested list accepts it. An
+  admin saving anything else leaves the request waiting, so fixing a unit never
+  throws away a report that the bread now has sesame. Accept and reject go
+  through `PATCH action: 'allergens'` with the request the admin saw
+  (`expected`); a request changed since is refused. Every allergen change is
+  logged with before and after, under "Allergens". A malformed stored request
+  reads as waiting, never as nothing.
+- **An option with no recipe change is not verified** unless an admin ticked
+  "Adds no ingredient" on the Recipes page (`recipes/{id}.noChangeOptions`).
+  Without this, "Hazelnut syrup" added to the menu after the recipe was
+  confirmed read as changing nothing, and the latte stayed verified nut-free.
+- **An unsigned day keeps its corrections** as `edits`: each entry a save
+  changes or removes, as it stood and with who entered it (`changedEntries()`).
+  Additions are not recorded, since a day is saved many times. Only signed days
+  used to keep history, so a 9 °C breach could become 4 °C before signing with
+  no trace. Entries are compared ignoring stamps AND field order
+  (`sameEntry()`): Firestore does not promise to return a map's fields in the
+  order written, and the old `JSON.stringify` comparison could re-stamp an
+  untouched answer to whoever saved last. **Answers to a check removed from
+  the list are kept** (`withRetiredAnswers()`), since the browser only sends
+  today's checks.
+- **The admin food safety route refuses everything with the module off**, like
+  the POS route. An admin switches the module on before configuring it.
 
 - **Every limit is a setting with a UK default, never a constant.** The pack's
   temperatures are UK law; the client is in Lebanon. `readLimits()` reads them
@@ -450,7 +480,7 @@ review, recall. Behind the `foodSafety` module, **off by default**.
   `foodSafetyUnits`, behind `/api/admin/food-safety`; **no Firestore rule, so
   no rules deploy**. Sections `foodSafety` (floor) and `foodSafetyReview`
   (managers, admins); limits and the allergen list are admin-only in the route.
-  Units are retired, never deleted. `npm run verify:food-safety`, 32 mutations
+  Units are retired, never deleted. `npm run verify:food-safety`, 46 mutations
   caught by name.
 
 ## Admin navigation (Sep 2026)

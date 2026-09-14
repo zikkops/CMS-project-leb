@@ -23,6 +23,7 @@ import {
   requireBranch, requireDate, callerBranches,
 } from '@big-cms/shared/server/foodSafety'
 import { readAllergenChart } from '@big-cms/shared/server/allergens'
+import { serverFeatureOn } from '@big-cms/shared/server/features'
 
 export const runtime = 'nodejs'
 
@@ -34,6 +35,15 @@ async function readBody(request: Request): Promise<Record<string, unknown>> {
   } catch {
     throw new HttpError(400, 'Invalid request body.')
   }
+}
+
+/**
+ * With the module off, nobody has been asked to keep these records, and the
+ * route does not keep them either. The pages already hide; this is the server
+ * agreeing with them.
+ */
+async function requireModule(): Promise<void> {
+  if (!(await serverFeatureOn('foodSafety'))) throw new HttpError(404, 'Food safety is switched off.')
 }
 
 /** Whether the caller also holds the review section. A refusal here is an answer, not an error. */
@@ -48,6 +58,7 @@ async function isReviewer(request: Request): Promise<boolean> {
 
 export async function GET(request: Request): Promise<Response> {
   try {
+    await requireModule()
     const params = new URL(request.url).searchParams
     const view = params.get('view')
 
@@ -96,6 +107,7 @@ export async function GET(request: Request): Promise<Response> {
 
 export async function PUT(request: Request): Promise<Response> {
   try {
+    await requireModule()
     const body = await readBody(request)
 
     if (body.action === 'day') {

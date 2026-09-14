@@ -18,6 +18,7 @@ import {
   judgeReading, UNIT_KINDS,
   type ChecklistItem, type FoodSafetyLimits, type UnitKind, type DayAccess,
 } from '@big-cms/shared/foodSafety'
+import { BRAND } from '@big-cms/shared/brand'
 
 interface Unit { id: string; name: string; kind: UnitKind; active: boolean }
 interface StoredAnswer { key: string; done: boolean; note?: string; by?: string; at?: string }
@@ -30,6 +31,16 @@ interface DayDoc {
   signedAt?: number | null
   signedByEmail?: string
   amendments?: { by: string; at: string; reason: string }[]
+  /** Corrections to an unsigned day: what each changed entry said before. */
+  edits?: { by: string; at: string; before: { opening?: StoredAnswer[]; closing?: StoredAnswer[]; readings?: StoredReading[]; problems?: string } }[]
+}
+
+/** When a correction was made, on the café's clock rather than this device's. */
+function cafeTime(iso: string): string {
+  const ms = Date.parse(iso)
+  return Number.isFinite(ms)
+    ? new Date(ms).toLocaleString('en-GB', { timeZone: BRAND.locale.timezone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : iso
 }
 interface DayView {
   branch: string
@@ -335,6 +346,32 @@ function FoodSafetyDiaryInner() {
                 {(view.day?.amendments?.length ?? 0) > 0 ? ` Amended ${view.day?.amendments?.length} time(s).` : ''}
               </span>
             </div>
+
+            {(view.day?.edits?.length ?? 0) > 0 && (
+              <details style={card}>
+                <summary style={{ ...small, cursor: 'pointer' }}>
+                  Corrected after it was first entered — {view.day?.edits?.length} time(s). What it said before is kept.
+                </summary>
+                {view.day?.edits?.map((e, i) => (
+                  <div key={i} style={{ marginTop: '0.6rem' }}>
+                    <p style={{ ...small, color: 'var(--offwhite)' }}>{e.by} · {cafeTime(e.at)}</p>
+                    {[...(e.before.opening ?? []), ...(e.before.closing ?? [])].map((a, j) => (
+                      <p key={j} style={small}>
+                        {[...view.openingChecks, ...view.closingChecks].find(c => c.key === a.key)?.label ?? 'A check no longer on the list'}:
+                        {' '}was {a.done ? 'done' : 'not done'}{a.note && <> — “{a.note}”</>}{a.by && <> ({a.by})</>}
+                      </p>
+                    ))}
+                    {(e.before.readings ?? []).map((r, j) => (
+                      <p key={j} style={small}>
+                        {units.find(u => u.id === r.unitId)?.name ?? 'A unit'}:
+                        {' '}was {r.outOfUse ? 'out of use' : <>{r.tempC} °C</>}{r.note && <> — “{r.note}”</>}{r.by && <> ({r.by})</>}
+                      </p>
+                    ))}
+                    {e.before.problems && <p style={small}>Problems and actions: was “{e.before.problems}”</p>}
+                  </div>
+                ))}
+              </details>
+            )}
 
             <Checklist title="Opening checks" items={view.openingChecks} answers={opening} onChange={edit(setOpening)} disabled={disabled} />
 
