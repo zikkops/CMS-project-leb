@@ -13,6 +13,7 @@ import { FieldValue, FieldPath } from 'firebase-admin/firestore'
 import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
+import { readStorageKind, canSetStorage, type StorageKind } from '../foodSafety'
 import {
   readAllergenKeys, readProposedAllergens, supplyAllergenWrite, decideAllergenRequest, sameAllergens,
   type AllergenList, type AllergenWrite,
@@ -70,6 +71,8 @@ export interface SupplyInput {
    * ingredient makes every dish using it "not verified" (shared/src/allergens.ts).
    */
   allergens: string[] | null
+  /** Chilled or frozen asks for a temperature at goods receiving. null: not set. Managers and admins only. */
+  storage: StorageKind | null
 }
 
 /** Blank clears an optional number; anything else must be a real one in range. */
@@ -98,6 +101,7 @@ export function parseSupplyInput(body: Record<string, unknown>): SupplyInput {
     // A form that does not send allergens leaves the item "not checked", never
     // "contains none": failing towards unverified is the only safe direction.
     allergens: Array.isArray(body.allergens) ? readAllergenKeys(body.allergens) : null,
+    storage: readStorageKind(body.storage),
   }
 
   return {
@@ -141,6 +145,11 @@ function storedAllergens(data: Record<string, unknown>): { allergens: AllergenLi
  */
 export async function createSupply(input: SupplyInput, initialQty: number, caller: Caller): Promise<{ id: string; allergens: AllergenChange }> {
   const { allergens: sent, ...rest } = input
+  // Chilled or frozen decides whether receiving asks for a temperature, so
+  // only a manager or admin says (owner's decision, 14 Sep 2026).
+  if (rest.storage !== null && !canSetStorage(caller.role)) {
+    throw new HttpError(403, 'Only a manager or admin can mark an item chilled, frozen or ambient.')
+  }
   const write = supplyAllergenWrite({ allergens: null }, sent, caller.role === 'admin')
   const ref = await adminDb().collection('supplies').add({
     ...rest,
@@ -156,7 +165,10 @@ export async function createSupply(input: SupplyInput, initialQty: number, calle
   return { id: ref.id, allergens: { outcome: write.outcome, before: null, after: write.allergens, proposed: write.proposed } }
 }
 
-export async function updateSupply(id: string, input: SupplyInput, caller: Caller): Promise<{ allergens: AllergenChange }> {
+export async function updateSupply(id: string, input: SupplyInput, caller: Caller): Promise<{
+  allergens: AllergenChange
+  storage: { before: StorageKind | null; after: StorageKind | null } | null
+}> {
   const db = adminDb()
   const ref = db.doc(`supplies/${id}`)
   // A transaction, because the allergen decision reads what is stored: two
@@ -166,6 +178,12 @@ export async function updateSupply(id: string, input: SupplyInput, caller: Calle
     if (!snap.exists) throw new HttpError(404, 'That item no longer exists.')
     const stored = storedAllergens(snap.data() ?? {})
     const { allergens: sent, ...rest } = input
+    // The form sends the stored value back unchanged, so only an actual
+    // change is refused.
+    const storedStorage = readStorageKind(snap.data()?.storage)
+    if (rest.storage !== storedStorage && !canSetStorage(caller.role)) {
+      throw new HttpError(403, 'Only a manager or admin can change whether an item is chilled, frozen or ambient.')
+    }
     const write = supplyAllergenWrite(stored, sent, caller.role === 'admin')
     // `quantity` is deliberately absent: it is only ever set by a submitted
     // daily count or a received delivery. Editing an item must not become a
@@ -179,7 +197,10 @@ export async function updateSupply(id: string, input: SupplyInput, caller: Calle
       ...(write.outcome === 'accepted' ? { allergensProposed: FieldValue.delete() } : {}),
       updatedAt: FieldValue.serverTimestamp(),
     })
-    return { allergens: { outcome: write.outcome, before: stored.allergens, after: write.allergens, proposed: write.proposed } }
+    return {
+      allergens: { outcome: write.outcome, before: stored.allergens, after: write.allergens, proposed: write.proposed },
+      storage: rest.storage !== storedStorage ? { before: storedStorage, after: rest.storage } : null,
+    }
   })
 }
 

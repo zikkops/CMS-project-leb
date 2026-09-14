@@ -189,6 +189,17 @@ seeded, so start in settings.
     with an action and save, then change it to 4 °C and save. The day shows
     **Corrected after it was first entered**, with 9 °C and who entered it.
     With the module switched off, `/api/admin/food-safety` answers 404.
+16. **Delivery temperatures.** As a manager, mark Whole Milk **Chilled** and a
+    frozen item **Frozen** in Supplies. As a barista, the Storage buttons are
+    greyed, and changing storage through the API is refused.
+17. Receive a delivery with milk on it. The line asks for **Chilled · °C**, and
+    **Receive** is refused, naming the line, until a reading is entered. Enter
+    `8`: fine. Enter `9`: the line turns red and asks **What was done**, and it
+    cannot be received until that is filled. Reject all of it instead, and no
+    reading is needed.
+18. A frozen line at `-17` is too warm; at `-18` it is fine. Change the freezer
+    limit in Food Safety settings and the verdict follows it. `/admin/logs`
+    shows the storage changes under **Storage**.
 
 ### Ready to go out — the kitchen, the counter and the floor
 1. Open the kitchen display on one device and the floor (or the counter) on

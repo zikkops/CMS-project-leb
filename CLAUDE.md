@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 23 checks, 17 verifiers, 1106
+is the only thing that shows it. Currently 23 checks, 17 verifiers, 1121
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -448,6 +448,23 @@ review, recall. Behind the `foodSafety` module, **off by default**.
   today's checks.
 - **The admin food safety route refuses everything with the module off**, like
   the POS route. An admin switches the module on before configuring it.
+- **Deliveries record the temperature of chilled and frozen food** (the
+  Lebanese MoPH checklist asks for it). Owner's decisions, 14 Sep 2026:
+  **a chilled or frozen line is not received without a reading; one that
+  arrived too warm is accepted only with what was done; "too warm" is the
+  existing chilled keep limit and freezer limit** (8 °C and −18 °C, the
+  checklist's own), not a new setting.
+  - A supply's `storage` (ambient, chilled or frozen) decides whether a
+    reading is asked for, so **only managers and admins set it**
+    (`canSetStorage()`, refused 403 in `updateSupply()`/`createSupply()`, and
+    logged under "Storage").
+  - `postDelivery()` reads the storage from the supply, never from the
+    browser, and judges inside the transaction with `deliveryTempProblem()`.
+    It stamps `storage` and `tempStatus` on each line, so a delivery reads as
+    it was judged. Only when the module is on, and only for what is taken in:
+    a draft is never refused, and a line rejected in full needs no reading.
+  - The rules are in `shared/src/foodSafety.ts`, asserted by
+    `verify:food-safety`.
 
 - **Every limit is a setting with a UK default, never a constant.** The pack's
   temperatures are UK law; the client is in Lebanon. `readLimits()` reads them
@@ -480,7 +497,7 @@ review, recall. Behind the `foodSafety` module, **off by default**.
   `foodSafetyUnits`, behind `/api/admin/food-safety`; **no Firestore rule, so
   no rules deploy**. Sections `foodSafety` (floor) and `foodSafetyReview`
   (managers, admins); limits and the allergen list are admin-only in the route.
-  Units are retired, never deleted. `npm run verify:food-safety`, 46 mutations
+  Units are retired, never deleted. `npm run verify:food-safety`, 55 mutations
   caught by name.
 
 ## Admin navigation (Sep 2026)

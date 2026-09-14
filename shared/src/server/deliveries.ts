@@ -22,6 +22,9 @@ import {
   type Currency, type Delivery, type DeliveryDepartment, type DeliveryLine,
   type DeliveryStatus, type RejectReason,
 } from '../deliveryMath'
+import { readFoodSafetySettings } from './foodSafety'
+import { serverFeatureOn } from './features'
+import { readStorageKind, judgeDeliveryTemp, deliveryTempProblem } from '../foodSafety'
 
 const VALID_STATUS: DeliveryStatus[] = ['draft', 'received', 'disputed']
 const VALID_REASONS: RejectReason[] = ['damaged', 'expired', 'wrong-item', 'not-delivered']
@@ -62,6 +65,21 @@ export interface ParsedDelivery {
   vatRate: number
   notes: string
   lines: DeliveryLine[]
+}
+
+/**
+ * A delivered line's temperature and note, as entered. A number or nothing —
+ * "7" as text is refused rather than guessed at, the diary's rule. Whether a
+ * reading was needed, and what it means, is decided in postDelivery() against
+ * the item's storage as the server reads it, never the browser's word for it.
+ */
+function readTemp(l: Record<string, unknown>, i: number): { tempC?: number; tempNote?: string } {
+  if (l.tempC !== undefined && l.tempC !== null && typeof l.tempC !== 'number') {
+    throw new HttpError(400, `Line ${i + 1}: a temperature must be a number.`)
+  }
+  const tempC = typeof l.tempC === 'number' && Number.isFinite(l.tempC) ? l.tempC : undefined
+  const tempNote = str(l.tempNote, `Line ${i + 1} temperature note`, { maxLen: 300 })
+  return { ...(tempC !== undefined ? { tempC } : {}), ...(tempNote ? { tempNote } : {}) }
 }
 
 export function parseDelivery(body: Record<string, unknown>): ParsedDelivery {
@@ -145,6 +163,7 @@ export function parseDelivery(body: Record<string, unknown>): ParsedDelivery {
       // matching how the old single whole-invoice rate behaved.
       vatable: l.vatable !== false,
       expiryDate: typeof l.expiryDate === 'string' && l.expiryDate ? l.expiryDate : null,
+      ...readTemp(l, i),
     }
   })
 
@@ -198,6 +217,12 @@ export async function postDelivery(
     ? db.doc(`deliveries/${existingId}`)
     : requestId ? db.doc(`deliveries/${requestId}`) : db.collection('deliveries').doc()
   const dup: { result: PostResult | null } = { result: null }
+  // Food safety (owner's decisions, 14 Sep 2026): with the module on, a chilled
+  // or frozen line is not received without its temperature, and one that
+  // arrived too warm needs what was done. Read outside the transaction:
+  // settings change rarely, and a transaction that read them would retry on
+  // every unrelated edit.
+  const [foodSafetyOn, safety] = await Promise.all([serverFeatureOn('foodSafety'), readFoodSafetySettings()])
   const totals = computeTotals(parsed.lines, parsed.vatRate)
   const shouldApply = parsed.status !== 'draft'
 
@@ -251,6 +276,26 @@ export async function postDelivery(
     const supplyRefs = parsed.lines.map(l => db.doc(`supplies/${l.supplyId}`))
     const supplySnaps = supplyRefs.length > 0 ? await tx.getAll(...supplyRefs) : []
 
+    // Each line judged against the item's storage as stored. The storage and
+    // the verdict are stamped on the line, so the delivery reads as it was
+    // judged even if the item is re-marked later. A draft is judged but never
+    // refused: it is a delivery half-entered, not one received.
+    const problems: string[] = []
+    const lines: DeliveryLine[] = parsed.lines.map((line, i) => {
+      const snap = supplySnaps[i]
+      const storage = snap?.exists ? readStorageKind(snap.data()?.storage) : null
+      if (storage !== 'chilled' && storage !== 'frozen') return line
+      if (foodSafetyOn && shouldApply) {
+        const problem = deliveryTempProblem(storage, line, safety.limits)
+        if (problem) problems.push(`${line.name}: ${problem}`)
+      }
+      const verdict = typeof line.tempC === 'number' ? judgeDeliveryTemp(storage, line.tempC, safety.limits) : null
+      return { ...line, storage, tempStatus: verdict ? (verdict.status === 'breach' ? 'breach' : 'ok') : null }
+    })
+    if (problems.length > 0) {
+      throw new HttpError(400, problems.length === 1 ? problems[0] : `${problems[0]} (and ${problems.length - 1} more)`)
+    }
+
     tx.set(ref, {
       branch: parsed.branch,
       department: parsed.department,
@@ -263,7 +308,7 @@ export async function postDelivery(
       rateUsed: parsed.rateUsed,
       vatRate: parsed.vatRate,
       status: parsed.status,
-      lines: parsed.lines,
+      lines,
       notes: parsed.notes,
       totals,
       receivedBy: { uid: actor.uid, email: actor.email },

@@ -66,7 +66,7 @@ export async function POST(request: Request): Promise<Response> {
     const input = parseSupplyInput(body)
     const result = await createSupply(input, Number(body.quantity ?? 0), caller)
 
-    await logCreate(caller, 'Inventory', input.name, { category: input.category, unit: input.unit })
+    await logCreate(caller, 'Inventory', input.name, { category: input.category, unit: input.unit, storage: input.storage })
     await logAllergens(caller, input.name, result.allergens)
     return Response.json({ ok: true, id: result.id, allergens: result.allergens.outcome })
   } catch (err) {
@@ -120,9 +120,14 @@ export async function PATCH(request: Request): Promise<Response> {
     }
 
     const input = parseSupplyInput(body)
-    const { allergens } = await updateSupply(id, input, caller)
+    const { allergens, storage } = await updateSupply(id, input, caller)
     await logUpdate(caller, 'Inventory', input.name, { edited: false }, { edited: true })
     await logAllergens(caller, input.name, allergens)
+    // Whether receiving asks for a temperature follows this, so it is logged
+    // by name rather than folded into "edited".
+    if (storage) {
+      await logActivity(caller, 'update', 'Storage', `${input.name}: ${storage.before ?? 'not set'} → ${storage.after ?? 'not set'}`)
+    }
     return Response.json({ ok: true, allergens: allergens.outcome })
   } catch (err) {
     return toResponse(err)

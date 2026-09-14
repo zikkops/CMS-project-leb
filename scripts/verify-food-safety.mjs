@@ -325,5 +325,29 @@ console.log('\ncorrections to a day before it is signed')
     [{ key: 'fridge', done: true }, { key: 'probe', done: true, note: 'ok' }])
 }
 
+console.log('\ntemperatures at goods receiving')
+{
+  const L = F.UK_SFBB_LIMITS
+  const line = (tempC, note, received = 10, rejected = 0) => ({ qtyReceived: received, qtyRejected: rejected, tempC, tempNote: note })
+
+  eq('an ambient item needs no reading', F.deliveryTempProblem('ambient', line(null), L), null)
+  eq('an item with no storage set needs none', F.deliveryTempProblem(null, line(null), L), null)
+  eq('THE TRAP: chilled with no reading cannot be received',
+    F.deliveryTempProblem('chilled', line(null), L), 'Take the temperature of this chilled item before receiving it.')
+  eq('...nor frozen', F.deliveryTempProblem('frozen', line(undefined), L) !== null, true)
+  eq('rejected in full at the door needs no reading', F.deliveryTempProblem('chilled', line(null, '', 10, 10), L), null)
+  eq('chilled at the keep limit is fine — limits are inclusive', F.deliveryTempProblem('chilled', line(8), L), null)
+  eq('THE TRAP: a tenth above it arrived too warm, and needs what was done',
+    F.deliveryTempProblem('chilled', line(8.1), L), 'Above 8 °C — chilled food arrived too warm. Say what was done about it, or reject it.')
+  eq('...and accepted with a note, it can be received', F.deliveryTempProblem('chilled', line(8.1, 'Into the walk-in at once; supplier told'), L), null)
+  eq('a blank note is not a note', F.deliveryTempProblem('chilled', line(9, '   '), L) !== null, true)
+  eq('frozen at the freezer limit is fine', F.deliveryTempProblem('frozen', line(-18), L), null)
+  eq('frozen a tenth warmer is too warm', F.judgeDeliveryTemp('frozen', -17.9, L).status, 'breach')
+  eq('a typo is not a reading', F.deliveryTempProblem('chilled', line(80), L), 'That is not a temperature a delivery could read.')
+  eq('the limit is the setting, not the UK default', F.judgeDeliveryTemp('chilled', 6, { ...L, chilledKeepMaxC: 5 }).status, 'breach')
+  eq('storage from data: known kinds only', [F.readStorageKind('frozen'), F.readStorageKind('Frozen'), F.readStorageKind(undefined)], ['frozen', null, null])
+  eq('managers and admins set storage, nobody else', ['admin', 'manager', 'barista', 'kitchen_crew', null].map(F.canSetStorage), [true, true, false, false, false])
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -29,6 +29,12 @@ import { vatRateOn } from '@big-cms/shared/businessSettings'
 import { todayYmd } from '@big-cms/shared/dates'
 import { BRAND } from '@big-cms/shared/brand'
 import { supplyCategoryColor } from '@big-cms/shared/departments'
+import { useFeature } from '@big-cms/shared/useFeatures'
+import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
+import {
+  judgeDeliveryTemp, deliveryTempProblem, readStorageKind, readLimits,
+  type FoodSafetyLimits, type StorageKind,
+} from '@big-cms/shared/foodSafety'
 import {
   DELIVERY_BRANCHES, DELIVERY_DEPARTMENTS, DEFAULT_VAT_RATE,
   REJECT_REASON_LABELS, computeTotals, isShort, priceChange, round2,
@@ -78,6 +84,8 @@ interface SupplyRow {
   unit: string
   avgUnitCost: number
   vatable?: boolean
+  /** Chilled or frozen: a delivery asks for its temperature (with Food Safety on). */
+  storage?: StorageKind | null
 }
 
 function fmt(n: number, currency: Currency): string {
@@ -95,7 +103,7 @@ function fmt(n: number, currency: Currency): string {
 // transitions and, here, would drop focus out of the input mid-typing.
 // (CONTRIBUTING.md, gotcha #2.)
 function LineRow({
-  line, index, currency, rate, isMobile, lastCost, onChange,
+  line, index, currency, rate, isMobile, lastCost, onChange, storage, limits, askTemp,
 }: {
   line: DeliveryLine
   index: number
@@ -106,6 +114,12 @@ function LineRow({
   /** The running average, always in USD — see `lastCostLocal` below. */
   lastCost: number
   onChange: (index: number, patch: Partial<DeliveryLine>) => void
+  /** The item's storage as stored. Chilled and frozen ask for a temperature. */
+  storage: StorageKind | null
+  /** The café's limits when this person can read them; null shows no verdict, and the server still judges. */
+  limits: FoodSafetyLimits | null
+  /** Food Safety is switched on. */
+  askTemp: boolean
 }) {
   const [showReject, setShowReject] = useState(line.qtyRejected > 0)
 
@@ -121,11 +135,20 @@ function LineRow({
 
   const drift = priceChange(lastCostLocal, line.unitCost)
   const priceUp = drift !== null && drift > 0.02
-  const touched = short || line.qtyRejected > 0 || priceUp
+  // Food safety (owner's decisions, 14 Sep 2026): a chilled or frozen line is
+  // received with its temperature, and one that arrived too warm with what was
+  // done about it. Only what is taken in needs one. The verdict here is the
+  // server's own function, shown while typing; the server decides.
+  const needsTemp = askTemp && (storage === 'chilled' || storage === 'frozen') && line.qtyReceived - line.qtyRejected > 0
+  const verdict = needsTemp && limits && typeof line.tempC === 'number' ? judgeDeliveryTemp(storage, line.tempC, limits) : null
+  const tempMissing = needsTemp && (line.tempC === null || line.tempC === undefined)
+  const tooWarm = verdict?.status === 'breach'
+
+  const touched = short || line.qtyRejected > 0 || priceUp || tempMissing || tooWarm
 
   // Quiet by default, loud only when something needs attention. The whole
   // point is that a receiver's eye lands on the exceptions.
-  const accent = short ? 'var(--red)' : priceUp ? 'var(--brand-secondary)' : 'rgba(var(--teal-rgb),0.2)'
+  const accent = short || tooWarm ? 'var(--red)' : priceUp || tempMissing ? 'var(--brand-secondary)' : 'rgba(var(--teal-rgb),0.2)'
 
   return (
     <div style={{
@@ -219,6 +242,53 @@ function LineRow({
         </div>
       </div>
 
+      {needsTemp && (
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '130px 1fr', gap: '0.5rem', alignItems: 'end' }}>
+          <div>
+            <label style={{
+              ...labelStyle, marginBottom: '0.25rem',
+              color: tooWarm ? 'var(--red)' : tempMissing ? 'var(--brand-secondary)' : labelStyle.color,
+            }}>
+              {storage === 'frozen' ? 'Frozen' : 'Chilled'} · °C
+            </label>
+            <input
+              type="number" step="0.1" inputMode="decimal"
+              value={line.tempC ?? ''}
+              placeholder={storage === 'frozen' ? '-18' : '5'}
+              onChange={e => onChange(index, { tempC: e.target.value === '' ? null : Number(e.target.value) })}
+              style={{
+                ...inp, width: '100%', textAlign: 'center', fontWeight: 600,
+                color: tooWarm ? 'var(--red)' : 'var(--offwhite)',
+                borderColor: tooWarm ? 'var(--red)' : tempMissing ? 'rgba(var(--brand-secondary-rgb),0.6)' : 'rgba(255,255,255,0.12)',
+              }}
+            />
+          </div>
+          {tooWarm ? (
+            <div>
+              <label style={{ ...labelStyle, marginBottom: '0.25rem', color: 'var(--red)' }}>What was done</label>
+              <input
+                value={line.tempNote ?? ''} maxLength={300}
+                placeholder="e.g. into the walk-in at once, supplier told — or reject it"
+                onChange={e => onChange(index, { tempNote: e.target.value })}
+                style={{ ...inp, width: '100%' }}
+              />
+            </div>
+          ) : (
+            <p style={{
+              fontFamily: 'var(--font-inter)', fontSize: '0.68rem', paddingBottom: '0.55rem',
+              color: tempMissing ? 'var(--brand-secondary)' : 'rgba(var(--offwhite-rgb),0.4)',
+            }}>
+              {tempMissing ? 'Take its temperature. It cannot be received without one.' : verdict ? verdict.message : 'Recorded with the delivery.'}
+            </p>
+          )}
+        </div>
+      )}
+      {tooWarm && verdict && (
+        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', fontWeight: 700, color: 'var(--red)' }}>
+          {verdict.message}
+        </span>
+      )}
+
       {(short || priceUp) && (
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {short && (
@@ -291,6 +361,18 @@ function ReceivingInner() {
   const exchangeRate = businessSettings.exchangeRate
 
   const isMobile = useIsMobile()
+
+  // Food safety: chilled and frozen lines take a temperature. The limits are
+  // the café's own settings; a receiver who cannot read them still gets the
+  // box, and the server's refusal names the problem.
+  const { on: foodSafetyOn } = useFeature('foodSafety')
+  const [limits, setLimits] = useState<FoodSafetyLimits | null>(null)
+  useEffect(() => {
+    if (checking || !foodSafetyOn) return
+    authedFetch('/api/admin/food-safety?view=settings', 'GET').then(unwrap)
+      .then(r => setLimits(readLimits((r.settings as { limits?: unknown } | undefined)?.limits)))
+      .catch(() => setLimits(null))
+  }, [checking, foodSafetyOn])
 
   const branchOptions = useMemo(
     () => role === 'admin'
@@ -366,6 +448,7 @@ function ReceivingInner() {
           // Undefined until this supply has been received at least once —
           // Phase 01 is what starts populating it.
           avgUnitCost: Number(data.avgUnitCost ?? 0),
+          storage: readStorageKind(data.storage),
         }
       }))
       setLoadingRefs(false)
@@ -543,6 +626,15 @@ function ReceivingInner() {
 
   async function submit(status: 'draft' | 'received') {
     if (!user || visible.length === 0) return
+    // The server refuses a chilled or frozen line with no temperature. Naming
+    // the line here saves a round trip; without the limits the server's answer
+    // is the one shown.
+    if (status === 'received' && foodSafetyOn && limits) {
+      const first = visible
+        .map(({ line }) => ({ line, problem: deliveryTempProblem(supplyById.get(line.supplyId)?.storage ?? null, line, limits) }))
+        .find(p => p.problem)
+      if (first) { setErr(`${first.line.name}: ${first.problem}`); return }
+    }
     setSaving(true); setErr(''); setDone(''); setWarning('')
     try {
       const provider = providers.find(p => p.id === providerId)
@@ -777,6 +869,9 @@ function ReceivingInner() {
                       rate={currency === 'LBP' ? Number(rateUsed) || 0 : 0}
                       isMobile={isMobile}
                       lastCost={supplyById.get(line.supplyId)?.avgUnitCost ?? 0}
+                      storage={supplyById.get(line.supplyId)?.storage ?? null}
+                      limits={limits}
+                      askTemp={foodSafetyOn}
                       onChange={patchLine}
                     />
                   ))}

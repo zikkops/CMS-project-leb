@@ -45,6 +45,8 @@ interface Supply {
   allergens?: string[] | null
   // A change somebody who is not an admin asked for. Written only by the server.
   allergensProposed?: { keys?: string[] | null; byEmail?: string } | null
+  // Chilled or frozen: receiving asks for a temperature. Managers and admins set it.
+  storage?: 'ambient' | 'chilled' | 'frozen' | null
 }
 
 const CATEGORIES: Category[] = ['Kitchen', 'Bar', 'Cleaning', 'Other']
@@ -80,6 +82,7 @@ const EMPTY_FORM = {
   // Strings while being typed; the route turns blank into "not set".
   recipeUnit: '', recipeUnitsPerPurchaseUnit: '', yieldPercent: '',
   allergens: null as string[] | null,
+  storage: null as 'ambient' | 'chilled' | 'frozen' | null,
 }
 
 const inp: React.CSSProperties = {
@@ -122,6 +125,9 @@ export default function SuppliesPage() {
   // Only an admin changes allergens or accepts a change (owner's decision,
   // 14 Sep 2026). The route decides; this only shapes what the form says.
   const isAdmin = role === 'admin'
+  // Chilled or frozen decides whether receiving asks for a temperature, so
+  // managers and admins set it (owner's decision, 14 Sep 2026).
+  const canSetStorage = role === 'admin' || role === 'manager'
   const [deciding, setDeciding] = useState(false)
   const [supplies, setSupplies]     = useState<Supply[]>([])
   const [loading, setLoading]       = useState(true)
@@ -168,6 +174,7 @@ export default function SuppliesPage() {
       recipeUnitsPerPurchaseUnit: s.recipeUnitsPerPurchaseUnit != null ? String(s.recipeUnitsPerPurchaseUnit) : '',
       yieldPercent: s.yieldPercent != null ? String(s.yieldPercent) : '',
       allergens: Array.isArray(s.allergens) ? s.allergens : null,
+      storage: s.storage ?? null,
     })
     setFormQty({ ...EMPTY_QTY, ...s.quantity })
     setEditing(s); setModal('edit')
@@ -197,6 +204,8 @@ export default function SuppliesPage() {
       // Sent every time for the same reason: the route replaces the whole item,
       // and leaving this out would turn a checked item back into an unchecked one.
       allergens: form.allergens,
+      // Sent every time too: the route replaces the whole item.
+      storage: form.storage,
     }
     // Quantity is deliberately not sent on an edit — it is only ever set by
     // a submitted Daily Inventory Count or a received delivery, and the route
@@ -430,6 +439,9 @@ export default function SuppliesPage() {
                               {groupBy !== 'category' && <span style={{ fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: CAT_COLOR[s.category] }}>{s.category}</span>}
                               {groupBy !== 'provider' && s.provider && <span style={{ fontSize: '0.6rem', color: 'rgba(var(--offwhite-rgb),0.28)' }}>{s.provider}</span>}
                               {s.allergensProposed && <span style={{ fontSize: '0.6rem', color: 'var(--brand-secondary)', fontWeight: 600 }}>Allergen change waiting</span>}
+                              {(s.storage === 'chilled' || s.storage === 'frozen') && (
+                                <span style={{ fontSize: '0.6rem', color: s.storage === 'frozen' ? '#60A5FA' : '#22D3EE', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{s.storage}</span>
+                              )}
                             </div>
                           </div>
                           <span style={{ background: `${S_COLOR[st]}20`, color: S_COLOR[st], border: `1px solid ${S_COLOR[st]}40`, borderRadius: '3px', padding: '0.1rem 0.45rem', fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap', flexShrink: 0 }}>
@@ -577,6 +589,27 @@ export default function SuppliesPage() {
               </div>
 
               <div>
+                <label style={lbl}>Storage</label>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+                  {([['ambient', 'Ambient'], ['chilled', 'Chilled'], ['frozen', 'Frozen']] as const).map(([value, label]) => {
+                    const active = form.storage === value
+                    return (
+                      <button key={value} type="button" disabled={!canSetStorage}
+                        onClick={() => setForm(f => ({ ...f, storage: f.storage === value ? null : value }))}
+                        style={{
+                          ...inp, width: 'auto', cursor: canSetStorage ? 'pointer' : 'not-allowed', opacity: canSetStorage ? 1 : 0.6,
+                          background: active ? 'rgba(var(--teal-rgb),0.2)' : 'transparent', borderColor: active ? 'var(--teal)' : 'rgba(255,255,255,0.12)',
+                        }}>
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p style={{ fontSize: '0.62rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '0.9rem' }}>
+                  {canSetStorage
+                    ? 'Chilled and frozen items need a temperature when a delivery is received (with Food Safety on).'
+                    : 'Set by a manager or admin: it decides whether receiving asks for a temperature.'}
+                </p>
                 <label style={lbl}>Allergens</label>
                 {editing?.allergensProposed && (
                   <div style={{ border: '1px solid rgba(var(--brand-secondary-rgb),0.45)', borderRadius: '4px', padding: '0.6rem 0.7rem', marginBottom: '0.6rem', fontSize: '0.75rem', color: 'var(--offwhite)' }}>

@@ -443,3 +443,79 @@ export function withRetiredAnswers(
     ...stored.filter(a => !currentKeys.has(a.key)).map(a => ({ key: a.key, done: a.done, ...(a.note ? { note: a.note } : {}) })),
   ]
 }
+
+// ── Deliveries ────────────────────────────────────────────────────────────
+//
+// The Lebanese Ministry of Public Health inspection checklist asks for the
+// temperature of chilled and frozen food to be recorded when it is delivered.
+// Owner's decisions (14 Sep 2026): a chilled or frozen line is not received
+// without a reading; one that arrives too warm can still be accepted, but only
+// with what was done about it; and "too warm" is the limit already set for
+// keeping that food — the chilled keep limit and the freezer limit, the
+// checklist's own 8 °C and −18 °C — not a new number.
+
+export type StorageKind = 'ambient' | 'chilled' | 'frozen'
+
+export const STORAGE_KINDS: readonly { kind: StorageKind; label: string }[] = [
+  { kind: 'ambient', label: 'Ambient' },
+  { kind: 'chilled', label: 'Chilled' },
+  { kind: 'frozen', label: 'Frozen' },
+]
+
+/** A supply's storage from untrusted data; null when not set. */
+export function readStorageKind(raw: unknown): StorageKind | null {
+  return raw === 'ambient' || raw === 'chilled' || raw === 'frozen' ? raw : null
+}
+
+/**
+ * Who may say whether an item is chilled or frozen (owner's decision, 14 Sep
+ * 2026: managers and admins). It decides whether a delivery asks for a
+ * temperature at all, so marking the milk "ambient" would skip its check.
+ */
+export function canSetStorage(role: string | null | undefined): boolean {
+  return role === 'admin' || role === 'manager'
+}
+
+/** A delivered item's temperature against the limits; null for anything no delivery could read. */
+export function judgeDeliveryTemp(storage: StorageKind | null, tempC: number, limits: FoodSafetyLimits): ReadingVerdict | null {
+  if (storage !== 'chilled' && storage !== 'frozen') return null
+  if (typeof tempC !== 'number' || !Number.isFinite(tempC) || tempC < -60 || tempC > 60) return null
+  const t = tenth(tempC)
+  if (storage === 'chilled') {
+    return t > limits.chilledKeepMaxC
+      ? { status: 'breach', limitC: limits.chilledKeepMaxC, message: `Above ${limits.chilledKeepMaxC} °C — chilled food arrived too warm.` }
+      : { status: 'ok', limitC: limits.chilledKeepMaxC, message: `At or below ${limits.chilledKeepMaxC} °C.` }
+  }
+  return t > limits.freezerMaxC
+    ? { status: 'breach', limitC: limits.freezerMaxC, message: `Above ${limits.freezerMaxC} °C — frozen food arrived too warm.` }
+    : { status: 'ok', limitC: limits.freezerMaxC, message: `At or below ${limits.freezerMaxC} °C.` }
+}
+
+export interface DeliveryTempLine {
+  qtyReceived: number
+  qtyRejected: number
+  tempC?: number | null
+  tempNote?: string | null
+}
+
+/**
+ * Why a delivered line cannot be received as it stands, or null.
+ *
+ * Only what is taken in needs a reading: a line rejected in full at the door
+ * never entered the kitchen. A typo is not a reading. A reading above the
+ * limit needs what was done about it — and rejecting the item is always an
+ * answer too.
+ */
+export function deliveryTempProblem(storage: StorageKind | null, line: DeliveryTempLine, limits: FoodSafetyLimits): string | null {
+  if (storage !== 'chilled' && storage !== 'frozen') return null
+  if (line.qtyReceived - line.qtyRejected <= 0) return null
+  if (line.tempC === null || line.tempC === undefined) {
+    return `Take the temperature of this ${storage} item before receiving it.`
+  }
+  const verdict = judgeDeliveryTemp(storage, line.tempC, limits)
+  if (!verdict) return 'That is not a temperature a delivery could read.'
+  if (verdict.status === 'breach' && !hasText(line.tempNote ?? undefined)) {
+    return `${verdict.message} Say what was done about it, or reject it.`
+  }
+  return null
+}

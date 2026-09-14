@@ -92,6 +92,16 @@ export interface DeliveryLine {
   // VAT rate meant for every line at the time they were written.
   vatable?: boolean
 
+  // Food safety (Sep 2026). What a chilled or frozen line read when it arrived,
+  // as the person receiving it entered it, and what was done if it was too
+  // warm. The server stamps the item's storage and the verdict on the line, so
+  // the delivery reads as it was judged even if the item is re-marked later.
+  // Absent on older deliveries and on lines that needed no reading.
+  tempC?: number | null
+  tempNote?: string
+  storage?: 'ambient' | 'chilled' | 'frozen' | null
+  tempStatus?: 'ok' | 'breach' | null
+
   expiryDate?: string | null   // 'YYYY-MM-DD', optional, per batch
 }
 
