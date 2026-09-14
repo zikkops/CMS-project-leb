@@ -11,15 +11,32 @@
 // the number is what a waiter already knows. A number that IS on the plan
 // links to that marker; one that is not still works, so the POS does not
 // require a floor plan to have been drawn before anybody can take an order.
+//
+// ── Readings (owner's request, 14 Sep 2026) ────────────────────────────────
+// A square Readings button opens a panel where each device chooses what to
+// see: what the open bills add up to, what today's closed tables took, and a
+// few more. The adding-up is pos/app/lib/floorReadings.ts (verify:counter);
+// the choice is kept per device in localStorage, because the counter screen
+// and a waiter's phone want different things.
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import {
+  faPlus, faCashRegister, faReceipt, faFire, faChartColumn, faPen, faClock, faXmark, faCheck,
+  faDoorOpen, faStore, faMoneyBillWave, faCircleCheck, faTableCells, faScaleBalanced, faRotateLeft,
+  faTriangleExclamation, faUserGroup, type IconDefinition,
+} from '@fortawesome/free-solid-svg-icons'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useFeature } from '@big-cms/shared/useFeatures'
 import { BRAND } from '@big-cms/shared/brand'
-import { orderedTotal, type Check, type CheckLine } from '@big-cms/shared/checks'
+import { orderedTotal, checkTotals, type Check, type CheckLine } from '@big-cms/shared/checks'
 import { minutesWaiting, urgency } from '@big-cms/shared/tickets'
-import { useOpenChecks, openCheck } from '../lib/usePos'
+import { todayYmd } from '@big-cms/shared/dates'
+import { closedAtParts } from '@big-cms/shared/salesExport'
+import { useOpenChecks, useChecksClosedSince, openCheck } from '../lib/usePos'
+import { PosButton, Chip, StatusBadge } from '../lib/posUi'
+import { floorReadings, readReadingChoice, READINGS, type ReadingKey } from '../lib/floorReadings'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -50,12 +67,7 @@ function useNow(everyMs = 15_000) {
 }
 
 const money = (n: number) => `$${n.toFixed(2)}`
-
-const URGENCY_COLOUR = {
-  fresh: 'rgba(var(--offwhite-rgb),0.45)',
-  aging: 'var(--brand-secondary)',
-  late: 'var(--red)',
-} as const
+const READINGS_KEY = 'pos-floor-readings'
 
 /**
  * When this check last fired, in epoch ms, or null if nothing has been sent.
@@ -75,25 +87,28 @@ function lastSentAt(lines: CheckLine[]): number | null {
   return latest
 }
 
+const LEVEL_BORDER = {
+  fresh: 'rgba(255,255,255,0.18)',
+  aging: 'var(--brand-secondary)',
+  late: 'var(--red)',
+} as const
+
 /**
  * One open table, as a square.
  *
  * A grid rather than a list because a floor is a set of places, not a
  * sequence — a waiter looks for "table 7", and finding it among tiles is a
- * glance where finding it down a list is a read. Several fit on a phone
- * without scrolling, which is the whole point during a service.
+ * glance where finding it down a list is a read.
  *
- * Four things, in the order somebody actually wants them: which table, how
- * long since it fired, what it has run to, and whether anything is still
- * sitting unsent on somebody's phone. Everything else — guest count, item
- * count — is on the check itself, one tap away, and putting it here would
- * shrink the number that matters.
+ * Four things, in the order somebody actually wants them: which table, what it
+ * has run to, how long since it fired, and whether anything is still sitting
+ * unsent on somebody's device. A table getting long has an amber border and
+ * a late one a red border and tint — the border as well as the timer, so it
+ * shows from across the room.
  *
  * Module scope — see CONTRIBUTING.md gotcha #2.
  */
-function CheckCard({
-  check, now, onOpen, isMobile,
-}: {
+function CheckCard({ check, now, onOpen, isMobile }: {
   check: Check
   now: number
   onOpen: () => void
@@ -107,48 +122,79 @@ function CheckCard({
 
   return (
     <button
+      type="button"
       onClick={onOpen}
       style={{
         // Square. aspectRatio rather than a fixed height so the tiles grow
         // with the column width instead of going letterbox on a wide screen.
         aspectRatio: '1',
         display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: '0.15rem',
-        width: '100%', cursor: 'pointer',
-        backgroundColor: level === 'late' ? 'rgba(var(--red-rgb),0.1)' : 'rgba(var(--teal-rgb),0.08)',
-        border: `1px solid ${level === 'late' ? 'var(--red)' : 'rgba(var(--teal-rgb),0.4)'}`,
-        borderRadius: '6px', color: 'var(--offwhite)',
-        fontFamily: 'var(--font-inter)', padding: '0.5rem',
-        position: 'relative', overflow: 'hidden',
+        alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+        width: '100%', cursor: 'pointer', position: 'relative',
+        backgroundColor: level === 'late' ? 'rgba(var(--red-rgb),0.14)' : 'rgba(255,255,255,0.05)',
+        border: `${level === 'fresh' ? 1 : 3}px solid ${LEVEL_BORDER[level]}`,
+        borderRadius: '14px', color: 'var(--offwhite)',
+        fontFamily: 'var(--font-inter)', padding: '0.6rem',
+        WebkitTapHighlightColor: 'transparent',
       }}
     >
-      {/* Unsent is a corner flag rather than a line of text: it is a warning,
-          and a warning that costs the number its space is a bad trade. */}
-      {unsent > 0 && (
-        <span style={{
-          position: 'absolute', top: 0, right: 0,
-          backgroundColor: 'var(--brand-secondary)', color: '#1a1a1a',
-          fontSize: '0.6rem', fontWeight: 700,
-          padding: '0.15rem 0.4rem', borderBottomLeftRadius: '5px',
-        }}>{unsent}</span>
-      )}
-
       <span style={{
-        fontFamily: 'var(--font-cinzel)',
-        fontSize: isMobile ? '2rem' : '2.3rem', lineHeight: 1,
-      }}>{check.tableNumber}</span>
-
-      <span style={{
-        fontSize: isMobile ? '0.8rem' : '0.85rem',
-        color: 'var(--teal)', fontWeight: 600,
-      }}>{money(total)}</span>
-
-      <span style={{
-        fontSize: '0.72rem', fontWeight: 600,
-        color: mins === null ? 'rgba(var(--offwhite-rgb),0.3)' : URGENCY_COLOUR[level],
-      }}>{mins === null ? 'not sent' : `${mins}m`}</span>
+        fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase',
+        color: 'rgba(var(--offwhite-rgb),0.55)',
+      }}>Table</span>
+      <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '2.2rem' : '2.8rem', lineHeight: 1 }}>
+        {check.tableNumber}
+      </span>
+      <span style={{ fontSize: isMobile ? '1rem' : '1.15rem', fontWeight: 700 }}>{money(total)}</span>
+      <span style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+        {/* A warning is a badge with an icon, not a 0.6rem corner number. */}
+        {unsent > 0 && <StatusBadge icon={faPen} tone="warn" label={`${unsent} not sent`} />}
+        {mins !== null
+          ? <StatusBadge icon={faClock} tone={level === 'late' ? 'danger' : level === 'aging' ? 'warn' : 'neutral'} label={`${mins}m`} />
+          : unsent === 0 && <StatusBadge icon={faClock} label="nothing sent" />}
+      </span>
     </button>
   )
+}
+
+/** One reading. The main one is bigger — it is what somebody glances up for. */
+function ReadingCard({ icon, label, value, sub, main, colour }: {
+  icon: IconDefinition
+  label: string
+  value: string
+  sub?: string
+  main?: boolean
+  colour: string
+}) {
+  return (
+    <div style={{
+      flex: main ? '2 1 280px' : '1 1 190px', minHeight: '150px',
+      display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '0.4rem',
+      padding: '1rem 1.1rem', borderRadius: '14px',
+      background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
+      borderTop: `5px solid ${colour}`, fontFamily: 'var(--font-inter)',
+    }}>
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+        fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+        color: 'rgba(var(--offwhite-rgb),0.7)',
+      }}>
+        <FontAwesomeIcon icon={icon} style={{ color: colour }} />{label}
+      </span>
+      <span style={{ fontSize: main ? '2.6rem' : '1.9rem', fontWeight: 700, color: 'var(--offwhite)', lineHeight: 1.05 }}>
+        {value}
+      </span>
+      {sub && <span style={{ fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.55)' }}>{sub}</span>}
+    </div>
+  )
+}
+
+const READING_LOOK: Record<ReadingKey, { icon: IconDefinition; colour: string }> = {
+  closedToday: { icon: faCircleCheck, colour: '#22C55E' },
+  openTotal: { icon: faMoneyBillWave, colour: '#3B82F6' },
+  openCount: { icon: faTableCells, colour: '#A855F7' },
+  averageToday: { icon: faScaleBalanced, colour: '#06B6D4' },
+  refundsToday: { icon: faRotateLeft, colour: '#EF7A9B' },
 }
 
 export default function FloorPage() {
@@ -167,6 +213,17 @@ export default function FloorPage() {
   const { on: takesPayment } = useFeature('payments')
   const { checks, error: liveError } = useOpenChecks(branch)
 
+  // A little over a day back, fixed when the page opens: always wide enough to
+  // hold the café's whole today, whatever the zone, and no wider.
+  const [sinceMs] = useState(() => Date.now() - 30 * 3600_000)
+  const { checks: closedRecent, loading: closedLoading, error: closedError, truncated } = useChecksClosedSince(branch, sinceMs)
+
+  const [chosen, setChosen] = useState<ReadingKey[]>(() => {
+    try { return readReadingChoice(typeof window === 'undefined' ? null : window.localStorage.getItem(READINGS_KEY)) }
+    catch { return readReadingChoice(null) }
+  })
+  const [choosing, setChoosing] = useState(false)
+
   const [adding, setAdding] = useState(false)
   const [tableNumber, setTableNumber] = useState('')
   const [guests, setGuests] = useState('2')
@@ -177,6 +234,28 @@ export default function FloorPage() {
     () => [...checks].sort((a, b) => a.tableNumber - b.tableNumber),
     [checks],
   )
+
+  const timeZone = BRAND.locale.timezone
+  const today = todayYmd(timeZone, new Date(now))
+  const readings = useMemo(() => floorReadings(
+    open.map(c => orderedTotal(c.lines)),
+    closedRecent.map(c => ({
+      status: c.status,
+      day: closedAtParts(c.closedAt, timeZone).day,
+      // What the check came to, after staff meal and discounts — the same
+      // figure its receipt and the sales export use.
+      totalUsd: checkTotals(c).net,
+    })),
+    today,
+  ), [open, closedRecent, today, timeZone])
+
+  function toggleReading(key: ReadingKey) {
+    setChosen(prev => {
+      const next = prev.includes(key) ? prev.filter(k => k !== key) : READINGS.map(r => r.key).filter(k => k === key || prev.includes(k))
+      try { window.localStorage.setItem(READINGS_KEY, JSON.stringify(next)) } catch { /* private mode: the choice lasts the visit */ }
+      return next
+    })
+  }
 
   async function handleOpen() {
     const n = Number(tableNumber)
@@ -201,12 +280,11 @@ export default function FloorPage() {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '2rem', fontFamily: 'var(--font-inter)',
       }}>
-        <div style={{ maxWidth: '40ch', textAlign: 'center' }}>
-          <h1 style={{
-            fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem',
-            color: 'var(--offwhite)', marginBottom: '0.8rem',
-          }}>{blocked === 'feature' ? 'Point of Sale is switched off' : 'You do not have till access'}</h1>
-          <p style={{ fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.4)', lineHeight: 1.7 }}>
+        <div style={{ maxWidth: '44ch', textAlign: 'center' }}>
+          <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.6rem', color: 'var(--offwhite)', marginBottom: '0.8rem' }}>
+            {blocked === 'feature' ? 'Point of Sale is switched off' : 'You do not have till access'}
+          </h1>
+          <p style={{ fontSize: '1rem', color: 'rgba(var(--offwhite-rgb),0.6)', lineHeight: 1.7 }}>
             {blocked === 'feature'
               ? 'A superadmin can switch it on in the admin panel under Settings → Features. It needs the Menu module on as well.'
               : 'Ask a manager to grant you the Point of Sale section in the admin panel under Staff Accounts.'}
@@ -217,105 +295,142 @@ export default function FloorPage() {
   }
   if (checking) return null
 
-  const floorTotal = open.reduce((sum, c) => sum + orderedTotal(c.lines), 0)
+  const closedValue = closedLoading ? '…' : money(readings.closedTodayUsd)
+  const readingValue: Record<ReadingKey, { value: string; sub?: string }> = {
+    closedToday: {
+      value: closedValue,
+      sub: closedLoading ? 'Loading…' : `${readings.closedTodayCount} ${readings.closedTodayCount === 1 ? 'table' : 'tables'} closed`,
+    },
+    openTotal: { value: money(readings.openTotalUsd), sub: `across ${readings.openCount} open ${readings.openCount === 1 ? 'table' : 'tables'}` },
+    openCount: { value: String(readings.openCount), sub: 'with a bill open' },
+    averageToday: {
+      value: closedLoading ? '…' : readings.averageTodayUsd === null ? '—' : money(readings.averageTodayUsd),
+      sub: readings.averageTodayUsd === null && !closedLoading ? 'nothing closed yet today' : 'per closed table',
+    },
+    refundsToday: {
+      value: closedLoading ? '…' : money(readings.refundsTodayUsd),
+      sub: `${readings.refundsTodayCount} refunded — not taken off sales`,
+    },
+  }
+  const shownReadings = READINGS.filter(r => chosen.includes(r.key))
 
   return (
     <main style={{
       minHeight: '100vh', backgroundColor: 'var(--black)',
-      padding: isMobile ? '1.25rem 1rem 6rem' : '2rem 2rem 6rem',
+      padding: isMobile ? '1.25rem 1rem 7rem' : '1.75rem 2rem 7.5rem',
       fontFamily: 'var(--font-inter)',
     }}>
-      <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
         <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-          flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.4rem',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
+          flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem',
         }}>
           <div>
             <p style={{
-              fontSize: '0.6rem', letterSpacing: '0.25em', textTransform: 'uppercase',
-              color: 'var(--teal)', marginBottom: '0.3rem',
+              fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase',
+              color: 'var(--teal)', marginBottom: '0.3rem', fontWeight: 700,
             }}>{branch}</p>
-            <h1 style={{
-              fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.5rem' : '1.9rem',
-              color: 'var(--offwhite)',
-            }}>Open tables</h1>
+            <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.4rem', color: 'var(--offwhite)', lineHeight: 1 }}>
+              Open tables
+            </h1>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
-              {open.length} open · {money(floorTotal)}
-            </p>
-            {/* The pass, for whoever is carrying the phone that is also the
-                kitchen screen. Gated separately — a waiter without the KDS
-                section lands on its own explanation, not a blank page. */}
-            {takesPayment && (
-              <a href="/pos/drawer" style={{
-                fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase',
-                color: 'rgba(var(--offwhite-rgb),0.35)', textDecoration: 'none',
-                display: 'inline-block', marginTop: '0.35rem', marginRight: '0.8rem',
-              }}>Drawer →</a>
-            )}
+
+          {/* Real buttons, with icons. These were four 15px-tall text links at
+              35% opacity — the smallest targets in the app, for the screens
+              staff move between most. */}
+          <nav style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {takesPayment && <PosButton icon={faCashRegister} label="Drawer" tone="neutral" onClick={() => router.push('/pos/drawer')} />}
             {/* The counter till (slice 7). One screen, and the only one that
                 keeps working through an outage — so it is worth reaching from
                 here rather than only from a home-screen icon. */}
-            <a href="/pos/counter" style={{
-              fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase',
-              color: 'rgba(var(--offwhite-rgb),0.35)', textDecoration: 'none',
-              display: 'inline-block', marginTop: '0.35rem', marginRight: '0.8rem',
-            }}>Counter →</a>
-            <a href="/pos/closed" style={{
-              fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase',
-              color: 'rgba(var(--offwhite-rgb),0.35)', textDecoration: 'none',
-              display: 'inline-block', marginTop: '0.35rem', marginRight: '0.8rem',
-            }}>Closed →</a>
-            <a href="/pos/kds" style={{
-              fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase',
-              color: 'rgba(var(--offwhite-rgb),0.35)', textDecoration: 'none',
-              display: 'inline-block', marginTop: '0.35rem',
-            }}>Kitchen display →</a>
-          </div>
+            <PosButton icon={faStore} label="Counter" tone="neutral" onClick={() => router.push('/pos/counter')} />
+            <PosButton icon={faReceipt} label="Closed" tone="neutral" onClick={() => router.push('/pos/closed')} />
+            {/* The pass, for whoever is carrying the device that is also the
+                kitchen screen. Gated separately — a waiter without the KDS
+                section lands on its own explanation, not a blank page. */}
+            <PosButton icon={faFire} label="Kitchen display" tone="neutral" onClick={() => router.push('/pos/kds')} />
+          </nav>
         </div>
+
+        {/* ── Readings ──────────────────────────────────────────────────── */}
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+          <button
+            type="button"
+            onClick={() => setChoosing(true)}
+            aria-label="Choose readings"
+            style={{
+              width: '150px', height: '150px', flex: '0 0 auto',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+              borderRadius: '14px', cursor: 'pointer',
+              background: 'rgba(var(--teal-rgb),0.12)', border: '2px solid var(--teal)',
+              color: 'var(--offwhite)', fontFamily: 'var(--font-inter)',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <FontAwesomeIcon icon={faChartColumn} style={{ fontSize: '2.2rem', color: 'var(--teal)' }} />
+            <span style={{ fontSize: '1rem', fontWeight: 700 }}>Readings</span>
+            <span style={{ fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.6)' }}>{shownReadings.length} shown · change</span>
+          </button>
+
+          {shownReadings.map(r => (
+            <ReadingCard key={r.key} icon={READING_LOOK[r.key].icon} colour={READING_LOOK[r.key].colour}
+              label={r.label} value={readingValue[r.key].value} sub={readingValue[r.key].sub} main={r.key === 'closedToday'} />
+          ))}
+          {shownReadings.length === 0 && (
+            <p style={{ alignSelf: 'center', fontSize: '0.95rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
+              No readings shown — tap Readings to choose some.
+            </p>
+          )}
+        </div>
+
+        {(closedError || truncated) && (
+          <p style={{
+            color: 'var(--brand-secondary)', fontSize: '0.95rem', marginBottom: '1rem', lineHeight: 1.6,
+            background: 'rgba(var(--brand-secondary-rgb),0.1)', border: '1px solid rgba(var(--brand-secondary-rgb),0.35)',
+            borderRadius: '8px', padding: '0.8rem 1rem',
+          }}>
+            <FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.5rem' }} />
+            {closedError
+              ? `Today's closed figures could not be read: ${closedError}`
+              : 'More checks closed since yesterday than this screen reads — today\'s closed figures may be short. Use the sales export for the full day.'}
+          </p>
+        )}
 
         {liveError && (
           <p style={{
-            color: 'var(--brand-secondary)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6,
-            background: 'rgba(var(--brand-secondary-rgb),0.08)', border: '1px solid rgba(var(--brand-secondary-rgb),0.25)',
-            borderRadius: '3px', padding: '0.7rem 0.9rem',
-          }}>{liveError}</p>
+            color: 'var(--brand-secondary)', fontSize: '0.95rem', marginBottom: '1rem', lineHeight: 1.6,
+            background: 'rgba(var(--brand-secondary-rgb),0.1)', border: '1px solid rgba(var(--brand-secondary-rgb),0.35)',
+            borderRadius: '8px', padding: '0.8rem 1rem',
+          }}><FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.5rem' }} />{liveError}</p>
         )}
 
         {error && !adding && (
           <p style={{
-            color: 'var(--red)', fontSize: '0.82rem', marginBottom: '1rem',
-            background: 'rgba(var(--red-rgb),0.08)', border: '1px solid rgba(var(--red-rgb),0.25)',
-            borderRadius: '3px', padding: '0.7rem 0.9rem',
-          }}>{error}</p>
+            color: 'var(--red)', fontSize: '0.95rem', marginBottom: '1rem',
+            background: 'rgba(var(--red-rgb),0.1)', border: '1px solid rgba(var(--red-rgb),0.35)',
+            borderRadius: '8px', padding: '0.8rem 1rem',
+          }}><FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.5rem' }} />{error}</p>
         )}
 
         {open.length === 0 ? (
-          <p style={{
-            color: 'rgba(var(--offwhite-rgb),0.3)', fontSize: '0.9rem',
-            lineHeight: 1.8, padding: '2.5rem 0', textAlign: 'center',
+          <div style={{
+            color: 'rgba(var(--offwhite-rgb),0.55)', fontSize: '1.05rem',
+            lineHeight: 1.8, padding: '3rem 0', textAlign: 'center',
           }}>
-            No tables open.<br />
-            Tap <strong style={{ color: 'rgba(var(--offwhite-rgb),0.5)' }}>Add table</strong> to start one.
-          </p>
+            <FontAwesomeIcon icon={faDoorOpen} style={{ fontSize: '2rem', marginBottom: '0.6rem', color: 'rgba(var(--offwhite-rgb),0.35)' }} />
+            <p>No tables open.</p>
+            <p>Tap <strong style={{ color: 'var(--offwhite)' }}>Add table</strong> to start one.</p>
+          </div>
         ) : (
           <div style={{
             display: 'grid',
-            // Squares wide enough for a two-digit table number at 2rem, and no
-            // wider than a thumb needs — more tables visible beats bigger ones.
-            gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '104px' : '128px'}, 1fr))`,
-            gap: '0.6rem',
+            // Bigger squares on a touch screen: a table is the thing tapped most.
+            gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '120px' : '170px'}, 1fr))`,
+            gap: '0.8rem',
           }}>
             {open.map(c => (
-              <CheckCard
-                key={c.id}
-                check={c}
-                now={now}
-                onOpen={() => router.push(`/pos/check/${c.id}`)}
-                isMobile={isMobile}
-              />
+              <CheckCard key={c.id} check={c} now={now} onOpen={() => router.push(`/pos/check/${c.id}`)} isMobile={isMobile} />
             ))}
           </div>
         )}
@@ -323,44 +438,89 @@ export default function FloorPage() {
 
       {/* Sticky: a waiter's thumb lives at the bottom of the screen. */}
       <div style={{
-        position: 'fixed', left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(10,10,10,0.96)', borderTop: '1px solid rgba(255,255,255,0.1)',
+        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 20,
+        backgroundColor: 'rgba(10,10,10,0.97)', borderTop: '1px solid rgba(255,255,255,0.12)',
         padding: '0.8rem 1rem',
       }}>
-        <div style={{ maxWidth: '640px', margin: '0 auto' }}>
-          <button onClick={() => { setAdding(true); setTableNumber(''); setError('') }} style={{
-            width: '100%', minHeight: '52px', border: 'none', borderRadius: '4px',
-            backgroundColor: 'var(--teal)', color: '#fff', cursor: 'pointer',
-            fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
-            letterSpacing: '0.12em', textTransform: 'uppercase',
-          }}>Add table</button>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <PosButton icon={faPlus} label="Add table" tone="primary" size="lg" full
+            onClick={() => { setAdding(true); setTableNumber(''); setError('') }} />
         </div>
       </div>
+
+      {/* ── Choosing readings ───────────────────────────────────────────── */}
+      {choosing && (
+        <div onClick={() => setChoosing(false)} style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)',
+          display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 50,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            backgroundColor: '#111', width: '100%', maxWidth: '560px',
+            borderRadius: isMobile ? '14px 14px 0 0' : '14px', padding: '1.4rem 1.2rem 1.6rem',
+            border: '1px solid rgba(255,255,255,0.12)',
+          }}>
+            <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem', color: 'var(--offwhite)', marginBottom: '0.3rem' }}>
+              What to show
+            </h2>
+            <p style={{ fontSize: '0.92rem', color: 'rgba(var(--offwhite-rgb),0.55)', marginBottom: '1rem' }}>
+              Remembered on this device.
+            </p>
+            <div style={{ display: 'grid', gap: '0.55rem' }}>
+              {READINGS.map(r => {
+                const on = chosen.includes(r.key)
+                const look = READING_LOOK[r.key]
+                return (
+                  <button key={r.key} type="button" onClick={() => toggleReading(r.key)} aria-pressed={on} style={{
+                    minHeight: '68px', borderRadius: '12px', cursor: 'pointer', textAlign: 'left',
+                    display: 'flex', alignItems: 'center', gap: '0.9rem', padding: '0.6rem 1rem',
+                    fontFamily: 'var(--font-inter)', color: 'var(--offwhite)',
+                    background: on ? 'rgba(var(--teal-rgb),0.14)' : 'rgba(255,255,255,0.04)',
+                    border: `2px solid ${on ? 'var(--teal)' : 'rgba(255,255,255,0.14)'}`,
+                  }}>
+                    <FontAwesomeIcon icon={look.icon} style={{ color: look.colour, fontSize: '1.35rem', width: '1.5rem' }} />
+                    <span style={{ flex: 1 }}>
+                      <span style={{ display: 'block', fontSize: '1.02rem', fontWeight: 700 }}>{r.label}</span>
+                      <span style={{ display: 'block', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.55)' }}>{r.hint}</span>
+                    </span>
+                    <span style={{
+                      width: '1.9rem', height: '1.9rem', borderRadius: '6px', flexShrink: 0,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      background: on ? 'var(--teal)' : 'transparent', border: `2px solid ${on ? 'var(--teal)' : 'rgba(255,255,255,0.3)'}`,
+                    }}>{on && <FontAwesomeIcon icon={faCheck} style={{ color: '#fff' }} />}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ marginTop: '1.1rem' }}>
+              <PosButton icon={faCheck} label="Done" tone="primary" full onClick={() => setChoosing(false)} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {adding && (
         <div
           onClick={() => setAdding(false)}
           style={{
             position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)',
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50,
+            display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 50,
           }}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              backgroundColor: '#111', width: '100%', maxWidth: '640px',
-              borderRadius: '10px 10px 0 0', padding: '1.25rem 1rem 2rem',
-              border: '1px solid rgba(255,255,255,0.1)',
+              backgroundColor: '#111', width: '100%', maxWidth: '560px',
+              borderRadius: isMobile ? '14px 14px 0 0' : '14px', padding: '1.4rem 1.2rem 1.8rem',
+              border: '1px solid rgba(255,255,255,0.12)',
             }}
           >
-            <h2 style={{
-              fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem',
-              color: 'var(--offwhite)', marginBottom: '1rem',
-            }}>Open a table</h2>
+            <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem', color: 'var(--offwhite)', marginBottom: '1rem' }}>
+              Open a table
+            </h2>
 
             <label style={{
-              display: 'block', fontSize: '0.64rem', letterSpacing: '0.14em',
-              textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.4)', marginBottom: '0.4rem',
+              display: 'block', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.08em',
+              textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.6)', marginBottom: '0.45rem',
             }}>Table number</label>
             <input
               value={tableNumber}
@@ -371,50 +531,33 @@ export default function FloorPage() {
               autoFocus
               placeholder="7"
               style={{
-                width: '100%', minHeight: '56px', textAlign: 'center',
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.14)',
-                borderRadius: '4px', color: 'var(--offwhite)',
-                fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', outline: 'none',
+                width: '100%', minHeight: '72px', textAlign: 'center',
+                background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.18)',
+                borderRadius: '10px', color: 'var(--offwhite)',
+                fontFamily: 'var(--font-cinzel)', fontSize: '2.2rem', outline: 'none',
               }}
             />
 
             <label style={{
-              display: 'block', fontSize: '0.64rem', letterSpacing: '0.14em',
-              textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.4)',
-              margin: '1rem 0 0.4rem',
-            }}>Guests</label>
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.08em',
+              textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.6)', margin: '1.1rem 0 0.5rem',
+            }}><FontAwesomeIcon icon={faUserGroup} />Guests</label>
+            <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
               {[1, 2, 3, 4, 5, 6, 8].map(n => (
-                <button key={n} onClick={() => setGuests(String(n))} style={{
-                  minHeight: '44px', minWidth: '44px', borderRadius: '4px', cursor: 'pointer',
-                  backgroundColor: guests === String(n) ? 'rgba(var(--teal-rgb),0.18)' : 'transparent',
-                  border: `1px solid ${guests === String(n) ? 'var(--teal)' : 'rgba(255,255,255,0.12)'}`,
-                  color: 'var(--offwhite)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
-                }}>{n}</button>
+                <Chip key={n} label={String(n)} active={guests === String(n)} onClick={() => setGuests(String(n))} />
               ))}
             </div>
 
             {error && (
-              <p style={{ color: 'var(--red)', fontSize: '0.82rem', marginTop: '0.9rem' }}>{error}</p>
+              <p style={{ color: 'var(--red)', fontSize: '0.95rem', marginTop: '0.9rem' }}>
+                <FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.4rem' }} />{error}
+              </p>
             )}
 
-            <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.2rem' }}>
-              <button onClick={() => setAdding(false)} style={{
-                flex: 1, minHeight: '48px', borderRadius: '4px', cursor: 'pointer',
-                backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.14)',
-                color: 'rgba(var(--offwhite-rgb),0.6)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
-              }}>Cancel</button>
-              <button
-                disabled={busy || !tableNumber}
-                onClick={handleOpen}
-                style={{
-                  flex: 2, minHeight: '48px', borderRadius: '4px', border: 'none',
-                  backgroundColor: busy || !tableNumber ? 'rgba(var(--teal-rgb),0.25)' : 'var(--teal)',
-                  color: '#fff', cursor: busy || !tableNumber ? 'default' : 'pointer',
-                  fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
-                  letterSpacing: '0.1em', textTransform: 'uppercase',
-                }}
-              >{busy ? 'Opening…' : `Open table ${tableNumber || ''}`}</button>
+            <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.3rem' }}>
+              <PosButton icon={faXmark} label="Cancel" tone="quiet" grow={1} onClick={() => setAdding(false)} />
+              <PosButton icon={faPlus} label={busy ? 'Opening…' : `Open table ${tableNumber || ''}`} tone="primary" size="lg" grow={2}
+                disabled={busy || !tableNumber} onClick={handleOpen} />
             </div>
           </div>
         </div>

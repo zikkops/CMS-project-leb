@@ -20,7 +20,7 @@
 
 import { useEffect, useState } from 'react'
 import {
-  collection, doc, limit, onSnapshot, orderBy, query, where,
+  collection, doc, limit, onSnapshot, orderBy, query, where, Timestamp,
 } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth, db } from '@big-cms/shared/firebase'
@@ -255,6 +255,54 @@ export function useClosedChecks(branch: string, max = 50): {
   }, [branch, ready, signedIn, max])
 
   return { checks, loading: !ready || (signedIn && !loaded), error }
+}
+
+/**
+ * Checks closed (or refunded) at a branch since an instant — for the floor's
+ * "closed today" reading.
+ *
+ * Not useClosedChecks(): that one is capped at 50 for a review screen, and a
+ * reading built on a capped list undercounts a busy day without saying so.
+ * This is bounded by TIME instead — the caller passes an instant a little
+ * over a day back, and the page keeps only the café's today — so it reads a
+ * day's checks and no more, on the same (branch, status, closedAt) index. A
+ * hard ceiling still stands behind it, and `truncated` says when it was hit
+ * rather than letting a figure come out quietly short.
+ */
+export function useChecksClosedSince(branch: string, sinceMs: number): {
+  checks: Check[]; loading: boolean; error: string; truncated: boolean
+} {
+  const CEILING = 2000
+  const [checks, setChecks] = useState<Check[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState('')
+  const { ready, signedIn } = useAuthReady()
+
+  useEffect(() => {
+    if (!branch || !ready || !signedIn || !Number.isFinite(sinceMs)) return
+    const q = query(
+      collection(db, 'checks'),
+      where('branch', '==', branch),
+      where('status', 'in', ['closed', 'refunded']),
+      where('closedAt', '>=', Timestamp.fromMillis(sinceMs)),
+      orderBy('closedAt', 'desc'),
+      limit(CEILING),
+    )
+    return onSnapshot(q,
+      snap => {
+        setChecks(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Check))
+        setLoaded(true)
+        setError('')
+      },
+      err => {
+        console.error('[useChecksClosedSince] listener failed:', err)
+        setError(listenerMessage(err))
+        setLoaded(true)
+      },
+    )
+  }, [branch, ready, signedIn, sinceMs])
+
+  return { checks, loading: !ready || (signedIn && !loaded), error, truncated: checks.length >= CEILING }
 }
 
 /**

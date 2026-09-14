@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 22 checks, 16 verifiers, 1012
+is the only thing that shows it. Currently 22 checks, 16 verifiers, 1024
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -440,6 +440,35 @@ review, recall. Behind the `foodSafety` module, **off by default**.
   (managers, admins); limits and the allergen list are admin-only in the route.
   Units are retired, never deleted. `npm run verify:food-safety`, 28 mutations
   caught by name.
+
+## POS look and feel (Sep 2026)
+
+Owner's request, 14 Sep 2026: bigger, easier to tell apart and to press,
+desktop / touch screen first. Shared controls are in `pos/app/lib/posUi.tsx`
+(`PosButton`, `Chip`, `StatusBadge`, `SectionLabel`). **Build new POS screens
+from them, not from a fresh `tap` constant.**
+
+- **A colour has one meaning.** Teal is the main action on the screen and
+  nothing else loud. Red destroys or ends something. Amber needs attention
+  (not sent yet, waiting). A hue from `KIND_COLOURS` says what kind of thing it
+  is (a menu category, a station). Every action has an icon as well as a word,
+  so nothing is told apart by colour alone. Disabled is grey and dashed, not a
+  paler teal.
+- **Touch heights:** 44px small, 56px default, 68px for the main action.
+- **The order screen on a wide screen keeps the menu open beside the check.**
+  Below 900px it is the old sheet. Unsent lines have their own amber section.
+  Send is the widest button in the bar. Void reasons that waste food are red
+  with a bin icon.
+- **The floor has a square Readings button.** Each device picks what to show
+  (remembered in localStorage): closed today (the main one), open tables total,
+  tables open, average bill, refunds today. The adding-up is
+  `pos/app/lib/floorReadings.ts`, asserted in `verify:counter`, in cents, with
+  refunds kept apart from sales and "today" as the café's day.
+  **Closed today reads `useChecksClosedSince()`, bounded by time, not
+  `useClosedChecks()`**. That one is capped at 50 for the review screen and
+  would undercount a busy day; the time-bounded query has a 2,000 ceiling and
+  says so on screen when it is hit.
+- Not yet redesigned: the counter, the KDS, closed checks, the drawer.
 
 ## Seeding a POS history (Sep 2026)
 

@@ -123,5 +123,43 @@ console.log('\nwhat has already been paid')
   eq('...and one that is only partly possible takes only what is left', partly, [{ appliedLbp: 18000 }, { appliedLbp: 2000 }])
 }
 
+// ── The floor's readings — pos/app/lib/floorReadings.ts ────────────────────
+// Same rule as the rest of this file: the figures that reach a screen are
+// added up where they can be asserted, not inside the component.
+console.log('\nthe floor\'s readings')
+{
+  const outFloor = mkdtempSync(join(tmpdir(), 'floor-verify-'))
+  execSync(
+    `npx tsc pos/app/lib/floorReadings.ts --outDir ${outFloor} --module esnext --target es2022 ` +
+    `--skipLibCheck --moduleResolution bundler --strict`,
+    { stdio: 'pipe' },
+  )
+  const R = await import(`file://${join(outFloor, 'floorReadings.js')}`)
+  const today = '2026-09-14'
+  const closed = [
+    { status: 'closed', day: today, totalUsd: 12.5 },
+    { status: 'closed', day: today, totalUsd: 7.25 },
+    // Closed last night: not today's, however recent the query was.
+    { status: 'closed', day: '2026-09-13', totalUsd: 40 },
+    { status: 'refunded', day: today, totalUsd: 9 },
+    { status: 'open', day: today, totalUsd: 99 },
+    { status: 'closed', day: '', totalUsd: 5 },
+  ]
+  const r = R.floorReadings([10.1, 0.2, 3], closed, today)
+  eq('open tables add up, in cents — 0.1 + 0.2 is not 0.30000000000000004', r.openTotalUsd, 13.3)
+  eq('how many are open', r.openCount, 3)
+  eq('closed today is today\'s only', [r.closedTodayCount, r.closedTodayUsd], [2, 19.75])
+  eq('THE TRAP: a refund is its own reading, never taken off sales', [r.refundsTodayCount, r.refundsTodayUsd], [1, 9])
+  eq('the average of what closed today', r.averageTodayUsd, 9.88)
+  eq('nothing closed yet: no average, not $0.00', R.floorReadings([], [], today).averageTodayUsd, null)
+  eq('a check with no known day counts for no day', R.floorReadings([], [{ status: 'closed', day: '', totalUsd: 5 }], '').closedTodayCount, 0)
+
+  eq('nothing stored: the defaults', R.readReadingChoice(null), ['closedToday', 'openTotal'])
+  eq('a stored choice is kept, in the panel\'s order', R.readReadingChoice('["refundsToday","openCount"]'), ['openCount', 'refundsToday'])
+  eq('unknown keys and repeats are dropped', R.readReadingChoice('["openTotal","openTotal","profit"]'), ['openTotal'])
+  eq('hiding everything is a choice, and is kept', R.readReadingChoice('[]'), [])
+  eq('something unreadable falls back to the defaults', R.readReadingChoice('{not json'), ['closedToday', 'openTotal'])
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail > 0 ? 1 : 0)
