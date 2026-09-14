@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 20 checks, 14 verifiers, 805
+is the only thing that shows it. Currently 21 checks, 15 verifiers, 893
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -59,6 +59,7 @@ npm run verify:counter       # if you touched what the counter till charges for
 npm run verify:export        # if you touched what leaves the building for an accountant
 npm run verify:backup        # if you touched how a document is copied out or put back
 npm run verify:tips          # if you touched how tips are split
+npm run verify:recipes       # if you touched a recipe, a unit conversion or what a sale takes off the shelf
 npm run verify:errors        # if you touched what an error report may contain
 npm run verify:delivery-math # if you touched receiving or costing
 npm run audit:writes         # must stay at 0
@@ -263,6 +264,62 @@ writing needs `--apply`**.
 - `npm run verify:tips` — 26 cases. The period carries the rate it was worked
   out at, so a card can never label a total with a rate that did not produce
   it.
+
+## Recipes & ingredient stock (Sep 2026)
+
+Scoped in the vault (`Recipes and Ingredient Stock - Scope.md`), with the
+owner's decisions of 14 Sep 2026. Built: the arithmetic, admin costing at
+`/admin/menu/recipes`, and ingredients leaving stock on Send, behind the
+`recipes` switch (off). Not yet: expected-vs-counted, theoretical food cost.
+None of the till side has run against the database.
+
+- **What a serving takes is snapshotted onto the line when it is added**
+  (`consumesPerServing`, in `buildLines()`), only while the switch is on — off,
+  there are no extra reads and no new fields. Per serving, not per line: the
+  quantity multiplies it wherever stock moves, so the snapshot cannot go stale
+  if a quantity ever becomes editable. Firestore refuses `undefined`, so the
+  fields are set only when there is something to record.
+- **Send and offline-made orders take one move per supply for the batch**
+  (`sendMoves()`). Supplies are read inside the transaction before the first
+  write, and one that no longer exists is **skipped, never allowed to fail the
+  Send**. A branch not in `STOCKED_BRANCHES` moves none. Stock may go negative.
+- **Voids and refunds apply `reversalPlan()`**, never an inline decision.
+  **Refunds take a reason from `VOID_REASONS`** now, and merchandise follows it
+  too — they used to put every product back whatever had happened to it.
+- **Deleting a supply is refused while a recipe uses it**; recipes store
+  `supplyIds` so that is one array-contains query.
+
+- **The arithmetic is `shared/src/recipes.ts`, pure, asserted by `npm run
+  verify:recipes`** (75 cases, 8 mutations caught by name). The page and the
+  server only apply what it computed.
+- **Recipes never live on `menuItems` or `modifierGroups`.** Both are
+  world-readable so the menu works signed out, and a recipe there publishes
+  every margin. They live in `recipes/{menuItemId}`, which has **no Firestore
+  rule** — server-only, behind `/api/admin/recipes`. Admin only, reading as
+  well as writing: dish cost is margin.
+- **Stock stays counted in the purchase unit** (`supply.unit`), because
+  receiving and the daily count use it. Recipes measure in `recipeUnit`, with
+  `recipeUnitsPerPurchaseUnit` between them. **A missing or nonsensical factor
+  is unknown, never 1** — guessing is a silent 1,000× error. Unit spellings
+  meet in `normalizeUnit()`: the inventory form says "L", the order template
+  "liter". The inventory form sends all three recipe fields on every save,
+  because the route replaces the whole item and omitting them would wipe a
+  conversion.
+- **Trim is `yieldPercent` on the supply**, set once; the purchase quantity is
+  divided by it.
+- **Modifiers add or replace (owner's decision). Additions apply first, then
+  replacements over everything.** A replacement is a choice about an
+  ingredient, so it covers every portion: an extra shot in a decaf is decaf.
+  The reverse order passed every test until a mutation survived — no test had
+  combined an addition with a replacement of the same ingredient.
+- **A cost that cannot be known reads "cost unknown" and names the
+  ingredient**, never $0.00: a never-received supply has no average cost.
+  Margin is on the price **before** VAT.
+- **Voids and refunds follow their cause** (owner's decision): never sent
+  takes nothing; not made goes back; already made is waste. A reason claiming
+  both is waste, so stock is never invented (`ingredientOutcome()`).
+- **The `recipes` feature switch governs depletion only**, off by default.
+  Entering recipes and costing dishes never depends on it.
 
 ## Seeding a POS history (Sep 2026)
 
