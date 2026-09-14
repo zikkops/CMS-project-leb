@@ -24,17 +24,29 @@ costs nothing.
 | `errorReports` | 5 | posted deliberately at `/api/errors` |
 | `menuItems` | 16 | `seed:demo` |
 | `products` | 26 | `seed:demo` |
+| `recipes` | 15 | `seed:recipes` — every dish but the Club Sandwich, which has none on purpose |
+| `supplies` | 40 | `seed:demo`; 23 carry recipe conversions from `seed:recipes` |
 | `users` | 3 | provisioned by hand |
+
+The 415 seeded checks also carry what each line's recipe took, written by
+`seed:recipes` — the snapshot a till takes when an item is added.
 
 To remove the POS history: `npm run seed:pos -- --clear --apply`. It removes
 exactly what it wrote (`seeded: true`) and nothing else. To put it back you
 need a fresh receipt block above the counter — the script tells you which.
+`npm run seed:recipes -- --clear --apply` removes the recipes, the conversions
+it filled and the snapshots, and nothing it did not write.
 
 **Turn the money on, for testing only.** Most of Phase 04 is behind the
 `payments` feature switch, which is **off**. In Settings → Features, turn
 `payments` on for this pass — the Drawer link only appears when it is on, and
 the pay sheet is unreachable without it. **Turn it off again before any
 pilot**, because off is what makes the pilot safe.
+
+**Ingredients leaving stock is a switch too.** "Deduct Ingredients on Sale"
+in Settings → Features, which needs the POS and supplies on. It is **off**, and
+it governs only the till: recipes, costing and theoretical food cost all work
+without it.
 
 ---
 
@@ -76,9 +88,34 @@ The one with the most behind it.
 - With `payments` on, End of Day's "system" figure comes from the day's drawer
   shifts rather than being typed. The field goes read-only.
 
+### Recipes & Costing — `/admin/menu/recipes` (admin only)
+- Fifteen dishes should show a cost; the Club Sandwich none. **A Latte costs
+  $0.59** on the seeded conversions, a Caesar Salad $2.83, a Margherita $1.28.
+- Beside every ingredient the quantity shows in both units — "18 g = 0.018 kg".
+  That line is the defence against a wrong conversion, so read a few.
+- Lemons are set to a 45% yield in Supplies, so **120 g of lemon takes 0.267 kg
+  off the shelf**. That is trim working, not a typo.
+- Sign in as a manager: the page should refuse. Dish cost is margin.
+- In **Supplies**, open Coffee Beans: recipe unit g, 1,000 per kg. Try to delete
+  it — refused, because recipes use it.
+
 ### Receiving and food cost — `/admin/supplies/receiving`, `.../report`
 - This chain was closed in September against seeded data; it should still read
   a food cost percentage rather than a dash.
+- **Theoretical food cost** sits in a second row. Set **All branches, 14 Aug →
+  13 Sep 2026** and expect **16.3%**, recipe cost **$1,168.74**, POS sales before
+  VAT **$8,165.32** over **400 closed checks**, on **87.9%** of POS sales.
+- A warning should say **63 sold lines have no recipe** — the Club Sandwiches.
+  They are left out of the percentage rather than counted as free, which is why
+  the figure says how much of sales it covers.
+- Compare the two **percentages**, not the dollars: actual is goods received
+  against the end-of-day till figure, theoretical is recipes against the POS
+  checks before VAT.
+
+### Daily counts — `/admin/supplies/daily`, `.../history`
+- Submit a count, then open it in the history: **Expected, Counted, Variance
+  and Value** per supply, with totals. Counts from before 14 Sep have no expected
+  figure and say so rather than showing NaN.
 
 ### The rest
 Products, weekly orders, wholesale, loyalty approvals and redemptions, events,
@@ -94,6 +131,27 @@ have seeded data.
 - The right station should see the ticket at `/pos/kds` and be able to clear it.
 - Add a **retail product** to the same check — that is the differentiator, and
   it comes off a different stock model.
+
+### Ingredients leaving stock (needs "Deduct Ingredients on Sale" on)
+Use the branch that holds stock — Main in the demo. Note Coffee Beans and Whole
+Milk in Supplies first.
+
+1. **Turn the switch on before adding anything.** What an item takes is recorded
+   when it is added, so a line added while the switch was off moves nothing
+   even if it is sent afterwards.
+2. Add a **Latte, Large, with an Extra shot**, and Send. Coffee Beans should
+   drop by **0.036 kg** and Whole Milk by **0.34 liter**. Coffee Beans starts at
+   0 in the demo, so it goes negative — allowed on purpose: the café sold the
+   coffee, and a till that refuses a sale over a stock figure is worse.
+3. Void one item with a **never-made reason** (changed their mind): its
+   ingredients come back. Void another as **made wrong**: they stay gone. The
+   reason picker says which will happen before you confirm — "ingredients go
+   back into stock" or "ingredients recorded as waste". What the waste cost is
+   stored on the line but not shown anywhere yet.
+4. Close a check, then refund it from `/pos/closed`. The panel asks **why** now,
+   and the answer decides the same thing — returned or wasted, retail products
+   included.
+5. **Turn the switch off again** afterwards.
 
 ### The counter — `/pos/counter`
 The single screen built for outages.
@@ -145,6 +203,22 @@ testing end to end with the loyalty feature on: scan it at
 
 ---
 
+## Changed on 14 Sep and never seen signed in — look at these
+
+All of it is behind a sign-in, and none of it has been looked at by somebody
+signed in. It compiled, passed every verifier, and the figures were checked
+against the demo documents from a script; that is not the same as having seen
+the screens.
+
+- **Recipes & Costing** and the recipe fields on the Supplies form.
+- **The theoretical row on the Food Cost Report** — the figures above.
+- **The daily count history**, rewritten.
+- **The refund panel** on `/pos/closed`, and the hint on the void picker saying
+  whether an item's ingredients go back or are waste.
+- **Nothing on the till side of recipes has run against the database** — the
+  snapshots on the seeded checks were written by a script, not rung up. The
+  walkthrough under "Ingredients leaving stock" is the first time it will.
+
 ## Changed on 13 Sep and never seen in a browser — look at these
 
 Everything else changed that week was checked in a running page. These were
@@ -189,6 +263,11 @@ email/password sign-up is the easy way to get one): the navbar should read
 - **Printing beyond a browser print is not built.** `epos` and `cloudprnt`
   return a reason rather than pretending; choosing hardware is one `case`.
 - **Card payments are recorded, not taken.** The card machine is separate.
+- **Oat, almond and soy milk take nothing different.** The demo has no plant
+  milks in supplies, so those options have no replacement set up. A café that
+  stocks them adds one on the Recipes page.
+- **Being out of stock never stops a sale** (owner's decision). Stock goes
+  negative, and the count puts it right.
 
 ---
 
@@ -197,7 +276,7 @@ email/password sign-up is the easy way to get one): the navbar should read
 1. `/admin/errors` first — if a screen threw, it is there with a count.
 2. `npm run rules:live` — a rule that is written but not deployed looks exactly
    like a rule that is wrong. This is the second-commonest cause.
-3. `npm run verify:all` — twenty checks, about thirty-five seconds. If the
+3. `npm run verify:all` — twenty-one checks, about forty-five seconds. If the
    arithmetic is wrong, this says so; if it passes, the bug is in what was
    handed to the arithmetic, which is where the last three bugs were.
 4. Write it down with the screen, what you did, and what you expected. A
