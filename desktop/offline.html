@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="dark">
+  <title>BIG CMS POS — no connection</title>
+  <!--
+    Shown by main.js when the POS cannot load at all: no connection, and this
+    PC has not kept a copy of the counter screen. System colours and fonts,
+    not the brand palette — this page cannot reach the app's stylesheet, and a
+    copied colour stops following the brand the moment the brand changes.
+  -->
+  <style>
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+           background: Canvas; color: CanvasText; font: 18px/1.6 system-ui, sans-serif; }
+    main { max-width: 36rem; padding: 2rem; text-align: center; }
+    h1 { font-size: 1.8rem; margin: 0 0 0.6rem; }
+    p { margin: 0 0 0.8rem; opacity: 0.8; }
+    .reason { font-size: 0.85rem; opacity: 0.55; }
+    button { font: inherit; font-weight: 600; min-height: 56px; padding: 0 2rem; margin-top: 1rem;
+             border-radius: 10px; border: 2px solid ButtonText; background: ButtonFace; color: ButtonText; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>No connection to the POS</h1>
+    <p>Check the café's internet. This screen tries again on its own every 15 seconds.</p>
+    <p>If this PC has been marked as the counter device, the counter screen opens without a connection once it has been loaded while online.</p>
+    <p class="reason" id="reason"></p>
+    <button id="retry" type="button">Try again now</button>
+  </main>
+  <script>
+    'use strict'
+    const params = new URLSearchParams(location.search)
+    const target = params.get('url') || ''
+    const reason = params.get('reason') || ''
+    if (reason) document.getElementById('reason').textContent = 'Last error: ' + reason
+
+    // Only ever back to the POS address main.js gave, and only a web address.
+    function retry() {
+      if (/^https?:\/\//i.test(target)) location.href = target
+    }
+    document.getElementById('retry').addEventListener('click', retry)
+    window.addEventListener('online', retry)
+    setInterval(() => { if (navigator.onLine) retry() }, 15000)
+  </script>
+</body>
+</html>

@@ -69,3 +69,8 @@ pos/.next/
 
 # Local data copies from scripts/backup.mjs — never committed.
 backups/
+
+# The Windows counter app (desktop/) is its own package, outside the
+# workspaces: its Electron download must never reach a Hostinger build.
+desktop/node_modules/
+desktop/dist/

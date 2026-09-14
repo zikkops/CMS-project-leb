@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 23 checks, 17 verifiers, 1134
+is the only thing that shows it. Currently 24 checks, 18 verifiers, 1163
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -615,6 +615,51 @@ clears it from the kitchen display too. The kitchen no longer bumps.
   It sets `pickedUp: true` beside the usual `bumpedAt`/`bumpedBy`.
 - The KDS card for a ready ticket says "Waiting for the front", with a small
   Clear as a fallback so a pass is never stuck behind an unwatched screen.
+
+## POS software: the Windows counter app (Sep 2026)
+
+Owner's decisions, 14 Sep 2026: **one product, two modes, chosen per client**.
+Online is today's browsers. Software is the POS installed on the café's Windows
+counter PC, which becomes a local hub that phones (a small Android app) and
+the kitchen screen reach over the café wifi. Everything keeps working with no
+internet, receipt numbers included, and staff sign in with their own phone's
+face or fingerprint unlock, only while connected to the hub, with a manager
+approving when that fails. The plan, stages and decisions are in the vault
+(`POS Software (Local Hub) - Scope.md`). **Not React Native**: the phone app
+wraps the same React screens.
+
+- **Stage 1 is `desktop/`**: an Electron app that opens the hosted POS full
+  screen. It starts with Windows, keeps the display awake, runs once per PC,
+  reloads after a crash, and shows its own retrying screen with no connection.
+  `npm run desktop` runs it, `npm --prefix desktop run smoke` loads the POS and
+  exits, and `npm --prefix desktop run dist` builds the installer.
+- **It is outside the npm workspaces on purpose**, with its own
+  `node_modules` (gitignored). Electron's download must never reach a Hostinger
+  build of web, admin or pos.
+- **It holds no secrets, and the hub never will hold the Firebase Admin key.**
+  That key bypasses every rule. The stage 3 hub gets its own revocable device
+  credential and syncs through cloud routes.
+- **Every decision about addresses and permissions is `desktop/policy.js`**,
+  asserted by `npm run verify:desktop`:
+  - https only, or http on localhost for development
+  - never navigates off the POS origin; other links open in the real browser
+  - grants only the camera (loyalty QR) and full screen, to the POS
+  - a typo in `config.json` falls back to the default rather than switching
+    kiosk off or re-pointing the till
+- Electron 44 downloads its binary on first run, not at `npm install`, verified
+  against the bundled `checksums.json`.
+- **electron-builder walks up to the repo root and bundles ITS packages.** It
+  found the workspace lock file and put all of web/admin/pos's node_modules
+  into the app: a 370 MB `app.asar` with Firebase, firebase-admin and the rest.
+  No secrets went in, but it shipped the whole platform's code. `files` ends in
+  `!**/node_modules/**` and `npmRebuild` is false, because the app has no runtime
+  dependencies. The asar is 13 KB and holds exactly main.js, policy.js,
+  offline.html and package.json. **After changing the build config, list the
+  asar** (`npx @electron/asar list dist/win-unpacked/resources/app.asar`) before
+  shipping an installer.
+- **A smoke run reports its first outcome only.** A failed load is followed by
+  Chromium's error page finishing, and reporting both turned "could not load
+  the POS" into exit 0.
 
 ## The host's CDN caches prerendered pages for a year
 

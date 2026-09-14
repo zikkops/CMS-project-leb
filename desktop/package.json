@@ -1,0 +1,32 @@
+{
+  "name": "big-cms-counter",
+  "productName": "BIG CMS POS",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The BIG CMS POS for the café's Windows counter PC. Stage 1: online mode.",
+  "author": "BIG CMS",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "electron . --smoke",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "44.3.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.bigcms.pos",
+    "productName": "BIG CMS POS",
+    "files": ["main.js", "policy.js", "offline.html", "package.json", "!**/node_modules/**"],
+    "npmRebuild": false,
+    "directories": { "output": "dist" },
+    "win": { "target": "nsis" },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}

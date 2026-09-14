@@ -41,6 +41,10 @@ const QUIET = process.argv.includes('--quiet')
 
 const SKIP_DIRS = new Set([
   'node_modules', '.next', '.git', 'out', 'build', '.vercel', 'coverage',
+  // Built output, gitignored everywhere it appears: /dist from package-app,
+  // desktop/dist from the Windows installer. The installer's copy of
+  // Chromium's licence file alone carried 125 third-party email addresses.
+  'dist',
   // Worktrees are separate checkouts of this same repo. Their hits are
   // duplicates of the working tree's and cannot be fixed from here.
   '.claude',
@@ -51,6 +55,9 @@ const SKIP_DIRS = new Set([
 const SKIP_FILES = new Set([
   'scripts/audit-branding.mjs',
   'FORK.md',
+  // The Windows counter app's lock file: npm's metadata about Electron's
+  // build tools, nothing this project writes or ships.
+  'desktop/package-lock.json',
 ])
 
 const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.css', '.json', '.md', '.html', '.txt']

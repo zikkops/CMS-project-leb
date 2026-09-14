@@ -272,6 +272,21 @@ Milk in Supplies first.
    Person 1 pays their line plus a share of the untapped one; 2 and 3 split
    theirs. Tap a person to fill in their amount, then Take.
 
+### The Windows counter app — `desktop/`
+1. `npm --prefix desktop install`, then `npm run desktop`. The POS opens full
+   screen. **Ctrl+Shift+Alt+K** leaves full screen, **Ctrl+R** reloads.
+2. Click a link to another site (none exist on the POS, so try from the
+   address of a receipt, or point `BIG_CMS_POS_URL` at a local POS and add
+   one). It opens in the normal browser, never inside the app.
+3. Turn the wifi off and restart the app on a PC that is not the counter
+   device: its own "No connection to the POS" screen, retrying every 15
+   seconds. Turn the wifi on and it comes back by itself.
+4. Mark the PC as the counter device in `/pos/counter` while online, then
+   repeat with the wifi off: the counter screen opens, as in a browser.
+5. `npm --prefix desktop run dist` builds `desktop/dist/BIG CMS POS Setup
+   0.1.0.exe`. Install it: it starts with Windows next time you sign in.
+   The installer is not code-signed yet, so Windows SmartScreen warns first.
+
 ### The counter — `/pos/counter`
 The single screen built for outages.
 
