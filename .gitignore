@@ -74,6 +74,8 @@ backups/
 # workspaces: its Electron download must never reach a Hostinger build.
 desktop/node_modules/
 desktop/dist/
+# The POS server copied in for hub mode — scripts/package-hub.mjs.
+desktop/hub-bundle/
 
 # A café hub's local database on a developer's machine — npm run hub:seed.
 .hub/

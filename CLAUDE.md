@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 26 checks, 20 verifiers, 1311
+is the only thing that shows it. Currently 26 checks, 20 verifiers, 1330
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -797,11 +797,55 @@ wraps the same React screens.
       on `== null` is caught.
     - A throw from the store is counted as a failure, so a broken store
       cannot hide the count by crashing the run.
+  - **The Windows app runs the hub** (`"mode": "hub"` in its `config.json`).
+    - The installer carries the POS server. `scripts/package-hub.mjs` assembles
+      it with `package-app.mjs pos` into `desktop/hub-bundle/hub`, and
+      electron-builder copies `hub-bundle` into the resources, so it lands at
+      `resources/hub`.
+    - **electron-builder drops a `node_modules` folder at the ROOT of any copy
+      source, whatever the filter says.** It is a hard-coded rule in
+      `app-builder-lib/out/util/filter.js` (`relative === "node_modules"`).
+      - The first installer copied from a folder with the server at its root.
+        It shipped 402 of the server's 2,352 files, built, passed the key search
+        and ran fine from the assembled folder. Packaged, the server died on
+        start with "Cannot find module 'next'" and restarted forever.
+      - Naming `node_modules` in the filter then changed nothing, and only the
+        new check said so.
+      - Hence the extra level: from `hub-bundle`, it is `hub/node_modules`.
+    - `npm run dist` ends with `scripts/check-hub-shipped.mjs`. It fails unless
+      every assembled file is in `win-unpacked/resources/hub` at the same size.
+      **Smoke-run the packaged `.exe`, not the assembled folder, before
+      shipping an installer.**
+    - `main.js` starts it with `utilityProcess.fork` on `127.0.0.1:3100`, with
+      its database in `%APPDATA%\BIG CMS POS\hub\pos.db` and `hub.log` beside it.
+    - It looks at `/api/hub/session` until it answers 401 as JSON. Only a hub
+      does that, so another program on the port is refused, not opened. Then
+      it opens `http://localhost:3100/pos`.
+    - A server that exits is started again, 1 s doubling to 30 s. Quitting
+      the app stops it.
+  - **The hub server's environment is a short allowlist, never a copy of the
+    PC's** (`hubServerEnv()` in `policy.js`), so `FIREBASE_SERVICE_ACCOUNT`,
+    `GOOGLE_APPLICATION_CREDENTIALS` or `NODE_OPTIONS` set on the PC cannot
+    reach it.
+  - **`package-hub.mjs` refuses to package a server containing this machine's
+    service account.** It searches every shipped file for the key id, the
+    client email, a line of the key and the setting as stored, plus any `.env`
+    or `.pem` file. It names the file, never the value, and deletes the
+    folder. Proved by planting a made-up account whose email was a word the
+    files do contain: refused, folder removed. The real search: 2,352 files,
+    30.6 MB, nothing found.
+  - The decisions are in `policy.js` (mode, port, address, environment, what
+    counts as the hub, restart delay), asserted by `verify:desktop` (48).
+  - **Smoke-run in hub mode, 14 Sep 2026, packaged and unpackaged.** The
+    installer is 118 MB and holds all 2,352 server files. Its `win-unpacked`
+    `.exe` started the server, saw it answer as the hub (17 s from start on a
+    cold first run), loaded the POS at `localhost:3100/pos`, and the server
+    exited with the app. It has not been installed on a clean PC.
   - **Not built yet:**
-    - the hub server process in `desktop/`
     - menu and settings pulled from the cloud by the hub itself (stage 4's
       device credential; `hub:seed` is the developer's stand-in)
-    - reaching the hub from a phone on the café wifi
+    - reaching the hub from a phone on the café wifi (the server listens on
+      this PC only)
 
 ## The host's CDN caches prerendered pages for a year
 

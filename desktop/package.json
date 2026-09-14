@@ -3,13 +3,14 @@
   "productName": "BIG CMS POS",
   "version": "0.1.0",
   "private": true,
-  "description": "The BIG CMS POS for the café's Windows counter PC. Stage 1: online mode.",
+  "description": "The BIG CMS POS for the café's Windows counter PC: online, or as the café's hub.",
   "author": "BIG CMS",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "smoke": "electron . --smoke",
-    "dist": "electron-builder --win nsis"
+    "hub:prepare": "node ../scripts/package-hub.mjs",
+    "dist": "node ../scripts/package-hub.mjs && electron-builder --win nsis && node ../scripts/check-hub-shipped.mjs"
   },
   "devDependencies": {
     "electron": "44.3.0",
@@ -19,6 +20,7 @@
     "appId": "com.bigcms.pos",
     "productName": "BIG CMS POS",
     "files": ["main.js", "policy.js", "offline.html", "package.json", "!**/node_modules/**"],
+    "extraResources": [{ "from": "hub-bundle", "to": ".", "filter": ["hub/**/*"] }],
     "npmRebuild": false,
     "directories": { "output": "dist" },
     "win": { "target": "nsis" },

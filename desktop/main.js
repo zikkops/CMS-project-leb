@@ -1,27 +1,39 @@
-// The BIG CMS POS for the café's Windows counter PC — POS software, stage 1.
+// The BIG CMS POS for the café's Windows counter PC — POS software.
 // Scope: the vault, "POS Software (Local Hub) - Scope".
 //
-// Online mode: the hosted POS, full screen, talking to the cloud exactly as a
-// browser tab does. What it adds is what a till needs and a tab does not
-// give: it starts with Windows, stays full screen, keeps the display awake,
-// cannot be navigated away from the POS, comes back from a crash on its own,
-// and says plainly when there is no connection.
+// Online mode (stage 1): the hosted POS, full screen, talking to the cloud
+// exactly as a browser tab does. What it adds is what a till needs and a tab
+// does not give: it starts with Windows, stays full screen, keeps the display
+// awake, cannot be navigated away from the POS, comes back from a crash on its
+// own, and says plainly when there is no connection.
 //
-// It holds NO secrets. The POS server routes need the Firebase Admin key, and
-// that key never goes on a café PC (scope, "Security rule for the hub"). The
-// local server comes in stage 3, with a hub credential of its own.
+// Hub mode (stage 3): this PC is the café's hub. The app starts the POS server
+// that travels inside it, with its database in the app's data folder, waits
+// for it to answer, and opens it. The till then keeps trading with no internet,
+// and the app starts the server again if it ever stops.
 //
-// Every decision about addresses and permissions is policy.js, asserted by
-// `npm run verify:desktop`. This file only applies it.
+// It holds NO secrets in either mode. The Firebase Admin key never goes on a
+// café PC (scope, "Security rule for the hub"): the hub server is started with
+// a short list of environment variables that cannot carry it, and
+// scripts/package-hub.mjs refuses to package a server that contains it.
+//
+// Every decision about addresses, permissions and the hub is policy.js,
+// asserted by `npm run verify:desktop`. This file only applies it.
 
 'use strict'
 
-const { app, BrowserWindow, Menu, powerSaveBlocker, session, shell } = require('electron')
+const { app, BrowserWindow, Menu, powerSaveBlocker, session, shell, utilityProcess } = require('electron')
 const fs = require('node:fs')
+const http = require('node:http')
 const path = require('node:path')
-const { readConfig, isAllowedNavigation, isAllowedPermission } = require('./policy')
+const {
+  readConfig, isAllowedNavigation, isAllowedPermission,
+  hubAddress, hubServerEnv, classifyHubProbe, hubRestartDelay,
+} = require('./policy')
 
 const SMOKE = process.argv.includes('--smoke')
+
+let hub = null
 
 // A smoke run reports the FIRST outcome and exits with it. A page that fails
 // to load is followed by Chromium's own error page finishing loading, and
@@ -31,6 +43,7 @@ function smokeReport(ok, detail) {
   if (smokeReported) return
   smokeReported = true
   console.log(JSON.stringify({ ok, ...detail }))
+  if (hub) hub.stop()
   app.exit(ok ? 0 : 1)
 }
 
@@ -48,10 +61,13 @@ function openExternally(url) {
 }
 
 function showOffline(win, config, reason) {
-  win.loadFile(path.join(__dirname, 'offline.html'), { query: { url: config.posUrl, reason: String(reason ?? '') } })
+  if (win.isDestroyed()) return
+  const query = { url: config.posUrl, reason: String(reason ?? '') }
+  if (config.mode === 'hub') query.hub = '1'
+  win.loadFile(path.join(__dirname, 'offline.html'), { query })
 }
 
-function createWindow(config) {
+function createWindow(config, { load }) {
   const win = new BrowserWindow({
     width: 1366,
     height: 800,
@@ -93,17 +109,17 @@ function createWindow(config) {
   contents.on('did-fail-load', (_event, code, description, _url, isMainFrame) => {
     if (!isMainFrame || code === -3) return
     if (SMOKE) {
-      console.log(JSON.stringify({ ok: false, code, description, url: config.posUrl }))
-      app.exit(1)
+      smokeReport(false, { code, description, url: config.posUrl })
       return
     }
     showOffline(win, config, description)
   })
 
   if (SMOKE) {
-    contents.once('did-finish-load', () => {
-      console.log(JSON.stringify({ ok: true, url: contents.getURL(), title: contents.getTitle() }))
-      app.exit(0)
+    // Only the POS itself counts: in hub mode the waiting screen loads first.
+    contents.on('did-finish-load', () => {
+      if (!isAllowedNavigation(contents.getURL(), config.posUrl)) return
+      smokeReport(true, { url: contents.getURL(), title: contents.getTitle(), mode: config.mode })
     })
   }
 
@@ -129,12 +145,128 @@ function createWindow(config) {
     }
   })
 
-  win.loadURL(config.posUrl)
+  if (load) win.loadURL(config.posUrl)
   return win
 }
 
+// ── The café hub ───────────────────────────────────────────────────────────
+
+/** Where the POS server is: inside the installer, or the folder package-hub.mjs assembles. */
+function hubServerPath() {
+  if (process.env.BIG_CMS_HUB_SERVER) return process.env.BIG_CMS_HUB_SERVER
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'hub', 'pos', 'server.js')
+    : path.join(__dirname, 'hub-bundle', 'hub', 'pos', 'server.js')
+}
+
+/** One look at the hub's port, classified by policy.js. */
+function probeHub(port) {
+  return new Promise(resolve => {
+    const req = http.get({ host: '127.0.0.1', port, path: '/api/hub/session', timeout: 2000 }, res => {
+      let body = ''
+      res.setEncoding('utf8')
+      res.on('data', chunk => { if (body.length < 4096) body += chunk })
+      res.on('end', () => resolve(classifyHubProbe(res.statusCode, body)))
+      res.on('error', () => resolve('starting'))
+    })
+    req.on('timeout', () => { req.destroy(); resolve('starting') })
+    req.on('error', () => resolve('starting'))
+  })
+}
+
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+
+/**
+ * Starts the hub server and keeps it running.
+ *
+ * `onReady` when it answers as the hub, `onStopped` when it exits on its own
+ * (it is started again, backing off), `onFailed` when it cannot be used: not
+ * installed, another program on its port, or no answer within a minute.
+ */
+function startHub(config, { onReady, onStopped, onFailed }) {
+  const serverPath = hubServerPath()
+  // BIG_CMS_HUB_DATA is for development, so a smoke run does not use the
+  // café's real database folder.
+  const dataDir = process.env.BIG_CMS_HUB_DATA || path.join(app.getPath('userData'), 'hub')
+  fs.mkdirSync(dataDir, { recursive: true })
+  const dbFile = path.join(dataDir, 'pos.db')
+  const logFile = path.join(dataDir, 'hub.log')
+
+  // The log is for somebody looking into a problem, and must not fill a disk.
+  try { if (fs.statSync(logFile).size > 5_000_000) fs.renameSync(logFile, `${logFile}.old`) } catch { /* no log yet */ }
+  const log = line => {
+    try { fs.appendFileSync(logFile, `${new Date().toISOString()} ${line}\n`) } catch { /* the hub runs without a log */ }
+  }
+
+  let child = null
+  let stopping = false
+  let attempt = 0
+  let restartTimer = null
+
+  const stop = () => {
+    stopping = true
+    clearTimeout(restartTimer)
+    if (child) child.kill()
+  }
+
+  if (!fs.existsSync(serverPath)) {
+    onFailed(`The hub is not installed with this app: ${serverPath} is missing.`)
+    return { stop, logFile }
+  }
+
+  const launch = () => {
+    if (stopping) return
+    log(`starting ${serverPath} on port ${config.hubPort}, data in ${dbFile}`)
+    const started = Date.now()
+    const current = utilityProcess.fork(serverPath, [], {
+      cwd: path.dirname(serverPath),
+      env: hubServerEnv(process.env, { port: config.hubPort, dbFile }),
+      stdio: 'pipe',
+      serviceName: 'BIG CMS hub',
+    })
+    child = current
+    current.stdout?.on('data', d => log(String(d).trimEnd()))
+    current.stderr?.on('data', d => log(String(d).trimEnd()))
+
+    current.on('exit', code => {
+      log(`the hub server exited with code ${code}`)
+      if (child === current) child = null
+      if (stopping) return
+      onStopped(code)
+      restartTimer = setTimeout(launch, hubRestartDelay(attempt++))
+    })
+
+    void (async () => {
+      while (!stopping && child === current) {
+        const state = await probeHub(config.hubPort)
+        if (stopping || child !== current) return
+        if (state === 'ready') {
+          attempt = 0
+          log('the hub is answering')
+          onReady()
+          return
+        }
+        if (state === 'other') {
+          onFailed(`Port ${config.hubPort} is answered by a program that is not the hub. Close it, or set another "hubPort" in config.json.`)
+          stop()
+          return
+        }
+        if (Date.now() - started > 60_000) {
+          onFailed(`The hub did not start within a minute. Its log is ${logFile}.`)
+          return
+        }
+        await sleep(500)
+      }
+    })()
+  }
+
+  launch()
+  return { stop, logFile }
+}
+
 // One till per PC. A second launch brings the first to the front instead of
-// opening a second POS beside it.
+// opening a second POS beside it — and, on a hub, a second server fighting the
+// first for the same database.
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
@@ -148,8 +280,10 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   app.whenReady().then(() => {
-    const { config, file } = loadConfig()
-    console.log(`[pos] ${config.posUrl} (settings: ${file})`)
+    const { config: settings, file } = loadConfig()
+    const onHub = settings.mode === 'hub'
+    const config = onHub ? { ...settings, posUrl: hubAddress(settings.hubPort) } : settings
+    console.log(`[pos] ${config.mode} mode, ${config.posUrl} (settings: ${file})`)
 
     Menu.setApplicationMenu(null)
 
@@ -167,8 +301,26 @@ if (!app.requestSingleInstanceLock()) {
       if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: config.startWithWindows })
     }
 
-    mainWindow = createWindow(config)
+    mainWindow = createWindow(config, { load: !onHub })
+
+    if (onHub) {
+      showOffline(mainWindow, config, 'Starting the café hub…')
+      hub = startHub(config, {
+        onReady: () => {
+          if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.posUrl)
+        },
+        onStopped: code => {
+          if (mainWindow) showOffline(mainWindow, config, `The café hub stopped (code ${code}). Starting it again.`)
+        },
+        onFailed: reason => {
+          console.error(`[pos] ${reason}`)
+          if (SMOKE) smokeReport(false, { reason, mode: 'hub' })
+          else if (mainWindow) showOffline(mainWindow, config, reason)
+        },
+      })
+    }
   })
 
+  app.on('before-quit', () => { if (hub) hub.stop() })
   app.on('window-all-closed', () => app.quit())
 }
