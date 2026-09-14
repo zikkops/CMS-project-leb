@@ -34,9 +34,10 @@ import {
   type EndOfDayReport,
 } from '@big-cms/shared/endOfDay'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
-import type { TheoreticalFoodCost } from '@big-cms/shared/recipes'
+import type { TheoreticalFoodCost, WasteSummary } from '@big-cms/shared/recipes'
+import { voidReason } from '@big-cms/shared/checks'
 
-type Theory = TheoreticalFoodCost & { checks: number }
+type Theory = TheoreticalFoodCost & { checks: number; waste: WasteSummary }
 
 const inp: React.CSSProperties = {
   backgroundColor: 'rgba(255,255,255,0.04)',
@@ -426,6 +427,59 @@ export default function FoodCostReportPage() {
               over the recipe, or stock leaving without a sale. The two are over different sales
               figures, so compare the percentages, not the dollars.
             </Note>
+          )}
+
+          {/* What was thrown away */}
+          {theory && (
+            <div style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '6px',
+              padding: '1.1rem 1.25rem',
+              margin: '1.5rem 0 0.5rem',
+            }}>
+              <p style={{
+                fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.12em',
+                textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.5rem',
+              }}>Waste</p>
+              {theory.waste.events === 0 ? (
+                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)', lineHeight: 1.5 }}>
+                  Nothing recorded as waste in this range. A void or refund given as made wrong, sent
+                  back, damaged or other appears here — for dishes added while ingredient deduction
+                  was on, since that is when what a dish uses is recorded.
+                </p>
+              ) : (<>
+                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '1.5rem', fontWeight: 600, color: 'var(--red)', lineHeight: 1.1 }}>
+                  {formatUsd(theory.waste.wasteUsd)}
+                  {theory.waste.percentOfSales !== null && (
+                    <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'rgba(var(--offwhite-rgb),0.45)' }}>
+                      {' '}· {formatPercent(theory.waste.percentOfSales)} of POS sales before VAT
+                    </span>
+                  )}
+                </p>
+                <div style={{ marginTop: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                  {theory.waste.byReason.map(r => (
+                    <div key={r.reasonKey} style={{
+                      display: 'flex', justifyContent: 'space-between', gap: '1rem',
+                      fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--offwhite)',
+                    }}>
+                      <span>
+                        {voidReason(r.reasonKey)?.label ?? r.reasonKey}
+                        <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)' }}> · {r.count}</span>
+                      </span>
+                      <span style={{ whiteSpace: 'nowrap' }}>{formatUsd(r.usd)}</span>
+                    </div>
+                  ))}
+                </div>
+                {theory.waste.uncosted > 0 && (
+                  <Note tone="warn">
+                    {theory.waste.uncosted} of {theory.waste.events} {theory.waste.events === 1 ? 'waste' : 'wastes'} used
+                    an ingredient with no cost. The figure above leaves {theory.waste.uncosted === 1 ? 'it' : 'those'} out
+                    rather than counting {theory.waste.uncosted === 1 ? 'it' : 'them'} as free — give the ingredient a cost in Supplies.
+                  </Note>
+                )}
+              </>)}
+            </div>
           )}
 
           {/* By department */}

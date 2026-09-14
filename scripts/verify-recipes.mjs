@@ -293,6 +293,39 @@ console.log('\ntheoretical food cost — the POS checks\' own sales, before VAT'
   eq('nothing costable: no percentage, not 0%', R.theoreticalFoodCost([noRecipe]).costPercent, null)
 }
 
+console.log('\nwhat was thrown away')
+{
+  const closed = {
+    status: 'closed',
+    lines: [
+      { status: 'sent' },
+      { status: 'void', voidReasonKey: 'made-wrong', voidWasteUsd: 0.59 },
+      // Never made: voidLine() stamps nothing, so there is no field at all.
+      { status: 'void', voidReasonKey: 'changed-mind' },
+      { status: 'void', voidReasonKey: 'damaged', voidWasteUsd: null },
+    ],
+  }
+  const refunded = {
+    status: 'refunded', refundReasonKey: 'sent-back', refundWasteUsd: 1.24,
+    lines: [{ status: 'sent' }, { status: 'void', voidReasonKey: 'made-wrong', voidWasteUsd: 0.3 }],
+  }
+  // A stamp on a check that is not refunded is not a refund.
+  const stray = { status: 'closed', refundReasonKey: 'sent-back', refundWasteUsd: 9, lines: [] }
+
+  const w = R.wasteSummary([closed, refunded, stray], 10)
+  eq('voids and refunds recorded as waste add up', w.wasteUsd, 2.13)
+  eq('as a share of the sales set against it', Number(w.percentOfSales.toFixed(4)), 0.213)
+  eq('every waste event is counted, costed or not', w.events, 4)
+  eq('THE TRAP: waste that could not be costed is counted apart, not as $0', w.uncosted, 1)
+  eq('a never-made void is not waste', w.byReason.some(r => r.reasonKey === 'changed-mind'), false)
+  eq('by reason, costliest first', w.byReason,
+    [{ reasonKey: 'sent-back', usd: 1.24, count: 1 }, { reasonKey: 'made-wrong', usd: 0.89, count: 2 }, { reasonKey: 'damaged', usd: 0, count: 1 }])
+  eq('only a refunded check counts a refund stamp', R.wasteSummary([stray], 10).events, 0)
+  eq('no sales: no percentage', R.wasteSummary([closed], 0).percentOfSales, null)
+  eq('a void with no reason key is filed as other',
+    R.wasteSummary([{ status: 'closed', lines: [{ status: 'void', voidWasteUsd: 0.5 }] }], 10).byReason[0].reasonKey, 'other')
+}
+
 console.log('\nwhat a dish should sell for')
 {
   // VAT 0.13 on purpose, as above: not the café's configured rate.

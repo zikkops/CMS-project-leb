@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 21 checks, 15 verifiers, 923
+is the only thing that shows it. Currently 21 checks, 15 verifiers, 932
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -284,6 +284,15 @@ database.
   in `recipes.ts`; the server read is `shared/src/server/foodCost.ts`, reusing
   the export's padded `closedAt` window, because checks are unreadable to the
   report's audience in the browser.
+- **Waste is read from stamps, not recomputed.** `voidLine()` puts
+  `voidWasteUsd` on a line and `refundCheck()` puts `refundWasteUsd` on the
+  check, only when the reason made the ingredients waste. So a number means
+  wasted at that cost, `null` means wasted but uncosted, and an absent field means
+  nothing was wasted. `wasteSummary()` adds them up by reason under the
+  theoretical row, as a share of the same POS sales. Uncosted waste is counted
+  apart, never as $0. A refund is filed under the day its check closed,
+  because the report has one window. Checks that were refunded or cancelled
+  count for waste but not sales.
 
 - **A count stores what was expected.** `saveCount()` reads each supply inside
   a transaction and stores the full line from the supply document — name,
@@ -311,7 +320,7 @@ database.
   `supplyIds` so that is one array-contains query.
 
 - **The arithmetic is `shared/src/recipes.ts`, pure, asserted by `npm run
-  verify:recipes`** (118 cases, 24 mutations caught by name). The page and the
+  verify:recipes`** (127 cases, 31 mutations caught by name). The page and the
   server only apply what it computed.
 - **Suggested prices come from a target margin, split food / drinks.**
   `targetMarginFood` (default 70%) and `targetMarginDrink` (default 80%) live in

@@ -91,18 +91,18 @@ export interface VoidReasonDef {
   /**
    * Whether the thing still exists and can be sold again.
    *
-   * Only merchandise acts on this — a board game handed back goes on the
-   * shelf. Food has no per-ingredient stock in this version, so nothing
-   * changes either way for it; the flag is still recorded, because the day
-   * recipes land it is the field that says whether the ingredients were used.
+   * A retail product handed back goes on the shelf, and a dish that was never
+   * made gives its ingredients back to stock (ingredientOutcome() in
+   * recipes.ts, with the `recipes` switch on).
    */
   returnsToStock: boolean
   /**
    * Whether this counts as waste: made or consumed, and lost.
    *
-   * Nothing reads this yet. It is recorded from the first version because
-   * waste is on the roadmap and a void without it is a void nobody can go
-   * back and classify — the person who knew is gone by then.
+   * With recipes on, a waste reason stamps what the ingredients cost on the
+   * void or refund, and the Food Cost Report adds those up by reason
+   * (wasteSummary() in recipes.ts). Copied onto the line when it happens, so a
+   * later change to this list cannot re-classify a void already made.
    */
   isWaste: boolean
 }
@@ -312,6 +312,13 @@ export interface Check {
   loyaltyPoints?: number
   /** The approved transaction those points were written as, so a refund can mark it reversed. */
   loyaltyTxId?: string
+  /** Why it was refunded: the VOID_REASONS label and key, stamped by refundCheck(). */
+  refundReason?: string
+  refundReasonKey?: string
+  /** Copied from the reason when the refund happened, so a later change to the list cannot re-classify it. */
+  refundWasWaste?: boolean
+  /** What the wasted ingredients cost; null when an ingredient had no cost; absent when nothing was wasted. */
+  refundWasteUsd?: number | null
   /**
    * A manager's discount on the whole check (slice 6), taken off after any
    * item discounts. Kept separate from staffDiscount, which is a fixed policy

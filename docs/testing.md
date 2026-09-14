@@ -123,6 +123,10 @@ The one with the most behind it.
 - Compare the two **percentages**, not the dollars: actual is goods received
   against the end-of-day till figure, theoretical is recipes against the POS
   checks before VAT.
+- **Waste** sits under that. The seeded checks have none, so it should say
+  nothing was recorded — not show $0.00. After the till walkthrough below (a
+  void as made wrong), set the range to today: it should appear under **Made
+  wrong** with what its ingredients cost, and as a share of POS sales.
 
 ### Daily counts — `/admin/supplies/daily`, `.../history`
 - Submit a count, then open it in the history: **Expected, Counted, Variance
@@ -158,8 +162,8 @@ Milk in Supplies first.
 3. Void one item with a **never-made reason** (changed their mind): its
    ingredients come back. Void another as **made wrong**: they stay gone. The
    reason picker says which will happen before you confirm — "ingredients go
-   back into stock" or "ingredients recorded as waste". What the waste cost is
-   stored on the line but not shown anywhere yet.
+   back into stock" or "ingredients recorded as waste". What the waste cost appears
+   on the Food Cost Report under Waste, for the day the check closes.
 4. Close a check, then refund it from `/pos/closed`. The panel asks **why** now,
    and the answer decides the same thing — returned or wasted, retail products
    included.

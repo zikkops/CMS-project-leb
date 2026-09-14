@@ -299,6 +299,80 @@ export function dishMargin(
   }
 }
 
+// ── Waste ─────────────────────────────────────────────────────────────────
+
+/**
+ * The parts of a check that waste is read from.
+ *
+ * voidLine() stamps `voidWasteUsd` on a line, and refundCheck() stamps
+ * `refundWasteUsd` on the check, ONLY when the reason made ingredients waste.
+ * So the three states of either field mean three different things:
+ *   a number   — wasted, and this is what the ingredients cost
+ *   null       — wasted, but an ingredient had no cost
+ *   absent     — nothing was wasted: a never-made void, or a dish with no recipe
+ */
+export interface WasteSource {
+  status: string
+  lines: readonly { status: string; voidReasonKey?: string | null; voidWasteUsd?: number | null }[]
+  refundReasonKey?: string | null
+  refundWasteUsd?: number | null
+}
+
+export interface WasteSummary {
+  /** Costed waste in USD. */
+  wasteUsd: number
+  /** Waste as a share of the sales set against it. null when there were no sales. */
+  percentOfSales: number | null
+  /** Per void reason, costliest first. */
+  byReason: { reasonKey: string; usd: number; count: number }[]
+  /** Voids and refunds recorded as waste, costed or not. */
+  events: number
+  /** Recorded as waste, but an ingredient had no cost: left out of wasteUsd, never counted as $0. */
+  uncosted: number
+}
+
+/**
+ * What was thrown away over a set of checks.
+ *
+ * A refunded check's earlier voids are counted from their lines and the refund
+ * from the check, and the two never overlap: reversalPlan() leaves voided lines
+ * out of a refund's waste.
+ */
+export function wasteSummary(checks: readonly WasteSource[], salesExVatUsd: number): WasteSummary {
+  const byKey = new Map<string, { usd: number; count: number }>()
+  let total = 0
+  let events = 0
+  let uncosted = 0
+
+  const record = (reasonKey: string | null | undefined, usd: number | null | undefined) => {
+    if (usd === undefined) return
+    events++
+    const key = reasonKey || 'other'
+    const row = byKey.get(key) ?? { usd: 0, count: 0 }
+    row.count++
+    if (usd === null || !Number.isFinite(usd)) uncosted++
+    else { row.usd += usd; total += usd }
+    byKey.set(key, row)
+  }
+
+  for (const check of checks) {
+    for (const line of check.lines) {
+      if (line.status === 'void') record(line.voidReasonKey, line.voidWasteUsd)
+    }
+    if (check.status === 'refunded') record(check.refundReasonKey, check.refundWasteUsd)
+  }
+
+  return {
+    wasteUsd: r2(total),
+    percentOfSales: Number.isFinite(salesExVatUsd) && salesExVatUsd > 0 ? total / salesExVatUsd : null,
+    byReason: [...byKey.entries()]
+      .map(([reasonKey, row]) => ({ reasonKey, usd: r2(row.usd), count: row.count }))
+      .sort((a, b) => b.usd - a.usd || b.count - a.count || (a.reasonKey < b.reasonKey ? -1 : 1)),
+    events,
+    uncosted,
+  }
+}
+
 // ── What a dish should sell for ───────────────────────────────────────────
 
 /**

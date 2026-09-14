@@ -1,9 +1,11 @@
-// Theoretical food cost: what the recipes say the food sold should have cost.
+// Theoretical food cost and waste: what the recipes say the food sold should
+// have cost, and what was thrown away.
 //
-// The arithmetic is theoreticalFoodCost() in shared/src/recipes.ts, pure and
-// asserted by `npm run verify:recipes`. This file only gets the right closed
-// checks out of Firestore — the same padded closedAt window and café-day
-// narrowing as the sales export, so "the 12th" means the same checks in both.
+// The arithmetic is theoreticalFoodCost() and wasteSummary() in
+// shared/src/recipes.ts, pure and asserted by `npm run verify:recipes`. This
+// file only gets the right checks out of Firestore — the same padded closedAt
+// window and café-day narrowing as the sales export, so "the 12th" means the
+// same checks in both.
 //
 // It runs on the server because checks are readable only by POS and KDS
 // accounts, and the people reading a food cost report are neither.
@@ -12,13 +14,16 @@ import { adminDb } from './firebaseAdmin'
 import { paddedWindow, type ExportRequest } from './salesExport'
 import { closedAtParts } from '../salesExport'
 import { shareForLines } from '../splits'
-import { theoreticalFoodCost, type SoldLine, type TheoreticalFoodCost } from '../recipes'
+import {
+  theoreticalFoodCost, wasteSummary,
+  type SoldLine, type TheoreticalFoodCost, type WasteSource, type WasteSummary,
+} from '../recipes'
 import type { Check } from '../checks'
 
 export async function readTheoreticalFoodCost(
   range: ExportRequest,
   opts: { timeZone: string; branches: readonly string[] },
-): Promise<TheoreticalFoodCost & { checks: number; from: string; to: string; branches: string[] }> {
+): Promise<TheoreticalFoodCost & { checks: number; waste: WasteSummary; from: string; to: string; branches: string[] }> {
   const { start, end } = paddedWindow(range.from, range.to)
 
   const snap = await adminDb().collection('checks')
@@ -30,16 +35,25 @@ export async function readTheoreticalFoodCost(
 
   const wanted = new Set(range.branch ? [range.branch] : opts.branches)
   const sold: SoldLine[] = []
+  const wasteSources: WasteSource[] = []
   let checks = 0
 
   for (const doc of snap.docs) {
     const check = { id: doc.id, ...doc.data() } as Check
     if (!wanted.has(check.branch)) continue
-    // Refunded checks are out: the sale did not stand, and what happened to
-    // its ingredients is the refund's business (returned or wasted).
-    if (check.status !== 'closed') continue
+    if (check.status !== 'closed' && check.status !== 'refunded' && check.status !== 'cancelled') continue
     const { day } = closedAtParts(check.closedAt, opts.timeZone)
     if (!day || day < range.from || day > range.to) continue
+
+    // Waste is read from every check that ended in the range. A refund is
+    // filed under the day its check CLOSED, not the day it was refunded — one
+    // window for the whole report; a refund made days later lands in the
+    // earlier period.
+    wasteSources.push(check)
+
+    // Sales only from checks that stood: a refunded sale did not happen, and
+    // what became of its ingredients is the refund's business.
+    if (check.status !== 'closed') continue
     checks++
 
     const vatRate = typeof check.vatRate === 'number' ? check.vatRate : null
@@ -60,9 +74,13 @@ export async function readTheoreticalFoodCost(
     }
   }
 
+  const theory = theoreticalFoodCost(sold)
   return {
-    ...theoreticalFoodCost(sold),
+    ...theory,
     checks,
+    // Against the same sales the theoretical figure uses, so the two
+    // percentages can be read side by side.
+    waste: wasteSummary(wasteSources, theory.salesExVatUsd),
     from: range.from,
     to: range.to,
     branches: [...wanted],
