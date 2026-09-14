@@ -269,9 +269,18 @@ writing needs `--apply`**.
 
 Scoped in the vault (`Recipes and Ingredient Stock - Scope.md`), with the
 owner's decisions of 14 Sep 2026. Built: the arithmetic, admin costing at
-`/admin/menu/recipes`, and ingredients leaving stock on Send, behind the
-`recipes` switch (off). Not yet: expected-vs-counted, theoretical food cost.
-None of the till side has run against the database.
+`/admin/menu/recipes`, ingredients leaving stock on Send behind the `recipes`
+switch (off), and expected-vs-counted on the count history. Not yet:
+theoretical food cost. None of the till side has run against the database.
+
+- **A count stores what was expected.** `saveCount()` reads each supply inside
+  a transaction and stores the full line from the supply document — name,
+  unit, `previousQty` (what the branch held when it was saved: the expected
+  figure) and `unitCostUsd` — before overwriting the stock. It used to store
+  only the browser's `{ supplyId, countedQty }` and replace the document, so
+  the history showed blank names and a difference of NaN; confirmed against the
+  demo project on 14 Sep 2026. Counts from before then lack those fields, which
+  is why they are optional on `InventoryLine` — read them with a fallback.
 
 - **What a serving takes is snapshotted onto the line when it is added**
   (`consumesPerServing`, in `buildLines()`), only while the switch is on — off,
