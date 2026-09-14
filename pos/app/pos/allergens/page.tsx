@@ -20,7 +20,7 @@ import {
   faRotateLeft, faCircleCheck, faCircleQuestion, faBan, faXmark,
 } from '@fortawesome/free-solid-svg-icons'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
-import { useFeature } from '@big-cms/shared/useFeatures'
+import { useFeature } from '../../lib/useTillSettings'
 import { ALLERGENS_EU14 } from '@big-cms/shared/foodSafety'
 import { allergenVerdict } from '@big-cms/shared/allergens'
 import { PosButton, Chip, SectionLabel, StatusBadge } from '../../lib/posUi'

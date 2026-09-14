@@ -35,10 +35,10 @@ import {
   minutesWaiting, urgency, canTransition, ticketSentAtMs, type Ticket, type TicketStatus,
 } from '@big-cms/shared/tickets'
 import { useStationTickets, advanceTicket } from '../../lib/usePos'
-import { usePrintingSettings } from '@big-cms/shared/usePrintingSettings'
+import { usePrintingSettings } from '../../lib/useTillSettings'
 import { activeStations } from '@big-cms/shared/printing'
 import { useAutoPrintTickets, useAutoPrintReceipts, usePrintsHere } from '../../lib/useAutoPrint'
-import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
+import { useBusinessSettings } from '../../lib/useTillSettings'
 import { PosButton, Chip, StatusBadge, STATION_COLOUR } from '../../lib/posUi'
 
 const STORAGE_KEY = 'kds.station'

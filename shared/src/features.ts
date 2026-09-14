@@ -260,3 +260,21 @@ export function featuresByGroup(): { group: string; keys: FeatureKey[] }[] {
  * separate and this stays the right call.
  */
 export const FAIL_OPEN_FLAGS: FeatureFlags = {}
+
+/**
+ * The stored flag document, keeping only keys the registry knows, so a stale
+ * stored key can't confuse callers. A missing document fails open.
+ *
+ * Here rather than in useFeatures.ts so the till can parse the document it
+ * reads through its own backend (POS software, stage 2) without importing the
+ * Firebase client; useFeatures.ts re-exports it unchanged.
+ */
+export function parseFlags(data: Record<string, unknown> | undefined): FeatureFlags {
+  if (!data) return FAIL_OPEN_FLAGS
+  const out: FeatureFlags = {}
+  for (const key of Object.keys(FEATURES) as FeatureKey[]) {
+    const raw = data[key]
+    if (raw && typeof raw === 'object') out[key] = raw as FeatureFlags[FeatureKey]
+  }
+  return out
+}

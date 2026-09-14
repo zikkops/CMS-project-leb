@@ -48,8 +48,7 @@ import { checkTotals, type Check } from '@big-cms/shared/checks'
 import {
   applyPayment, balance, type PayCurrency, type PaymentRequest, type Tender,
 } from '@big-cms/shared/payments'
-import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
-import { useFeature } from '@big-cms/shared/useFeatures'
+import { useBusinessSettings, useFeature } from '../../lib/useTillSettings'
 import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import {
   useAuthReady, useOpenChecks, usePosMenu, openCheck, addLines, sendCheck, payCheck,

@@ -25,22 +25,15 @@ import { useRouter } from 'next/navigation'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from './firebase'
 import {
-  FEATURES, FAIL_OPEN_FLAGS, isFeatureOn,
+  FAIL_OPEN_FLAGS, isFeatureOn, parseFlags,
   type FeatureFlags, type FeatureKey,
 } from './features'
 
 export const FEATURES_DOC = 'appSettings/features'
 
-/** Keeps only keys the registry knows, so a stale stored key can't confuse callers. */
-export function parseFlags(data: Record<string, unknown> | undefined): FeatureFlags {
-  if (!data) return FAIL_OPEN_FLAGS
-  const out: FeatureFlags = {}
-  for (const key of Object.keys(FEATURES) as FeatureKey[]) {
-    const raw = data[key]
-    if (raw && typeof raw === 'object') out[key] = raw as FeatureFlags[FeatureKey]
-  }
-  return out
-}
+// Moved to features.ts so the till can use it without the Firebase client;
+// re-exported so every existing import keeps working.
+export { parseFlags }
 
 /**
  * The live flag document.

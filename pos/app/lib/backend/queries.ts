@@ -50,6 +50,8 @@ export type PosQuery =
   | { kind: 'menuItems' }
   | { kind: 'modifierGroups' }
   | { kind: 'products' }
+  /** One settings document: the feature switches, business settings, or printers. */
+  | { kind: 'settings'; doc: 'features' | 'business' | 'printing' }
 
 /** Whole collections by design — see the note above. Everything else is scoped. */
 export const WHOLE_COLLECTIONS: readonly string[] = ['menuCategories', 'menuItems', 'modifierGroups', 'products']
@@ -58,6 +60,10 @@ const eq = (field: string, value: string): Filter => ({ field, op: '==', value }
 
 export function planQuery(q: PosQuery): QueryPlan {
   switch (q.kind) {
+    case 'settings':
+      // appSettings/features, /business, /printing — the documents the shared
+      // hooks read, by the same ids.
+      return { collection: 'appSettings', docId: q.doc, where: [] }
     case 'openChecks':
       return { collection: 'checks', where: [eq('branch', q.branch), eq('status', 'open')] }
     case 'check':

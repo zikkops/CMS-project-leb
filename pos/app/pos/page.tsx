@@ -28,7 +28,7 @@ import {
   faTriangleExclamation, faUserGroup, faWheatAwnCircleExclamation, type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
-import { useFeature } from '@big-cms/shared/useFeatures'
+import { useFeature } from '../lib/useTillSettings'
 import { BRAND } from '@big-cms/shared/brand'
 import { orderedTotal, checkTotals, type Check, type CheckLine } from '@big-cms/shared/checks'
 import { minutesWaiting, urgency } from '@big-cms/shared/tickets'

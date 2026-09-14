@@ -675,10 +675,17 @@ wraps the same React screens.
     id, and a document missing the ordered field left out.
   - **New till code reads through `backend()`, never `firebase/firestore` or
     `authedFetch`.** Only `backend/cloud.ts` and the login page import Firebase.
-  - **Not rerouted yet:** the shared hooks the till also uses (features,
-    business settings, printing settings, the staff record in `adminAuth`).
-    They are shared with admin and belong in the seam before the hub can
-    answer them.
+  - **The till's settings go through it too.** `pos/app/lib/useTillSettings.ts`
+    has the till's own `useFeature`, `useFeatureFlags`, `useBusinessSettings`
+    and `usePrintingSettings`. They have the same names and answers as the
+    shared hooks, which admin and web keep, and they fail the same way:
+    features open, business and printing on defaults. They read the settings
+    documents as `{ kind: 'settings' }` plans. **POS pages import these, not
+    `@big-cms/shared/use*`.** `parseFlags` moved to `features.ts`, and
+    `useFeatures.ts` re-exports it.
+  - **Not rerouted, on purpose:** the staff check, `useRequireRole` in
+    `adminAuth`. It reads the signed-in user's token and staff record, which
+    is sign-in, so it moves with the phone sign-in in stage 5.
 
 ## The host's CDN caches prerendered pages for a year
 

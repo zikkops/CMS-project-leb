@@ -24,7 +24,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { receiptOptionsFor } from '../../../../lib/receiptOptions'
-import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
+import { useBusinessSettings } from '../../../../lib/useTillSettings'
 import {
   buildReceipt, receiptToText, receiptBlockedReason, RECEIPT_WIDTHS,
 } from '@big-cms/shared/receipt'

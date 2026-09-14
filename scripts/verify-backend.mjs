@@ -53,7 +53,14 @@ console.log('\nevery plan the till can make is scoped')
     { kind: 'recentClosedReceipts', branch },
     { kind: 'openShift', branch },
     { kind: 'menuCategories' }, { kind: 'menuItems' }, { kind: 'modifierGroups' }, { kind: 'products' },
+    { kind: 'settings', doc: 'features' }, { kind: 'settings', doc: 'business' }, { kind: 'settings', doc: 'printing' },
   ]
+  eq('settings are the same documents the shared hooks read',
+    ['features', 'business', 'printing'].map(doc => {
+      const p = Q.planQuery({ kind: 'settings', doc })
+      return `${p.collection}/${p.docId}`
+    }),
+    ['appSettings/features', 'appSettings/business', 'appSettings/printing'])
   eq('THE TRAP: every query reads a bounded slice', everything.filter(q => !Q.isScoped(Q.planQuery(q))).map(q => q.kind), [])
   eq('a plan over checks with no branch is not scoped',
     Q.isScoped({ collection: 'checks', where: [{ field: 'status', op: '==', value: 'open' }] }), false)
