@@ -124,8 +124,9 @@ for (const f of readdirSync(tmp).filter(n => n.endsWith('.js'))) {
   const p = join(tmp, f)
   writeFileSync(p, readFileSync(p, 'utf8').replace(/from '(\.\.?\/[^']+?)'/g, "from '$1.js'"))
 }
-const { lineConsumption, consumptionCost, recipeProblems, describeQty, theoreticalFoodCost } =
+const { lineConsumption, consumptionCost, recipeProblems, describeQty, theoreticalFoodCost, suggestedPrice, targetMarginFor } =
   await import(`file://${join(tmp, 'recipes.js')}`)
+const { stationForSection } = await import(`file://${join(tmp, 'checks.js')}`)
 const { shareForLines } = await import(`file://${join(tmp, 'splits.js')}`)
 const { closedAtParts } = await import(`file://${join(tmp, 'salesExport.js')}`)
 
@@ -188,12 +189,22 @@ const RECIPES = {
 }
 
 // ── What is there now ──────────────────────────────────────────────────────
-const [supplySnap, menuSnap, groupSnap, recipeSnap] = await Promise.all([
+const [supplySnap, menuSnap, groupSnap, recipeSnap, categorySnap, settingsSnap] = await Promise.all([
   db.collection('supplies').get(),
   db.collection('menuItems').get(),
   db.collection('modifierGroups').get(),
   db.collection('recipes').get(),
+  db.collection('menuCategories').get(),
+  db.doc('appSettings/business').get(),
 ])
+
+// For the suggested price printed beside each dish. The stored figures, or the
+// settings page's defaults when none are saved — and today's rate only, which
+// is all a printout needs; the pages read the scheduled change too.
+const business = settingsSnap.data() ?? {}
+const printVat = Number(business.vatRate ?? 0)
+const margins = { food: Number(business.targetMarginFood ?? 0.7), drink: Number(business.targetMarginDrink ?? 0.8) }
+const sectionOf = new Map(categorySnap.docs.map(d => [d.id, String(d.data().section ?? '')]))
 
 // Supplies as they will be once the conversions are filled, in the shape the
 // server's toRecipeSupply() reads.
@@ -265,8 +276,11 @@ for (const [menuItemId, spec] of Object.entries(RECIPES)) {
 
   const plain = lineConsumption(recipe, [], 1, supplies)
   const cost = consumptionCost(plain)
+  const target = targetMarginFor(stationForSection(sectionOf.get(item.categoryId)), margins)
+  const suggested = target === null ? null : suggestedPrice(cost.costUsd, target, printVat)
   console.log(`  ${item.name.padEnd(18)} $${Number(item.price).toFixed(2).padStart(5)}  costs ` +
     (cost.costUsd === null ? `unknown (${plain.unknown.join(', ')})` : `$${cost.costUsd.toFixed(2)}`) +
+    (suggested ? `  → suggested $${suggested.roundedUsd.toFixed(2)} at ${Math.round(target * 100)}%${Number(item.price) < suggested.withVatUsd ? ' (priced below it)' : ''}` : '') +
     `  · ${spec.lines.map(l => `${supplies[l.supplyId]?.name ?? l.supplyId} ${describeQty(l.qty, supplies[l.supplyId] ?? { unit: '?' })}`).join(', ')}`)
 
   recipes.set(menuItemId, recipe)

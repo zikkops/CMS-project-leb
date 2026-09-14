@@ -7,6 +7,7 @@ import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { recordMediaUpload, uploadImage } from '@big-cms/shared/media'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import { formatUsd } from '@big-cms/shared/money'
+import { useSuggestedPrices, type PriceSuggestion } from './useSuggestedPrices'
 import MediaPickerModal from '../../components/admin/MediaPickerModal'
 import {
   DndContext, closestCenter, KeyboardSensor,
@@ -68,8 +69,10 @@ function useIsMobile(breakpoint = 768) {
   return isMobile
 }
 
-function SortableItem({ item, onEdit, onDelete, isMobile }: {
+function SortableItem({ item, suggestion, onEdit, onDelete, isMobile }: {
   item: MenuItem
+  /** Admins only, and only for a dish with a costed recipe. */
+  suggestion: PriceSuggestion | undefined
   onEdit: (item: MenuItem) => void
   onDelete: (id: string) => void
   isMobile: boolean
@@ -120,13 +123,25 @@ function SortableItem({ item, onEdit, onDelete, isMobile }: {
         }}>{item.badge}</span>
       )}
 
-      <span style={{
-        fontFamily: 'var(--font-inter)',
-        fontSize: '0.9rem',
-        color: 'var(--teal)',
-        fontWeight: 600,
-        whiteSpace: 'nowrap',
-      }}>{formatUsd(item.price)}</span>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+        <span style={{
+          fontFamily: 'var(--font-inter)',
+          fontSize: '0.9rem',
+          color: 'var(--teal)',
+          fontWeight: 600,
+          whiteSpace: 'nowrap',
+        }}>{formatUsd(item.price)}</span>
+        {suggestion && (
+          <span
+            title={`Costs ${formatUsd(suggestion.costUsd)} to make. ${formatUsd(suggestion.roundedUsd)} makes a ${Math.round(suggestion.targetMargin * 100)}% margin before VAT.`}
+            style={{
+              fontFamily: 'var(--font-inter)',
+              fontSize: '0.68rem',
+              whiteSpace: 'nowrap',
+              color: item.price < suggestion.withVatUsd ? 'var(--brand-secondary)' : 'rgba(var(--offwhite-rgb),0.4)',
+            }}>suggested {formatUsd(suggestion.roundedUsd)}</span>
+        )}
+      </div>
 
       <span style={{
         fontSize: '0.65rem',
@@ -164,7 +179,7 @@ function SortableItem({ item, onEdit, onDelete, isMobile }: {
 }
 
 export default function AdminMenuPage() {
-  const { checking } = useRequireRole(SECTION_ACCESS.menu)
+  const { checking, role } = useRequireRole(SECTION_ACCESS.menu)
   const isMobile = useIsMobile()
   const [categories, setCategories]         = useState<Category[]>([])
   const [items, setItems]                   = useState<MenuItem[]>([])
@@ -193,6 +208,11 @@ export default function AdminMenuPage() {
   const [open, setOpen]       = useState(false)
   const [editing, setEditing] = useState<MenuItem | null>(null)
   const [form, setForm]       = useState({ ...EMPTY_ITEM })
+
+  // What each dish should sell for from its recipe — admins only, because a
+  // suggested price at a known margin gives the cost away.
+  const suggestions    = useSuggestedPrices(!checking && role === 'admin', items, categories)
+  const editSuggestion = editing ? suggestions[editing.id] : undefined
 
   // Media picker (shared modal — `pickerTarget` says which image field it fills)
   const [pickerTarget, setPickerTarget] = useState<'new' | 'edit' | null>(null)
@@ -692,7 +712,7 @@ export default function AdminMenuPage() {
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   <SortableContext items={activeCatItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
                     {activeCatItems.map(item => (
-                      <SortableItem key={item.id} item={item} onEdit={openEdit} onDelete={handleDelete} isMobile={isMobile} />
+                      <SortableItem key={item.id} item={item} suggestion={suggestions[item.id]} onEdit={openEdit} onDelete={handleDelete} isMobile={isMobile} />
                     ))}
                   </SortableContext>
                 </DndContext>
@@ -872,9 +892,24 @@ export default function AdminMenuPage() {
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={labelStyle}>Price ($)</label>
-                  <input type="number" step="0.5" value={form.price} required
+                  <input type="number" step="0.01" min="0" value={form.price} required
                     onChange={e => setForm(f => ({ ...f, price: +e.target.value }))}
                     style={inputStyle} />
+                  {editSuggestion && (
+                    <p style={{
+                      fontFamily: 'var(--font-inter)', fontSize: '0.7rem', lineHeight: 1.5, marginTop: '0.4rem',
+                      color: form.price < editSuggestion.withVatUsd ? 'var(--brand-secondary)' : 'rgba(var(--offwhite-rgb),0.45)',
+                    }}>
+                      Costs {formatUsd(editSuggestion.costUsd)} to make. Suggested {formatUsd(editSuggestion.roundedUsd)} for
+                      a {Math.round(editSuggestion.targetMargin * 100)}% margin before VAT.{' '}
+                      <button type="button"
+                        onClick={() => setForm(f => ({ ...f, price: editSuggestion.roundedUsd }))}
+                        style={{
+                          background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+                          color: 'var(--teal)', fontSize: '0.7rem', fontFamily: 'var(--font-inter)', textDecoration: 'underline',
+                        }}>Use it</button>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label style={labelStyle}>Badge (optional)</label>

@@ -98,6 +98,18 @@ The one with the most behind it.
 - Sign in as a manager: the page should refuse. Dish cost is margin.
 - In **Supplies**, open Coffee Beans: recipe unit g, 1,000 per kg. Try to delete
   it — refused, because recipes use it.
+- **Suggested prices.** Each costed dish also says what it should sell for at
+  the target margin: 80% for anything from the bar, 70% for food and sweets,
+  both editable in Settings → Business. Expect **Lemonade, Soft Drink,
+  Sparkling Water and the Caesar Salad** flagged as priced below it (Caesar
+  Salad: suggested $10.50 against $9.25). Most others suggest far less than
+  they sell for — a Margherita $4.75 against $11 — because the demo recipes
+  list only the main ingredients. A suggestion is only as good as the recipe.
+- The same suggestion sits under each price on **`/admin/menu`**, and under the
+  price field when editing, with **Use it**. Signed in as a manager, neither
+  appears: a suggested price at a known margin gives the cost away.
+- Change a target margin in Settings → Business, come back, and every
+  suggestion should move.
 
 ### Receiving and food cost — `/admin/supplies/receiving`, `.../report`
 - This chain was closed in September against seeded data; it should still read

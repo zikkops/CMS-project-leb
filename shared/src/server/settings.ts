@@ -66,6 +66,8 @@ export function parseSettingsInput(body: Record<string, unknown>): BusinessSetti
     tipsDeductionRate: rate(body.tipsDeductionRate, 'tipsDeductionRate', 'Tips deduction'),
     staffDiscountFood:  rate(body.staffDiscountFood, 'staffDiscountFood', 'Staff discount on food'),
     staffDiscountDrink: rate(body.staffDiscountDrink, 'staffDiscountDrink', 'Staff discount on drinks'),
+    targetMarginFood:  rate(body.targetMarginFood, 'targetMarginFood', 'Target margin on food'),
+    targetMarginDrink: rate(body.targetMarginDrink, 'targetMarginDrink', 'Target margin on drinks'),
     invoicePrefix:     rawPrefix,
   }
 }
@@ -81,6 +83,8 @@ export async function readSettings(): Promise<BusinessSettings> {
     tipsDeductionRate: Number(d.tipsDeductionRate ?? SETTINGS_DEFAULTS.tipsDeductionRate),
     staffDiscountFood:  Number(d.staffDiscountFood ?? SETTINGS_DEFAULTS.staffDiscountFood),
     staffDiscountDrink: Number(d.staffDiscountDrink ?? SETTINGS_DEFAULTS.staffDiscountDrink),
+    targetMarginFood:  Number(d.targetMarginFood ?? SETTINGS_DEFAULTS.targetMarginFood),
+    targetMarginDrink: Number(d.targetMarginDrink ?? SETTINGS_DEFAULTS.targetMarginDrink),
     invoicePrefix:     readInvoicePrefix(d.invoicePrefix),
   }
 }

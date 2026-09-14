@@ -94,6 +94,20 @@ const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
 const bySupplyId = (a: { supplyId: string }, b: { supplyId: string }) =>
   a.supplyId < b.supplyId ? -1 : a.supplyId > b.supplyId ? 1 : 0
 
+/** A supply document read as a RecipeSupply. Anything that is not a real number is absent, never 0. */
+export function readRecipeSupply(id: string, data: Record<string, unknown>): RecipeSupply {
+  const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+  return {
+    id,
+    name: String(data.name ?? id),
+    unit: String(data.unit ?? ''),
+    recipeUnit: typeof data.recipeUnit === 'string' && data.recipeUnit.trim() ? data.recipeUnit : null,
+    recipeUnitsPerPurchaseUnit: n(data.recipeUnitsPerPurchaseUnit),
+    yieldPercent: n(data.yieldPercent),
+    avgUnitCost: n(data.avgUnitCost),
+  }
+}
+
 // ── Units ─────────────────────────────────────────────────────────────────
 
 const UNIT_ALIASES: Readonly<Record<string, string>> = {
@@ -282,6 +296,72 @@ export function dishMargin(
     priceExVatUsd,
     marginUsd: r2(priceExVatUsd - costUsd),
     costPercent: priceExVatUsd > 0 ? costUsd / priceExVatUsd : null,
+  }
+}
+
+// ── What a dish should sell for ───────────────────────────────────────────
+
+/**
+ * The target margin for a dish, by the station its section sends it to.
+ *
+ * Bar is drinks; Kitchen and Sweets are food — the same split the staff
+ * discount makes in staffRateFor(). A station nobody mapped gets no target
+ * rather than a guess, so no price is suggested for it.
+ */
+export function targetMarginFor(
+  station: string | null | undefined,
+  margins: { food: number; drink: number },
+): number | null {
+  if (station === 'Bar') return margins.drink
+  if (station === 'Kitchen' || station === 'Sweets') return margins.food
+  return null
+}
+
+/** Menu prices move in quarters. A suggestion is rounded UP to one of these. */
+export const PRICE_STEP_USD = 0.25
+
+export interface SuggestedPrice {
+  /** What the dish has to sell for before VAT to make the target margin. */
+  exVatUsd: number
+  /** The same with VAT on top: prices include VAT. */
+  withVatUsd: number
+  /** Rounded UP to the price step, so rounding can only add margin, never take it. */
+  roundedUsd: number
+}
+
+/**
+ * The price that makes `targetMargin` on the recipe cost.
+ *
+ * The margin is on the price BEFORE VAT, the same basis as dishMargin(), so a
+ * dish priced at its suggestion shows exactly the target margin (or a little
+ * more, from rounding up) on the Recipes page. Dividing cost by the
+ * VAT-inclusive price instead would suggest a price that falls short of the
+ * target by the tax rate on every dish.
+ *
+ * null when there is nothing honest to suggest: no cost, a cost of zero, or a
+ * target of 100% or more — a margin that no price can reach.
+ */
+export function suggestedPrice(
+  costUsd: number | null,
+  targetMargin: number,
+  vatRate: number,
+  stepUsd: number = PRICE_STEP_USD,
+): SuggestedPrice | null {
+  if (costUsd === null || !Number.isFinite(costUsd) || costUsd <= 0) return null
+  if (!Number.isFinite(targetMargin) || targetMargin < 0 || targetMargin >= 1) return null
+  const rate = Number.isFinite(vatRate) && vatRate >= 0 && vatRate < 1 ? vatRate : 0
+  const stepCents = Number.isFinite(stepUsd) && stepUsd > 0 ? Math.max(1, Math.round(stepUsd * 100)) : 1
+
+  const exVat = costUsd / (1 - targetMargin)
+  const withVat = exVat * (1 + rate)
+  // Settle float noise to a hundredth of a cent before rounding up, so a price
+  // that is exactly on a step is not pushed to the next: a 20¢ drink at 80%
+  // comes out as 1.0000000000000002, which would otherwise suggest $1.25.
+  const cents = Math.round(withVat * 10_000) / 100
+  return {
+    exVatUsd: r2(exVat),
+    withVatUsd: r2(withVat),
+    roundedUsd: (Math.ceil(cents / stepCents) * stepCents) / 100,
   }
 }
 

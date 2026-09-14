@@ -28,8 +28,9 @@ import { vatRateOn } from '@big-cms/shared/businessSettings'
 import { todayYmd } from '@big-cms/shared/dates'
 import { BRAND } from '@big-cms/shared/brand'
 import { formatUsd } from '@big-cms/shared/money'
+import { stationForSection } from '@big-cms/shared/checks'
 import {
-  lineConsumption, consumptionCost, dishMargin, describeQty, recipeProblems,
+  lineConsumption, consumptionCost, dishMargin, describeQty, recipeProblems, suggestedPrice, targetMarginFor,
   type Recipe, type OptionAdjustment, type RecipeSupply, type ConsumptionCost,
 } from '@big-cms/shared/recipes'
 
@@ -43,7 +44,7 @@ interface MenuItemDoc {
   order: number
   modifierGroupIds: string[]
 }
-interface CategoryDoc { id: string; name: string; order: number }
+interface CategoryDoc { id: string; name: string; order: number; section: string }
 interface GroupDoc { id: string; name: string; options: { id: string; name: string }[] }
 
 // The editor works in strings, because an input being typed into is not a
@@ -130,10 +131,12 @@ const optionStyle: React.CSSProperties = { background: '#1c1c1c', color: 'var(--
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`
 
 /** Cost, margin and cost share for one dish — or why there are none. Module scope: see CONTRIBUTING gotcha #2. */
-function CostSummary({ price, cost, vatRate, supplies, align = 'left' }: {
+function CostSummary({ price, cost, vatRate, target, supplies, align = 'left' }: {
   price: number
   cost: ConsumptionCost | null
   vatRate: number
+  /** The target margin for this dish's station, or null for a section with none. */
+  target: number | null
   supplies: Record<string, RecipeSupply>
   align?: 'left' | 'right'
 }) {
@@ -148,6 +151,10 @@ function CostSummary({ price, cost, vatRate, supplies, align = 'left' }: {
     )
   }
   const m = dishMargin(price, cost.costUsd, vatRate)
+  const s = target === null ? null : suggestedPrice(cost.costUsd, target, vatRate)
+  // Below the target only when the price is under what the margin needs, not
+  // under the rounded-up figure: $4.52 makes 70% even if the suggestion reads $4.75.
+  const below = s !== null && price < s.withVatUsd
   return (
     <span style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start', fontFamily: 'var(--font-inter)' }}>
       <span style={{ fontSize: '0.82rem', color: 'var(--offwhite)' }}>
@@ -157,6 +164,11 @@ function CostSummary({ price, cost, vatRate, supplies, align = 'left' }: {
       {m.marginUsd !== null && (
         <span style={{ fontSize: '0.7rem', color: m.marginUsd >= 0 ? 'var(--teal)' : 'var(--red)' }}>
           {formatUsd(m.marginUsd)} margin on {formatUsd(m.priceExVatUsd)} before VAT
+        </span>
+      )}
+      {s && target !== null && (
+        <span style={{ fontSize: '0.7rem', color: below ? 'var(--brand-secondary)' : 'rgba(var(--offwhite-rgb),0.45)' }}>
+          Suggested {formatUsd(s.roundedUsd)} for a {pct(target)} margin{below ? ' — priced below it' : ''}
         </span>
       )}
     </span>
@@ -184,7 +196,7 @@ function SupplySelect({ value, onChange, supplies, only, placeholder }: {
 }
 
 function RecipeEditor({
-  item, groups, supplies, supplyList, draft, onChange, vatRate,
+  item, groups, supplies, supplyList, draft, onChange, vatRate, target,
   saving, error, hasSaved, onSave, onDelete, onClose, isMobile,
 }: {
   item: MenuItemDoc
@@ -194,6 +206,7 @@ function RecipeEditor({
   draft: Draft
   onChange: (next: Draft) => void
   vatRate: number
+  target: number | null
   saving: boolean
   error: string
   hasSaved: boolean
@@ -332,7 +345,7 @@ function RecipeEditor({
         {/* ── Cost and what stops a save ──────────────────────────────── */}
         <div style={{ marginTop: '1.5rem', padding: '0.9rem 1rem', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
           <p style={{ ...lbl, marginBottom: '0.4rem' }}>As written, without options</p>
-          <CostSummary price={item.price} cost={base} vatRate={vatRate} supplies={supplies} />
+          <CostSummary price={item.price} cost={base} vatRate={vatRate} target={target} supplies={supplies} />
         </div>
 
         {problems.length > 0 && (
@@ -420,7 +433,7 @@ export default function RecipesPage() {
         }))
         setCategories(categorySnap.docs.map(d => {
           const x = d.data() as Record<string, unknown>
-          return { id: d.id, name: String(x.name ?? ''), order: Number(x.order ?? 0) }
+          return { id: d.id, name: String(x.name ?? ''), order: Number(x.order ?? 0), section: String(x.section ?? '') }
         }))
         setGroups(Object.fromEntries(groupSnap.docs.map(d => {
           const x = d.data() as Record<string, unknown>
@@ -462,6 +475,13 @@ export default function RecipesPage() {
     const all = orphans.length ? [...known, { id: '', name: 'Uncategorised', items: orphans }] : known
     return all.map(s => ({ ...s, items: [...s.items].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name)) }))
   }, [items, categories])
+
+  // Food or drink by the station the dish's section sends it to — the split
+  // the staff discount already makes — so coffee is held to the drinks margin.
+  const targetOf = (item: MenuItemDoc) => targetMarginFor(
+    stationForSection(categories.find(c => c.id === item.categoryId)?.section),
+    { food: settings.targetMarginFood, drink: settings.targetMarginDrink },
+  )
 
   const costed = items.filter(i => {
     const r = recipes[i.id]
@@ -551,7 +571,7 @@ export default function RecipesPage() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'space-between' }}>
                     <CostSummary price={item.price} cost={recipe ? costOf(recipe, supplies) : null}
-                      vatRate={vatRate} supplies={supplies} align={isMobile ? 'left' : 'right'} />
+                      vatRate={vatRate} target={targetOf(item)} supplies={supplies} align={isMobile ? 'left' : 'right'} />
                     <button onClick={() => openEditor(item)} style={{
                       background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--offwhite)',
                       borderRadius: '4px', padding: '0.45rem 0.9rem', fontSize: '0.75rem', cursor: 'pointer', flexShrink: 0,
@@ -575,6 +595,7 @@ export default function RecipesPage() {
           draft={draft}
           onChange={setDraft}
           vatRate={vatRate}
+          target={targetOf(editingItem)}
           saving={saving}
           error={saveError}
           hasSaved={Boolean(recipes[editingItem.id])}

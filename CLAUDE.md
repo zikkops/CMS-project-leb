@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 21 checks, 15 verifiers, 907
+is the only thing that shows it. Currently 21 checks, 15 verifiers, 923
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -311,8 +311,24 @@ database.
   `supplyIds` so that is one array-contains query.
 
 - **The arithmetic is `shared/src/recipes.ts`, pure, asserted by `npm run
-  verify:recipes`** (102 cases, 16 mutations caught by name). The page and the
+  verify:recipes`** (118 cases, 24 mutations caught by name). The page and the
   server only apply what it computed.
+- **Suggested prices come from a target margin, split food / drinks.**
+  `targetMarginFood` (default 70%) and `targetMarginDrink` (default 80%) live in
+  Business Settings. They're the usual rule-of-thumb food cost of about 30% and
+  about 20% on coffee and soft drinks. Drink or food is decided by station, Bar
+  versus Kitchen/Sweets, the same split as the staff discount
+  (`targetMarginFor()`); an unmapped station gets no suggestion.
+  `suggestedPrice()` divides the cost by (1 − margin) **before VAT**, adds VAT,
+  and rounds **up** to $0.25, so rounding can only add margin. A dish priced at
+  its suggestion shows at least the target on the Recipes page. It's flagged
+  as below target only when the price is under the unrounded figure. Shown on the
+  Recipes page, beside each price on `/admin/menu`, and under the price field
+  with a "Use it" button — **admins only**, through `useSuggestedPrices`,
+  because a suggested price at a known margin gives the cost away. Nothing is
+  ever charged from it. The item form's price step was 0.5, which made the
+  browser refuse to save $3.75 or $4.25 — prices already on the menu; it is
+  0.01 now.
 - **`npm run seed:recipes` gives the demo something to cost.** Recipes for 15
   of the 16 dishes, the unit conversions they need, and the per-serving
   snapshots on the SEEDED checks only, all through `recipeProblems()` and

@@ -293,6 +293,36 @@ console.log('\ntheoretical food cost — the POS checks\' own sales, before VAT'
   eq('nothing costable: no percentage, not 0%', R.theoreticalFoodCost([noRecipe]).costPercent, null)
 }
 
+console.log('\nwhat a dish should sell for')
+{
+  // VAT 0.13 on purpose, as above: not the café's configured rate.
+  eq('70% margin on $1.20: $4.00 before VAT, $4.52 with it, $4.75 on the menu',
+    R.suggestedPrice(1.2, 0.7, 0.13), { exVatUsd: 4, withVatUsd: 4.52, roundedUsd: 4.75 })
+  const m = R.dishMargin(4.75, 1.2, 0.13)
+  eq('THE TRAP: at the suggested price the margin is at least the target, before VAT',
+    m.costPercent <= 0.3, true)
+  eq('...which it would not be if VAT were left out of the suggestion',
+    R.dishMargin(4, 1.2, 0.13).costPercent > 0.3, true)
+  // 0.2 ÷ (1 − 0.8) is 1.0000000000000002 in floating point: a hair above $1.00.
+  eq('a price exactly on a step is not pushed to the next one by float noise',
+    R.suggestedPrice(0.2, 0.8, 0).roundedUsd, 1)
+  eq('a drink at 80% costs more to buy than the same cost at 70%',
+    R.suggestedPrice(0.59, 0.8, 0.13), { exVatUsd: 2.95, withVatUsd: 3.33, roundedUsd: 3.5 })
+  eq('no margin: cost plus VAT, rounded up', R.suggestedPrice(2, 0, 0.13).roundedUsd, 2.5)
+  eq('another step', R.suggestedPrice(1.2, 0.7, 0.13, 0.5).roundedUsd, 5)
+  eq('no cost: nothing to suggest, not $0.00', R.suggestedPrice(null, 0.7, 0.13), null)
+  eq('a cost of zero: nothing to suggest', R.suggestedPrice(0, 0.7, 0.13), null)
+  eq('a 100% margin: no price reaches it', R.suggestedPrice(1.2, 1, 0.13), null)
+  eq('a negative margin: refused', R.suggestedPrice(1.2, -0.1, 0.13), null)
+  eq('a nonsense VAT rate counts as none, as dishMargin does', R.suggestedPrice(1.2, 0.7, Number.NaN).roundedUsd, 4)
+
+  const margins = { food: 0.65, drink: 0.85 }
+  eq('drinks take the drinks margin', R.targetMarginFor('Bar', margins), 0.85)
+  eq('the kitchen takes the food margin', R.targetMarginFor('Kitchen', margins), 0.65)
+  eq('sweets are food, as for the staff discount', R.targetMarginFor('Sweets', margins), 0.65)
+  eq('an unmapped station gets no target, not a guess', R.targetMarginFor(null, margins), null)
+}
+
 console.log('\ncounted against expected')
 eq('half a gallon short', R.countVariance(2.5, 2, 4.2), { varianceQty: -0.5, varianceUsd: -2.1 })
 eq('more than expected is positive', R.countVariance(2, 2.75, 4.2).varianceQty, 0.75)

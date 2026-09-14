@@ -209,6 +209,8 @@ export default function BusinessSettingsPage() {
   const [prefix, setPrefix] = useState('')
   const [staffFood, setStaffFood] = useState('')
   const [staffDrink, setStaffDrink] = useState('')
+  const [marginFood, setMarginFood] = useState('')
+  const [marginDrink, setMarginDrink] = useState('')
   const [nextVat, setNextVat] = useState('')
   const [nextVatFrom, setNextVatFrom] = useState('')
 
@@ -233,6 +235,8 @@ export default function BusinessSettingsPage() {
     setPrefix(settings.invoicePrefix)
     setStaffFood(String(+(settings.staffDiscountFood * 100).toFixed(4)))
     setStaffDrink(String(+(settings.staffDiscountDrink * 100).toFixed(4)))
+    setMarginFood(String(+(settings.targetMarginFood * 100).toFixed(4)))
+    setMarginDrink(String(+(settings.targetMarginDrink * 100).toFixed(4)))
     setNextVat(settings.vatNext ? String(+(settings.vatNext.rate * 100).toFixed(4)) : '')
     setNextVatFrom(settings.vatNext?.from ?? '')
   }, [loading, settings])
@@ -260,6 +264,8 @@ export default function BusinessSettingsPage() {
     prefix !== settings.invoicePrefix ||
     Number(staffFood) / 100 !== settings.staffDiscountFood ||
     Number(staffDrink) / 100 !== settings.staffDiscountDrink ||
+    Number(marginFood) / 100 !== settings.targetMarginFood ||
+    Number(marginDrink) / 100 !== settings.targetMarginDrink ||
     JSON.stringify(nextVatPayload) !== JSON.stringify(settings.vatNext)
 
   async function save() {
@@ -280,6 +286,8 @@ export default function BusinessSettingsPage() {
           invoicePrefix:     prefix,
           staffDiscountFood:  Number(staffFood) / 100,
           staffDiscountDrink: Number(staffDrink) / 100,
+          targetMarginFood:  Number(marginFood) / 100,
+          targetMarginDrink: Number(marginDrink) / 100,
           vatNext:           nextVatPayload,
         })
       )
@@ -362,6 +370,24 @@ export default function BusinessSettingsPage() {
                 ? `At ${Number(staffDrink)}% off, staff pay ${(100 - Number(staffDrink)).toFixed(0)}% — $10.00 becomes ${((1 - Number(staffDrink) / 100) * 10).toFixed(2)}.`
                 : 'Zero means no discount.'
             }`}
+          />
+          <RateField
+            label="Target margin — food" suffix="%" step="1"
+            value={marginFood} onChange={setMarginFood} isMobile={isMobile}
+            hint={`Food and sweets. Only used to suggest a price beside each dish that has a recipe — nothing is charged from it. Measured on the price before VAT. ${
+              Number(marginFood) >= 0 && Number(marginFood) < 100
+                ? `At ${Number(marginFood)}%, a dish that costs $3.00 to make should sell for ${(3 / (1 - Number(marginFood) / 100)).toFixed(2)} before VAT. `
+                : ''
+            }Restaurants commonly aim for 65–72%.`}
+          />
+          <RateField
+            label="Target margin — drinks" suffix="%" step="1"
+            value={marginDrink} onChange={setMarginDrink} isMobile={isMobile}
+            hint={`Anything from the bar, measured the same way. ${
+              Number(marginDrink) >= 0 && Number(marginDrink) < 100
+                ? `At ${Number(marginDrink)}%, a drink that costs $1.00 to make should sell for ${(1 / (1 - Number(marginDrink) / 100)).toFixed(2)} before VAT. `
+                : ''
+            }Coffee and soft drinks commonly run 75–85%.`}
           />
           <PrefixField
             value={prefix}

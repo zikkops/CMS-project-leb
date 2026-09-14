@@ -73,6 +73,17 @@ export interface BusinessSettings {
   staffDiscountFood: number
   staffDiscountDrink: number
   /**
+   * The margin a dish should make on its price before VAT, as a fraction —
+   * 0.7 is 70%, a food cost of 30%. Used only to SUGGEST a price from the
+   * recipe cost; nothing is ever charged from it.
+   *
+   * Split the same way as the staff discount, by station: drinks carry a
+   * higher margin than food almost everywhere, which is why one global
+   * figure would suggest overpriced plates or underpriced coffee.
+   */
+  targetMarginFood: number
+  targetMarginDrink: number
+  /**
    * The letters an invoice number starts with, e.g. the AC of
    * AC-Q3-082026-0001.
    *
@@ -95,6 +106,7 @@ export interface BusinessSettings {
 export type RateKey =
   | 'vatRate' | 'exchangeRate' | 'tipsDeductionRate'
   | 'staffDiscountFood' | 'staffDiscountDrink'
+  | 'targetMarginFood' | 'targetMarginDrink'
 
 /** What the app used before any of this was editable. */
 export const SETTINGS_DEFAULTS: BusinessSettings = {
@@ -107,6 +119,12 @@ export const SETTINGS_DEFAULTS: BusinessSettings = {
   // money off every staff check would be a rate nobody chose.
   staffDiscountFood:  0,
   staffDiscountDrink: 0,
+  // Common rules of thumb, not law: restaurants aim for a food cost around
+  // 28–35% of the price and 15–25% on non-alcoholic drinks and coffee. Only a
+  // suggestion is ever made from these, so a sensible default does no harm;
+  // every café should set its own.
+  targetMarginFood:  0.7,
+  targetMarginDrink: 0.8,
 }
 
 // Bounds, shared with the route so the form and the server agree on what is
@@ -121,6 +139,9 @@ export const SETTINGS_LIMITS: Record<RateKey, { min: number; max: number }> = {
   // over the price would have the café paying its staff to eat.
   staffDiscountFood:  { min: 0, max: 1 },
   staffDiscountDrink: { min: 0, max: 1 },
+  // Short of 100%: no price makes a 100% margin on something that costs money.
+  targetMarginFood:  { min: 0, max: 0.95 },
+  targetMarginDrink: { min: 0, max: 0.95 },
 }
 
 /**
@@ -196,6 +217,8 @@ export function parseSettings(data: Record<string, unknown> | undefined): Busine
     tipsDeductionRate: readRate(data?.tipsDeductionRate, 'tipsDeductionRate'),
     staffDiscountFood:  readRate(data?.staffDiscountFood, 'staffDiscountFood'),
     staffDiscountDrink: readRate(data?.staffDiscountDrink, 'staffDiscountDrink'),
+    targetMarginFood:  readRate(data?.targetMarginFood, 'targetMarginFood'),
+    targetMarginDrink: readRate(data?.targetMarginDrink, 'targetMarginDrink'),
     invoicePrefix:     readInvoicePrefix(data?.invoicePrefix),
   }
 }
