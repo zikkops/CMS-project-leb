@@ -74,6 +74,10 @@ export interface Ticket {
   /** Set when it leaves the screen; null until then. */
   bumpedAt: string | null
   bumpedBy: string | null
+  /** When the kitchen marked it ready — a server timestamp, read through timestampMs(). Absent on older tickets. */
+  readyAt?: unknown
+  /** True when the front took it out ("Picked up") rather than the kitchen clearing it. */
+  pickedUp?: boolean
 }
 
 /** Statuses still on a pass. What the KDS asks for. */
@@ -106,6 +110,25 @@ export function transitionError(from: TicketStatus, to: TicketStatus): string | 
   if (from === 'bumped') return 'That ticket is already bumped. Fire a new round instead of reopening it.'
   if (from === 'cancelled') return 'That ticket was cancelled.'
   return `A ticket cannot go from ${from} to ${to}.`
+}
+
+export type PickupOutcome = { kind: 'pick' } | { kind: 'already' } | { kind: 'refused'; reason: string }
+
+/**
+ * Whether the front may take a ticket off the pass (owner's decision, 14 Sep
+ * 2026: the counter or the floor taps "Picked up", and that clears it from the
+ * kitchen display as well).
+ *
+ * Only a READY ticket is picked up: a card tapped a moment after the kitchen
+ * sent it back to preparing must not clear food still being cooked. Already
+ * gone is not a failure — two people reaching for one plate is the normal
+ * case, and the second needs to be told it is done, not shown an error.
+ */
+export function pickupOutcome(status: TicketStatus): PickupOutcome {
+  if (status === 'ready') return { kind: 'pick' }
+  if (status === 'bumped') return { kind: 'already' }
+  if (status === 'cancelled') return { kind: 'refused', reason: 'That ticket was cancelled — every item on it was voided.' }
+  return { kind: 'refused', reason: 'The kitchen has not marked that ready yet — it may have been sent back.' }
 }
 
 /** Turns check lines into what a station reads. Prices are dropped on purpose. */

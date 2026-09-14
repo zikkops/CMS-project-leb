@@ -190,6 +190,21 @@ seeded, so start in settings.
     **Corrected after it was first entered**, with 9 °C and who entered it.
     With the module switched off, `/api/admin/food-safety` answers 404.
 
+### Ready to go out — the kitchen, the counter and the floor
+1. Open the kitchen display on one device and the floor (or the counter) on
+   another. Send an order from a table, then Start and **Ready** it on the kitchen
+   display.
+2. The floor shows a green **Ready to go out** panel with the table, the station,
+   what to carry and how long it has waited, and plays a chime. Tap the screen
+   once first, since browsers stay silent until the page has been touched.
+3. Tap **Picked up**: the card goes, and the ticket leaves the kitchen display.
+4. Ready another, and on the kitchen display tap **Back** before picking it up.
+   The card disappears from the floor. A tap already in flight is refused with
+   "not marked ready yet", never cleared.
+5. **Sound off** on one device stays off after a reload.
+6. On a wide screen the floor's Counter, Closed and Kitchen display are big
+   boxes down the right; on a phone, a grid under the title.
+
 ### Daily counts — `/admin/supplies/daily`, `.../history`
 - Submit a count, then open it in the history: **Expected, Counted, Variance
   and Value** per supply, with totals. Counts from before 14 Sep have no expected

@@ -61,6 +61,7 @@ import {
 } from '../../lib/counterTotals'
 import type { OutboxAction } from '../../lib/outbox'
 import { PosButton, Chip, StatusBadge, SectionLabel, kindColour } from '../../lib/posUi'
+import { ReadyPanel } from '../../lib/ReadyPanel'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 900) {
@@ -144,6 +145,9 @@ export default function CounterPage() {
   const menu = usePosMenu()
   const { settings } = useBusinessSettings()
   const { on: takesPayment } = useFeature('payments')
+  // The kitchen's Ready pops up here (owner's decision, 14 Sep 2026). With no
+  // kitchen display nothing is ever marked ready, so there is no listener.
+  const { on: kdsOn } = useFeature('kds')
   const outbox = useOutbox()
   const device = useCounterDevice()
 
@@ -763,6 +767,8 @@ export default function CounterPage() {
             borderRadius: '10px', padding: '0.85rem 1rem',
           }}><FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.5rem' }} />{error}</p>
         )}
+
+        {kdsOn && <ReadyPanel branch={branch} isMobile={isMobile} />}
 
         {isMobile ? (
           <>

@@ -209,6 +209,53 @@ export function useStationTickets(branch: string, station: Station | null): {
 }
 
 /**
+ * Tickets the kitchen has marked ready and nobody has taken out — what pops up
+ * on the counter and the floor (owner's decision, 14 Sep 2026).
+ *
+ * Served by the same composite index as the KDS "All stations" query
+ * (branch, status, sentAt): an equality on status uses it as well as `in` does.
+ */
+export function useReadyTickets(branch: string): {
+  tickets: Ticket[]; loading: boolean; error: string
+} {
+  const [snapshot, setSnapshot] = useState<{ branch: string; tickets: Ticket[]; error: string } | null>(null)
+  const { ready, signedIn } = useAuthReady()
+
+  useEffect(() => {
+    if (!branch || !ready || !signedIn) return
+    const q = query(
+      collection(db, 'kitchenTickets'),
+      where('branch', '==', branch),
+      where('status', '==', 'ready'),
+      orderBy('sentAt', 'asc'),
+    )
+    return onSnapshot(q,
+      snap => {
+        setSnapshot({ branch, tickets: snap.docs.map(d => ({ id: d.id, ...d.data() }) as Ticket), error: '' })
+      },
+      err => {
+        console.error('[useReadyTickets] listener failed:', err)
+        setSnapshot(prev => ({ branch, tickets: prev?.branch === branch ? prev.tickets : [], error: listenerMessage(err) }))
+      },
+    )
+  }, [branch, ready, signedIn])
+
+  const current = snapshot?.branch === branch ? snapshot : null
+  return {
+    tickets: current?.tickets ?? [],
+    loading: !ready || (signedIn && current === null),
+    error: current?.error ?? '',
+  }
+}
+
+/** The front took a ready plate out. Clears it from the kitchen display too. */
+export async function pickUpTicket(ticketId: string): Promise<{ already: boolean }> {
+  const data = await unwrap(await authedFetch('/api/pos/tickets', 'PATCH',
+    { ticketId, action: 'pickup' }, { timeoutMs: POS_TIMEOUT_MS }))
+  return { already: data.already === true }
+}
+
+/**
  * Checks closed at this branch, newest first.
  *
  * A closed check used to vanish — the table went free and nothing anywhere

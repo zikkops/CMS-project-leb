@@ -37,6 +37,7 @@ import { closedAtParts } from '@big-cms/shared/salesExport'
 import { useOpenChecks, useChecksClosedSince, openCheck } from '../lib/usePos'
 import { PosButton, Chip, StatusBadge } from '../lib/posUi'
 import { floorReadings, readReadingChoice, READINGS, type ReadingKey } from '../lib/floorReadings'
+import { ReadyPanel } from '../lib/ReadyPanel'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -197,9 +198,44 @@ const READING_LOOK: Record<ReadingKey, { icon: IconDefinition; colour: string }>
   refundsToday: { icon: faRotateLeft, colour: '#EF7A9B' },
 }
 
+/**
+ * A screen to go to, as a big box. Owner's request (14 Sep 2026): the floor's
+ * way to the counter, the closed checks and the kitchen display was a row at
+ * the top while the side of the screen sat empty, so they live there now, as
+ * targets a finger finds without looking. A hue per destination (posUi's
+ * "kind of thing"), never teal, which is the main action.
+ *
+ * Module scope — CONTRIBUTING.md gotcha #2.
+ */
+function NavTile({ icon, label, sub, colour, onClick, isMobile }: {
+  icon: IconDefinition
+  label: string
+  sub: string
+  colour: string
+  onClick: () => void
+  isMobile: boolean
+}) {
+  return (
+    <button type="button" onClick={onClick} style={{
+      width: '100%', minHeight: isMobile ? '104px' : '150px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+      padding: '0.8rem', borderRadius: '14px', cursor: 'pointer', textAlign: 'center',
+      background: `color-mix(in srgb, ${colour} 12%, transparent)`,
+      border: `2px solid color-mix(in srgb, ${colour} 55%, transparent)`,
+      color: 'var(--offwhite)', fontFamily: 'var(--font-inter)', WebkitTapHighlightColor: 'transparent',
+    }}>
+      <FontAwesomeIcon icon={icon} style={{ fontSize: isMobile ? '1.7rem' : '2.2rem', color: colour }} />
+      <span style={{ fontSize: isMobile ? '0.98rem' : '1.08rem', fontWeight: 700, lineHeight: 1.2 }}>{label}</span>
+      {!isMobile && <span style={{ fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.6)', lineHeight: 1.3 }}>{sub}</span>}
+    </button>
+  )
+}
+
 export default function FloorPage() {
   const { checking, blocked } = useRequireRole(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
   const { on: allergensOn } = useFeature('foodSafety')
+  // What the kitchen has ready, for whoever is nearest to run it.
+  const { on: kdsOn } = useFeature('kds')
   const isMobile = useIsMobile()
   const router = useRouter()
   const now = useNow()
@@ -315,46 +351,54 @@ export default function FloorPage() {
   }
   const shownReadings = READINGS.filter(r => chosen.includes(r.key))
 
+  // The other screens, in the order staff reach for them. The counter is the
+  // one that keeps working through an outage; the kitchen display is gated on
+  // its own section, and a waiter without it lands on its own explanation.
+  const navTiles = (
+    <>
+      <NavTile icon={faStore} label="Counter" sub="The till, even offline" colour="#06B6D4" isMobile={isMobile} onClick={() => router.push('/pos/counter')} />
+      <NavTile icon={faReceipt} label="Closed" sub="Checks closed today" colour="#A855F7" isMobile={isMobile} onClick={() => router.push('/pos/closed')} />
+      <NavTile icon={faFire} label="Kitchen display" sub="The pass" colour="#F97316" isMobile={isMobile} onClick={() => router.push('/pos/kds')} />
+      {takesPayment && <NavTile icon={faCashRegister} label="Drawer" sub="Float, X and Z" colour="#EAB308" isMobile={isMobile} onClick={() => router.push('/pos/drawer')} />}
+      {allergensOn && <NavTile icon={faWheatAwnCircleExclamation} label="Allergens" sub="What is in each dish" colour="#EC4899" isMobile={isMobile} onClick={() => router.push('/pos/allergens')} />}
+    </>
+  )
+
   return (
     <main style={{
       minHeight: '100vh', backgroundColor: 'var(--black)',
       padding: isMobile ? '1.25rem 1rem 7rem' : '1.75rem 2rem 7.5rem',
       fontFamily: 'var(--font-inter)',
     }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      {/* On a wide screen the other screens are big boxes down the right, in
+          the space the tables do not use; on a phone, a grid under the title. */}
+      <div style={{
+        maxWidth: '1400px', margin: '0 auto',
+        display: isMobile ? 'block' : 'grid',
+        gridTemplateColumns: isMobile ? undefined : 'minmax(0, 1fr) 190px',
+        gap: '1.5rem', alignItems: 'start',
+      }}>
+        <div>
 
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
-          flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem',
-        }}>
-          <div>
-            <p style={{
-              fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-              color: 'var(--teal)', marginBottom: '0.3rem', fontWeight: 700,
-            }}>{branch}</p>
-            <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.4rem', color: 'var(--offwhite)', lineHeight: 1 }}>
-              Open tables
-            </h1>
-          </div>
-
-          {/* Real buttons, with icons. These were four 15px-tall text links at
-              35% opacity — the smallest targets in the app, for the screens
-              staff move between most. */}
-          <nav style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {takesPayment && <PosButton icon={faCashRegister} label="Drawer" tone="neutral" onClick={() => router.push('/pos/drawer')} />}
-            {/* The counter till (slice 7). One screen, and the only one that
-                keeps working through an outage — so it is worth reaching from
-                here rather than only from a home-screen icon. */}
-            <PosButton icon={faStore} label="Counter" tone="neutral" onClick={() => router.push('/pos/counter')} />
-            <PosButton icon={faReceipt} label="Closed" tone="neutral" onClick={() => router.push('/pos/closed')} />
-            {/* Food safety, slice 7: what to tell a customer who asks. */}
-            {allergensOn && <PosButton icon={faWheatAwnCircleExclamation} label="Allergens" tone="neutral" onClick={() => router.push('/pos/allergens')} />}
-            {/* The pass, for whoever is carrying the device that is also the
-                kitchen screen. Gated separately — a waiter without the KDS
-                section lands on its own explanation, not a blank page. */}
-            <PosButton icon={faFire} label="Kitchen display" tone="neutral" onClick={() => router.push('/pos/kds')} />
-          </nav>
+        <div style={{ marginBottom: '1.25rem' }}>
+          <p style={{
+            fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase',
+            color: 'var(--teal)', marginBottom: '0.3rem', fontWeight: 700,
+          }}>{branch}</p>
+          <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.4rem', color: 'var(--offwhite)', lineHeight: 1 }}>
+            Open tables
+          </h1>
         </div>
+
+        {isMobile && (
+          <nav aria-label="Other screens" style={{
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.6rem', marginBottom: '1.25rem',
+          }}>
+            {navTiles}
+          </nav>
+        )}
+
+        {kdsOn && <ReadyPanel branch={branch} isMobile={isMobile} />}
 
         {/* ── Readings ──────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
@@ -436,6 +480,15 @@ export default function FloorPage() {
               <CheckCard key={c.id} check={c} now={now} onOpen={() => router.push(`/pos/check/${c.id}`)} isMobile={isMobile} />
             ))}
           </div>
+        )}
+        </div>
+
+        {!isMobile && (
+          <nav aria-label="Other screens" style={{
+            position: 'sticky', top: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem',
+          }}>
+            {navTiles}
+          </nav>
         )}
       </div>
 

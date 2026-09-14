@@ -89,7 +89,10 @@ const STATUS_LOOK: Record<string, { label: string; icon: IconDefinition; colour:
 const NEXT_ACTION: Record<string, { to: TicketStatus; label: string; icon: IconDefinition } | null> = {
   new: { to: 'preparing', label: 'Start', icon: faFire },
   preparing: { to: 'ready', label: 'Ready', icon: faCircleCheck },
-  ready: { to: 'bumped', label: 'Bump', icon: faCheckDouble },
+  // Ready waits for the front: the counter or the floor taps "Picked up", and
+  // that clears it here (owner's decision, 14 Sep 2026). A small Clear stays on
+  // the card so a pass is never stuck behind a front screen nobody is watching.
+  ready: null,
   bumped: null,
   cancelled: null,
 }
@@ -223,6 +226,18 @@ function TicketCard({
           </p>
         ))}
       </div>
+
+      {ticket.status === 'ready' && (
+        <div style={{
+          padding: '0 0.75rem 0.75rem', display: 'flex', gap: '0.6rem',
+          alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap',
+        }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.1rem', fontWeight: 700, color: '#22C55E' }}>
+            <FontAwesomeIcon icon={faCircleCheck} />Waiting for the front
+          </span>
+          <PosButton icon={faCheckDouble} label="Clear" size="sm" tone="quiet" disabled={busy} onClick={() => onAdvance('bumped')} />
+        </div>
+      )}
 
       {next && (
         <div style={{ padding: '0 0.75rem 0.75rem' }}>

@@ -161,5 +161,46 @@ console.log('\nthe floor\'s readings')
   eq('something unreadable falls back to the defaults', R.readReadingChoice('{not json'), ['closedToday', 'openTotal'])
 }
 
+console.log('\nwhat the front sees when the kitchen marks a plate ready')
+{
+  const outPick = mkdtempSync(join(tmpdir(), 'pickups-verify-'))
+  execSync(
+    `npx tsc pos/app/lib/pickups.ts --outDir ${outPick} --module esnext --target es2022 ` +
+    `--skipLibCheck --moduleResolution bundler --strict`,
+    { stdio: 'pipe' },
+  )
+  const P = await import(`file://${join(outPick, 'pickups.js')}`)
+
+  const at = min => 1_000_000_000_000 + min * 60_000
+  const now = at(10)
+  const ticket = (id, table, readyMin, lines) => ({
+    id, tableNumber: table, station: 'Kitchen', round: 1, lines,
+    readyAtMs: readyMin === null ? null : at(readyMin), sentAtMs: at(0),
+  })
+  const burger = { name: 'Burger', quantity: 2, voided: false }
+  const fries = { name: 'Fries', quantity: 1, voided: false }
+
+  const cards = P.pickupCards([ticket('b', 12, 8, [fries]), ticket('a', 2, 3, [burger, fries])], now)
+  eq('the plate waiting longest comes first', cards.map(c => c.id), ['a', 'b'])
+  eq('it says what to carry', cards[0].summary, '2× Burger, 1× Fries')
+  eq('THE TRAP: the wait counts from Ready, not from when it was ordered', cards[0].waitingMinutes, 7)
+  const partlyVoided = P.pickupCards([ticket('c', 4, 9, [burger, { ...fries, voided: true }])], now)[0]
+  eq('a voided line is not food to carry', partlyVoided.summary, '2× Burger')
+  eq('...nor counted', partlyVoided.items, 2)
+  eq('a ticket from before Ready was timed counts from when it was sent', P.pickupCards([ticket('d', 5, null, [fries])], now)[0].waitingMinutes, 10)
+  eq('a clock slightly ahead never shows a negative wait', P.pickupCards([ticket('e', 6, 11, [fries])], now)[0].waitingMinutes, 0)
+  eq('everything voided says so, rather than an empty card',
+    P.pickupCards([ticket('f', 7, 9, [{ ...fries, voided: true }])], now)[0].summary, 'Every item on it was cancelled')
+  eq('the same wait: the lower table first', P.pickupCards([ticket('y', 9, 5, [fries]), ticket('x', 3, 5, [fries])], now).map(c => c.id), ['x', 'y'])
+
+  eq('under two minutes is fresh', P.pickupUrgency(1), 'fresh')
+  eq('two minutes is getting cold', P.pickupUrgency(2), 'aging')
+  eq('five minutes is late', P.pickupUrgency(5), 'late')
+
+  eq('THE TRAP: plates already waiting when the screen opens do not ring', P.newlyReady(null, ['a', 'b']), [])
+  eq('a plate that turns ready rings', P.newlyReady(new Set(['a']), ['a', 'b']), ['b'])
+  eq('a plate picked up does not ring', P.newlyReady(new Set(['a', 'b']), ['a']), [])
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail > 0 ? 1 : 0)

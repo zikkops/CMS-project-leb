@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { connection } from 'next/server'
 import { Inter, Bree_Serif } from 'next/font/google'
 import '@big-cms/shared/styles/globals.css'
 import { BRAND } from '@big-cms/shared/brand'
@@ -26,7 +27,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Rendered per request, never prerendered. A prerendered page is sent with
+  // `s-maxage=31536000`, and the host's CDN keeps it for a year: on 14 Sep 2026
+  // the live POS was still serving a floor several deploys old. Staff screens
+  // have nothing to gain from an edge cache and everything to lose from a
+  // stale one, so they answer `no-store` instead (Next's CDN caching guide).
+  await connection()
   return (
     <html lang="en" className={`${bodyFont.variable} ${displayFont.variable}`}>
       <head>

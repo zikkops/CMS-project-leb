@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { connection } from 'next/server'
 import { Inter, Bree_Serif } from 'next/font/google'
 import '@big-cms/shared/styles/globals.css'
 import { BRAND } from '@big-cms/shared/brand'
@@ -26,7 +27,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Rendered per request, never prerendered. A prerendered page is sent with
+  // `s-maxage=31536000`, and the host's CDN keeps it for a year: on 14 Sep 2026
+  // the live floor was several deploys old. A till has nothing to gain from an
+  // edge cache and everything to lose from a stale one (Next's CDN caching
+  // guide). The service worker still keeps the counter screen for outages —
+  // the Cache API stores what it is given, whatever the header says.
+  await connection()
   return (
     <html lang="en" className={`${bodyFont.variable} ${displayFont.variable}`}>
       <head>

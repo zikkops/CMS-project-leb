@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 23 checks, 17 verifiers, 1086
+is the only thing that shows it. Currently 23 checks, 17 verifiers, 1106
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -550,6 +550,46 @@ from them, not from a fresh `tap` constant.**
 - The counter's links to the floor and to the full check use a plain
   `window.location` load, not the router, so that screen never waits on a
   server-rendered page during an outage.
+- **The floor's other screens are big boxes down the right** (owner's request,
+  14 Sep 2026): Counter, Closed, Kitchen display, then Drawer and Allergens
+  when those are on. On a phone they are a grid under the title. Each has its
+  own hue, never teal (`NavTile` in `pos/app/pos/page.tsx`).
+
+## Ready to go out (Sep 2026)
+
+Owner's decisions, 14 Sep 2026: **when the kitchen marks a ticket Ready, it
+pops up on the counter and the floor, and the front taps "Picked up"**, which
+clears it from the kitchen display too. The kitchen no longer bumps.
+
+- `ReadyPanel` (`pos/app/lib/ReadyPanel.tsx`) is a sticky green panel. There is
+  one card per ready ticket, longest waiting first, with a chime when a plate
+  turns ready while the screen is open. The chime is per device and can be
+  switched off. It is mounted only when the `kds` feature is on. The listener
+  is `useReadyTickets()`, and the existing (branch, status, sentAt) index
+  serves it.
+- **The arithmetic is `pos/app/lib/pickups.ts`, asserted in `verify:counter`.**
+  The wait counts from `readyAt`, which `advanceTicket()` now stamps, not from
+  when the order was sent. A voided line is not food to carry. Plates already
+  waiting when a screen opens do not ring, or every reload would ring.
+- **Picking up is `PATCH /api/pos/tickets { action: 'pickup' }`, gated on
+  `pos`, not `kds`,** and `pickupOutcome()` lets it take only a READY ticket.
+  A late tap on one the kitchen sent back to preparing is refused, so the front
+  cannot clear food still cooking. Already picked up is an answer, not an error.
+  It sets `pickedUp: true` beside the usual `bumpedAt`/`bumpedBy`.
+- The KDS card for a ready ticket says "Waiting for the front", with a small
+  Clear as a fallback so a pass is never stuck behind an unwatched screen.
+
+## The host's CDN caches prerendered pages for a year
+
+Next sends a prerendered page with `Cache-Control: s-maxage=31536000`, and
+Hostinger's CDN (`server: hcdn`) honours it. On 14 Sep 2026 the live POS floor
+was several deploys old while every push had gone out. **The POS and admin root
+layouts `await connection()`**, so their pages render per request and answer
+`no-store`. The service worker is unaffected: the Cache API stores what it is
+given whatever the header says. Copies already cached stay until they are
+purged in Hostinger's panel once. The customer site (`web/`) still prerenders,
+so its pages have the same year-long edge cache. That was not changed without
+asking.
 
 ## Seeding a POS history (Sep 2026)
 
@@ -826,7 +866,9 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
     menu and the money, with no navigation anywhere: App Router navigation to
     `/pos/check/[id]` asks the server for a page, so every other POS screen is
     a spinner during an outage. It is a client page with no dynamic segment, so
-    it prerenders and the service worker can keep it.
+    the service worker keeps its HTML and chunks once loaded. It is rendered per
+    request since 14 Sep 2026 (see the CDN note), which the worker does not mind:
+    the Cache API stores what it is given whatever the header says.
   - **The offline path is only used when it has to be.** With a connection and
     nothing already queued for that table, the counter takes the ordinary route
     — `addLines()` then `sendCheck()` — so the kitchen gets its ticket exactly

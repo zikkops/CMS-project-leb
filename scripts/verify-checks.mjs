@@ -396,5 +396,15 @@ console.log('\nvoid reasons — the reason decides the shelf')
     C.VOID_REASONS.some(r => r.returnsToStock && r.isWaste), false)
 }
 
+console.log('\nthe front picking up a ready plate')
+{
+  eq('a ready ticket is picked up', T.pickupOutcome('ready'), { kind: 'pick' })
+  eq('already gone is not an error — two people reached for one plate', T.pickupOutcome('bumped'), { kind: 'already' })
+  eq('THE TRAP: a ticket sent back to preparing is not cleared by a late tap', T.pickupOutcome('preparing').kind, 'refused')
+  eq('nor one the kitchen has not started', T.pickupOutcome('new').kind, 'refused')
+  eq('a cancelled ticket says why', T.pickupOutcome('cancelled'),
+    { kind: 'refused', reason: 'That ticket was cancelled — every item on it was voided.' })
+}
+
 console.log(`\n${pass} passed, ${fail} failed\n`)
 process.exit(fail === 0 ? 0 : 1)
