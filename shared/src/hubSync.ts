@@ -99,6 +99,10 @@ export function pullSpec(branch: string): PullSpec[] {
     { collection: 'branchTableLayouts', ids: [branch] },
     { collection: 'appSettings', ids: PULLED_SETTINGS },
     { collection: 'users' },
+    // Staff phones' sign-in keys (stage 5), only those still in use and only
+    // the key, its owner and its name. A key removed in the cloud leaves the
+    // snapshot, so the hub deletes it and it signs nobody in.
+    { collection: 'staffKeys' },
   ]
 }
 

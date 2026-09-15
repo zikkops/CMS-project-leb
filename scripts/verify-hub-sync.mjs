@@ -36,6 +36,7 @@ try {
   execSync(
     'npx tsc shared/src/hubSync.ts shared/src/receiptBlocks.ts shared/src/server/hubDevices.ts shared/src/server/hubSync.ts ' +
     'shared/src/server/hubSession.ts shared/src/server/invoiceNumber.ts shared/src/server/hubLock.ts ' +
+    'shared/src/server/staffKeys.ts shared/src/server/hubKeySignIn.ts ' +
     `--outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -635,6 +636,134 @@ console.log('\nwhile a café hub trades a branch, the online till is view-only t
     if (found.length < needed || firstWrite < 0 || found[0].index > firstWrite) unguarded.push(`${name} ${method}`)
   }
   eq('THE TRAP: every till write route in the cloud asks about the right thing before it writes', unguarded, [])
+}
+
+console.log('\nstaff phones register a key, and sign in at the hub with it (S12–S14)')
+{
+  const K = await import(url('server/staffKeys.js'))
+  const KS = await import(url('server/hubKeySignIn.js'))
+  const SK = await import(url('staffKeys.js'))
+  const { generateKeyPairSync, sign: signWith } = await import('node:crypto')
+  // A phone: a P-256 key pair, as Android's Keystore makes, and the signing it does after a fingerprint.
+  const phone = () => {
+    const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
+    const der = publicKey.export({ type: 'spki', format: 'der' })
+    return {
+      publicKey: der.toString('base64'),
+      keyId: K.keyIdFor(der),
+      sign: message => signWith('sha256', Buffer.from(message, 'utf8'), { key: privateKey, dsaEncoding: 'der' }).toString('base64'),
+    }
+  }
+  const person = (uid, role = 'barista') => ({ uid, email: null, role, branchIds: [branch], superadmin: false, isStaff: true })
+  const enrol = (caller, p, extra = {}) =>
+    K.enrolStaffKey(caller, { publicKey: p.publicKey, proof: p.sign(SK.enrolMessage(caller.uid, p.keyId)), deviceName: 'Pixel 8', ...extra }, db)
+  const sara = person('u-phone')
+  await db.doc('users/u-phone').set({ isStaff: true, role: 'barista', branchIds: [branch] })
+  await db.doc('users/u-colleague').set({ isStaff: true, role: 'barista', branchIds: [branch] })
+
+  const p1 = phone()
+  const first = await enrol(sara, p1)
+  const stored = (await db.doc(`staffKeys/${p1.keyId}`).get()).data()
+  eq('a staff member registers their phone: its public key on their account, nothing secret',
+    [first.keyId, first.already, stored.uid, stored.publicKey === p1.publicKey, stored.deviceName, stored.revokedAt], [p1.keyId, false, 'u-phone', true, 'Pixel 8', null])
+  eq('sending the same registration again is an answer, not a second key', (await enrol(sara, p1)).already, true)
+
+  const p2 = phone()
+  await rejects('THE TRAP: a public key the phone cannot prove it holds is refused',
+    () => K.enrolStaffKey(sara, { publicKey: p2.publicKey, proof: p1.sign(SK.enrolMessage('u-phone', p2.keyId)) }, db), e => e.status === 400)
+  await rejects('...and so is a proof made for somebody else',
+    () => K.enrolStaffKey(sara, { publicKey: p2.publicKey, proof: p2.sign(SK.enrolMessage('u-colleague', p2.keyId)) }, db), e => e.status === 400)
+  // Each wrong kind of key comes with a genuine proof made by that key, so only
+  // the kind of key can be what refuses it.
+  const otherKey = (type, options) => {
+    const { publicKey, privateKey } = generateKeyPairSync(type, options)
+    const der = publicKey.export({ type: 'spki', format: 'der' })
+    const keyId = K.keyIdFor(der)
+    return { publicKey: der.toString('base64'), proof: signWith('sha256', Buffer.from(SK.enrolMessage('u-phone', keyId), 'utf8'), { key: privateKey, dsaEncoding: 'der' }).toString('base64') }
+  }
+  for (const [label, key] of [['another curve (secp256k1)', otherKey('ec', { namedCurve: 'secp256k1' })], ['a P-384 key', otherKey('ec', { namedCurve: 'secp384r1' })], ['an RSA key', otherKey('rsa', { modulusLength: 2048 })]]) {
+    await rejects(`THE TRAP: nothing but a P-256 key, even with a genuine proof: ${label}`, () => K.enrolStaffKey(sara, key, db), e => e.status === 400)
+  }
+  await rejects('...nor something that is not base64 at all', () => K.enrolStaffKey(sara, { publicKey: 'not a key!', proof: 'AAAA' }, db), e => e.status === 400)
+  await rejects('a customer account registers no phone',
+    () => enrol({ ...person('u-customer'), isStaff: false, role: null }, phone()), e => e.status === 403)
+  await rejects('THE TRAP: a key already registered to somebody else is not taken over', () => enrol(person('u-colleague'), p1), e => e.status === 409)
+
+  await enrol(sara, p2)
+  const p3 = phone()
+  await enrol(sara, p3)
+  await rejects(`a fourth phone is refused (${SK.MAX_KEYS_PER_STAFF} at once)`, () => enrol(sara, phone()), e => e.status === 409)
+  await rejects('THE TRAP: a colleague cannot remove my phone', () => K.revokeStaffKey(person('u-colleague'), p3.keyId, db), e => e.status === 403)
+  const removed = await K.revokeStaffKey(sara, p3.keyId, db)
+  eq('its owner removes a phone, and removing it again is an answer', [removed.already, (await K.revokeStaffKey(sara, p3.keyId, db)).already], [false, true])
+  eq('...and an admin may remove anybody\'s', (await K.revokeStaffKey(person('u-boss', 'admin'), p2.keyId, db)).already, false)
+  await enrol(sara, p2).catch(() => {})
+  eq('a removed key stays removed: registering it again is refused, not revived',
+    (await db.doc(`staffKeys/${p2.keyId}`).get()).data().revokedAt !== null, true)
+
+  await db.doc(`staffKeys/${phone().keyId}`).set({ uid: 'u-leaver', publicKey: phone().publicKey, deviceName: 'Old phone', revokedAt: null })
+  const snapshot = await D.buildPullSnapshot({ id: 'hub-keys', branch, name: 'Keys hub' })
+  const pulledKeys = snapshot.filter(d => d.collection === 'staffKeys')
+  eq('THE TRAP: a hub pulls only keys in use, of people still staff: never a removed phone or a leaver\'s',
+    pulledKeys.map(d => d.id).sort(), [p1.keyId])
+  eq('...and only the key, its owner and its name', Object.keys(pulledKeys[0]?.data ?? {}).sort(), ['deviceName', 'publicKey', 'uid'])
+
+  const FP = Array(32).fill('AB').join(':')
+  const fpHex = 'ab'.repeat(32)
+  const answer = (p, nonce, fp = fpHex) => ({ keyId: p.keyId, nonce, signature: p.sign(SK.signInMessage(fp, p.keyId, nonce)) })
+  const hub = { db, hubFingerprint: FP }
+
+  const c1 = await KS.issueChallenge(p1.keyId, { db })
+  const signedIn = await KS.signInWithKey(answer(p1, c1.nonce), hub)
+  const session = await HS.callerFromHubToken(signedIn.token)
+  eq('the phone signs the hub\'s challenge, and the hub opens a session for its owner, with the pulled role',
+    [session?.uid, session?.role, session?.expiresAt === signedIn.caller.expiresAt], ['u-phone', 'barista', true])
+  eq('...lasting until 05:00, like every hub sign-in (S14)', signedIn.caller.expiresAt - Date.now() >= 4 * 3600_000, true)
+  await rejects('THE TRAP: the same challenge cannot be answered twice', () => KS.signInWithKey(answer(p1, c1.nonce), hub), e => e.status === 401)
+
+  const c2 = await KS.issueChallenge(p1.keyId, { db })
+  await rejects('THE TRAP: a signature made for another certificate (a machine pretending to be the hub) is refused',
+    () => KS.signInWithKey(answer(p1, c2.nonce, 'cd'.repeat(32)), hub), e => e.status === 401)
+  await rejects('...and that wrong answer used the challenge up', () => KS.signInWithKey(answer(p1, c2.nonce), hub), e => e.status === 401)
+
+  const c3 = await KS.issueChallenge(p1.keyId, { db })
+  const p4 = phone()
+  await rejects('another key\'s signature over the right message is refused',
+    () => KS.signInWithKey({ ...answer(p4, c3.nonce), keyId: p1.keyId, signature: p4.sign(SK.signInMessage(fpHex, p1.keyId, c3.nonce)) }, hub), e => e.status === 401)
+
+  const p5 = phone()
+  await enrol(person('u-colleague'), p5)
+  const c8 = await KS.issueChallenge(p1.keyId, { db })
+  await rejects('THE TRAP: a challenge given to one phone cannot be answered by another registered phone',
+    () => KS.signInWithKey(answer(p5, c8.nonce), hub), e => e.status === 401)
+  const genuine = (await db.doc(`staffKeys/${p1.keyId}`).get()).data()
+  await db.doc(`staffKeys/${p1.keyId}`).update({ publicKey: p4.publicKey })
+  const c9 = await KS.issueChallenge(p1.keyId, { db })
+  await rejects('a key record holding another key than the one its id names signs nobody in',
+    () => KS.signInWithKey({ keyId: p1.keyId, nonce: c9.nonce, signature: p4.sign(SK.signInMessage(fpHex, p1.keyId, c9.nonce)) }, hub), e => e.status === 401)
+  await db.doc(`staffKeys/${p1.keyId}`).update({ publicKey: genuine.publicKey })
+
+  const old = await KS.issueChallenge(p1.keyId, { db, now: Date.now() - 2 * SK.CHALLENGE_MS })
+  await rejects('a challenge answered too late is refused', () => KS.signInWithKey(answer(p1, old.nonce), hub), e => e.status === 401)
+
+  const c4 = await KS.issueChallenge(p1.keyId, { db })
+  const c5 = await KS.issueChallenge(p1.keyId, { db })
+  await rejects('asking again replaces the last challenge: one outstanding per phone', () => KS.signInWithKey(answer(p1, c4.nonce), hub), e => e.status === 401)
+  eq('...and the new one works', Boolean((await KS.signInWithKey(answer(p1, c5.nonce), hub)).token), true)
+
+  await rejects('a removed phone is not even given a challenge', () => KS.issueChallenge(p3.keyId, { db }), e => e.status === 401)
+  await db.doc('users/u-phone').update({ isStaff: false })
+  const c6 = await KS.issueChallenge(p1.keyId, { db })
+  await rejects('THE TRAP: an account no longer staff in the pulled record is not signed in, whatever the phone signs',
+    () => KS.signInWithKey(answer(p1, c6.nonce), hub), e => e.status === 403)
+  await db.doc('users/u-phone').update({ isStaff: true })
+  const c7 = await KS.issueChallenge(p1.keyId, { db })
+  await rejects('a hub with no café-wifi door signs no phone in', () => KS.signInWithKey(answer(p1, c7.nonce), { db, hubFingerprint: undefined }), e => e.status === 503)
+  await rejects('a malformed request is refused before anything is looked up',
+    () => KS.signInWithKey({ keyId: 'short', nonce: c7.nonce, signature: 'x' }, hub), e => e.status === 400)
+
+  eq('a phone\'s name is short and one line, and never empty',
+    [SK.deviceName('  Pixel\n8  '), SK.deviceName(''), SK.deviceName('x'.repeat(80)).length], ['Pixel 8', 'Phone', 60])
 }
 
 console.log('\nwhere phones find the hub on the café wifi, and what its QR says (S11)')

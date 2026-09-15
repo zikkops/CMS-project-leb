@@ -27,6 +27,7 @@ import {
 import { RECEIPT_BLOCK_SIZE, RECEIPT_REFILL_AT, reserveBlock, type ReceiptBlock } from '../receiptBlocks'
 import { invoicePeriod } from '../invoiceFormat'
 import { PUSH_BATCH, moveField, moveProblem, pushProblem, type PushedDoc, type StockMove } from '../hubPush'
+import { STAFF_KEYS, staffKeyRecord } from '../staffKeys'
 
 const DEVICES = 'hubDevices'
 const CODES = 'hubPairingCodes'
@@ -188,12 +189,23 @@ export async function revokeDevice(caller: Caller, rawId: unknown): Promise<HubD
 export async function buildPullSnapshot(device: HubDevice): Promise<PulledDoc[]> {
   const db = adminDb()
   const docs: PulledDoc[] = []
+  const staffIds = new Set<string>()
   for (const spec of pullSpec(device.branch)) {
     if (spec.collection === 'users') {
       const staff = await db.collection('users').where('isStaff', '==', true).get()
       for (const doc of staff.docs) {
         const record = staffRecord(doc.data() ?? {})
-        if (record) docs.push({ collection: 'users', id: doc.id, data: record })
+        if (record) {
+          docs.push({ collection: 'users', id: doc.id, data: record })
+          staffIds.add(doc.id)
+        }
+      }
+    } else if (spec.collection === STAFF_KEYS) {
+      // Keys still in use, of people still staff: a leaver's phone signs nobody in.
+      const keys = await db.collection(STAFF_KEYS).where('revokedAt', '==', null).get()
+      for (const doc of keys.docs) {
+        const record = staffKeyRecord(doc.data() ?? {})
+        if (record && staffIds.has(record.uid)) docs.push({ collection: STAFF_KEYS, id: doc.id, data: { ...record } })
       }
     } else if (spec.ids) {
       const snaps = await db.getAll(...spec.ids.map(id => db.doc(`${spec.collection}/${id}`)))

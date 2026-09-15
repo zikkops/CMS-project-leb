@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1501
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1534
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -1106,9 +1106,61 @@ wraps the same React screens.
         context, marked as a hub, with its scripts running.
       - Not run: a real phone on the café wifi, a real camera scan, and
         signing in through the app.
+  - **Phone sign-in, the servers' side** (owner's decisions S12–S14, 15 Sep
+    2026): only fingerprint or face may unlock the key (never the phone's PIN);
+    a phone is registered once, online, by the staff member's normal sign-in;
+    a key sign-in lasts until 05:00. The rules and the signed messages are
+    `shared/src/staffKeys.ts`, pure, so the app signs exactly what the hub
+    checks.
+    - **Registering is the cloud's** (`POST /api/staff-keys`,
+      `enrolStaffKey()` in `shared/src/server/staffKeys.ts`). The Firebase
+      sign-in on that route is the cloud checking the password itself. The
+      phone sends a P-256 public key as base64 SPKI, which is what Android's
+      Keystore gives, and a signature over `enrolMessage(uid, keyId)`, proving
+      it holds the private key. `staffKeys/{sha256 of the key}` is server-only,
+      with no rule, so no rules deploy.
+      - At most 3 phones per person.
+      - Sending the same key again is an answer, not an error.
+      - A key already on somebody else's account is refused.
+      - A removed key stays removed.
+      - `DELETE` removes one: its owner, or an admin.
+    - **Hubs pull the keys** (`pullSpec` gains `staffKeys`): only keys in use,
+      of people still staff, and only `uid`, `publicKey` and `deviceName`. A
+      removed phone or a leaver's leaves the snapshot, so the hub deletes it.
+    - **Signing in is the hub's, with no internet**
+      (`POST /api/hub/key-signin`, `shared/src/server/hubKeySignIn.ts`).
+      - `challenge` gives a one-time 32-byte nonce for a registered key, valid
+        60 seconds, stored hashed. There is one outstanding per key, so asking
+        again replaces it.
+      - `signin` checks the signature over `signInMessage(hub fingerprint,
+        keyId, nonce)`, then opens a hub session with the PULLED staff record's
+        role.
+      - **The challenge is used up before the signature is checked**, so a
+        wrong answer cannot be retried against it.
+      - **The message names the hub's own certificate fingerprint**, the one
+        the phone pinned (S11). A signature made for a machine pretending to be
+        the hub fails at the real one.
+      - A challenge given to one phone cannot be answered by another, and a key
+        record holding a key other than the one its id names signs nobody in.
+      - Every refusal says the same thing (401).
+      - An account no longer staff is refused (403), and a hub with no café-wifi
+        door signs no phone in (503).
+    - `verify:hub-sync` makes real P-256 keys in Node and runs registering,
+      removing, the pull and the hub's sign-in, including every refusal above.
+      17 mutations, all caught by name. "Any elliptic curve is taken" first
+      survived: the wrong-curve keys came with a nonsense proof, so the proof
+      refused them, not the curve. Each wrong key now brings a genuine proof
+      made by itself. Two more tests went in before the run, because nothing
+      would have caught another registered phone answering a challenge, or a
+      key record holding a key its id does not name.
+    - **Not built yet:** the phone's side (a Keystore key unlocked only by
+      strong biometrics, registering through the app, and handing the session
+      to the till page), the manager fallback (S6), and a list of phones in
+      admin. Registering does not yet prove the key lives in secure hardware;
+      Android key attestation would.
   - **Not built yet:**
-    - staff sign-in with the phone's fingerprint or face, and the manager
-      fallback (stage 5, S4–S6)
+    - the phone's side of phone sign-in, and the manager fallback (stage 5,
+      S4–S6)
 
 ## The host's CDN caches prerendered pages for a year
 
