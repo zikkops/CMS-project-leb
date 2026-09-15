@@ -1,0 +1,8 @@
+{
+  "appId": "com.bigcms.staff",
+  "appName": "BIG CMS Staff",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  }
+}

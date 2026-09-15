@@ -1,0 +1,3 @@
+node_modules/
+# Built by scripts/build-www.mjs from src/.
+www/app.js

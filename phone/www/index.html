@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
+  <title>BIG CMS Staff</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; min-height: 100vh; background: #0b0b0b; color: #f4f1ea; font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; }
+    main { width: 100%; max-width: 420px; padding: 2rem 1.25rem; box-sizing: border-box; }
+    h1 { font-size: 1.6rem; margin: 0 0 0.4rem; }
+    p { line-height: 1.6; color: rgba(244, 241, 234, 0.72); margin: 0 0 1rem; }
+    button { width: 100%; min-height: 56px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.07); color: inherit; font-size: 1rem; margin-top: 0.7rem; }
+    button.primary { background: #2a9d8f; border-color: #2a9d8f; color: #fff; font-weight: 600; }
+    button.danger { border-color: rgba(230, 57, 70, 0.6); color: #e63946; background: transparent; }
+    textarea { width: 100%; box-sizing: border-box; min-height: 88px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.05); color: inherit; padding: 0.7rem; font: 0.85rem ui-monospace, Consolas, monospace; }
+    .problem { color: #e63946; }
+    .mono { font: 0.72rem ui-monospace, Consolas, monospace; word-break: break-all; color: rgba(244, 241, 234, 0.45); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>BIG CMS Staff</h1>
+
+    <section id="unpaired" hidden>
+      <p>Pair this phone with your café's hub. On the counter PC, open <strong>Café hub</strong> and scan the code under <strong>Phones on the café wifi</strong>.</p>
+      <button id="scan" class="primary" type="button">Scan the hub's code</button>
+      <p style="margin-top:1.2rem">Or paste the link shown under it:</p>
+      <textarea id="link" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="bigcms-hub:https://192.168.1.20:3443#sha256=…"></textarea>
+      <button id="usePasted" type="button">Pair with this link</button>
+    </section>
+
+    <section id="paired" hidden>
+      <p>This phone trusts one hub: <strong id="address"></strong>, and only its certificate.</p>
+      <p class="mono" id="fingerprint"></p>
+      <button id="open" class="primary" type="button">Open the till</button>
+      <button id="forget" class="danger" type="button">Forget this hub</button>
+    </section>
+
+    <p id="problem" class="problem" hidden></p>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

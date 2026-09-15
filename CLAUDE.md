@@ -1073,9 +1073,42 @@ wraps the same React screens.
       through the door. An ordinary client is refused
       (`DEPTH_ZERO_SELF_SIGNED_CERT`), while the pinned one gets through.
       `verify:hub-sync` asserts the addresses and the QR text.
+  - **The Android staff app is `phone/`** (Capacitor 8.5.2, outside the npm
+    workspaces like `desktop/`). It pairs with a hub by that QR, or by pasting
+    its link, and then opens the hub's own `/pos` pages in its WebView.
+    [phone/README.md](./phone/README.md) has the build steps.
+    - **Trust is native and narrow.** `HubPin.java` is plain Java, tested on
+      the JVM by `HubPinTest`. `HubWebViewClient.onReceivedSslError` accepts
+      a refused certificate only at the paired hub's exact origin, and only if
+      its SHA-256 is the pinned one. Every other certificate error is still
+      refused. `HubPinPlugin.shouldOverrideLoad` lets only the paired hub's
+      pages load in the app.
+    - **The app's page reads the QR with `parseHubLink()` from
+      `shared/src/hubNetwork.ts`, bundled by esbuild, not copied.** The plugin
+      checks the link again before storing it.
+    - **Only the app's own page can pair.** Capacitor exposes plugins to the
+      app's origin, not the hub's, and a hub page was checked to have no
+      bridge at all.
+    - **The build needs a Java 21 JDK**, not Android Studio's bundled Java 25.
+      Capacitor's Gradle 8.14.3 cannot run on 25. Gradle 9.6 and later removed
+      an internal API that the Android Gradle plugin 8.13 uses. The QR scanner
+      plugin asks for a Java 21 toolchain. Two more traps:
+      - `local.properties` needs forward slashes, because a backslash is an
+        escape there.
+      - PowerShell 5.1's `Set-Content -Encoding utf8` writes a byte-order mark
+        that Gradle refuses in a `.gradle` file.
+    - **minSdk is 26** (Android 8), because the scanner's library needs it.
+    - **Checked on an Android 37 emulator, 15 Sep 2026**, against the built
+      hub with its door, paired with a fake cloud.
+      - A link with the wrong fingerprint was refused at the handshake
+        (`net_error -202`), and the app stayed on its own page.
+      - The right one opened `https://10.0.2.2:3443/pos/login` as a secure
+        context, marked as a hub, with its scripts running.
+      - Not run: a real phone on the café wifi, a real camera scan, and
+        signing in through the app.
   - **Not built yet:**
-    - the Android app that pairs by that QR and signs staff in with the
-      phone's fingerprint or face (stage 5)
+    - staff sign-in with the phone's fingerprint or face, and the manager
+      fallback (stage 5, S4–S6)
 
 ## The host's CDN caches prerendered pages for a year
 

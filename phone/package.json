@@ -1,0 +1,21 @@
+{
+  "name": "big-cms-staff",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The BIG CMS staff app for Android: reaches the café hub on the wifi, encrypted, trusting only that hub's certificate.",
+  "type": "module",
+  "scripts": {
+    "build:www": "node scripts/build-www.mjs",
+    "sync": "node scripts/build-www.mjs && cap sync android",
+    "android:debug": "node scripts/build-www.mjs && cap sync android && cd android && gradlew.bat assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.2",
+    "@capacitor/barcode-scanner": "3.1.2",
+    "@capacitor/core": "8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2",
+    "esbuild": "^0.28.2"
+  }
+}

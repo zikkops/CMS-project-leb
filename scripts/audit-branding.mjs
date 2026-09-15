@@ -58,6 +58,11 @@ const SKIP_FILES = new Set([
   // The Windows counter app's lock file: npm's metadata about Electron's
   // build tools, nothing this project writes or ships.
   'desktop/package-lock.json',
+  // The Android staff app's bundle and Capacitor's copy of it: esbuild's
+  // output, gitignored, carrying the QR scanner library's own code. What
+  // this project writes is phone/src/app.ts, which is still scanned.
+  'phone/www/app.js',
+  'phone/android/app/src/main/assets/public/app.js',
 ])
 
 const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.css', '.json', '.md', '.html', '.txt']

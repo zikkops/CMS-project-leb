@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BIG CMS Staff</string>
+    <string name="title_activity_main">BIG CMS Staff</string>
+    <string name="package_name">com.bigcms.staff</string>
+    <string name="custom_url_scheme">com.bigcms.staff</string>
+</resources>
