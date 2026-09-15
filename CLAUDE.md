@@ -1075,6 +1075,12 @@ wraps the same React screens.
       and pull counted as unsent. **"A new spell online keeps the old caught-up"
       survives, and should:** handing back clears `caughtUpAt` as well, and
       `handBackProblem()` refuses a caught-up older than the switch anyway.
+    - **Checked on the built hub, 15 Sep 2026**, against a fake cloud on this
+      PC. Told the branch traded online, the hub's first sync set the flag, its
+      pull reported `sent=34&latest=34`, and `/pos/hub` showed the notice. Told it
+      was handed back, it cleared a stale open check put in its database for the
+      test (the removal logged, never sent), kept its activity, and the notice was
+      gone.
     - **Not looked at signed in:** Café Hubs' new buttons and Held Hub Sales.
   - **Phones reach the hub on the café wifi encrypted, through the app, never
     over plain http** (owner's decision S11, 15 Sep 2026). On plain http, a
