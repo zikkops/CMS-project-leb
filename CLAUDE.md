@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1536
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1538
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -1202,9 +1202,18 @@ wraps the same React screens.
         was not looked at.
       - **Not run:** registering through the app, which needs a real
         password typed into it, and a real phone on the café wifi.
+  - **Staff Phones** (`/admin/settings/phones`, admin only, in `ADMIN_NAV`
+    beside Café Hubs) lists every registered phone: whose it is (name, else
+    email, else account id), which phone, when it was registered, and whether
+    it was removed. In use comes first, and the key itself is never shown.
+    - Remove, after a confirmation, calls `revokeStaffKey()` through
+      `admin/app/api/admin/staff-phones`. It is logged under "Staff Phones".
+    - A removed phone stops signing its owner in at each hub's next pull, and
+      cannot be added back; the owner registers the phone again.
+    - `listStaffKeys()` is asserted in `verify:hub-sync`. **The page has not
+      been looked at signed in.**
   - **Not built yet:**
-    - the manager fallback when a phone has no strong biometrics (S6), and a
-      list of phones in admin
+    - the manager fallback when a phone has no strong biometrics (S6)
     - proving at registration that the key lives in secure hardware (Android
       key attestation)
 

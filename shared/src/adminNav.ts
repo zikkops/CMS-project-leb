@@ -215,6 +215,8 @@ export const ADMIN_NAV: AdminNavSection[] = [
       { label: 'Printers', href: '/admin/settings/printers', access: ADMIN_ONLY, icon: faPrint, kind: 'setup', desc: 'Receipt and kitchen printers, and which device prints.' },
       // Admin, as Printers: pairing a counter PC is done by whoever set it up.
       { label: 'Café Hubs', href: '/admin/settings/hubs', access: ADMIN_ONLY, icon: faStore, kind: 'setup', desc: 'Counter PCs that keep the till working offline: pair one, see when it last synced, unpair a lost one.' },
+      // Admin, as Café Hubs: removing a phone is what happens to a lost one or a leaver's.
+      { label: 'Staff Phones', href: '/admin/settings/phones', access: ADMIN_ONLY, icon: faUserLock, kind: 'setup', desc: 'Phones registered for fingerprint sign-in at the till: see whose, remove a lost one or a leaver\'s.' },
     ],
   },
 ]

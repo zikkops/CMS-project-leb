@@ -16,6 +16,7 @@ import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { isRole } from '../roles'
 import { MAX_KEYS_PER_STAFF, STAFF_KEYS, deviceName, enrolMessage, isKeyId } from '../staffKeys'
+import { timestampMs } from '../timestamps'
 
 /** A key's id: the SHA-256 of its public key (SPKI DER), base64url. */
 export function keyIdFor(publicKeyDer: Buffer): string {
@@ -91,6 +92,45 @@ export async function enrolStaffKey(
     })
     return { keyId: pub.keyId, already: false }
   })
+}
+
+export interface StaffKeyRow {
+  keyId: string
+  uid: string
+  /** Whose phone, as the admin knows them: their name, else their email, else their account id. */
+  owner: string
+  deviceName: string
+  createdAt: number | null
+  revoked: boolean
+  revokedAt: number | null
+}
+
+/** Every registered phone, for the admin page: in use first, newest first. Never the key itself. */
+export async function listStaffKeys(db: Firestore = adminDb()): Promise<StaffKeyRow[]> {
+  const snap = await db.collection(STAFF_KEYS).get()
+  const uids = [...new Set(snap.docs.map(d => String(d.data()?.uid ?? '')).filter(Boolean))]
+  const users = uids.length > 0 ? await db.getAll(...uids.map(uid => db.doc(`users/${uid}`))) : []
+  const owners = new Map<string, string>()
+  for (const user of users) {
+    const d = user.data() ?? {}
+    const label = [d.displayName, d.name, d.email].find(v => typeof v === 'string' && v.trim())
+    owners.set(user.id, typeof label === 'string' ? label.trim() : user.id)
+  }
+  return snap.docs
+    .map(doc => {
+      const d = doc.data() ?? {}
+      const uid = String(d.uid ?? '')
+      return {
+        keyId: doc.id,
+        uid,
+        owner: owners.get(uid) ?? uid,
+        deviceName: deviceName(d.deviceName),
+        createdAt: timestampMs(d.createdAt, 0) || null,
+        revoked: Boolean(d.revokedAt),
+        revokedAt: timestampMs(d.revokedAt, 0) || null,
+      }
+    })
+    .sort((a, b) => Number(a.revoked) - Number(b.revoked) || (b.createdAt ?? 0) - (a.createdAt ?? 0))
 }
 
 /**

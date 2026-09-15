@@ -762,6 +762,13 @@ console.log('\nstaff phones register a key, and sign in at the hub with it (S12â
   await rejects('a malformed request is refused before anything is looked up',
     () => KS.signInWithKey({ keyId: 'short', nonce: c7.nonce, signature: 'x' }, hub), e => e.status === 400)
 
+  const listed = (await K.listStaffKeys(db)).filter(r => r.uid === 'u-phone')
+  const firstRow = listed.find(r => r.keyId === p1.keyId)
+  eq('the admin list shows each phone, whose it is, and in use before removed',
+    [firstRow?.deviceName, firstRow?.owner, firstRow?.revoked, typeof firstRow?.createdAt, listed[0]?.revoked, listed.some(r => r.revoked)],
+    ['Pixel 8', 'u-phone', false, 'number', false, true])
+  eq('...and never carries the key itself', listed.some(r => 'publicKey' in r), false)
+
   const handed = SK.handoffHash(signedIn.token)
   eq('the app hands the till page its session in the fragment, and the page reads it back', SK.tokenFromHandoff(handed), signedIn.token)
   eq('THE TRAP: any other fragment is not a session: another name, not a hub token, too short, or none',
