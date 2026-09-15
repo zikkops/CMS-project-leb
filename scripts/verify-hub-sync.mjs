@@ -900,6 +900,54 @@ console.log('\na manager approves a sign-in for a phone with no fingerprint (S6,
     [null, null, true, true])
 }
 
+console.log('\na kitchen screen: a manager approves a shared tablet, which reaches the kitchen display only (S19)')
+{
+  const KS = await import(url('server/hubKeySignIn.js'))
+  const A = await import(url('server/hubApprovals.js'))
+  const SA = await import(url('staffApprovals.js'))
+  const AU = await import(url('server/auth.js'))
+  const K = await import(url('server/staffKeys.js'))
+  const { generateKeyPairSync, sign: signWith } = await import('node:crypto')
+  const FP = Array(32).fill('AB').join(':')
+  const fpHex = 'ab'.repeat(32)
+  const hub = { db, hubFingerprint: FP }
+  const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
+  const der = publicKey.export({ type: 'spki', format: 'der' })
+  const keyId = K.keyIdFor(der)
+  await db.doc('users/u-screen-boss').set({ isStaff: true, role: 'manager', branchIds: [branch], firstName: 'Nour' })
+  await db.doc(`staffKeys/${keyId}`).set({ uid: 'u-screen-boss', publicKey: der.toString('base64'), deviceName: 'Manager phone', revokedAt: null })
+  const approveBody = async id => {
+    const { nonce } = await KS.issueChallenge(keyId, { db })
+    const signature = signWith('sha256', Buffer.from(SA.approveMessage(fpHex, id, keyId, nonce), 'utf8'), { key: privateKey, dsaEncoding: 'der' }).toString('base64')
+    return { id, keyId, nonce, signature }
+  }
+  const asRequest = token => new Request('http://hub.local/api', { headers: { authorization: `Bearer ${token}` } })
+
+  const asked = await A.askApproval({ kind: 'screen', deviceName: 'Kitchen tablet' }, { db })
+  eq('a tablet asks to be a kitchen screen, with nobody chosen', [asked.kind, asked.label], ['screen', 'a kitchen screen'])
+  eq('a manager sees it waiting as a kitchen screen',
+    (await A.listWaiting({ db })).filter(w => w.id === asked.id).map(w => [w.kind, w.label, w.deviceName]), [['screen', 'a kitchen screen', 'Kitchen tablet']])
+  const approved = await A.approveRequest(await approveBody(asked.id), hub)
+  eq('the manager approves it with their fingerprint, as for a person',
+    [approved.kind, approved.approverLabel, approved.requestedUid.startsWith(SA.SCREEN_UID_PREFIX)], ['screen', 'Nour', true])
+
+  const collected = await A.collectApproval({ id: asked.id, secret: asked.secret }, { db })
+  const screen = await HS.callerFromHubToken(collected.token)
+  eq('THE TRAP: the session is the screen\'s, not a person\'s: kitchen crew, the kds scope, until 05:00',
+    [screen?.uid.startsWith(SA.SCREEN_UID_PREFIX), screen?.role, screen?.scope, collected.caller.expiresAt - Date.now() >= 4 * 3600_000],
+    [true, 'kitchen_crew', 'kds', true])
+  eq('...which the kitchen display accepts', (await AU.requireSection(asRequest(collected.token), 'kds')).uid, screen?.uid)
+  await rejects('THE TRAP: and every other section refuses it: no tables, checks, payments or drawer',
+    () => AU.requireSection(asRequest(collected.token), 'pos'), e => e.status === 403)
+
+  const person = await HS.startHubSession({ uid: 'u-screen-boss', staff: true, role: 'manager', branchIds: [branch] })
+  eq('a person\'s session has no scope, and keeps every section its role allows',
+    [person.caller.scope, (await AU.requireSection(asRequest(person.token), 'pos')).uid], [null, 'u-screen-boss'])
+  const scopedManager = await HS.startHubSession({ uid: 'screen:odd', staff: true, role: 'manager', scope: 'kds', branchIds: [branch] })
+  await rejects('THE TRAP: the scope decides, whatever the role would allow',
+    () => AU.requireSection(asRequest(scopedManager.token), 'pos'), e => e.status === 403)
+}
+
 console.log('\nwhere phones find the hub on the café wifi, and what its QR says (S11)')
 {
   const N = await import(url('hubNetwork.js'))

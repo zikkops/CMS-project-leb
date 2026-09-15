@@ -37,11 +37,19 @@ export interface HubSessionClaims {
   role?: unknown
   branchIds?: unknown
   superadmin?: unknown
+  /** 'kds' for a kitchen screen's session (S19): the kitchen display and nothing else. */
+  scope?: unknown
 }
 
 export interface HubCaller extends Caller {
   expiresAt: number
+  scope: HubScope | null
 }
+
+/** The only scope so far: a kitchen screen (S19). */
+export type HubScope = 'kds'
+
+const readScope = (raw: unknown): HubScope | null => (raw === 'kds' ? 'kds' : null)
 
 const hashOf = (token: string) => createHash('sha256').update(token).digest('hex')
 
@@ -70,6 +78,7 @@ export async function startHubSession(
     superadmin: claims.superadmin === true,
     isStaff: true,
     expiresAt,
+    scope: readScope(claims.scope),
   }
   const token = PREFIX + randomBytes(32).toString('base64url')
   await adminDb().doc(`${SESSIONS}/${hashOf(token)}`).create({
@@ -78,6 +87,7 @@ export async function startHubSession(
     role: caller.role,
     branchIds: caller.branchIds,
     superadmin: caller.superadmin,
+    scope: caller.scope,
     startedAt: Timestamp.fromMillis(now),
     expiresAt: Timestamp.fromMillis(expiresAt),
     endedAt: null,
@@ -125,6 +135,7 @@ export async function callerFromHubToken(token: string, now = Date.now()): Promi
     superadmin: staff ? staff.superadmin === true : d.superadmin === true,
     isStaff: true,
     expiresAt,
+    scope: readScope(d.scope),
   }
 }
 

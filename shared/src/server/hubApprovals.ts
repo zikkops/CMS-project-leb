@@ -1,8 +1,13 @@
 // SERVER ONLY — see firebaseAdmin.ts for the import rule.
 //
-// A manager approving a staff member's sign-in at a café hub — POS software,
-// stage 5 (owner's decisions S6, S15–S17). The rules and the signed messages are
+// A manager approving a sign-in at a café hub — POS software, stage 5 (owner's
+// decisions S6, S15–S17, S19). The rules and the signed messages are
 // shared/src/staffApprovals.ts.
+//
+// Two kinds of request, answered the same way:
+//   - a PERSON whose phone has no fingerprint: the session is theirs;
+//   - a KITCHEN SCREEN (S19), a shared tablet: the session belongs to the screen,
+//     in the kitchen crew role with the 'kds' scope, the kitchen display only.
 //
 // Works with no internet, like every hub sign-in: the people, the keys and the
 // staff records are the ones the hub pulled.
@@ -11,14 +16,14 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore'
 import { adminDb } from './firebaseAdmin'
 import { HttpError } from './auth'
-import type { HubCaller } from './hubSession'
+import { startHubSession, type HubCaller } from './hubSession'
 import { consumeChallenge, hubFingerprintHex, pulledStaff, refused, sessionForStaff, verifiedKey } from './hubKeySignIn'
 import { deviceName, isKeyId, isNonce } from '../staffKeys'
 import { staffLabel } from '../staffProfiles'
 import { timestampMs } from '../timestamps'
 import {
-  APPROVALS, APPROVAL_MS, approvalProblem, approvalState, approveMessage, denyMessage, isApprovalId, isApprovalSecret,
-  type ApprovalStatus,
+  APPROVALS, APPROVAL_MS, SCREEN_ROLE, SCREEN_SCOPE, SCREEN_UID_PREFIX, approvalProblem, approvalState, approveMessage,
+  denyMessage, isApprovalId, isApprovalSecret, type ApprovalStatus,
 } from '../staffApprovals'
 
 const hashOf = (value: string) => createHash('sha256').update(value).digest('hex')
@@ -27,6 +32,13 @@ const roleWords = (role: unknown) => (typeof role === 'string' ? role.replace(/_
 
 /** How a pulled staff record is named to a manager: first name, or "a barista" (S15, S18). */
 export const labelFor = (staff: Record<string, unknown>) => staffLabel(staff.firstName, roleWords(staff.role))
+
+/** Where this hub's own pairing is kept (hubSync.ts): the branch a kitchen screen serves. */
+const DEVICE_DOC = 'hubMeta/device'
+
+export type RequestKind = 'person' | 'screen'
+
+const kindOf = (data: Record<string, unknown>): RequestKind => (data.kind === 'screen' ? 'screen' : 'person')
 
 export interface Person {
   uid: string
@@ -42,28 +54,33 @@ export async function listPeople({ db = adminDb() }: { db?: Firestore } = {}): P
 }
 
 /**
- * A staff member asks a manager to approve their sign-in on this phone.
+ * A request for a manager's approval: a person on a phone with no fingerprint
+ * (`uid` chosen from the list), or a kitchen screen (`kind: 'screen'`, S19).
  *
- * One waiting request per person: asking again replaces the last. The phone
+ * One waiting request per person: asking again replaces the last. The device
  * gets a secret to collect the answer with; the hub keeps only its hash.
  */
 export async function askApproval(
   body: unknown,
   { db = adminDb(), now = Date.now() }: { db?: Firestore; now?: number } = {},
-): Promise<{ id: string; secret: string; expiresAt: number; label: string }> {
+): Promise<{ id: string; secret: string; expiresAt: number; label: string; kind: RequestKind }> {
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>
-  const uid = typeof b.uid === 'string' && b.uid && !b.uid.includes('/') ? b.uid : ''
+  const kind: RequestKind = b.kind === 'screen' ? 'screen' : 'person'
+  const uid = kind === 'person' && typeof b.uid === 'string' && b.uid && !b.uid.includes('/') ? b.uid : ''
   const staff = uid ? await pulledStaff(db, uid) : null
-  if (!staff) throw new HttpError(400, 'Choose who you are from the list.')
+  if (kind === 'person' && !staff) throw new HttpError(400, 'Choose who you are from the list.')
 
   const id = randomBytes(16).toString('base64url')
   const secret = randomBytes(32).toString('base64url')
   const expiresAt = now + APPROVAL_MS
-  const earlier = await db.collection(APPROVALS).where('uid', '==', uid).get()
   const batch = db.batch()
-  for (const doc of earlier.docs) if (doc.data()?.status === 'waiting') batch.delete(doc.ref)
+  if (kind === 'person') {
+    const earlier = await db.collection(APPROVALS).where('uid', '==', uid).get()
+    for (const doc of earlier.docs) if (doc.data()?.status === 'waiting') batch.delete(doc.ref)
+  }
   batch.set(db.doc(`${APPROVALS}/${id}`), {
-    uid,
+    kind,
+    uid: kind === 'person' ? uid : null,
     deviceName: deviceName(b.deviceName),
     secretHash: hashOf(secret),
     status: 'waiting',
@@ -72,18 +89,19 @@ export async function askApproval(
     approvedBy: null,
   })
   await batch.commit()
-  return { id, secret, expiresAt, label: labelFor(staff) }
+  return { id, secret, expiresAt, kind, label: staff ? labelFor(staff) : 'a kitchen screen' }
 }
 
 export interface WaitingRequest {
   id: string
+  kind: RequestKind
   label: string
   deviceName: string
   createdAt: number
   expiresAt: number
 }
 
-/** Requests still waiting for a manager, oldest first. First names and phone names only. */
+/** Requests still waiting for a manager, oldest first. First names and device names only. */
 export async function listWaiting({ db = adminDb(), now = Date.now() }: { db?: Firestore; now?: number } = {}): Promise<WaitingRequest[]> {
   const snap = await db.collection(APPROVALS).where('status', '==', 'waiting').get()
   const out: WaitingRequest[] = []
@@ -91,15 +109,21 @@ export async function listWaiting({ db = adminDb(), now = Date.now() }: { db?: F
     const d = doc.data() ?? {}
     const expiresAt = timestampMs(d.expiresAt, 0)
     if (!(expiresAt > now)) continue
-    const staff = await pulledStaff(db, String(d.uid ?? ''))
-    if (!staff) continue
-    out.push({ id: doc.id, label: labelFor(staff), deviceName: deviceName(d.deviceName), createdAt: timestampMs(d.createdAt, 0), expiresAt })
+    const kind = kindOf(d)
+    let label = 'a kitchen screen'
+    if (kind === 'person') {
+      const staff = await pulledStaff(db, String(d.uid ?? ''))
+      if (!staff) continue
+      label = labelFor(staff)
+    }
+    out.push({ id: doc.id, kind, label, deviceName: deviceName(d.deviceName), createdAt: timestampMs(d.createdAt, 0), expiresAt })
   }
   return out.sort((a, b) => a.createdAt - b.createdAt)
 }
 
 export interface Answered {
   decision: 'approved' | 'denied'
+  kind: RequestKind
   approverUid: string
   approverRole: unknown
   approverLabel: string
@@ -148,23 +172,25 @@ async function answerRequest(
     if (approvalState(d, timestampMs(d.expiresAt, 0), now) !== 'waiting') {
       throw new HttpError(409, 'That request has run out or was already answered.')
     }
-    const requestedUid = String(d.uid ?? '')
+    const kind = kindOf(d)
+    const requestedUid = kind === 'screen' ? `${SCREEN_UID_PREFIX}${id}` : String(d.uid ?? '')
     const problem = approvalProblem({ uid: key.uid, role: approver.role }, requestedUid)
     if (problem) throw new HttpError(403, problem)
     tx.update(ref, decision === 'approved'
       ? { status: 'approved', approvedBy: key.uid, approvedAt: FieldValue.serverTimestamp() }
       : { status: 'denied', deniedBy: key.uid, deniedAt: FieldValue.serverTimestamp() })
-    return { requestedUid, deviceName: deviceName(d.deviceName) }
+    return { kind, requestedUid, deviceName: deviceName(d.deviceName) }
   })
 
-  const requestedStaff = await pulledStaff(db, requested.requestedUid)
+  const requestedStaff = requested.kind === 'person' ? await pulledStaff(db, requested.requestedUid) : null
   return {
     decision,
+    kind: requested.kind,
     approverUid: key.uid,
     approverRole: approver.role,
     approverLabel: labelFor(approver),
     requestedUid: requested.requestedUid,
-    requestedLabel: requestedStaff ? labelFor(requestedStaff) : 'a staff member',
+    requestedLabel: requested.kind === 'screen' ? 'a kitchen screen' : requestedStaff ? labelFor(requestedStaff) : 'a staff member',
     deviceName: requested.deviceName,
   }
 }
@@ -183,20 +209,23 @@ export function denyRequest(body: unknown, options: AnswerOptions = {}): Promise
 }
 
 /**
- * The asking phone collects its answer with its secret.
+ * The asking device collects its answer with its secret.
  *
- * Approved: the request is marked collected and a session is made now, for the
- * person approved, until 05:00 (S17). No token was stored while it waited.
- * Collecting twice gets nothing the second time. Denied: the phone is told so.
+ * Approved: the request is marked collected and a session is made now, until
+ * 05:00 (S17, S19). For a person, it is theirs. For a kitchen screen, it is the
+ * screen's: `screen:<id>`, the kitchen crew role, the 'kds' scope, this hub's
+ * branch. No token was stored while it waited, and collecting twice gets
+ * nothing the second time. Denied: the device is told so.
  */
 export async function collectApproval(
   body: unknown,
   { db = adminDb(), now = Date.now() }: { db?: Firestore; now?: number } = {},
-): Promise<{ status: ApprovalStatus | 'expired'; token?: string; caller?: HubCaller; approvedBy?: string }> {
+): Promise<{ status: ApprovalStatus | 'expired'; kind?: RequestKind; token?: string; caller?: HubCaller; approvedBy?: string }> {
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>
   if (!isApprovalId(b.id) || !isApprovalSecret(b.secret)) throw new HttpError(400, 'Not a request.')
+  const id = b.id
   const secretHash = Buffer.from(hashOf(b.secret), 'hex')
-  const ref = db.doc(`${APPROVALS}/${b.id}`)
+  const ref = db.doc(`${APPROVALS}/${id}`)
 
   const taken = await db.runTransaction(async tx => {
     const snap = await tx.get(ref)
@@ -205,14 +234,26 @@ export async function collectApproval(
     const stored = Buffer.from(String(d.secretHash ?? ''), 'hex')
     if (stored.length !== secretHash.length || !timingSafeEqual(stored, secretHash)) throw new HttpError(401, 'That is not this phone\'s request.')
     const state = approvalState(d, timestampMs(d.expiresAt, 0), now)
-    if (state !== 'approved') return { state, uid: '', approvedBy: '' }
+    if (state !== 'approved') return { state, kind: kindOf(d), uid: '', approvedBy: '' }
     tx.update(ref, { status: 'collected', collectedAt: FieldValue.serverTimestamp() })
-    return { state, uid: String(d.uid ?? ''), approvedBy: String(d.approvedBy ?? '') }
+    return { state, kind: kindOf(d), uid: String(d.uid ?? ''), approvedBy: String(d.approvedBy ?? '') }
   })
-  if (taken.state !== 'approved') return { status: taken.state }
+  if (taken.state !== 'approved') return { status: taken.state, kind: taken.kind }
+
+  if (taken.kind === 'screen') {
+    const pairing = (await db.doc(DEVICE_DOC).get()).data()
+    const { token, caller } = await startHubSession({
+      uid: `${SCREEN_UID_PREFIX}${id}`,
+      staff: true,
+      role: SCREEN_ROLE,
+      scope: SCREEN_SCOPE,
+      branchIds: typeof pairing?.branch === 'string' ? [pairing.branch] : [],
+    }, now)
+    return { status: 'approved', kind: 'screen', token, caller, approvedBy: taken.approvedBy }
+  }
 
   const staff = await pulledStaff(db, taken.uid)
   if (!staff) throw new HttpError(403, 'This account cannot sign in to the till.')
   const { token, caller } = await sessionForStaff(taken.uid, staff, now)
-  return { status: 'approved', token, caller, approvedBy: taken.approvedBy }
+  return { status: 'approved', kind: 'person', token, caller, approvedBy: taken.approvedBy }
 }

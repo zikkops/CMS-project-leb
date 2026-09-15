@@ -22,7 +22,7 @@ function hubOnly(): void {
 function describe(caller: HubCaller) {
   return {
     uid: caller.uid, email: caller.email, role: caller.role, branchIds: caller.branchIds,
-    superadmin: caller.superadmin, expiresAt: caller.expiresAt,
+    superadmin: caller.superadmin, expiresAt: caller.expiresAt, scope: caller.scope,
   }
 }
 

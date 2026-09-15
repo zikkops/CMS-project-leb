@@ -1,9 +1,11 @@
-// A manager approving a staff member's sign-in at a café hub — POS software,
-// stage 5 (owner's decisions S6, S15–S17).
+// A manager approving a sign-in at a café hub — POS software, stage 5 (owner's
+// decisions S6, S15–S17, S19).
 //
 // GET  ?view=people                          who can ask: first names only
 // GET  ?view=waiting                         requests still waiting for a manager
-// POST { action: 'ask', uid, deviceName }    → { id, secret, expiresAt }
+// POST { action: 'ask', uid, deviceName }    a person on a phone with no fingerprint
+// POST { action: 'ask', kind: 'screen', deviceName }  a kitchen screen (S19)
+//                                            → { id, secret, expiresAt }
 // POST { action: 'challenge', keyId }        → { nonce } for the manager's phone to sign
 // POST { action: 'approve', id, keyId, nonce, signature }
 // POST { action: 'deny', id, keyId, nonce, signature }
@@ -11,7 +13,7 @@
 //
 // Only on a hub; the cloud answers 404. No session in front of it: answering
 // is the manager's signature (hubApprovals.ts), and collecting is the asking
-// phone's secret. Reaching this at all means the café wifi and a paired app.
+// device's secret. Reaching this at all means the café wifi and a paired app.
 
 import { toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import { hubDbPath } from '@big-cms/shared/server/firebaseAdmin'
@@ -66,14 +68,16 @@ export async function POST(request: Request): Promise<Response> {
         return Response.json({ ok: true, ...(await issueChallenge(body.keyId)) }, { headers: noStore })
       case 'approve': {
         const approved = await approveRequest(body)
-        await logActivity(approverOf(approved), 'update', 'POS',
-          `${approved.approverLabel} approved ${approved.requestedLabel}'s sign-in on ${approved.deviceName} (no fingerprint on that phone)`)
+        await logActivity(approverOf(approved), 'update', 'POS', approved.kind === 'screen'
+          ? `${approved.approverLabel} approved ${approved.deviceName} as a kitchen screen, until 05:00`
+          : `${approved.approverLabel} approved ${approved.requestedLabel}'s sign-in on ${approved.deviceName} (no fingerprint on that phone)`)
         return Response.json({ ok: true, requested: approved.requestedLabel }, { headers: noStore })
       }
       case 'deny': {
         const denied = await denyRequest(body)
-        await logActivity(approverOf(denied), 'update', 'POS',
-          `${denied.approverLabel} turned down ${denied.requestedLabel}'s sign-in on ${denied.deviceName}`)
+        await logActivity(approverOf(denied), 'update', 'POS', denied.kind === 'screen'
+          ? `${denied.approverLabel} turned down ${denied.deviceName} as a kitchen screen`
+          : `${denied.approverLabel} turned down ${denied.requestedLabel}'s sign-in on ${denied.deviceName}`)
         return Response.json({ ok: true, requested: denied.requestedLabel }, { headers: noStore })
       }
       case 'collect': {
@@ -81,7 +85,9 @@ export async function POST(request: Request): Promise<Response> {
         if (result.status !== 'approved' || !result.token || !result.caller) {
           return Response.json({ ok: true, status: result.status }, { headers: noStore })
         }
-        await logActivity(result.caller, 'create', 'POS', 'Signed in to the till with a manager\'s approval')
+        await logActivity(result.caller, 'create', 'POS', result.kind === 'screen'
+          ? 'A kitchen screen signed in with a manager\'s approval'
+          : 'Signed in to the till with a manager\'s approval')
         return Response.json({ ok: true, status: 'approved', token: result.token, expiresAt: result.caller.expiresAt }, { headers: noStore })
       }
       default:

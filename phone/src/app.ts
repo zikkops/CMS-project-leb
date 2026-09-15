@@ -241,19 +241,16 @@ $('askManager').addEventListener('click', async () => {
   }
 })
 
-$('askForm').addEventListener('submit', async e => {
-  e.preventDefault()
-  const select = $<HTMLSelectElement>('person')
-  const uid = select.value
-  const label = select.selectedOptions[0]?.textContent ?? ''
+/** Asks the hub for a manager's approval and waits for the answer, then opens the till. */
+async function askAndWait(body: Record<string, unknown>, waitingText: string) {
   try {
     const status = await HubPin.keyStatus()
-    const reply = await HubPin.hubRequest({ method: 'POST', path: '/api/hub/approvals', body: { action: 'ask', uid, deviceName: status.model } })
+    const reply = await HubPin.hubRequest({ method: 'POST', path: '/api/hub/approvals', body: { action: 'ask', deviceName: status.model, ...body } })
     if (reply.status !== 200) throw new Error(refusal(reply, 'The hub did not take the request.'))
     const { id, secret, expiresAt } = json(reply) as { id?: string; secret?: string; expiresAt?: number }
     if (!id || !secret) throw new Error('The hub did not take the request.')
     $('askForm').hidden = true
-    $('waitingText').textContent = `Waiting for a manager to approve ${label}. Show them this phone, or ask them to open "Approve a sign-in" in their app.`
+    $('waitingText').textContent = waitingText
     $('waitingForManager').hidden = false
     say(null)
 
@@ -280,6 +277,20 @@ $('askForm').addEventListener('submit', async e => {
   } catch (err) {
     say(err instanceof Error ? err.message : 'The hub did not take the request.')
   }
+}
+
+$('askForm').addEventListener('submit', e => {
+  e.preventDefault()
+  const select = $<HTMLSelectElement>('person')
+  const label = select.selectedOptions[0]?.textContent ?? ''
+  void askAndWait({ uid: select.value }, `Waiting for a manager to approve ${label}. Show them this phone, or ask them to open "Approve a sign-in" in their app.`)
+})
+
+// A shared tablet in the kitchen (S19): a manager approves it as a kitchen
+// screen, and it opens the kitchen display, signed in as the screen, until 05:00.
+$('kitchenScreen').addEventListener('click', () => {
+  say(null)
+  void askAndWait({ kind: 'screen' }, 'Waiting for a manager to approve this device as a kitchen screen. Ask them to open "Approve a sign-in" in their app.')
 })
 
 $('stopWaiting').addEventListener('click', () => stopWaiting(null))
@@ -330,7 +341,8 @@ async function loadRequests() {
       const row = document.createElement('div')
       row.className = 'request'
       const text = document.createElement('p')
-      text.textContent = `${request.label} wants to sign in on ${request.deviceName}.`
+      const who = request.label.charAt(0).toUpperCase() + request.label.slice(1)
+      text.textContent = `${who} wants to sign in on ${request.deviceName}.`
       const approveButton = document.createElement('button')
       approveButton.type = 'button'
       approveButton.className = 'primary'

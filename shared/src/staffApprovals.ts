@@ -73,3 +73,12 @@ export function approvalState(data: Record<string, unknown>, expiresAtMs: number
   if (!(expiresAtMs > now)) return 'expired'
   return status === 'approved' ? 'approved' : 'waiting'
 }
+
+/**
+ * A kitchen screen (owner's decision S19): a shared tablet a manager approves
+ * the same way, with their fingerprint. Its session belongs to the screen, not
+ * to a person, and reaches the kitchen display only.
+ */
+export const SCREEN_UID_PREFIX = 'screen:'
+export const SCREEN_ROLE: Role = 'kitchen_crew'
+export const SCREEN_SCOPE = 'kds'

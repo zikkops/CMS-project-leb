@@ -36,6 +36,8 @@ export interface HubSession {
   role: Role | null
   branchIds: string[]
   superadmin: boolean
+  /** 'kds' for a kitchen screen (S19). */
+  scope?: 'kds' | null
 }
 
 /** The session on this device, or null when there is none or it has run out. */
@@ -101,6 +103,7 @@ function keepHubSession(token: string, data: Record<string, unknown>): HubSessio
     role: typeof data.role === 'string' ? data.role as Role : null,
     branchIds: Array.isArray(data.branchIds) ? data.branchIds.filter((b): b is string => typeof b === 'string') : [],
     superadmin: data.superadmin === true,
+    scope: data.scope === 'kds' ? 'kds' : null,
   }
   try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)) } catch { /* kept for this page only */ }
   announce()

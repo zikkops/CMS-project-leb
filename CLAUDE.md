@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1567
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1579
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -1312,8 +1312,42 @@ wraps the same React screens.
 
       The asking app first said "That request is closed", the same words as
       for a request already used. It now says a manager turned it down.
+  - **Kitchen screens** (owner's decision S19, 15 Sep 2026). A shared kitchen
+    tablet running the staff app taps "Use this device as a kitchen screen".
+    A manager approves it with their fingerprint through the same approval
+    flow, and it opens the kitchen display until 05:00, approved again each
+    day.
+    - **The session belongs to the screen, not a person**: `screen:<request
+      id>`, the kitchen crew role, the hub's branch, and the `kds` scope,
+      stored on the session (`hubSession.ts`) and handed back by `GET
+      /api/hub/session`.
+    - **The scope, not the role, is the boundary.**
+      - `requireSection()` refuses a `kds`-scoped caller every section but
+        `kds`, whatever the role would allow.
+      - `/api/hub/query` refuses it every query but tickets, the menu and
+        settings (`allowedForScope()`, `KITCHEN_SCREEN_QUERIES` in
+        `queries.ts`): never a check, a shift, a receipt or the shop.
+      - `verify-backend` reads the route and fails if that check does not come
+        before the query runs.
+      - Receipt auto-printing therefore does not work from a kitchen screen,
+        on purpose.
+    - **The till sends a scoped session to the kitchen display**: the sign-in
+      hand-off lands on `/pos/kds`, and `useTillAccess()` sends every other POS
+      page there.
+    - **Checked on the emulator, 15 Sep 2026**, against the built hub. The
+      tablet asked. Rana's list showed "A kitchen screen wants to sign in on
+      Google sdk_gphone16k_x86_64", and she approved it with the fingerprint.
+      - It landed on `/pos/kds` as `screen:…`, kitchen crew, scope `kds`, 9
+        hours to 05:00.
+      - With its token, station tickets answered 200; open checks and the
+        open shift 403; opening a table 403, "A kitchen screen can use the
+        kitchen display only".
+      - Sent to the floor, it came back to `/pos/kds`.
+    - 12 mutations, all caught. "A screen request is read as a person" was
+      caught by the run stopping, on an invalid users/ path, rather than by a
+      named assertion.
   - **Not built yet:**
-    - kitchen display mode in the staff app, and a real phone in a café
+    - a real phone or tablet in a café
     - proving at registration that the key lives in secure hardware (Android
       key attestation)
 

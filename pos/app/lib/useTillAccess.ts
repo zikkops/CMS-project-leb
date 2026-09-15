@@ -62,8 +62,13 @@ function useHubAccess(allowed: Role[], routes: Routes): TillAccess {
     }
     // Same as useRequireRole: never redirect to the page already open, or the
     // screen renders nothing and says nothing.
+    // A kitchen screen (S19) belongs on the kitchen display, whichever page it reaches.
+    if (session.scope === 'kds' && sectionKey !== 'kds') {
+      router.replace('/pos/kds')
+      return
+    }
     if ((!featureOn || !hasAccess) && pathname !== homePath) router.replace(homePath)
-  }, [loaded, session, featureOn, hasAccess, pathname, router, loginPath, homePath])
+  }, [loaded, session, featureOn, hasAccess, pathname, router, loginPath, homePath, sectionKey])
 
   const checking = !loaded || featuresLoading || !session || !hasAccess || !featureOn
   const blocked: TillAccess['blocked'] =

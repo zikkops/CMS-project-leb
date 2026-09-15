@@ -40,6 +40,31 @@ const toMs = v => (v && typeof v === 'object' && typeof v.ms === 'number' ? v.ms
 const branch = 'Main'
 const ACTIVE = ['new', 'preparing', 'ready']
 
+console.log('\na kitchen screen reads the kitchen display\'s queries only (S19)')
+{
+  const kitchen = [
+    { kind: 'stationTickets', branch, station: null, statuses: ACTIVE }, { kind: 'readyTickets', branch },
+    { kind: 'menuCategories' }, { kind: 'menuItems' }, { kind: 'modifierGroups' }, { kind: 'settings', doc: 'printing' },
+  ]
+  const notKitchen = [
+    { kind: 'openChecks', branch }, { kind: 'check', checkId: 'c1' }, { kind: 'closedChecks', branch, max: 50 },
+    { kind: 'checksClosedSince', branch, sinceMs: 1000, ceiling: 2000 }, { kind: 'recentClosedReceipts', branch },
+    { kind: 'openShift', branch }, { kind: 'products' },
+  ]
+  eq('tickets, the menu and settings are the kitchen screen\'s', kitchen.map(q => Q.allowedForScope(q, 'kds')), kitchen.map(() => true))
+  eq('THE TRAP: never a check, a shift, a receipt or the shop', notKitchen.map(q => Q.allowedForScope(q, 'kds')), notKitchen.map(() => false))
+  eq('a session with no scope may run all of them', [...kitchen, ...notKitchen].every(q => Q.allowedForScope(q, null)), true)
+}
+
+console.log('\nthe hub\'s query route asks before it answers a kitchen screen (S19)')
+{
+  const src = readFileSync('pos/app/api/hub/query/route.ts', 'utf8')
+  const body = src.split('export async function GET(')[1] ?? ''
+  const guard = body.search(/allowedForScope\(query, caller\.scope/)
+  const run = body.search(/runHubPlan\(/)
+  eq('THE TRAP: the route refuses a kitchen screen\'s other queries before running one', guard >= 0 && run > guard, true)
+}
+
 console.log('\nevery plan the till can make is scoped')
 {
   const everything = [

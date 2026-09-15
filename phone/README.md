@@ -42,7 +42,11 @@ second till.
   then opens the till as the person approved, until 05:00.
   The manager can also **Turn down** a request, with the same fingerprint, and
   the asking phone is told.
-- **Not yet:** the kitchen display mode. Registered phones are listed and removed in admin
+- **Use this device as a kitchen screen** (S19). A shared kitchen tablet asks,
+  and a manager approves it with their fingerprint. It opens the kitchen
+  display, signed in as the screen rather than a person, until 05:00. The hub
+  refuses it everything but the kitchen display: no tables, checks, payments or
+  drawer. Registered phones are listed and removed in admin
   under Settings → Staff Phones.
 
 ## Build it

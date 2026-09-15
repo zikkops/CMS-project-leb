@@ -88,9 +88,9 @@ export default function PosLoginPage() {
     window.history.replaceState(null, '', window.location.pathname + window.location.search)
     setBusy(true)
     adoptHubSession(token)
-      .then(() => {
+      .then(session => {
         setAdminSessionCookie()
-        router.replace('/pos')
+        router.replace(session.scope === 'kds' ? '/pos/kds' : '/pos')
       })
       .catch(err => {
         setError(err instanceof Error ? err.message : 'The phone sign-in did not work. Sign in again.')

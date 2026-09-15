@@ -281,3 +281,17 @@ export function compareResults(
   if (previous && previous.signature === state.signature) return { state, changed: null }
   return { state, changed: encoded.filter(([id, json]) => previous?.byId.get(id) !== json).map(([id]) => id) }
 }
+
+/**
+ * The queries a kitchen screen may run (owner's decision S19): tickets, the
+ * menu and the till's settings. Never a check, a shift or a receipt: a tablet
+ * left in the kitchen sees the kitchen display only.
+ */
+export const KITCHEN_SCREEN_QUERIES: readonly PosQuery['kind'][] = [
+  'stationTickets', 'readyTickets', 'menuCategories', 'menuItems', 'modifierGroups', 'settings',
+]
+
+/** Whether a session with this scope may run this query. Unscoped sessions may run any scoped query. */
+export function allowedForScope(query: PosQuery, scope: string | null): boolean {
+  return scope !== 'kds' || KITCHEN_SCREEN_QUERIES.includes(query.kind)
+}

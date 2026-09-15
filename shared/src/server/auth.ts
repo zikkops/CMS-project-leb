@@ -31,6 +31,8 @@ export interface Caller {
   branchIds: string[]
   superadmin: boolean
   isStaff: boolean
+  /** Set only for a café hub session with a scope: 'kds' is a kitchen screen (S19). */
+  scope?: 'kds' | null
 }
 
 // Thrown by the require* guards; turn it into a Response with toResponse().
@@ -163,6 +165,9 @@ export async function requireSuperadmin(request: Request): Promise<Caller> {
 // requireRole() instead on a hot path where per-user grants don't apply.
 export async function requireSection(request: Request, section: SectionKey): Promise<Caller> {
   const caller = await requireStaff(request)
+  // A kitchen screen's session (S19) is the kitchen display and nothing else,
+  // whatever its role would otherwise allow.
+  if (caller.scope === 'kds' && section !== 'kds') throw new HttpError(403, 'A kitchen screen can use the kitchen display only.')
   const allowed = SECTION_ACCESS[section]
 
   const snap = await adminDb().doc(`users/${caller.uid}`).get()

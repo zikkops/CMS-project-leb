@@ -26,7 +26,7 @@ const KEEP_ALIVE_MS = 20_000
 
 export async function GET(request: Request): Promise<Response> {
   try {
-    const store = await requireHubReader(request)
+    const { store } = await requireHubReader(request)
     const encoder = new TextEncoder()
     let stop = () => {}
 

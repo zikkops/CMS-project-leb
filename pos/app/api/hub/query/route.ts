@@ -14,14 +14,14 @@
 import { toResponse, HttpError } from '@big-cms/shared/server/auth'
 import { encodeHubValue } from '@big-cms/shared/server/hubStore'
 import { runHubPlan } from '@big-cms/shared/server/hubWatch'
-import { isScoped, parsePosQuery, planQuery } from '../../../lib/backend/queries'
+import { allowedForScope, isScoped, parsePosQuery, planQuery } from '../../../lib/backend/queries'
 import { requireHubReader } from '../access'
 
 export const runtime = 'nodejs'
 
 export async function GET(request: Request): Promise<Response> {
   try {
-    const store = await requireHubReader(request)
+    const { store, caller } = await requireHubReader(request)
 
     let raw: unknown
     try {
@@ -33,6 +33,8 @@ export async function GET(request: Request): Promise<Response> {
     if (!query) throw new HttpError(400, 'Unknown query.')
     const plan = planQuery(query)
     if (!isScoped(plan)) throw new HttpError(400, 'That query is not limited to a branch.')
+    // A kitchen screen reads tickets, the menu and settings, never a check (S19).
+    if (!allowedForScope(query, caller.scope ?? null)) throw new HttpError(403, 'A kitchen screen can use the kitchen display only.')
 
     const seq = store.lastSeq()
     const docs = await runHubPlan(store, plan)
