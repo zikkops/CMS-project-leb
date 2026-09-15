@@ -21,6 +21,7 @@ import { CapacitorBarcodeScanner, CapacitorBarcodeScannerTypeHint } from '@capac
 import { parseHubLink } from '../../shared/src/hubNetwork'
 import { enrolMessage, handoffHash, signInMessage } from '../../shared/src/staffKeys'
 import { approveMessage, denyMessage } from '../../shared/src/staffApprovals'
+import { counterSignInMessage, isCounterCode, readCounterCode } from '../../shared/src/counterSignIn'
 
 interface Reply { status: number; body: string }
 
@@ -91,6 +92,8 @@ async function show() {
   const status = await HubPin.keyStatus()
   const reg = status.hasKey ? registered() : null
   $('signIn').hidden = !reg
+  $('counterSignIn').hidden = !reg
+  $('counterForm').hidden = true
   // Approving needs the manager's own registered key; the hub checks they are a manager.
   $('managerTools').hidden = !reg
   $('whoIsRegistered').textContent = reg ? `This phone signs in as ${reg.email}.` : 'This phone is not registered for fingerprint sign-in yet.'
@@ -222,6 +225,50 @@ $('signIn').addEventListener('click', async () => {
     await HubPin.open({ hash: handoffHash(token) })
   } catch (err) {
     say(err instanceof Error ? err.message : 'The phone could not sign you in.')
+  }
+})
+
+// ── Signing yourself in on the counter PC (S24–S25) ──────────────────────
+
+$('counterSignIn').addEventListener('click', () => {
+  say(null)
+  $<HTMLInputElement>('counterCode').value = ''
+  $('counterForm').hidden = false
+  $<HTMLInputElement>('counterCode').focus()
+})
+
+$('counterForm').addEventListener('submit', async e => {
+  e.preventDefault()
+  const reg = registered()
+  const hub = await HubPin.get()
+  if (!reg || !hub.fingerprint) return
+  const code = readCounterCode($<HTMLInputElement>('counterCode').value)
+  if (!isCounterCode(code)) {
+    say('Type the four digits the counter shows.')
+    return
+  }
+  const button = $<HTMLButtonElement>('counterSubmit')
+  button.disabled = true
+  say('Signing the counter in…', true)
+  try {
+    const challengeReply = await HubPin.hubRequest({ method: 'POST', path: '/api/hub/counter-signin', body: { action: 'challenge', keyId: reg.keyId } })
+    if (challengeReply.status !== 200) throw new Error(refusal(challengeReply, 'The hub did not answer.'))
+    const { nonce } = json(challengeReply) as { nonce?: string }
+    if (!nonce) throw new Error('The hub did not answer.')
+
+    const { signature } = await HubPin.sign({
+      message: counterSignInMessage(hub.fingerprint, code, reg.keyId, nonce),
+      title: 'Sign in on the counter PC',
+      subtitle: `Code ${code}`,
+    })
+    const reply = await HubPin.hubRequest({ method: 'POST', path: '/api/hub/counter-signin', body: { action: 'approve', code, keyId: reg.keyId, nonce, signature } })
+    if (reply.status !== 200) throw new Error(refusal(reply, 'The counter was not signed in.'))
+    $('counterForm').hidden = true
+    say('The counter PC signs in as you in a moment. It signs out after 15 minutes without a tap.', true)
+  } catch (err) {
+    say(err instanceof Error ? err.message : 'The counter was not signed in.')
+  } finally {
+    button.disabled = false
   }
 })
 

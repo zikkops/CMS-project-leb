@@ -2,6 +2,7 @@
 //
 // POST    Bearer <Firebase ID token>   start a hub session, to the end of the night
 // GET     Bearer <hub session>         who it is, and until when
+// PATCH   Bearer <hub session>         the till saw a tap: a counter sign-in's idle count starts again (S25)
 // DELETE  Bearer <hub session>         sign out
 //
 // Only on a hub. Online, sign-in is Firebase's alone and this answers 404.
@@ -10,7 +11,7 @@
 
 import { bearerToken, toResponse, HttpError } from '@big-cms/shared/server/auth'
 import { hubDbPath } from '@big-cms/shared/server/firebaseAdmin'
-import { signInAtHub, callerFromHubToken, endHubSession, type HubCaller } from '@big-cms/shared/server/hubSession'
+import { signInAtHub, callerFromHubToken, endHubSession, touchHubSession, type HubCaller } from '@big-cms/shared/server/hubSession'
 import { logActivity } from '@big-cms/shared/server/activityLog'
 
 export const runtime = 'nodejs'
@@ -22,7 +23,7 @@ function hubOnly(): void {
 function describe(caller: HubCaller) {
   return {
     uid: caller.uid, email: caller.email, role: caller.role, branchIds: caller.branchIds,
-    superadmin: caller.superadmin, expiresAt: caller.expiresAt, scope: caller.scope,
+    superadmin: caller.superadmin, expiresAt: caller.expiresAt, scope: caller.scope, idleMs: caller.idleMs,
   }
 }
 
@@ -45,6 +46,16 @@ export async function GET(request: Request): Promise<Response> {
     const caller = await callerFromHubToken(bearerToken(request))
     if (!caller) throw new HttpError(401, 'Not signed in.')
     return Response.json({ ok: true, ...describe(caller) })
+  } catch (err) {
+    return toResponse(err)
+  }
+}
+
+export async function PATCH(request: Request): Promise<Response> {
+  try {
+    hubOnly()
+    if (!(await touchHubSession(bearerToken(request)))) throw new HttpError(401, 'Not signed in.')
+    return Response.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err) {
     return toResponse(err)
   }

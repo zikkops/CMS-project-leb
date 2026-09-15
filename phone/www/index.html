@@ -44,6 +44,13 @@
       <p class="mono" id="fingerprint"></p>
       <p id="whoIsRegistered"></p>
       <button id="signIn" class="primary" type="button" hidden>Sign in with your fingerprint</button>
+      <button id="counterSignIn" type="button" hidden>Sign in the counter PC</button>
+      <form id="counterForm" hidden>
+        <p style="margin-top:1rem">On the counter PC, tap your name. Type the code it shows, then confirm with your fingerprint. The counter signs out after 15 minutes without a tap.</p>
+        <label for="counterCode">Code on the counter</label>
+        <input id="counterCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4" pattern="[0-9]{4}" required>
+        <button id="counterSubmit" class="primary" type="submit">Sign the counter in with my fingerprint</button>
+      </form>
 
       <form id="registerForm" hidden>
         <p style="margin-top:1rem">Registering needs the internet, once. Your password goes to your café's sign-in and is never kept on the phone. Then confirm with your fingerprint.</p>

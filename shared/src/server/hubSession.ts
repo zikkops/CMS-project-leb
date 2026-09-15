@@ -25,6 +25,7 @@ import { isRole } from '../roles'
 import { BRAND } from '../brand'
 import { hubSessionExpiry } from '../hubSession'
 import { timestampMs } from '../timestamps'
+import { TOUCH_EVERY_MS, idleOver } from '../counterSignIn'
 
 const SESSIONS = 'hubSessions'
 const PREFIX = 'hub.'
@@ -39,17 +40,25 @@ export interface HubSessionClaims {
   superadmin?: unknown
   /** 'kds' for a kitchen screen's session (S19): the kitchen display and nothing else. */
   scope?: unknown
+  /** For a counter PC sign-in (S25): the session ends after this long without a tap. */
+  idleMs?: unknown
 }
 
 export interface HubCaller extends Caller {
   expiresAt: number
   scope: HubScope | null
+  /** Ends after this long without a tap (S25), or null for a session that lasts until 05:00. */
+  idleMs: number | null
 }
 
 /** The only scope so far: a kitchen screen (S19). */
 export type HubScope = 'kds'
 
 const readScope = (raw: unknown): HubScope | null => (raw === 'kds' ? 'kds' : null)
+
+/** An idle limit between a minute and twelve hours, or none. */
+const readIdle = (raw: unknown): number | null =>
+  typeof raw === 'number' && Number.isInteger(raw) && raw >= 60_000 && raw <= 12 * 3600_000 ? raw : null
 
 const hashOf = (token: string) => createHash('sha256').update(token).digest('hex')
 
@@ -79,6 +88,7 @@ export async function startHubSession(
     isStaff: true,
     expiresAt,
     scope: readScope(claims.scope),
+    idleMs: readIdle(claims.idleMs),
   }
   const token = PREFIX + randomBytes(32).toString('base64url')
   await adminDb().doc(`${SESSIONS}/${hashOf(token)}`).create({
@@ -88,6 +98,8 @@ export async function startHubSession(
     branchIds: caller.branchIds,
     superadmin: caller.superadmin,
     scope: caller.scope,
+    idleMs: caller.idleMs,
+    lastActiveAt: Timestamp.fromMillis(now),
     startedAt: Timestamp.fromMillis(now),
     expiresAt: Timestamp.fromMillis(expiresAt),
     endedAt: null,
@@ -118,6 +130,10 @@ export async function callerFromHubToken(token: string, now = Date.now()): Promi
   const expiresAt = timestampMs(d.expiresAt, 0)
   if (!(expiresAt > now)) return null
   if (typeof d.uid !== 'string' || !isRole(d.role)) return null
+  // A counter sign-in ends after its idle limit without a tap (S25), whatever
+  // the page does: the till's own sign-out is a courtesy, this is the rule.
+  const idleMs = readIdle(d.idleMs)
+  if (idleMs !== null && idleOver(timestampMs(d.lastActiveAt, 0), idleMs, now)) return null
 
   // The staff record pulled from the cloud (stage 4) overrules what the token
   // said at sign-in: an account locked, or a role changed, in the cloud reaches
@@ -136,7 +152,27 @@ export async function callerFromHubToken(token: string, now = Date.now()): Promi
     isStaff: true,
     expiresAt,
     scope: readScope(d.scope),
+    idleMs,
   }
+}
+
+/**
+ * The till saw a tap (S25): a session with an idle limit starts its count again.
+ * Written at most every TOUCH_EVERY_MS, so a busy counter is not a write per tap.
+ * False when there is no live session to touch; a session without an idle limit
+ * has nothing to count and is left alone.
+ */
+export async function touchHubSession(token: string, now = Date.now()): Promise<boolean> {
+  if (!isHubToken(token)) return false
+  const ref = adminDb().doc(`${SESSIONS}/${hashOf(token)}`)
+  const d = (await ref.get()).data()
+  if (!d || d.endedAt || !(timestampMs(d.expiresAt, 0) > now)) return false
+  const idleMs = readIdle(d.idleMs)
+  if (idleMs === null) return true
+  const last = timestampMs(d.lastActiveAt, 0)
+  if (idleOver(last, idleMs, now)) return false
+  if (now - last >= TOUCH_EVERY_MS) await ref.update({ lastActiveAt: Timestamp.fromMillis(now) })
+  return true
 }
 
 /** Signs a session out. False when there was nothing live to end. */

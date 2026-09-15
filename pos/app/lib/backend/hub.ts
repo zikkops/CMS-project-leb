@@ -22,6 +22,7 @@ import { decode, type Revive } from '@big-cms/shared/backupCodec'
 import { NetworkError } from '@big-cms/shared/netErrors'
 import { unwrap } from '@big-cms/shared/apiClient'
 import type { Role } from '@big-cms/shared/roles'
+import { TOUCH_EVERY_MS } from '@big-cms/shared/counterSignIn'
 import { compareResults, planQuery, planTouches, type LocalDoc, type ResultState } from './queries'
 import type { PosBackend } from './types'
 
@@ -38,6 +39,8 @@ export interface HubSession {
   superadmin: boolean
   /** 'kds' for a kitchen screen (S19). */
   scope?: 'kds' | null
+  /** A counter PC sign-in (S25) ends after this long without a tap. */
+  idleMs?: number | null
 }
 
 /** The session on this device, or null when there is none or it has run out. */
@@ -104,10 +107,117 @@ function keepHubSession(token: string, data: Record<string, unknown>): HubSessio
     branchIds: Array.isArray(data.branchIds) ? data.branchIds.filter((b): b is string => typeof b === 'string') : [],
     superadmin: data.superadmin === true,
     scope: data.scope === 'kds' ? 'kds' : null,
+    idleMs: typeof data.idleMs === 'number' && data.idleMs > 0 ? data.idleMs : null,
   }
   try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)) } catch { /* kept for this page only */ }
   announce()
   return session
+}
+
+/** Signs this device's session out at the hub, then here. Signed out here even when the hub cannot be reached. */
+export async function signOutHubSession(): Promise<void> {
+  const session = readHubSession()
+  if (session) {
+    try {
+      await fetch('/api/hub/session', { method: 'DELETE', headers: { Authorization: `Bearer ${session.token}` } })
+    } catch { /* the hub ends it by itself when it goes idle */ }
+  }
+  clearHubSession()
+}
+
+/** Tells the hub the till saw a tap (S25). A session the hub no longer has is signed out here. */
+async function touchHubSession(session: HubSession): Promise<void> {
+  try {
+    const res = await fetch('/api/hub/session', { method: 'PATCH', headers: { Authorization: `Bearer ${session.token}` } })
+    if (res.status === 401) clearHubSession()
+  } catch { /* no answer: the next tap tries again */ }
+}
+
+// ── A counter PC sign-in ends after its idle limit without a tap (S25) ────
+//
+// The hub enforces it; this signs the screen out when it happens rather than at
+// the next refused request, and tells the hub about taps. Only taps count: the
+// screens' own background requests never keep a session alive.
+
+let idleWatch: { token: string; stop: () => void } | null = null
+
+function followIdle(session: HubSession | null): void {
+  if (!session?.idleMs) {
+    idleWatch?.stop()
+    idleWatch = null
+    return
+  }
+  if (idleWatch?.token === session.token) return
+  idleWatch?.stop()
+  const idleMs = session.idleMs
+  let lastTap = Date.now()
+  let lastTouch = Date.now()
+  const onTap = () => {
+    lastTap = Date.now()
+    if (lastTap - lastTouch >= TOUCH_EVERY_MS) {
+      lastTouch = lastTap
+      void touchHubSession(session)
+    }
+  }
+  const events = ['pointerdown', 'keydown', 'wheel'] as const
+  for (const e of events) window.addEventListener(e, onTap, { passive: true })
+  const timer = setInterval(() => {
+    if (Date.now() - lastTap >= idleMs) void signOutHubSession()
+  }, 5_000)
+  idleWatch = {
+    token: session.token,
+    stop: () => {
+      clearInterval(timer)
+      for (const e of events) window.removeEventListener(e, onTap)
+    },
+  }
+}
+
+export interface CounterRequest {
+  id: string
+  secret: string
+  code: string
+  expiresAt: number
+  label: string
+}
+
+async function counterCall(method: 'GET' | 'POST', path: string, body?: Record<string, unknown>): Promise<Record<string, unknown>> {
+  let res: Response
+  try {
+    res = await fetch(path, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+      cache: 'no-store',
+    })
+  } catch {
+    throw new NetworkError('No connection — could not reach the hub.')
+  }
+  const data = await res.json().catch(() => ({})) as Record<string, unknown>
+  if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : `The hub refused that (${res.status}).`)
+  return data
+}
+
+/** Who can sign in on the counter PC: the staff the hub pulled, by first name (S24). */
+export async function counterPeople(): Promise<{ uid: string; label: string }[]> {
+  const data = await counterCall('GET', '/api/hub/counter-signin?view=people')
+  return Array.isArray(data.people) ? data.people as { uid: string; label: string }[] : []
+}
+
+/** The counter PC asks to sign this person in, and gets the code to show (S24). */
+export async function askCounterSignIn(uid: string): Promise<CounterRequest> {
+  const data = await counterCall('POST', '/api/hub/counter-signin', { action: 'ask', uid })
+  return {
+    id: String(data.id ?? ''), secret: String(data.secret ?? ''), code: String(data.code ?? ''),
+    expiresAt: Number(data.expiresAt ?? 0), label: String(data.label ?? ''),
+  }
+}
+
+/** Whether the person's phone has approved yet. Approved: the session is taken and kept here. */
+export async function collectCounterSignIn(request: CounterRequest): Promise<'waiting' | 'expired' | 'collected' | HubSession> {
+  const data = await counterCall('POST', '/api/hub/counter-signin', { action: 'collect', id: request.id, secret: request.secret })
+  if (data.status === 'approved' && typeof data.token === 'string') return adoptHubSession(data.token)
+  return data.status === 'expired' || data.status === 'collected' ? data.status : 'waiting'
 }
 
 /** Told now, and whenever the session starts, ends, or runs out at the end of the night. */
@@ -121,6 +231,7 @@ export function watchHubSession(onChange: (session: HubSession | null) => void):
     // Ends on its own at the end of the night, without a reload. setTimeout
     // cannot wait longer than about 24.8 days, which no session comes near.
     if (s) timer = setTimeout(fire, Math.min(s.expiresAt - Date.now() + 1000, 2 ** 31 - 1))
+    followIdle(s)
     onChange(s)
   }
   const onStorage = (e: StorageEvent) => { if (e.key === SESSION_KEY) fire() }

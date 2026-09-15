@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1691
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1723
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -1454,6 +1454,57 @@ wraps the same React screens.
       taken" first survived: the only software case also put the key itself in
       software, so the key's own level refused it. A statement made in software
       claiming a hardware key is now its own test.
+  - **Signing in on the counter PC itself, with your own phone** (owner's
+    decisions S24–S25, 15 Sep 2026). Before this the counter PC signed in only
+    with email and password, which the hub checks with Google, so a counter PC
+    restarted during an outage could not be signed in at all.
+    - **Tap your name on the counter's sign-in screen**
+      (`CounterSignIn` in `pos/app/pos/login/page.tsx`, shown only when the page
+      is on the counter PC itself). The hub keeps a request for two minutes and
+      the screen shows a **four-digit code**.
+    - **In your own staff app, "Sign in the counter PC"**: type the code and
+      confirm with your fingerprint. The phone signs
+      `counterSignInMessage(hub fingerprint, code, key id, nonce)`
+      (`shared/src/counterSignIn.ts`), with its own label, over a challenge
+      from the same `issueChallenge()`. The hub approves only the key owner's own
+      waiting request with that code (`approveCounterSignIn()` in
+      `server/hubCounterSignIn.ts`); the counter collects the session with its
+      secret. Route: `/api/hub/counter-signin`.
+    - **Why a code:** anyone on the café wifi can start a request in somebody's
+      name. The code ties the fingerprint to the request on the screen in front
+      of that person, so nobody approves a request started elsewhere blind. The
+      ask is also refused unless its Host is localhost (`isCounterHost()`), which
+      keeps it off phones but is not the proof; the code is. Codes and secrets
+      are stored only as hashes.
+    - **15 minutes without a tap ends it (S25)**, and 05:00 at the latest. The
+      session carries `idleMs` and `lastActiveAt`; `callerFromHubToken()` refuses
+      it once idle, whatever the page does. The till reports taps (pointer, key,
+      wheel) with `PATCH /api/hub/session` at most every 30 seconds
+      (`TOUCH_EVERY_MS`), and `touchHubSession()` writes at most that often.
+      **Only taps count:** background requests (the change feed, the one-minute
+      hub-lock check) never keep a counter session alive. The page signs itself
+      out when the limit passes (`followIdle()` in `backend/hub.ts`, run for
+      every page that watches the session). A phone's own sign-in has no idle
+      limit.
+    - `verify:hub-sync` runs it with real P-256 keys: a phone on the wifi
+      starting one, a wrong code, another person's phone with the right code, a
+      phone sign-in, approval or other hub's signature offered instead, a late
+      code, the wrong secret, collecting twice, a leaver at approval and at
+      collection, and the idle rules, including taps closer than 30 seconds:
+      32 more assertions. 24 mutations, all caught by name. The first try at "a
+      leaver approves" did not compile, which proves nothing; rewritten, it
+      survived until a test had a demoted account's phone approve.
+    - **Checked on the built hub with the Android 37 emulator, 15 Sep 2026.**
+      The counter's sign-in screen (the browser at `localhost:3004`) listed
+      "Rana, Sam"; tapping Rana showed a code. Typed into the app with the
+      emulator's fingerprint, the phone said the counter signs in, and within
+      the counter's two-second poll it landed on `/pos` as Rana with a 15-minute
+      idle limit. The hub logged "Rana approved signing in on the counter PC with
+      their fingerprint" and the sign-in. With the session's last tap moved 16
+      minutes back in the hub's database, asking who it is and a tap both got
+      401, and the till went back to its sign-in page. The first attempt was
+      refused 401 because the app still named the key replaced during the S20
+      check; that was the test's setup, and the refusal was the right answer.
   - **Not built yet:**
     - a real phone or tablet in a café
 

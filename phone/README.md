@@ -49,6 +49,10 @@ second till.
   then opens the till as the person approved, until 05:00.
   The manager can also **Turn down** a request, with the same fingerprint, and
   the asking phone is told.
+- **Sign in the counter PC** (S24–S25). On the counter PC's sign-in screen, tap
+  your name; it shows a four-digit code. In the app, tap "Sign in the counter
+  PC", type the code, and confirm with your fingerprint. The counter signs in as
+  you, with no internet, and signs out after 15 minutes without a tap.
 - **Use this device as a kitchen screen** (S19). A shared kitchen tablet asks,
   and a manager approves it with their fingerprint. It opens the kitchen
   display, signed in as the screen rather than a person, until 05:00. The hub

@@ -37,6 +37,7 @@ try {
     'npx tsc shared/src/hubSync.ts shared/src/receiptBlocks.ts shared/src/server/hubDevices.ts shared/src/server/hubSync.ts ' +
     'shared/src/server/hubSession.ts shared/src/server/invoiceNumber.ts shared/src/server/hubLock.ts ' +
     'shared/src/server/staffKeys.ts shared/src/server/keyAttestation.ts shared/src/server/hubKeySignIn.ts shared/src/server/hubApprovals.ts ' +
+    'shared/src/server/hubCounterSignIn.ts ' +
     `--outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -1403,6 +1404,110 @@ console.log('\na kitchen screen: a manager approves a shared tablet, which reach
   const scopedManager = await HS.startHubSession({ uid: 'screen:odd', staff: true, role: 'manager', scope: 'kds', branchIds: [branch] })
   await rejects('THE TRAP: the scope decides, whatever the role would allow',
     () => AU.requireSection(asRequest(scopedManager.token), 'pos'), e => e.status === 403)
+}
+
+console.log('\nthe counter PC signs in with the person\'s own phone, and signs out after 15 minutes idle (S24–S25)')
+{
+  const CS = await import(url('counterSignIn.js'))
+  const HC = await import(url('server/hubCounterSignIn.js'))
+  const KS = await import(url('server/hubKeySignIn.js'))
+  const SK = await import(url('staffKeys.js'))
+  const SA = await import(url('staffApprovals.js'))
+  const K = await import(url('server/staffKeys.js'))
+  const { generateKeyPairSync, sign: signWith } = await import('node:crypto')
+  const phoneFor = async uid => {
+    const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
+    const der = publicKey.export({ type: 'spki', format: 'der' })
+    const keyId = K.keyIdFor(der)
+    await db.doc(`staffKeys/${keyId}`).set({ uid, publicKey: der.toString('base64'), deviceName: 'Pixel', revokedAt: null })
+    return { keyId, sign: message => signWith('sha256', Buffer.from(message, 'utf8'), { key: privateKey, dsaEncoding: 'der' }).toString('base64') }
+  }
+  const FP = Array(32).fill('AB').join(':')
+  const fpHex = 'ab'.repeat(32)
+  const hub = { db, hubFingerprint: FP }
+  const COUNTER = 'localhost:3100'
+
+  // ── The rules ──
+  eq('a code is four digits from four random bytes',
+    [CS.counterCodeFromBytes(Uint8Array.from([0, 0, 0, 7])), CS.counterCodeFromBytes(Uint8Array.from([255, 255, 255, 255])), CS.isCounterCode('0421'), CS.isCounterCode('421'), CS.isCounterCode('04a1')],
+    ['0007', '7295', true, false, false])
+  eq('...read off a phone keyboard as its digits', [CS.readCounterCode(' 04 21x9'), CS.readCounterCode(null)], ['0421', ''])
+  eq('THE TRAP: a counter sign-in signature is never a phone sign-in or a manager\'s approval',
+    new Set([CS.counterSignInMessage(fpHex, '0421', 'k', 'n'), SK.signInMessage(fpHex, 'k', 'n'), SA.approveMessage(fpHex, '0421', 'k', 'n')]).size, 3)
+  eq('only the counter PC itself asks: localhost, never the hub\'s address on the wifi',
+    ['localhost:3100', '127.0.0.1:3004', '[::1]:3100', 'LOCALHOST:3100', '192.168.1.20:3443', '10.0.2.2:3443', 'localhost.example.com', '', null].map(CS.isCounterHost),
+    [true, true, true, true, false, false, false, false, false])
+  eq('idle is judged from the last tap', [CS.idleOver(1000, 900_000, 900_999), CS.idleOver(1000, 900_000, 901_000), CS.idleOver(0, 900_000, 1)], [false, true, true])
+
+  // ── The hub ──
+  await db.doc('users/u-counter').set({ isStaff: true, role: 'barista', branchIds: [branch], firstName: 'Nour' })
+  await db.doc('users/u-counter-2').set({ isStaff: true, role: 'barista', branchIds: [branch], firstName: 'Joe' })
+  const nour = await phoneFor('u-counter')
+  const joe = await phoneFor('u-counter-2')
+  const approve = async (p, code, { message, fp = fpHex } = {}) => {
+    const { nonce } = await KS.issueChallenge(p.keyId, { db })
+    return HC.approveCounterSignIn({ code, keyId: p.keyId, nonce, signature: p.sign(message ? message(nonce) : CS.counterSignInMessage(fp, code, p.keyId, nonce)) }, hub)
+  }
+
+  await rejects('THE TRAP: a phone on the café wifi cannot start a counter sign-in', () => HC.askCounterSignIn({ uid: 'u-counter' }, { db, host: '192.168.1.20:3443' }), e => e.status === 403)
+  await rejects('somebody the hub does not know is refused', () => HC.askCounterSignIn({ uid: 'u-nobody' }, { db, host: COUNTER }), e => e.status === 400)
+  const asked = await HC.askCounterSignIn({ uid: 'u-counter' }, { db, host: COUNTER })
+  eq('tapping a name gives the counter a four-digit code and names the person', [CS.isCounterCode(asked.code), asked.label], [true, 'Nour'])
+  const stored = JSON.stringify((await db.doc(`hubCounterRequests/${asked.id}`).get()).data())
+  eq('THE TRAP: the hub keeps neither the code nor the secret, only hashes', [stored.includes(`"${asked.code}"`), stored.includes(asked.secret)], [false, false])
+  eq('before the phone answers, the counter is told to wait', (await HC.collectCounterSignIn({ id: asked.id, secret: asked.secret }, { db })).status, 'waiting')
+
+  const wrong = asked.code === '0000' ? '0001' : '0000'
+  await rejects('a wrong code approves nothing', () => approve(nour, wrong), e => e.status === 404)
+  await rejects('THE TRAP: another person\'s phone, with the right code, signs nobody in', () => approve(joe, asked.code), e => e.status === 404)
+  await rejects('THE TRAP: a phone sign-in signature over the same challenge is not a counter approval',
+    () => approve(nour, asked.code, { message: nonce => SK.signInMessage(fpHex, nour.keyId, nonce) }), e => e.status === 401)
+  await rejects('...nor a manager\'s approval signature', () => approve(nour, asked.code, { message: nonce => SA.approveMessage(fpHex, asked.code, nour.keyId, nonce) }), e => e.status === 401)
+  await rejects('...nor a signature made for another hub', () => approve(nour, asked.code, { fp: 'cd'.repeat(32) }), e => e.status === 401)
+  await rejects('a challenge the hub never gave is refused',
+    () => HC.approveCounterSignIn({ code: asked.code, keyId: nour.keyId, nonce: 'A'.repeat(43), signature: nour.sign(CS.counterSignInMessage(fpHex, asked.code, nour.keyId, 'A'.repeat(43))) }, hub), e => e.status === 401)
+  await db.doc('users/u-counter').update({ isStaff: false })
+  await rejects('THE TRAP: a phone whose owner is no longer staff approves nothing', () => approve(nour, asked.code), e => e.status === 403)
+  await db.doc('users/u-counter').update({ isStaff: true })
+
+  await approve(nour, asked.code)
+  await rejects('THE TRAP: the counter collects only with its own secret', () => HC.collectCounterSignIn({ id: asked.id, secret: 'b'.repeat(43) }, { db }), e => e.status === 401)
+  const collected = await HC.collectCounterSignIn({ id: asked.id, secret: asked.secret }, { db })
+  eq('approved on the phone, the counter signs in as that person, with an idle limit of 15 minutes (S25)',
+    [collected.status, collected.caller?.uid, collected.caller?.role, collected.caller?.idleMs, typeof collected.token], ['approved', 'u-counter', 'barista', CS.COUNTER_IDLE_MS, 'string'])
+  eq('collecting twice gets nothing', [(await HC.collectCounterSignIn({ id: asked.id, secret: asked.secret }, { db })).status, (await HC.collectCounterSignIn({ id: asked.id, secret: asked.secret }, { db })).token], ['collected', undefined])
+
+  let first = await HC.askCounterSignIn({ uid: 'u-counter' }, { db, host: COUNTER })
+  let second = await HC.askCounterSignIn({ uid: 'u-counter' }, { db, host: COUNTER })
+  while (second.code === first.code) second = await HC.askCounterSignIn({ uid: 'u-counter' }, { db, host: COUNTER })
+  await rejects('tapping your name again replaces the last code', () => approve(nour, first.code), e => e.status === 404)
+  const old = await HC.askCounterSignIn({ uid: 'u-counter-2' }, { db, host: COUNTER, now: Date.now() - CS.COUNTER_REQUEST_MS - 1000 })
+  await rejects('a code approved too late approves nothing', () => approve(joe, old.code), e => e.status === 404)
+  eq('...and that request tells the counter it ran out', (await HC.collectCounterSignIn({ id: old.id, secret: old.secret }, { db })).status, 'expired')
+  await approve(nour, second.code)
+  await db.doc('users/u-counter').update({ isStaff: false })
+  await rejects('THE TRAP: somebody no longer staff by collection time gets no session', () => HC.collectCounterSignIn({ id: second.id, secret: second.secret }, { db }), e => e.status === 403)
+  await db.doc('users/u-counter').update({ isStaff: true })
+
+  // ── Idle (S25) ──
+  const t0 = Date.now()
+  const idleSession = await HS.startHubSession({ uid: 'u-counter', staff: true, role: 'barista', idleMs: CS.COUNTER_IDLE_MS }, t0)
+  const at = ms => HS.callerFromHubToken(idleSession.token, t0 + ms)
+  eq('a counter session lasts through 14 minutes without a tap, and not through 15',
+    [Boolean(await at(14 * 60_000)), await at(15 * 60_000)], [true, null])
+  eq('a tap starts the count again', [await HS.touchHubSession(idleSession.token, t0 + 10 * 60_000), Boolean(await at(24 * 60_000)), await at(25 * 60_000)], [true, true, null])
+  eq('THE TRAP: taps closer together than 30 seconds are not each a write',
+    [await HS.touchHubSession(idleSession.token, t0 + 10 * 60_000 + 10_000), await at(25 * 60_000 + 5_000)], [true, null])
+  eq('a session already idle cannot be touched back to life', await HS.touchHubSession(idleSession.token, t0 + 30 * 60_000), false)
+  const nightSession = await HS.startHubSession({ uid: 'u-counter', staff: true, role: 'barista' }, t0)
+  eq('THE TRAP: a phone\'s own sign-in has no idle limit: it lasts the night (S14)',
+    [Boolean(await HS.callerFromHubToken(nightSession.token, t0 + 60 * 60_000)), (await HS.callerFromHubToken(nightSession.token, t0))?.idleMs], [true, null])
+  eq('...and touching it changes nothing', await HS.touchHubSession(nightSession.token, t0 + 60_000), true)
+  eq('an idle limit outside a minute to twelve hours is not an idle limit',
+    [(await HS.startHubSession({ uid: 'u-counter', staff: true, role: 'barista', idleMs: 5 }, t0)).caller.idleMs,
+      (await HS.startHubSession({ uid: 'u-counter', staff: true, role: 'barista', idleMs: '900000' }, t0)).caller.idleMs], [null, null])
+  await HS.endHubSession(idleSession.token)
+  eq('a signed-out session cannot be touched', await HS.touchHubSession(idleSession.token, t0 + 60_000), false)
 }
 
 console.log('\nwhere phones find the hub on the café wifi, and what its QR says (S11)')
