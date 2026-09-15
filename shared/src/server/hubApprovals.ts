@@ -1,7 +1,7 @@
 // SERVER ONLY — see firebaseAdmin.ts for the import rule.
 //
 // A manager approving a staff member's sign-in at a café hub — POS software,
-// stage 5 (owner's decisions S6, S15–S17). The rules and the signed message are
+// stage 5 (owner's decisions S6, S15–S17). The rules and the signed messages are
 // shared/src/staffApprovals.ts.
 //
 // Works with no internet, like every hub sign-in: the people, the keys and the
@@ -17,7 +17,7 @@ import { deviceName, isKeyId, isNonce } from '../staffKeys'
 import { staffLabel } from '../staffProfiles'
 import { timestampMs } from '../timestamps'
 import {
-  APPROVALS, APPROVAL_MS, approvalProblem, approvalState, approveMessage, isApprovalId, isApprovalSecret,
+  APPROVALS, APPROVAL_MS, approvalProblem, approvalState, approveMessage, denyMessage, isApprovalId, isApprovalSecret,
   type ApprovalStatus,
 } from '../staffApprovals'
 
@@ -98,7 +98,8 @@ export async function listWaiting({ db = adminDb(), now = Date.now() }: { db?: F
   return out.sort((a, b) => a.createdAt - b.createdAt)
 }
 
-export interface Approved {
+export interface Answered {
+  decision: 'approved' | 'denied'
   approverUid: string
   approverRole: unknown
   approverLabel: string
@@ -107,21 +108,22 @@ export interface Approved {
   deviceName: string
 }
 
+type AnswerOptions = { db?: Firestore; now?: number; hubFingerprint?: string }
+
 /**
- * A manager approves one request with their own phone's signature (S16).
+ * A manager answers one request with their own phone's signature (S16).
  *
  * The challenge is used up before the signature is checked. The signed message
- * names this hub, this request and the manager's key. Their pulled staff record
- * must say manager or admin, and nobody approves their own sign-in.
+ * names this hub, this request, the manager's key and the answer, so an
+ * approval cannot be replayed for another request, at another hub, or as a
+ * refusal. Their pulled staff record must say manager or admin, and nobody
+ * answers their own request.
  */
-export async function approveRequest(
+async function answerRequest(
   body: unknown,
-  {
-    db = adminDb(),
-    now = Date.now(),
-    hubFingerprint = process.env.BIG_CMS_HUB_CERT_SHA256,
-  }: { db?: Firestore; now?: number; hubFingerprint?: string } = {},
-): Promise<Approved> {
+  decision: 'approved' | 'denied',
+  { db = adminDb(), now = Date.now(), hubFingerprint = process.env.BIG_CMS_HUB_CERT_SHA256 }: AnswerOptions,
+): Promise<Answered> {
   const fingerprint = hubFingerprintHex(hubFingerprint)
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>
   if (!isApprovalId(b.id) || !isKeyId(b.keyId) || !isNonce(b.nonce)) throw new HttpError(400, 'Not an approval.')
@@ -130,10 +132,13 @@ export async function approveRequest(
   const nonce = b.nonce
 
   if (!(await consumeChallenge(db, keyId, nonce, now))) throw refused()
-  const key = await verifiedKey(db, keyId, approveMessage(fingerprint, id, keyId, nonce), b.signature)
+  const message = decision === 'approved'
+    ? approveMessage(fingerprint, id, keyId, nonce)
+    : denyMessage(fingerprint, id, keyId, nonce)
+  const key = await verifiedKey(db, keyId, message, b.signature)
   if (!key) throw refused()
   const approver = await pulledStaff(db, key.uid)
-  if (!approver) throw new HttpError(403, 'This account cannot approve sign-ins.')
+  if (!approver) throw new HttpError(403, 'This account cannot answer sign-in requests.')
 
   const ref = db.doc(`${APPROVALS}/${id}`)
   const requested = await db.runTransaction(async tx => {
@@ -146,12 +151,15 @@ export async function approveRequest(
     const requestedUid = String(d.uid ?? '')
     const problem = approvalProblem({ uid: key.uid, role: approver.role }, requestedUid)
     if (problem) throw new HttpError(403, problem)
-    tx.update(ref, { status: 'approved', approvedBy: key.uid, approvedAt: FieldValue.serverTimestamp() })
+    tx.update(ref, decision === 'approved'
+      ? { status: 'approved', approvedBy: key.uid, approvedAt: FieldValue.serverTimestamp() }
+      : { status: 'denied', deniedBy: key.uid, deniedAt: FieldValue.serverTimestamp() })
     return { requestedUid, deviceName: deviceName(d.deviceName) }
   })
 
   const requestedStaff = await pulledStaff(db, requested.requestedUid)
   return {
+    decision,
     approverUid: key.uid,
     approverRole: approver.role,
     approverLabel: labelFor(approver),
@@ -161,12 +169,25 @@ export async function approveRequest(
   }
 }
 
+/** A manager approves one request with their fingerprint (S16). */
+export function approveRequest(body: unknown, options: AnswerOptions = {}): Promise<Answered> {
+  return answerRequest(body, 'approved', options)
+}
+
+/**
+ * A manager turns one request down with their fingerprint. The same proof as
+ * approving, so nobody else on the café wifi can refuse somebody's request.
+ */
+export function denyRequest(body: unknown, options: AnswerOptions = {}): Promise<Answered> {
+  return answerRequest(body, 'denied', options)
+}
+
 /**
  * The asking phone collects its answer with its secret.
  *
  * Approved: the request is marked collected and a session is made now, for the
  * person approved, until 05:00 (S17). No token was stored while it waited.
- * Collecting twice gets nothing the second time.
+ * Collecting twice gets nothing the second time. Denied: the phone is told so.
  */
 export async function collectApproval(
   body: unknown,

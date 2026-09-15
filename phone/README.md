@@ -40,8 +40,9 @@ second till.
   member chooses their first name and asks. A manager taps "Approve a
   sign-in" in their own app and approves with their fingerprint. This phone
   then opens the till as the person approved, until 05:00.
-- **Not yet:** a manager denying a request (it runs out after 5 minutes), and
-  the kitchen display mode. Registered phones are listed and removed in admin
+  The manager can also **Turn down** a request, with the same fingerprint, and
+  the asking phone is told.
+- **Not yet:** the kitchen display mode. Registered phones are listed and removed in admin
   under Settings → Staff Phones.
 
 ## Build it

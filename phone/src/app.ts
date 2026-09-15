@@ -20,7 +20,7 @@ import { CapacitorBarcodeScanner, CapacitorBarcodeScannerTypeHint } from '@capac
 // same files, so the app and the hub cannot disagree about any of them.
 import { parseHubLink } from '../../shared/src/hubNetwork'
 import { enrolMessage, handoffHash, signInMessage } from '../../shared/src/staffKeys'
-import { approveMessage } from '../../shared/src/staffApprovals'
+import { approveMessage, denyMessage } from '../../shared/src/staffApprovals'
 
 interface Reply { status: number; body: string }
 
@@ -269,7 +269,8 @@ $('askForm').addEventListener('submit', async e => {
         }
         if (answer.status !== 200) return stopWaiting(refusal(answer, 'The request did not go through.'))
         if (data.status === 'expired') return stopWaiting('Nobody approved it in time. Ask again.')
-        if (data.status === 'denied' || data.status === 'collected') return stopWaiting('That request is closed. Ask again.')
+        if (data.status === 'denied') return stopWaiting('A manager turned this request down. Talk to them before asking again.')
+        if (data.status === 'collected') return stopWaiting('That request is closed. Ask again.')
       } catch {
         // No answer this time: the wifi. Keep asking until the request runs out.
       }
@@ -285,7 +286,8 @@ $('stopWaiting').addEventListener('click', () => stopWaiting(null))
 
 // ── Managers: approve somebody's sign-in with your own fingerprint (S16) ──
 
-async function approve(request: { id: string; label: string; deviceName: string }) {
+/** Approve or turn down one request; either way with the manager's own fingerprint (S16). */
+async function answer(request: { id: string; label: string; deviceName: string }, approve: boolean) {
   const reg = registered()
   const hub = await HubPin.get()
   if (!reg || !hub.fingerprint) return
@@ -296,16 +298,19 @@ async function approve(request: { id: string; label: string; deviceName: string 
     if (!nonce) throw new Error('The hub did not answer.')
 
     const { signature } = await HubPin.sign({
-      message: approveMessage(hub.fingerprint, request.id, reg.keyId, nonce),
-      title: `Approve ${request.label}`,
+      message: (approve ? approveMessage : denyMessage)(hub.fingerprint, request.id, reg.keyId, nonce),
+      title: approve ? `Approve ${request.label}` : `Turn down ${request.label}`,
       subtitle: `Signing in on ${request.deviceName}`,
     })
-    const reply = await HubPin.hubRequest({ method: 'POST', path: '/api/hub/approvals', body: { action: 'approve', id: request.id, keyId: reg.keyId, nonce, signature } })
-    if (reply.status !== 200) throw new Error(refusal(reply, 'The hub did not take the approval.'))
-    say(`Approved ${request.label}. Their phone opens the till in a moment.`, true)
+    const reply = await HubPin.hubRequest({
+      method: 'POST', path: '/api/hub/approvals',
+      body: { action: approve ? 'approve' : 'deny', id: request.id, keyId: reg.keyId, nonce, signature },
+    })
+    if (reply.status !== 200) throw new Error(refusal(reply, 'The hub did not take the answer.'))
+    say(approve ? `Approved ${request.label}. Their phone opens the till in a moment.` : `Turned down ${request.label}. Their phone is told.`, true)
     await loadRequests()
   } catch (err) {
-    say(err instanceof Error ? err.message : 'The approval did not go through.')
+    say(err instanceof Error ? err.message : 'The answer did not go through.')
   }
 }
 
@@ -326,12 +331,17 @@ async function loadRequests() {
       row.className = 'request'
       const text = document.createElement('p')
       text.textContent = `${request.label} wants to sign in on ${request.deviceName}.`
-      const button = document.createElement('button')
-      button.type = 'button'
-      button.className = 'primary'
-      button.textContent = `Approve ${request.label} with my fingerprint`
-      button.addEventListener('click', () => { void approve(request) })
-      row.append(text, button)
+      const approveButton = document.createElement('button')
+      approveButton.type = 'button'
+      approveButton.className = 'primary'
+      approveButton.textContent = `Approve ${request.label} with my fingerprint`
+      approveButton.addEventListener('click', () => { void answer(request, true) })
+      const denyButton = document.createElement('button')
+      denyButton.type = 'button'
+      denyButton.className = 'danger'
+      denyButton.textContent = 'Turn down'
+      denyButton.addEventListener('click', () => { void answer(request, false) })
+      row.append(text, approveButton, denyButton)
       return row
     }))
   } catch (err) {

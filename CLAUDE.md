@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1562
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1567
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -1271,9 +1271,11 @@ wraps the same React screens.
       - the wrong secret
       - the session made out for the manager instead
       - approving your own sign-in
-    - 18 mutations, all caught by name. Two first survived: nothing signed an
-      approval over a challenge the hub never gave, and nothing had a demoted
-      manager approve.
+    - 21 mutations, all caught by name, including three for turning a request
+      down. Two first survived: nothing signed an approval over a challenge the
+      hub never gave, and nothing had a demoted manager approve. Two more ran
+      against nothing (their anchors had moved when approving and denying became
+      one path) and were re-anchored and caught.
     - **Checked on the Android 37 emulator, 15 Sep 2026**, against the built
       hub, with Rana (manager, registered key) and Sam (barista, no phone) as
       pulled records.
@@ -1289,8 +1291,29 @@ wraps the same React screens.
         said "Rana approved Sam's sign-in on Google sdk_gphone16k_x86_64 (no
         fingerprint on that phone)" and "Signed in to the till with a
         manager's approval".
+  - **A manager can turn a request down** ("Turn down" beside Approve), with
+    the same proof as approving: a fingerprint signature over `denyMessage()`.
+    - `denyMessage()` has its own label, so an approval's signature is never a
+      refusal, and a refusal's never an approval.
+    - Approving and denying go through ONE checked path (`answerRequest()` in
+      `hubApprovals.ts`), so the two cannot drift apart. The same rules apply:
+      a manager or admin, never their own request, still waiting.
+    - Nobody else on the café wifi can refuse somebody's request.
+    - The asking phone is told "denied", and a turned-down request cannot then
+      be approved.
+    - Logged under the manager with both names.
+    - **Checked on the emulator, 15 Sep 2026.** The steps:
+      - Sam asked.
+      - Rana's list showed "Approve Sam with my fingerprint" and "Turn down",
+        and she turned it down with the emulator's fingerprint.
+      - The list emptied, and the asking app stopped waiting.
+      - The hub's log said "Rana turned down Sam's sign-in on Google
+        sdk_gphone16k_x86_64".
+
+      The asking app first said "That request is closed", the same words as
+      for a request already used. It now says a manager turned it down.
   - **Not built yet:**
-    - a manager denying a request (it simply runs out after 5 minutes)
+    - kitchen display mode in the staff app, and a real phone in a café
     - proving at registration that the key lives in secure hardware (Android
       key attestation)
 

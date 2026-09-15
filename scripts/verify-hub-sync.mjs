@@ -859,6 +859,22 @@ console.log('\na manager approves a sign-in for a phone with no fingerprint (S6,
   const second = await A.collectApproval({ id: asked.id, secret: asked.secret }, { db })
   eq('collecting again gets no second session', [second.status, 'token' in second], ['collected', false])
 
+  const denyWith = async (p, id, fp = fpHex) => {
+    const { nonce } = await KS.issueChallenge(p.keyId, { db })
+    return { id, keyId: p.keyId, nonce, signature: p.sign(SA.denyMessage(fp, id, p.keyId, nonce)) }
+  }
+  const toDeny = await A.askApproval({ uid: 'u-barista2', deviceName: 'Turned-down phone' }, { db })
+  await rejects('THE TRAP: an approval\'s signature does not turn a request down',
+    async () => A.denyRequest(await approveWith(boss, toDeny.id), hub), e => e.status === 401)
+  await rejects('THE TRAP: ...and a refusal\'s signature does not approve one',
+    async () => A.approveRequest(await denyWith(boss, toDeny.id), hub), e => e.status === 401)
+  await rejects('a barista cannot turn anybody down either', async () => A.denyRequest(await denyWith(colleague, toDeny.id), hub), e => e.status === 403)
+  const turnedDown = await A.denyRequest(await denyWith(boss, toDeny.id), hub)
+  eq('a manager turns a request down with their fingerprint, and the asking phone is told so',
+    [turnedDown.decision, turnedDown.approverLabel, turnedDown.requestedLabel, (await A.collectApproval({ id: toDeny.id, secret: toDeny.secret }, { db })).status],
+    ['denied', 'Rana', 'a barista', 'denied'])
+  await rejects('...and a request turned down cannot be approved afterwards', async () => A.approveRequest(await approveWith(boss, toDeny.id), hub), e => e.status === 409)
+
   const self = await A.askApproval({ uid: 'u-boss', deviceName: 'Spare phone' }, { db })
   await rejects('THE TRAP: nobody approves their own sign-in', async () => A.approveRequest(await approveWith(boss, self.id), hub), e => e.status === 403)
   const late = await A.askApproval({ uid: 'u-barista2', deviceName: 'Late phone' }, { db, now: Date.now() - 2 * SA.APPROVAL_MS })

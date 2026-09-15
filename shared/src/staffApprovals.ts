@@ -47,6 +47,14 @@ export function approveMessage(hubFingerprintHex: string, approvalId: string, ke
 }
 
 /**
+ * What a manager's phone signs to turn one request down. Its own label, so an
+ * approval's signature can never be taken as a refusal, nor the other way round.
+ */
+export function denyMessage(hubFingerprintHex: string, approvalId: string, keyId: string, nonce: string): string {
+  return `bigcms-hub-deny:v1\n${hubFingerprintHex}\n${approvalId}\n${keyId}\n${nonce}`
+}
+
+/**
  * Why this person may not approve this request, or null. A manager or admin,
  * approving somebody else: nobody approves their own sign-in.
  */

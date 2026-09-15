@@ -6,22 +6,34 @@
 // POST { action: 'ask', uid, deviceName }    → { id, secret, expiresAt }
 // POST { action: 'challenge', keyId }        → { nonce } for the manager's phone to sign
 // POST { action: 'approve', id, keyId, nonce, signature }
+// POST { action: 'deny', id, keyId, nonce, signature }
 // POST { action: 'collect', id, secret }     → { status, token? }
 //
-// Only on a hub; the cloud answers 404. No session in front of it: approving
+// Only on a hub; the cloud answers 404. No session in front of it: answering
 // is the manager's signature (hubApprovals.ts), and collecting is the asking
 // phone's secret. Reaching this at all means the café wifi and a paired app.
 
 import { toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import { hubDbPath } from '@big-cms/shared/server/firebaseAdmin'
 import { issueChallenge } from '@big-cms/shared/server/hubKeySignIn'
-import { approveRequest, askApproval, collectApproval, listPeople, listWaiting } from '@big-cms/shared/server/hubApprovals'
+import {
+  approveRequest, askApproval, collectApproval, denyRequest, listPeople, listWaiting, type Answered,
+} from '@big-cms/shared/server/hubApprovals'
 import { isRole } from '@big-cms/shared/roles'
 import { logActivity } from '@big-cms/shared/server/activityLog'
 
 export const runtime = 'nodejs'
 
 const noStore = { 'Cache-Control': 'no-store' }
+
+/** The manager who answered, for the activity log: logged under them, with both names (S16). */
+function approverOf(answered: Answered): Caller {
+  return {
+    uid: answered.approverUid, email: null,
+    role: isRole(answered.approverRole) ? answered.approverRole : null,
+    branchIds: [], superadmin: false, isStaff: true,
+  }
+}
 
 export async function GET(request: Request): Promise<Response> {
   try {
@@ -54,15 +66,15 @@ export async function POST(request: Request): Promise<Response> {
         return Response.json({ ok: true, ...(await issueChallenge(body.keyId)) }, { headers: noStore })
       case 'approve': {
         const approved = await approveRequest(body)
-        // Logged with both people (S16): who approved whom, on which phone.
-        const approver: Caller = {
-          uid: approved.approverUid, email: null,
-          role: isRole(approved.approverRole) ? approved.approverRole : null,
-          branchIds: [], superadmin: false, isStaff: true,
-        }
-        await logActivity(approver, 'update', 'POS',
+        await logActivity(approverOf(approved), 'update', 'POS',
           `${approved.approverLabel} approved ${approved.requestedLabel}'s sign-in on ${approved.deviceName} (no fingerprint on that phone)`)
         return Response.json({ ok: true, requested: approved.requestedLabel }, { headers: noStore })
+      }
+      case 'deny': {
+        const denied = await denyRequest(body)
+        await logActivity(approverOf(denied), 'update', 'POS',
+          `${denied.approverLabel} turned down ${denied.requestedLabel}'s sign-in on ${denied.deviceName}`)
+        return Response.json({ ok: true, requested: denied.requestedLabel }, { headers: noStore })
       }
       case 'collect': {
         const result = await collectApproval(body)
