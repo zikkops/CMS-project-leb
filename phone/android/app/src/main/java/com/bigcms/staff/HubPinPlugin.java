@@ -10,6 +10,7 @@ import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -125,9 +126,22 @@ public class HubPinPlugin extends Plugin {
             call.reject("This phone has no fingerprint (or face unlock Android counts as strong) set up, so it cannot sign in by itself. Add a fingerprint in the phone's settings, or ask a manager.");
             return;
         }
+        byte[] challenge;
+        try {
+            challenge = Base64.decode(call.getString("challenge", ""), Base64.URL_SAFE | Base64.NO_PADDING | Base64.NO_WRAP);
+        } catch (IllegalArgumentException e) {
+            challenge = new byte[0];
+        }
+        if (challenge.length != 32) {
+            call.reject("The cloud's registration challenge is missing. Start again.");
+            return;
+        }
         try {
             JSObject out = new JSObject();
-            out.put("publicKey", HubKeys.create());
+            out.put("publicKey", HubKeys.create(challenge));
+            JSArray chain = new JSArray();
+            for (String cert : HubKeys.chain()) chain.put(cert);
+            out.put("chain", chain);
             call.resolve(out);
         } catch (Exception e) {
             call.reject("The phone could not make a sign-in key: " + e.getMessage());

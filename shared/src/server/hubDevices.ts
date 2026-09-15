@@ -211,8 +211,11 @@ export async function buildPullSnapshot(device: HubDevice): Promise<PulledDoc[]>
       }
     } else if (spec.collection === STAFF_KEYS) {
       // Keys still in use, of people still staff: a leaver's phone signs nobody in.
+      // Only keys whose attestation was checked at registration (S20): a key
+      // stored without one signs nobody in, however it got there.
       const keys = await db.collection(STAFF_KEYS).where('revokedAt', '==', null).get()
       for (const doc of keys.docs) {
+        if (!doc.data()?.attestation) continue
         const record = staffKeyRecord(doc.data() ?? {})
         if (record && staffIds.has(record.uid)) docs.push({ collection: STAFF_KEYS, id: doc.id, data: { ...record } })
       }

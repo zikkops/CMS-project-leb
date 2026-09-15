@@ -36,7 +36,7 @@ try {
   execSync(
     'npx tsc shared/src/hubSync.ts shared/src/receiptBlocks.ts shared/src/server/hubDevices.ts shared/src/server/hubSync.ts ' +
     'shared/src/server/hubSession.ts shared/src/server/invoiceNumber.ts shared/src/server/hubLock.ts ' +
-    'shared/src/server/staffKeys.ts shared/src/server/hubKeySignIn.ts shared/src/server/hubApprovals.ts ' +
+    'shared/src/server/staffKeys.ts shared/src/server/keyAttestation.ts shared/src/server/hubKeySignIn.ts shared/src/server/hubApprovals.ts ' +
     `--outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -646,7 +646,9 @@ console.log('\nstaff phones register a key, and sign in at the hub with it (S12â
   const K = await import(url('server/staffKeys.js'))
   const KS = await import(url('server/hubKeySignIn.js'))
   const SK = await import(url('staffKeys.js'))
-  const { generateKeyPairSync, sign: signWith } = await import('node:crypto')
+  const KA = await import(url('keyAttestation.js'))
+  const KV = await import(url('server/keyAttestation.js'))
+  const { generateKeyPairSync, createHash, X509Certificate, sign: signWith } = await import('node:crypto')
   // A phone: a P-256 key pair, as Android's Keystore makes, and the signing it does after a fingerprint.
   const phone = () => {
     const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
@@ -654,12 +656,108 @@ console.log('\nstaff phones register a key, and sign in at the hub with it (S12â
     return {
       publicKey: der.toString('base64'),
       keyId: K.keyIdFor(der),
+      key: publicKey,
+      privateKey,
       sign: message => signWith('sha256', Buffer.from(message, 'utf8'), { key: privateKey, dsaEncoding: 'der' }).toString('base64'),
     }
   }
+
+  // â”€â”€ A stand-in for Google's attestation, built here byte by byte (S20) â”€â”€
+  // A made-up root and batch certificate sign each phone's key certificate,
+  // with the attestation extension as a real phone writes it. The cloud is told
+  // to trust this root instead of Google's, and nothing else changes.
+  const tlv = (tag, content) => {
+    const n = content.length
+    const len = n < 128 ? [n] : n < 256 ? [0x81, n] : n < 65536 ? [0x82, n >> 8, n & 255] : [0x83, n >> 16, (n >> 8) & 255, n & 255]
+    return Buffer.concat([Buffer.from([].concat(tag)), Buffer.from(len), content])
+  }
+  const seq = (...items) => tlv(0x30, Buffer.concat(items))
+  const set = (...items) => tlv(0x31, Buffer.concat(items))
+  const int = n => {
+    let hex = n.toString(16)
+    if (hex.length % 2) hex = `0${hex}`
+    let b = Buffer.from(hex, 'hex')
+    if (b[0] & 0x80) b = Buffer.concat([Buffer.from([0]), b])
+    return tlv(0x02, b)
+  }
+  const enumerated = n => { const b = int(n); b[0] = 0x0a; return b }
+  const octets = b => tlv(0x04, Buffer.from(b))
+  const bool = v => tlv(0x01, Buffer.from([v ? 0xff : 0]))
+  const oid = dotted => {
+    const p = dotted.split('.').map(Number)
+    const bytes = [40 * p[0] + p[1]]
+    for (const v of p.slice(2)) {
+      const s = [v & 0x7f]
+      for (let x = Math.floor(v / 128); x > 0; x = Math.floor(x / 128)) s.unshift((x & 0x7f) | 0x80)
+      bytes.push(...s)
+    }
+    return tlv(0x06, Buffer.from(bytes))
+  }
+  const tagged = (n, inner) => {
+    if (n < 31) return tlv(0xa0 | n, inner)
+    const s = [n & 0x7f]
+    for (let x = n >> 7; x > 0; x >>= 7) s.unshift((x & 0x7f) | 0x80)
+    return tlv([0xbf, ...s], inner)
+  }
+  const authorizations = f => seq(...[
+    f.purpose && tagged(1, set(...f.purpose.map(int))),
+    f.algorithm !== undefined && tagged(2, int(f.algorithm)),
+    f.keySize !== undefined && tagged(3, int(f.keySize)),
+    f.ecCurve !== undefined && tagged(10, int(f.ecCurve)),
+    f.noAuthRequired && tagged(503, Buffer.from([0x05, 0x00])),
+    f.userAuthType !== undefined && tagged(504, int(f.userAuthType)),
+    f.authTimeout !== undefined && tagged(505, int(f.authTimeout)),
+    f.origin !== undefined && tagged(702, int(f.origin)),
+    f.rootOfTrust && tagged(704, seq(octets(Buffer.alloc(32, 7)), bool(f.rootOfTrust.deviceLocked), enumerated(f.rootOfTrust.verifiedBootState), octets(Buffer.alloc(32, 9)))),
+    f.osPatchLevel !== undefined && tagged(706, int(f.osPatchLevel)),
+    f.packages && tagged(709, octets(seq(set(...f.packages.map(name => seq(octets(Buffer.from(name)), int(1)))), set(octets(Buffer.alloc(32, 1)))))),
+    ...(f.extra ?? []),
+  ].filter(Boolean))
+  // What a Pixel's secure area writes for the staff app's key.
+  const GOOD_HW = { purpose: [2], algorithm: 3, keySize: 256, ecCurve: 1, userAuthType: 2, origin: 0, rootOfTrust: { deviceLocked: true, verifiedBootState: 0 }, osPatchLevel: 202609 }
+  const GOOD_SW = { packages: [KA.STAFF_APP_PACKAGE] }
+  const keyDescription = ({ challenge, level = 1, keyLevel = level, hw = {}, sw = {} }) =>
+    seq(int(300), enumerated(level), int(300), enumerated(keyLevel), octets(challenge), octets(Buffer.alloc(0)),
+      authorizations({ ...GOOD_SW, ...sw }), authorizations({ ...GOOD_HW, ...hw }))
+  const ECDSA_SHA256 = seq(oid('1.2.840.10045.4.3.2'))
+  const nameOf = cn => seq(set(seq(oid('2.5.4.3'), tlv(0x0c, Buffer.from(cn)))))
+  const utcTime = d => tlv(0x17, Buffer.from(`${d.toISOString().replace(/[-:T]/g, '').slice(2, 14)}Z`))
+  const extensionOf = (id, value) => seq(oid(id), octets(value))
+  let nextSerial = 1000
+  const certificate = ({ subject, issuer, publicKey, signer, extensions = [], serial = nextSerial++ }) => {
+    const tbs = seq(tlv(0xa0, int(2)), int(serial), ECDSA_SHA256, nameOf(issuer),
+      seq(utcTime(new Date(Date.now() - 86_400_000)), utcTime(new Date(Date.now() + 365 * 86_400_000))), nameOf(subject),
+      publicKey.export({ type: 'spki', format: 'der' }), ...(extensions.length ? [tlv(0xa3, seq(...extensions))] : []))
+    return seq(tbs, ECDSA_SHA256, tlv(0x03, Buffer.concat([Buffer.from([0]), signWith('sha256', tbs, signer)])))
+  }
+  const authority = (cn = 'Test attestation root') => {
+    const root = generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
+    const batch = generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
+    const ca = [extensionOf('2.5.29.19', seq(bool(true)))]
+    const rootDer = certificate({ subject: cn, issuer: cn, publicKey: root.publicKey, signer: root.privateKey, extensions: ca })
+    return {
+      pem: `-----BEGIN CERTIFICATE-----\n${rootDer.toString('base64').match(/.{1,64}/g).join('\n')}\n-----END CERTIFICATE-----`,
+      rootDer,
+      batch,
+      batchDer: certificate({ subject: 'Test batch', issuer: cn, publicKey: batch.publicKey, signer: root.privateKey, extensions: ca, serial: 0x0abc }),
+    }
+  }
+  const CA = authority()
+  const keyCertificate = (p, description, { ca = CA, signer = ca.batch.privateKey, extensions } = {}) => certificate({
+    subject: 'Android Keystore Key', issuer: 'Test batch', publicKey: p.key, signer,
+    extensions: extensions ?? [extensionOf(KA.ATTESTATION_OID, keyDescription(description))],
+  })
+  /** The chain a phone sends: its key certificate, the batch certificate, the root. */
+  const attest = (p, challenge, { ca = CA, ...how } = {}) =>
+    [keyCertificate(p, { challenge: Buffer.from(challenge, 'base64url'), ...how }, { ca, ...how }), ca.batchDer, ca.rootDer].map(b => b.toString('base64'))
+  const compromisedSerials = new Set()
+  const attestOptions = { roots: [CA.pem], statusList: async () => compromisedSerials }
+
   const person = (uid, role = 'barista') => ({ uid, email: null, role, branchIds: [branch], superadmin: false, isStaff: true })
-  const enrol = (caller, p, extra = {}) =>
-    K.enrolStaffKey(caller, { publicKey: p.publicKey, proof: p.sign(SK.enrolMessage(caller.uid, p.keyId)), deviceName: 'Pixel 8', ...extra }, db)
+  const enrol = async (caller, p, extra = {}, how = {}) => {
+    const { challenge } = await K.startStaffKeyEnrolment(caller, db)
+    return K.enrolStaffKey(caller, { publicKey: p.publicKey, proof: p.sign(SK.enrolMessage(caller.uid, p.keyId)), chain: attest(p, challenge, how), deviceName: 'Pixel 8', ...extra }, db, attestOptions)
+  }
   const sara = person('u-phone')
   await db.doc('users/u-phone').set({ isStaff: true, role: 'barista', branchIds: [branch] })
   await db.doc('users/u-colleague').set({ isStaff: true, role: 'barista', branchIds: [branch] })
@@ -704,10 +802,176 @@ console.log('\nstaff phones register a key, and sign in at the hub with it (S12â
   eq('a removed key stays removed: registering it again is refused, not revived',
     (await db.doc(`staffKeys/${p2.keyId}`).get()).data().revokedAt !== null, true)
 
-  await db.doc(`staffKeys/${phone().keyId}`).set({ uid: 'u-leaver', publicKey: phone().publicKey, deviceName: 'Old phone', revokedAt: null })
+  eq('stored with what the attestation said: the key is in the secure area, at this patch level (S20)',
+    [stored.attestation?.securityLevel, stored.attestation?.osPatchLevel, first.securityLevel], ['tee', 202609, 'tee'])
+  eq('the app asks whether a key it holds is registered to this person: mine in use yes; removed, or somebody else\'s, no',
+    [await K.staffKeyRegistered(sara, p1.publicKey, db), await K.staffKeyRegistered(sara, p3.publicKey, db), await K.staffKeyRegistered(person('u-colleague'), p1.publicKey, db)],
+    [true, false, false])
+
+  console.log('\n  the phone\'s attestation, checked at registration (S20)')
+  {
+    const ana = person('u-attest')
+    const attempt = async (how = {}, p = phone(), change = body => body, options = attestOptions) => {
+      const { challenge } = await K.startStaffKeyEnrolment(ana, db)
+      const body = { publicKey: p.publicKey, proof: p.sign(SK.enrolMessage(ana.uid, p.keyId)), chain: attest(p, challenge, how), deviceName: 'Pixel 9' }
+      return K.enrolStaffKey(ana, change(body, challenge, p), db, options)
+    }
+    // Registering with a challenge already in hand, without asking for another.
+    const withChallenge = (challenge, p = phone()) => K.enrolStaffKey(ana,
+      { publicKey: p.publicKey, proof: p.sign(SK.enrolMessage(ana.uid, p.keyId)), chain: attest(p, challenge), deviceName: 'Pixel 9' }, db, attestOptions)
+    const refusedFor = words => e => e.status === 403 && words.test(e.message)
+    const brokenChain = e => e.status === 400 && /genuine statement/.test(e.message)
+
+    const strong = await attempt({ level: 2 })
+    eq('a key in StrongBox registers, and is recorded as StrongBox', strong.securityLevel, 'strongbox')
+
+    for (const [label, how, words] of [
+      ['THE TRAP: a key kept in software (S20a)', { level: 0 }, /in software/],
+      ['THE TRAP: a statement from secure hardware about a key that is itself in software', { keyLevel: 0 }, /in software/],
+      ['THE TRAP: a statement made in software, claiming the key is in secure hardware', { level: 0, keyLevel: 1 }, /in software/],
+      ['a security level Android does not have', { level: 3 }, /in software/],
+      ['a key imported into the phone, not made there', { hw: { origin: 2 } }, /not made inside/],
+      ['a key that is not P-256 ECDSA: RSA', { hw: { algorithm: 1 } }, /not the till/],
+      ['...another curve', { hw: { ecCurve: 2 } }, /not the till/],
+      ['...a key that cannot sign', { hw: { purpose: [3] } }, /not the till/],
+      ['THE TRAP: a key that needs no unlocking at all', { hw: { noAuthRequired: true } }, /not locked to a fingerprint/],
+      ['a key unlocked by the PIN only', { hw: { userAuthType: 1 } }, /not locked to a fingerprint/],
+      ['THE TRAP: a key unlocked by a fingerprint OR the PIN (S12)', { hw: { userAuthType: 3 } }, /PIN/],
+      ['...or by any authenticator at all', { hw: { userAuthType: 0xffffffff } }, /PIN/],
+      ['THE TRAP: the fingerprint lock claimed only in the software list, which the phone\'s system writes', { hw: { userAuthType: undefined }, sw: { userAuthType: 2 } }, /not locked to a fingerprint/],
+      ['a key that stays unlocked for five minutes after a fingerprint', { hw: { authTimeout: 300 } }, /stays unlocked/],
+      ['THE TRAP: an unlocked bootloader (S20b)', { hw: { rootOfTrust: { deviceLocked: false, verifiedBootState: 0 } } }, /unlocked or modified/],
+      ['...a system signed by somebody other than the maker', { hw: { rootOfTrust: { deviceLocked: true, verifiedBootState: 1 } } }, /unlocked or modified/],
+      ['...a system that failed verification', { hw: { rootOfTrust: { deviceLocked: true, verifiedBootState: 2 } } }, /unlocked or modified/],
+      ['...no root of trust in the hardware list', { hw: { rootOfTrust: undefined } }, /unlocked or modified/],
+      ['THE TRAP: a root of trust claimed only in the software list', { hw: { rootOfTrust: undefined }, sw: { rootOfTrust: { deviceLocked: true, verifiedBootState: 0 } } }, /unlocked or modified/],
+      ['THE TRAP: a key made by another app', { sw: { packages: ['com.example.lookalike'] } }, /not made by the BIG CMS staff app/],
+      ['...a key shared with another app', { sw: { packages: [KA.STAFF_APP_PACKAGE, 'com.example.other'] } }, /not made by the BIG CMS staff app/],
+      ['...a key that names no app', { sw: { packages: undefined } }, /not made by the BIG CMS staff app/],
+    ]) {
+      const p = phone()
+      await rejects(`refused: ${label}`, () => attempt(how, p), refusedFor(words))
+    }
+    const nothingStored = phone()
+    await attempt({ level: 0 }, nothingStored).catch(() => {})
+    eq('...and a refused phone leaves nothing behind', (await db.doc(`staffKeys/${nothingStored.keyId}`).get()).exists, false)
+
+    await rejects('THE TRAP: an authorization given twice, saying two things, is not read at all',
+      () => attempt({ hw: { extra: [tagged(504, int(3))] } }), brokenChain)
+    await rejects('no chain at all', () => attempt({}, phone(), b => ({ ...b, chain: undefined })), brokenChain)
+    await rejects('...one certificate, or nine', () => attempt({}, phone(), b => ({ ...b, chain: b.chain.slice(0, 1) })), brokenChain)
+    await rejects('...', () => attempt({}, phone(), b => ({ ...b, chain: Array(9).fill(b.chain[0]) })), brokenChain)
+    await rejects('...not base64', () => attempt({}, phone(), b => ({ ...b, chain: ['not base64!', ...b.chain.slice(1)] })), brokenChain)
+    await rejects('...base64 that is not a certificate', () => attempt({}, phone(), b => ({ ...b, chain: ['AAAA', ...b.chain.slice(1)] })), brokenChain)
+
+    const stranger = authority('Somebody else\'s root')
+    await rejects('THE TRAP: a chain to a root the cloud does not trust',
+      () => attempt({ ca: stranger }), e => e.status === 400 && /not one Google vouches for/.test(e.message))
+    await rejects('...and a chain that stops short of any root',
+      () => attempt({}, phone(), b => ({ ...b, chain: b.chain.slice(0, 2) })), e => e.status === 400 && /not one Google vouches for/.test(e.message))
+    const notTheBatch = generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
+    await rejects('THE TRAP: a key certificate the batch certificate did not sign', () => attempt({ signer: notTheBatch.privateKey }), brokenChain)
+    const other = phone()
+    await rejects('THE TRAP: a genuine chain for another key',
+      () => attempt({}, phone(), (b, challenge) => ({ ...b, chain: attest(other, challenge) })), brokenChain)
+    await rejects('a key certificate with no statement', () => attempt({ extensions: [] }), brokenChain)
+    await rejects('...or with it twice',
+      () => attempt({}, phone(), (b, challenge, p) => {
+        const ext = extensionOf(KA.ATTESTATION_OID, keyDescription({ challenge: Buffer.from(challenge, 'base64url') }))
+        return { ...b, chain: [keyCertificate(p, null, { extensions: [ext, ext] }), CA.batchDer, CA.rootDer].map(x => x.toString('base64')) }
+      }), brokenChain)
+
+    // A genuine phone's key can sign a certificate saying anything. The forgery
+    // is refused only because the real statement sits one step closer to the root.
+    await rejects('THE TRAP: a certificate signed by another genuine attested key, carrying a statement of its own',
+      async () => {
+        const attacker = phone()
+        const genuine = await K.startStaffKeyEnrolment(person('u-attacker'), db)
+        const attackerCert = keyCertificate(attacker, { challenge: Buffer.from(genuine.challenge, 'base64url') })
+        return attempt({}, phone(), (b, challenge, p) => ({
+          ...b,
+          chain: [
+            certificate({ subject: 'Android Keystore Key', issuer: 'Android Keystore Key', publicKey: p.key, signer: attacker.privateKey,
+              extensions: [extensionOf(KA.ATTESTATION_OID, keyDescription({ challenge: Buffer.from(challenge, 'base64url') }))] }),
+            attackerCert, CA.batchDer, CA.rootDer,
+          ].map(x => x.toString('base64')),
+        }))
+      }, brokenChain)
+
+    const stale = e => e.status === 400 && /not started just now/.test(e.message)
+    await rejects('THE TRAP: a challenge the cloud never gave', () => withChallenge(Buffer.alloc(32, 5).toString('base64url')), stale)
+    const colleagues = await K.startStaffKeyEnrolment(person('u-colleague'), db)
+    await rejects('THE TRAP: a challenge the cloud gave somebody else', () => withChallenge(colleagues.challenge), stale)
+    const late = await K.startStaffKeyEnrolment(ana, db, Date.now() - KA.ENROL_CHALLENGE_MS - 1000)
+    await rejects('a challenge used too late', () => withChallenge(late.challenge), stale)
+    let used = ''
+    await attempt({}, phone(), (b, challenge) => { used = challenge; return b })
+    await rejects('THE TRAP: a challenge used for one registration cannot register another phone',
+      () => withChallenge(used), stale)
+    let refusedWith = ''
+    await attempt({ level: 0 }, phone(), (b, challenge) => { refusedWith = challenge; return b }).catch(() => {})
+    await rejects('...and a refused attempt used its challenge up: the phone starts again',
+      () => withChallenge(refusedWith), stale)
+    const c1 = await K.startStaffKeyEnrolment(ana, db)
+    const c2 = await K.startStaffKeyEnrolment(ana, db)
+    await rejects('asking again replaces the last challenge', () => withChallenge(c1.challenge), stale)
+    eq('...and the new one works', (await withChallenge(c2.challenge)).already, false)
+    await rejects('a customer account is given no challenge', () => K.startStaffKeyEnrolment({ ...person('u-customer'), isStaff: false, role: null }, db), e => e.status === 403)
+
+    const compromised = e => e.status === 403 && /compromised/.test(e.message)
+    compromisedSerials.add('abc')
+    await rejects('THE TRAP: a chain whose batch certificate Google lists as compromised (S20c), serial written without its leading zero',
+      () => attempt(), compromised)
+    compromisedSerials.clear()
+    await rejects('...or whose key certificate is listed', () => attempt({}, phone(), (b, challenge, p) => {
+      const chain = attest(p, challenge)
+      compromisedSerials.add(KA.normalizeSerial(new X509Certificate(Buffer.from(chain[0], 'base64')).serialNumber))
+      return { ...b, chain }
+    }), compromised)
+    compromisedSerials.clear()
+    const unreachable = { ...attestOptions, statusList: KV.createStatusList(async () => { throw new TypeError('fetch failed') }) }
+    const waiting = phone()
+    await rejects('THE TRAP: Google\'s list cannot be fetched and there is no copy: registering waits (S20c)',
+      () => attempt({}, waiting, b => b, unreachable), e => e.status === 503 && /Try registering again/.test(e.message))
+    eq('...storing nothing', (await db.doc(`staffKeys/${waiting.keyId}`).get()).exists, false)
+
+    await rejects('THE TRAP: without a test root, the cloud trusts only Google\'s',
+      () => attempt({}, phone(), b => b, { statusList: attestOptions.statusList }), e => e.status === 400 && /not one Google vouches for/.test(e.message))
+    eq('...which are pinned by their public keys: Google\'s RSA root and its ECDSA root of February 2026',
+      KV.GOOGLE_ATTESTATION_ROOTS.map(pem => createHash('sha256').update(new X509Certificate(pem).publicKey.export({ type: 'spki', format: 'der' })).digest('hex')),
+      ['feb2ea7551ee316ed4bb443c8293b884dbfdea40b603ee3e4f4a897e4580fbae', '3ee44512a1af2beb39c889490c60ea3f82e43f5d5a5532f5ab9419f676cd07ec'])
+
+    // Google's list, fetched and kept for as long as it says.
+    let clock = 1_000_000
+    let fetches = 0
+    let reply = () => new Response(JSON.stringify({ entries: { '0ABC': { status: 'REVOKED' }, c35747a0: { status: 'SUSPENDED' } } }), { headers: { 'cache-control': 'public, max-age=7200' } })
+    const list = KV.createStatusList(async () => { fetches++; return reply() }, () => clock)
+    const firstList = await list()
+    eq('the list is read with its serials as they would be compared, suspended as well as revoked', [...firstList].sort(), ['abc', 'c35747a0'])
+    reply = () => { throw new TypeError('fetch failed') }
+    clock += 7100_000
+    eq('...kept, not fetched again, while its Cache-Control says it is fresh', [(await list()).size, fetches], [2, 1])
+    clock += 200_000
+    await rejects('THE TRAP: once out of date, a list that cannot be fetched again is not used', () => list(), e => e.status === 503)
+    for (const [label, bad] of [
+      ['an error answer', () => new Response('{}', { status: 500 })],
+      ['something that is not the list', () => new Response(JSON.stringify({ entries: [] }))],
+      ['an entry with no status', () => new Response(JSON.stringify({ entries: { abc: {} } }))],
+      ['a serial that is not hex', () => new Response(JSON.stringify({ entries: { 'not-hex': { status: 'REVOKED' } } }))],
+    ]) {
+      const fresh = KV.createStatusList(async () => bad(), () => 0)
+      await rejects(`...nor is ${label}`, () => fresh(), e => e.status === 503)
+    }
+    eq('a list is kept at least an hour and at most a day, whatever it says',
+      [KA.statusListSeconds('max-age=60'), KA.statusListSeconds('public, max-age=86400'), KA.statusListSeconds('max-age=999999'), KA.statusListSeconds(null)], [3600, 86400, 86400, 3600])
+  }
+
+  await db.doc(`staffKeys/${phone().keyId}`).set({ uid: 'u-leaver', publicKey: phone().publicKey, deviceName: 'Old phone', attestation: { securityLevel: 'tee' }, revokedAt: null })
+  const unchecked = phone()
+  await db.doc(`staffKeys/${unchecked.keyId}`).set({ uid: 'u-phone', publicKey: unchecked.publicKey, deviceName: 'Never checked', revokedAt: null })
   const snapshot = await D.buildPullSnapshot({ id: 'hub-keys', branch, name: 'Keys hub' })
   const pulledKeys = snapshot.filter(d => d.collection === 'staffKeys')
-  eq('THE TRAP: a hub pulls only keys in use, of people still staff: never a removed phone or a leaver\'s',
+  eq('THE TRAP: a hub pulls only keys in use, of people still staff, whose attestation was checked: never a removed phone, a leaver\'s, or a key stored without one',
     pulledKeys.map(d => d.id).sort(), [p1.keyId])
   eq('...and only the key, its owner and its name', Object.keys(pulledKeys[0]?.data ?? {}).sort(), ['deviceName', 'publicKey', 'uid'])
 

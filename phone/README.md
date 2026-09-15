@@ -31,6 +31,13 @@ second till.
   - **Register this phone:** needs the internet, once. Email and password go
     to Firebase, then the fingerprint signs the registration, and the cloud
     stores the public key.
+  - **The cloud checks the phone first (S20).** The app makes a new key with
+    the cloud's one-time challenge written into its attestation, and sends the
+    Keystore's certificate chain. The cloud registers it only if Google's chain
+    says the key is in secure hardware, on a phone with a locked bootloader and
+    a verified system, unlocked only by a strong fingerprint or face for each
+    use, made by this app, and not on Google's list of compromised keys. A
+    phone that fails uses "Ask a manager".
   - **Sign in with your fingerprint:** works with or without the internet. The
     hub's challenge is signed after the fingerprint, and the till opens signed
     in until 05:00.
@@ -90,7 +97,12 @@ it.
     context, marked as a hub, with its scripts running.
   - **A page from the hub has no Capacitor bridge**, so it could not reach
     `HubPin`.
+- **The emulator's own attestation (S20).** Its key's chain was read by the
+  cloud's code: the challenge and the app matched, and the lock was fingerprint
+  only for each use. It was refused twice over, as it should be: its key is in
+  software, and its root is Google's test root, not a real one. **So an
+  emulator cannot register**; test registering on a real phone.
 - **Not yet run:**
   - a real phone on the café wifi
   - scanning a QR with a real camera
-  - signing in through the app
+  - registering through the app, which needs a real phone and a real password

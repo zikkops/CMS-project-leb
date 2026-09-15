@@ -38,12 +38,29 @@ final class HubKeys {
         return cert == null ? null : Base64.encodeToString(cert.getPublicKey().getEncoded(), Base64.NO_WRAP);
     }
 
-    /** Makes the key, replacing any earlier one. Returns its public key. */
-    static String create() throws Exception {
+    /**
+     * The key's certificate chain as base64 DER, first certificate first. The
+     * first carries Android's attestation: where the key lives and what unlocks
+     * it, signed by the secure hardware and chained to Google (S20).
+     */
+    static String[] chain() throws Exception {
+        Certificate[] certs = store().getCertificateChain(ALIAS);
+        if (certs == null) return new String[0];
+        String[] out = new String[certs.length];
+        for (int i = 0; i < certs.length; i++) out[i] = Base64.encodeToString(certs[i].getEncoded(), Base64.NO_WRAP);
+        return out;
+    }
+
+    /**
+     * Makes the key, replacing any earlier one, with the cloud's registration
+     * challenge written into its attestation. Returns its public key.
+     */
+    static String create(byte[] attestationChallenge) throws Exception {
         delete();
         KeyGenParameterSpec.Builder spec = new KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_SIGN)
             .setAlgorithmParameterSpec(new ECGenParameterSpec("secp256r1"))
             .setDigests(KeyProperties.DIGEST_SHA256)
+            .setAttestationChallenge(attestationChallenge)
             .setUserAuthenticationRequired(true)
             .setInvalidatedByBiometricEnrollment(true);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

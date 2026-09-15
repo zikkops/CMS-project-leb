@@ -16,6 +16,8 @@ import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { isRole } from '../roles'
 import { MAX_KEYS_PER_STAFF, STAFF_KEYS, deviceName, enrolMessage, isKeyId } from '../staffKeys'
+import { ATTESTATION_REFUSALS, attestationProblem, securityLevelName } from '../keyAttestation'
+import { consumeEnrolChallenge, issueEnrolChallenge, readAttestedChain, refuseRevoked, type StatusList } from './keyAttestation'
 import { timestampMs } from '../timestamps'
 
 /** A key's id: the SHA-256 of its public key (SPKI DER), base64url. */
@@ -48,24 +50,74 @@ export function signatureValid(key: KeyObject, message: string, signature: unkno
   }
 }
 
+function requireStaffAccount(caller: Caller) {
+  if (!caller.isStaff || !isRole(caller.role)) throw new HttpError(403, 'Only staff accounts can register a phone for the till.')
+}
+
+/** Starts a registration: the challenge the phone builds into its new key's attestation (S20). */
+export async function startStaffKeyEnrolment(caller: Caller, db: Firestore = adminDb(), now = Date.now()) {
+  requireStaffAccount(caller)
+  return issueEnrolChallenge(caller.uid, db, now)
+}
+
+/** Whether this key is registered, in use, to the caller: a phone registered earlier need not make a new key. */
+export async function staffKeyRegistered(caller: Caller, rawPublicKey: unknown, db: Firestore = adminDb()): Promise<boolean> {
+  requireStaffAccount(caller)
+  const pub = readPublicKey(rawPublicKey)
+  if (!pub) throw new HttpError(400, 'That is not a phone sign-in key.')
+  const d = (await db.doc(`${STAFF_KEYS}/${pub.keyId}`).get()).data()
+  return Boolean(d && d.uid === caller.uid && !d.revokedAt)
+}
+
+export interface EnrolOptions {
+  /** The attestation roots; Google's unless a test names its own. */
+  roots?: readonly string[]
+  statusList?: StatusList
+  packageName?: string
+  now?: number
+}
+
 /**
  * Registers the signed-in staff member's phone.
  *
  * Sending the same key again is an answer, not an error: a registration whose
  * reply was lost is retried. A key already registered to somebody else is
  * refused, and so is a fourth phone.
+ *
+ * A new key must come with its attestation (S20): Google's chain, for a
+ * challenge this cloud gave this person, saying the key lives in secure
+ * hardware on an untampered phone, is unlocked only by a strong fingerprint or
+ * face, and was made by the staff app, with no certificate Google lists as
+ * compromised. The challenge is used up before the rest is judged, so a refused
+ * phone starts again.
  */
 export async function enrolStaffKey(
   caller: Caller,
   body: unknown,
   db: Firestore = adminDb(),
-): Promise<{ keyId: string; already: boolean }> {
-  if (!caller.isStaff || !isRole(caller.role)) throw new HttpError(403, 'Only staff accounts can register a phone for the till.')
+  options: EnrolOptions = {},
+): Promise<{ keyId: string; already: boolean; securityLevel?: 'tee' | 'strongbox' }> {
+  requireStaffAccount(caller)
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>
   const pub = readPublicKey(b.publicKey)
   if (!pub) throw new HttpError(400, 'That is not a phone sign-in key.')
+  const existing = (await db.doc(`${STAFF_KEYS}/${pub.keyId}`).get()).data()
+  if (existing) {
+    if (existing.uid === caller.uid && !existing.revokedAt) return { keyId: pub.keyId, already: true }
+    throw new HttpError(409, 'This phone key is already registered.')
+  }
   if (!signatureValid(pub.key, enrolMessage(caller.uid, pub.keyId), b.proof)) {
     throw new HttpError(400, 'The phone did not prove it holds this key.')
+  }
+  const chain = readAttestedChain(b.chain, pub.der, options.roots)
+  await consumeEnrolChallenge(caller.uid, chain.description.challenge, db, options.now)
+  const problem = attestationProblem(chain.description, options.packageName)
+  if (problem) throw new HttpError(403, ATTESTATION_REFUSALS[problem])
+  await refuseRevoked(chain, options.statusList)
+  const attestation = {
+    securityLevel: securityLevelName(chain.description.attestationSecurityLevel),
+    osPatchLevel: chain.description.hardwareEnforced.osPatchLevel ?? null,
+    verifiedAt: FieldValue.serverTimestamp(),
   }
   const name = deviceName(b.deviceName)
 
@@ -86,11 +138,12 @@ export async function enrolStaffKey(
       uid: caller.uid,
       publicKey: pub.der.toString('base64'),
       deviceName: name,
+      attestation,
       createdAt: FieldValue.serverTimestamp(),
       revokedAt: null,
       revokedBy: null,
     })
-    return { keyId: pub.keyId, already: false }
+    return { keyId: pub.keyId, already: false, securityLevel: attestation.securityLevel }
   })
 }
 

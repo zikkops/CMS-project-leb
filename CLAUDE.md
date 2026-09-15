@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1579
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1640
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -1346,10 +1346,63 @@ wraps the same React screens.
     - 12 mutations, all caught. "A screen request is read as a person" was
       caught by the run stopping, on an invalid users/ path, rather than by a
       named assertion.
+  - **A phone is checked when it registers** (owner's decisions S20, 15 Sep
+    2026), with Android key attestation: Google's signed statement about where
+    the key lives and what unlocks it. **A key not in secure hardware is
+    refused; so is an unlocked or rooted phone; and when Google's list of
+    compromised keys cannot be fetched, registering waits.** A refused phone
+    uses the manager's approval.
+    - **Flow:** the app asks `POST /api/staff-keys { action: 'challenge' }` for
+      a one-time 32-byte challenge (5 minutes, stored hashed in
+      `staffKeyChallenges`, server-only, no rule). It makes a NEW key with
+      that challenge in its attestation and sends the Keystore's certificate
+      chain with the key and proof. `{ action: 'check' }` first asks whether a
+      key the phone already holds is registered to this person, so a lost reply
+      does not cost a second key.
+    - **The chain** (`readAttestedChain()` in `server/keyAttestation.ts`):
+      each certificate signed by the next, the last one self-signed with a
+      Google root's public key, the first certifying the key being registered.
+      The roots are pinned by public key (Google's RSA root and its ECDSA root
+      of 1 Feb 2026), and `verify:hub-sync` pins their hashes.
+      **The extension must be in the first certificate and in no other**: a
+      genuine attested key can sign a certificate of its own saying anything,
+      and that forgery sits under a certificate carrying the real statement.
+    - **The rules** (`attestationProblem()` in `shared/src/keyAttestation.ts`,
+      pure, with its own DER reader) read the HARDWARE-enforced list only:
+      secure area or StrongBox for both the statement and the key, made on the
+      phone, P-256 for signing, a fingerprint required, never the PIN, for each
+      use, a locked bootloader with a verified system, and, from the software
+      list, exactly the staff app's package. A tag given twice is not read at
+      all. **The emulator writes everything into the software list**, which is
+      exactly what those rules refuse.
+    - **Google's list** (`createStatusList()`) is kept for its Cache-Control,
+      at least an hour and at most a day. Every entry refuses, suspended too;
+      serials are compared lowercase with no leading zeros. Out of date and
+      unfetchable is a 503. Validity dates are NOT checked: Google says
+      expired factory chains stay trustworthy unless listed, and the fresh
+      challenge already proves the chain was made just now.
+    - **The challenge is used up before the statement is judged**, so a refused
+      phone starts again. The key record keeps `attestation: { securityLevel,
+      osPatchLevel, verifiedAt }`, and **a hub pulls only keys that have one**.
+    - The signing certificate of the app is not checked yet: there is no release
+      signing key. Add its digest to the rules when there is.
+    - **Checked against the emulator's real chain, 15 Sep 2026**, captured
+      from the app's new `createKey({ challenge })`. The code read it: version
+      400, the challenge and `com.bigcms.staff` matched, fingerprint only
+      (`userAuthType` 2) with no timeout. It was refused as a key in software,
+      and, against Google's roots, as a root Google does not vouch for (the
+      emulator's is "Droid Unregistered Device CA, Google Test LLC"). **An
+      emulator cannot register any more.** No real phone has registered.
+    - `verify:hub-sync` builds a stand-in root, batch certificate and key
+      certificate byte by byte, with the extension as a phone writes it, and
+      runs every refusal: 61 more assertions. 37 mutations, all caught; three
+      only by the run stopping (the challenge read from the wrong field, a high
+      tag number misread, the list fetched every time). "A key in software is
+      taken" first survived: the only software case also put the key itself in
+      software, so the key's own level refused it. A statement made in software
+      claiming a hardware key is now its own test.
   - **Not built yet:**
     - a real phone or tablet in a café
-    - proving at registration that the key lives in secure hardware (Android
-      key attestation)
 
 ## The host's CDN caches prerendered pages for a year
 

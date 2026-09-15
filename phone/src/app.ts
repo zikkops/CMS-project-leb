@@ -30,7 +30,7 @@ interface HubPinPlugin {
   forget(): Promise<void>
   open(options?: { hash?: string }): Promise<void>
   keyStatus(): Promise<{ hasKey: boolean; publicKey?: string; strongBiometrics: boolean; model: string }>
-  createKey(): Promise<{ publicKey: string }>
+  createKey(options: { challenge: string }): Promise<{ publicKey: string; chain: string[] }>
   deleteKey(): Promise<void>
   sign(options: { message: string; title?: string; subtitle?: string }): Promise<{ signature: string }>
   hubRequest(options: { method: 'GET' | 'POST'; path: string; body?: Record<string, unknown> }): Promise<Reply>
@@ -168,17 +168,25 @@ $('registerForm').addEventListener('submit', async e => {
       throw new Error('That email and password did not match an account.')
     }
 
-    const publicKey = status.hasKey ? status.publicKey! : (await HubPin.createKey()).publicKey
-    const keyId = await keyIdOf(publicKey)
-    const { signature: proof } = await HubPin.sign({ message: enrolMessage(account.localId, keyId), title: 'Register this phone', subtitle: email })
+    const cloud = (body: Record<string, unknown>) =>
+      HubPin.webRequest({ method: 'POST', url: `${setup.cloudUrl}/api/staff-keys`, bearer: account.idToken, body })
 
-    const cloudReply = await HubPin.webRequest({
-      method: 'POST',
-      url: `${setup.cloudUrl}/api/staff-keys`,
-      bearer: account.idToken,
-      body: { publicKey, proof, deviceName: $<HTMLInputElement>('deviceName').value },
-    })
-    if (cloudReply.status !== 200) throw new Error(refusal(cloudReply, 'The cloud did not register this phone.'))
+    // A key this person registered earlier (a reply that was lost) is kept.
+    let publicKey = status.hasKey ? status.publicKey! : ''
+    const checked = publicKey ? await cloud({ action: 'check', publicKey }) : null
+    if (!checked || checked.status !== 200 || json(checked).registered !== true) {
+      // A new key, with the cloud's challenge in its attestation (S20).
+      const started = await cloud({ action: 'challenge' })
+      const challenge = json(started).challenge
+      if (started.status !== 200 || typeof challenge !== 'string') throw new Error(refusal(started, 'The cloud did not start registering this phone.'))
+      const made = await HubPin.createKey({ challenge })
+      publicKey = made.publicKey
+      const keyId = await keyIdOf(publicKey)
+      const { signature: proof } = await HubPin.sign({ message: enrolMessage(account.localId, keyId), title: 'Register this phone', subtitle: email })
+      const cloudReply = await cloud({ publicKey, proof, chain: made.chain, deviceName: $<HTMLInputElement>('deviceName').value })
+      if (cloudReply.status !== 200) throw new Error(refusal(cloudReply, 'The cloud did not register this phone.'))
+    }
+    const keyId = await keyIdOf(publicKey)
 
     localStorage.setItem(REGISTERED, JSON.stringify({ uid: account.localId, keyId, email }))
     await show()
