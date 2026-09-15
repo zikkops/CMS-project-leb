@@ -6,7 +6,7 @@ import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@big-cms/shared/firebase'
 import {
-  useRequireRole, createAccount, updateAccountAccess, revokeAccountAccess,
+  useRequireRole, createAccount, updateAccountAccess, revokeAccountAccess, loadStaffFirstNames,
   ROLE_LABELS, ROLE_COLORS, SECTION_ACCESS, SECTION_LABELS, type Role,
 } from '@big-cms/shared/adminAuth'
 import { BRANCHES, resolveBranchName } from '@big-cms/shared/branches'
@@ -19,13 +19,14 @@ interface Account {
   superadmin: boolean
   sectionGrants: string[]
   sectionRevocations: string[]
+  firstName: string
 }
 
 // Duplicated from ALL_ROLES rather than imported — the existing pattern here.
 // The list no longer contains 'dungeonmaster' — that role went with the D&D modules.
 const ROLES: Role[] = ['admin', 'manager', 'social', 'retail', 'kitchen_crew', 'barista']
 
-const EMPTY = { email: '', password: '', role: 'manager' as Role, branchIds: [] as string[], sectionGrants: [] as string[], sectionRevocations: [] as string[] }
+const EMPTY = { email: '', password: '', firstName: '', role: 'manager' as Role, branchIds: [] as string[], sectionGrants: [] as string[], sectionRevocations: [] as string[] }
 
 // Reads either the new `branchIds` array or the older singular `branchId`
 // from accounts created before multi-branch support existed.
@@ -58,11 +59,15 @@ export default function AdminUsersPage() {
   const [showPassword, setShowPassword] = useState(false)
 
   async function loadAccounts() {
-    const snap = await getDocs(query(collection(db, 'users'), where('isStaff', '==', true)))
+    // First names are server-only (S18); a failure to load them leaves the list as it was.
+    const [snap, names] = await Promise.all([
+      getDocs(query(collection(db, 'users'), where('isStaff', '==', true))),
+      loadStaffFirstNames().catch(() => ({} as Record<string, string>)),
+    ])
     setAccounts(snap.docs.map(d => {
       const data = d.data()
       return {
-        id: d.id, email: data.email, role: data.role,
+        id: d.id, email: data.email, firstName: names[d.id] ?? '', role: data.role,
         branchIds: normalizeBranchIds(data),
         superadmin: data.superadmin === true,
         sectionGrants: Array.isArray(data.sectionGrants) ? data.sectionGrants as string[] : [],
@@ -83,7 +88,7 @@ export default function AdminUsersPage() {
 
   function openEdit(account: Account) {
     setEditing(account)
-    setForm({ email: account.email, password: '', role: account.role, branchIds: account.branchIds, sectionGrants: account.sectionGrants, sectionRevocations: account.sectionRevocations })
+    setForm({ email: account.email, password: '', firstName: account.firstName, role: account.role, branchIds: account.branchIds, sectionGrants: account.sectionGrants, sectionRevocations: account.sectionRevocations })
     setError('')
     setOpen(true)
   }
@@ -114,10 +119,11 @@ export default function AdminUsersPage() {
             branchIds,
             sectionGrants: form.sectionGrants,
             sectionRevocations: form.sectionRevocations,
+            firstName: form.firstName,
           }
         )
       } else {
-        await createAccount(form.email.trim(), form.password, form.role, branchIds)
+        await createAccount(form.email.trim(), form.password, form.role, branchIds, form.firstName)
       }
       setOpen(false)
       setShowPassword(false)
@@ -257,7 +263,7 @@ export default function AdminUsersPage() {
                 gap: '0.6rem',
               }}>
                 <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)', wordBreak: 'break-word' }}>
-                  {account.email}
+                  {account.firstName ? `${account.firstName} · ` : ''}{account.email}
                   {account.id === user?.uid && (
                     <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)', marginLeft: '0.5rem' }}>(you)</span>
                   )}
@@ -350,7 +356,7 @@ export default function AdminUsersPage() {
                 {accounts.map(account => (
                   <tr key={account.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>
-                      {account.email}
+                      {account.firstName ? `${account.firstName} · ` : ''}{account.email}
                       {account.id === user?.uid && (
                         <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)', marginLeft: '0.5rem' }}>(you)</span>
                       )}
@@ -488,6 +494,16 @@ export default function AdminUsersPage() {
                     onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                     style={inputStyle} />
                 )}
+              </div>
+
+              <div>
+                <label style={labelStyle}>First name</label>
+                <input type="text" value={form.firstName} maxLength={40}
+                  onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))}
+                  style={inputStyle} />
+                <p style={{ fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', marginTop: '0.5rem', lineHeight: 1.5 }}>
+                  What a manager sees when this person asks to sign in at a café hub without their fingerprint. Only the first name goes to the hub.
+                </p>
               </div>
 
               {!editing && (

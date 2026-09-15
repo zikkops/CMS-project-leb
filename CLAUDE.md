@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1538
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1540
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -1212,8 +1212,29 @@ wraps the same React screens.
       cannot be added back; the owner registers the phone again.
     - `listStaffKeys()` is asserted in `verify:hub-sync`. **The page has not
       been looked at signed in.**
+  - **Staff first names** (owner's decisions S15 and S18, 15 Sep 2026), for the
+    manager fallback: a manager must see who is asking.
+    - **Before this, staff accounts had no name at all**: the Staff Accounts
+      form saved only email, role and branches. An admin now types a First
+      name there, for new and existing accounts.
+    - **Stored in `staffProfiles/{uid}`, server-only, with no Firestore rule, so
+      no rules deploy.** Only `/api/admin/accounts` writes it, and a change is
+      logged with before and after. **Never on `users/{uid}`**:
+      `touchesPrivilegeFields()` does not cover a name, so its owner could edit
+      it, and a manager approving by name must not be shown a name the person
+      chose for themselves.
+    - The page reads names through `GET /api/admin/accounts?names=1`
+      (`loadStaffFirstNames()`).
+    - **A hub pulls only the first name**, added to each staff record in
+      `buildPullSnapshot()`. No profile document travels, and no email or phone.
+    - `staffLabel()` names somebody with no first name by their role ("a
+      barista").
+    - `readFirstName()` makes one short line of it.
+    - Asserted in `verify:hub-sync`. The Staff Accounts page has not been looked
+      at signed in.
   - **Not built yet:**
-    - the manager fallback when a phone has no strong biometrics (S6)
+    - the manager fallback when a phone has no strong biometrics (S6, S16,
+      S17)
     - proving at registration that the key lives in secure hardware (Android
       key attestation)
 

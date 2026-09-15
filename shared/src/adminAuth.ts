@@ -361,9 +361,10 @@ export async function createAccount(
   password: string,
   role: Role,
   branchIds?: string[],
+  firstName?: string,
 ): Promise<string> {
   const res = await authedFetch('/api/admin/accounts', 'POST', {
-    email, password, role, branchIds: branchIds ?? [],
+    email, password, role, branchIds: branchIds ?? [], firstName: firstName ?? '',
   })
   const data = await unwrap(res)
   return data.uid as string
@@ -391,6 +392,8 @@ export async function updateAccountAccess(
     // after the role had already committed.
     sectionGrants: string[]
     sectionRevocations: string[]
+    /** Kept server-only (staffProfiles), shown to a manager asked to approve a sign-in. Undefined leaves it alone. */
+    firstName?: string
   },
 ): Promise<void> {
   const res = await authedFetch('/api/admin/accounts', 'PATCH', {
@@ -401,8 +404,15 @@ export async function updateAccountAccess(
     branchIds: after.branchIds,
     sectionGrants: after.sectionGrants,
     sectionRevocations: after.sectionRevocations,
+    ...(after.firstName !== undefined ? { firstName: after.firstName } : {}),
   })
   await unwrap(res)
+}
+
+/** Staff first names by account id, from the server-only profiles (S18). */
+export async function loadStaffFirstNames(): Promise<Record<string, string>> {
+  const data = await unwrap(await authedFetch('/api/admin/accounts?names=1', 'GET'))
+  return (data.names && typeof data.names === 'object' ? data.names : {}) as Record<string, string>
 }
 
 /**

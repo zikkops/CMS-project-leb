@@ -36,6 +36,8 @@ import { FieldValue } from 'firebase-admin/firestore'
 // works on the edge runtime. Route handlers default to Node, but state it
 // explicitly so a future `export const runtime = 'edge'` added for speed
 // doesn't break this file in a way that only shows up at request time.
+import { STAFF_PROFILES, readFirstName } from '@big-cms/shared/staffProfiles'
+
 export const runtime = 'nodejs'
 
 interface AccountInput {
@@ -176,6 +178,7 @@ export async function POST(request: Request): Promise<Response> {
     if (password.length < 6) throw new HttpError(400, 'Password must be at least 6 characters.')
 
     const input = parseAccountInput(body, { requireRole: true })
+    const firstName = readFirstName(body.firstName)
 
     let uid: string
     try {
@@ -202,6 +205,11 @@ export async function POST(request: Request): Promise<Response> {
 
       await syncClaims(uid)
 
+      // Server-only, never on users/{uid}, which its owner may edit (S18).
+      if (firstName) {
+        await adminDb().doc(`${STAFF_PROFILES}/${uid}`).set({ firstName, updatedAt: FieldValue.serverTimestamp(), updatedBy: actor.uid })
+      }
+
       await logActivity(actor, 'create', 'User Account', `${email} (${input.role})`)
     } catch (err) {
       await adminAuth().deleteUser(uid).catch(cleanupErr => {
@@ -213,6 +221,24 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     return Response.json({ uid })
+  } catch (err) {
+    return toResponse(err)
+  }
+}
+
+// ── GET /api/admin/accounts?names=1 — staff first names ─────────────────────
+// Kept in staffProfiles, which no browser can read (S18), so the Staff Accounts
+// page asks here. Admin only, as everything on that page is.
+export async function GET(request: Request): Promise<Response> {
+  try {
+    await requireRole(request, ['admin'])
+    const snap = await adminDb().collection(STAFF_PROFILES).get()
+    const names: Record<string, string> = {}
+    for (const doc of snap.docs) {
+      const name = readFirstName(doc.data()?.firstName)
+      if (name) names[doc.id] = name
+    }
+    return Response.json({ ok: true, names })
   } catch (err) {
     return toResponse(err)
   }
@@ -234,6 +260,9 @@ export async function PATCH(request: Request): Promise<Response> {
     if (!uid) throw new HttpError(400, 'Missing account id.')
 
     const input = parseAccountInput(body, { requireRole: false })
+    // Undefined leaves the stored name alone, as every other field here does.
+    const firstNameGiven = body.firstName !== undefined
+    const firstName = readFirstName(body.firstName)
 
     const ref = adminDb().doc(`users/${uid}`)
     const snap = await ref.get()
@@ -302,7 +331,21 @@ export async function PATCH(request: Request): Promise<Response> {
       ? existing.email
       : typeof body.email === 'string' ? body.email : uid
 
-    await logUpdate(actor, 'User Account', label, before, after)
+    // The first name lives outside users/{uid}, which its owner may edit: a
+    // staff member must not be able to rename themselves before a manager
+    // approves a sign-in by name (S18). Only this route writes it.
+    let nameBefore = ''
+    if (firstNameGiven) {
+      const profileRef = adminDb().doc(`${STAFF_PROFILES}/${uid}`)
+      nameBefore = readFirstName((await profileRef.get()).data()?.firstName)
+      if (nameBefore !== firstName) {
+        await profileRef.set({ firstName, updatedAt: FieldValue.serverTimestamp(), updatedBy: actor.uid })
+      }
+    }
+
+    await logUpdate(actor, 'User Account', label,
+      firstNameGiven ? { ...before, firstName: nameBefore } : before,
+      firstNameGiven ? { ...after, firstName } : after)
 
     return Response.json({ ok: true })
   } catch (err) {

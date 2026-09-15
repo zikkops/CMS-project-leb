@@ -28,6 +28,7 @@ import { RECEIPT_BLOCK_SIZE, RECEIPT_REFILL_AT, reserveBlock, type ReceiptBlock 
 import { invoicePeriod } from '../invoiceFormat'
 import { PUSH_BATCH, moveField, moveProblem, pushProblem, type PushedDoc, type StockMove } from '../hubPush'
 import { STAFF_KEYS, staffKeyRecord } from '../staffKeys'
+import { STAFF_PROFILES, readFirstName } from '../staffProfiles'
 
 const DEVICES = 'hubDevices'
 const CODES = 'hubPairingCodes'
@@ -193,10 +194,18 @@ export async function buildPullSnapshot(device: HubDevice): Promise<PulledDoc[]>
   for (const spec of pullSpec(device.branch)) {
     if (spec.collection === 'users') {
       const staff = await db.collection('users').where('isStaff', '==', true).get()
+      const profiles = staff.docs.length > 0
+        ? await db.getAll(...staff.docs.map(doc => db.doc(`${STAFF_PROFILES}/${doc.id}`)))
+        : []
+      const firstNames = new Map(profiles.map(p => [p.id, readFirstName(p.data()?.firstName)]))
       for (const doc of staff.docs) {
         const record = staffRecord(doc.data() ?? {})
         if (record) {
-          docs.push({ collection: 'users', id: doc.id, data: record })
+          // Their first name, from the server-only profile an admin keeps (S15,
+          // S18), and nothing else about them: a manager approving a sign-in
+          // needs to know who is asking.
+          const firstName = firstNames.get(doc.id)
+          docs.push({ collection: 'users', id: doc.id, data: firstName ? { ...record, firstName } : record })
           staffIds.add(doc.id)
         }
       }

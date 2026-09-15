@@ -255,6 +255,8 @@ console.log('\nwhat the cloud sends a hub')
   await put('products/p1', { name: 'Mug', price: 12, stock: { [branch]: 40 }, updatedAt: ts })
   await put('users/u-staff', { isStaff: true, role: 'manager', branchIds: [branch], email: 'staff-placeholder', phone: 'staff-number', points: 120 })
   await put('users/u-customer', { isStaff: false, email: 'customer-placeholder', points: 5 })
+  await put('staffProfiles/u-staff', { firstName: '  Sara \n', updatedBy: 'u-admin' })
+  await put('staffProfiles/u-customer', { firstName: 'Not staff' })
   await put('appSettings/features', { pos: { enabled: true } })
   await put('appSettings/business', { exchangeRate: 60000 })
   await put('appSettings/invoiceCounter', { year: 2026, nextNumber: 900 })
@@ -269,8 +271,9 @@ console.log('\nwhat the cloud sends a hub')
     'appSettings/business', 'appSettings/features', `branchTableLayouts/${branch}`, 'menuCategories/c1',
     'menuItems/m1', 'menuItems/m2', 'modifierGroups/g1', 'products/p1', 'users/u-staff',
   ])
-  eq('THE TRAP: a staff record arrives without email, phone or points',
-    Object.keys(snap.find(d => d.id === 'u-staff').data).sort(), ['branchIds', 'isStaff', 'role'])
+  eq('THE TRAP: a staff record arrives without email, phone or points: only its first name joins it (S15)',
+    Object.keys(snap.find(d => d.id === 'u-staff').data).sort(), ['branchIds', 'firstName', 'isStaff', 'role'])
+  eq('...the first name as an admin set it, tidied, and no profile of its own travels', [snap.find(d => d.id === 'u-staff').data.firstName, paths.some(p => p.startsWith('staffProfiles/'))], ['Sara', false])
   eq('THE TRAP: never the receipt counter, the error budget, a check, a customer, or another branch\'s tables',
     paths.filter(p => /invoiceCounter|errorBudget|checks\/|u-customer|hubDevices|hubPairingCodes/.test(p) || p.includes(otherBranch)), [])
   const enc = D.encodeSnapshot(snap)
@@ -775,6 +778,11 @@ console.log('\nstaff phones register a key, and sign in at the hub with it (S12â
     [SK.tokenFromHandoff(`#other=${encodeURIComponent(signedIn.token)}`), SK.tokenFromHandoff('#key-session=firebase-id-token-looking-thing'),
       SK.tokenFromHandoff('#key-session=hub.short'), SK.tokenFromHandoff('#key-session=%E0%A4%A'), SK.tokenFromHandoff(''), SK.tokenFromHandoff(null)],
     [null, null, null, null, null, null])
+
+  const SP = await import(url('staffProfiles.js'))
+  eq('a first name is one short line, and until an admin sets one a manager sees the role (S18)',
+    [SP.readFirstName('  Sara\n'), SP.readFirstName('x'.repeat(60)).length, SP.readFirstName(42), SP.staffLabel('', 'Barista'), SP.staffLabel(' Sara ', 'Barista')],
+    ['Sara', 40, '', 'a barista', 'Sara'])
 
   eq('a phone\'s name is short and one line, and never empty',
     [SK.deviceName('  Pixel\n8  '), SK.deviceName(''), SK.deviceName('x'.repeat(80)).length], ['Pixel 8', 'Phone', 60])
