@@ -1,4 +1,4 @@
-// The staff app's own screen — POS software, stage 5 (owner's decisions S11–S14).
+// The staff app's own screen — POS software, stage 5 (owner's decisions S6, S11–S17).
 //
 // 1. Pair this phone with the café's hub, by its QR (S11).
 // 2. Register the phone once, online: the staff member's normal email and
@@ -6,6 +6,9 @@
 //    records the phone's public key (S13).
 // 3. Sign in at the hub with a fingerprint, with or without the internet (S12),
 //    and open the till signed in until 05:00 (S14).
+// 4. With no fingerprint on the phone, ask a manager: choose your first name,
+//    and a manager approves from their own phone with their fingerprint (S6,
+//    S15–S17). The app collects the session once approved.
 //
 // The native HubPin plugin holds the pin and the key, and makes every request:
 // to the hub trusting only its certificate, to Firebase and the cloud as any
@@ -17,6 +20,7 @@ import { CapacitorBarcodeScanner, CapacitorBarcodeScannerTypeHint } from '@capac
 // same files, so the app and the hub cannot disagree about any of them.
 import { parseHubLink } from '../../shared/src/hubNetwork'
 import { enrolMessage, handoffHash, signInMessage } from '../../shared/src/staffKeys'
+import { approveMessage } from '../../shared/src/staffApprovals'
 
 interface Reply { status: number; body: string }
 
@@ -80,12 +84,15 @@ async function show() {
   $('unpaired').hidden = paired
   $('paired').hidden = !paired
   $('registerForm').hidden = true
+  $('askForm').hidden = true
   if (!paired) return
   $('address').textContent = hub.address ?? ''
   $('fingerprint').textContent = grouped(hub.fingerprint ?? '')
   const status = await HubPin.keyStatus()
   const reg = status.hasKey ? registered() : null
   $('signIn').hidden = !reg
+  // Approving needs the manager's own registered key; the hub checks they are a manager.
+  $('managerTools').hidden = !reg
   $('whoIsRegistered').textContent = reg ? `This phone signs in as ${reg.email}.` : 'This phone is not registered for fingerprint sign-in yet.'
   $('register').textContent = reg ? 'Register this phone again' : 'Register this phone'
   $<HTMLInputElement>('deviceName').value ||= status.model
@@ -210,6 +217,130 @@ $('signIn').addEventListener('click', async () => {
   }
 })
 
+// ── No fingerprint on this phone: ask a manager (S6, S15, S17) ────────────
+
+let waiting: ReturnType<typeof setTimeout> | undefined
+
+function stopWaiting(message: string | null, note = false) {
+  clearTimeout(waiting)
+  waiting = undefined
+  $('waitingForManager').hidden = true
+  say(message, note)
+}
+
+$('askManager').addEventListener('click', async () => {
+  say(null)
+  try {
+    const reply = await HubPin.hubRequest({ method: 'GET', path: '/api/hub/approvals?view=people' })
+    if (reply.status !== 200) throw new Error(refusal(reply, 'The hub did not answer.'))
+    const people = (json(reply).people ?? []) as { uid: string; label: string }[]
+    $<HTMLSelectElement>('person').replaceChildren(...people.map(p => new Option(p.label, p.uid)))
+    $('askForm').hidden = false
+  } catch (err) {
+    say(err instanceof Error ? err.message : 'The hub did not answer.')
+  }
+})
+
+$('askForm').addEventListener('submit', async e => {
+  e.preventDefault()
+  const select = $<HTMLSelectElement>('person')
+  const uid = select.value
+  const label = select.selectedOptions[0]?.textContent ?? ''
+  try {
+    const status = await HubPin.keyStatus()
+    const reply = await HubPin.hubRequest({ method: 'POST', path: '/api/hub/approvals', body: { action: 'ask', uid, deviceName: status.model } })
+    if (reply.status !== 200) throw new Error(refusal(reply, 'The hub did not take the request.'))
+    const { id, secret, expiresAt } = json(reply) as { id?: string; secret?: string; expiresAt?: number }
+    if (!id || !secret) throw new Error('The hub did not take the request.')
+    $('askForm').hidden = true
+    $('waitingText').textContent = `Waiting for a manager to approve ${label}. Show them this phone, or ask them to open "Approve a sign-in" in their app.`
+    $('waitingForManager').hidden = false
+    say(null)
+
+    const poll = async () => {
+      if (Date.now() > Number(expiresAt ?? 0) + 5_000) return stopWaiting('Nobody approved it in time. Ask again.')
+      try {
+        const answer = await HubPin.hubRequest({ method: 'POST', path: '/api/hub/approvals', body: { action: 'collect', id, secret } })
+        const data = json(answer) as { status?: string; token?: string }
+        if (answer.status === 200 && data.status === 'approved' && data.token) {
+          stopWaiting(null)
+          await HubPin.open({ hash: handoffHash(data.token) })
+          return
+        }
+        if (answer.status !== 200) return stopWaiting(refusal(answer, 'The request did not go through.'))
+        if (data.status === 'expired') return stopWaiting('Nobody approved it in time. Ask again.')
+        if (data.status === 'denied' || data.status === 'collected') return stopWaiting('That request is closed. Ask again.')
+      } catch {
+        // No answer this time: the wifi. Keep asking until the request runs out.
+      }
+      waiting = setTimeout(() => { void poll() }, 3_000)
+    }
+    waiting = setTimeout(() => { void poll() }, 3_000)
+  } catch (err) {
+    say(err instanceof Error ? err.message : 'The hub did not take the request.')
+  }
+})
+
+$('stopWaiting').addEventListener('click', () => stopWaiting(null))
+
+// ── Managers: approve somebody's sign-in with your own fingerprint (S16) ──
+
+async function approve(request: { id: string; label: string; deviceName: string }) {
+  const reg = registered()
+  const hub = await HubPin.get()
+  if (!reg || !hub.fingerprint) return
+  try {
+    const challengeReply = await HubPin.hubRequest({ method: 'POST', path: '/api/hub/approvals', body: { action: 'challenge', keyId: reg.keyId } })
+    if (challengeReply.status !== 200) throw new Error(refusal(challengeReply, 'The hub did not answer.'))
+    const { nonce } = json(challengeReply) as { nonce?: string }
+    if (!nonce) throw new Error('The hub did not answer.')
+
+    const { signature } = await HubPin.sign({
+      message: approveMessage(hub.fingerprint, request.id, reg.keyId, nonce),
+      title: `Approve ${request.label}`,
+      subtitle: `Signing in on ${request.deviceName}`,
+    })
+    const reply = await HubPin.hubRequest({ method: 'POST', path: '/api/hub/approvals', body: { action: 'approve', id: request.id, keyId: reg.keyId, nonce, signature } })
+    if (reply.status !== 200) throw new Error(refusal(reply, 'The hub did not take the approval.'))
+    say(`Approved ${request.label}. Their phone opens the till in a moment.`, true)
+    await loadRequests()
+  } catch (err) {
+    say(err instanceof Error ? err.message : 'The approval did not go through.')
+  }
+}
+
+async function loadRequests() {
+  const list = $('requestList')
+  try {
+    const reply = await HubPin.hubRequest({ method: 'GET', path: '/api/hub/approvals?view=waiting' })
+    if (reply.status !== 200) throw new Error(refusal(reply, 'The hub did not answer.'))
+    const requests = (json(reply).waiting ?? []) as { id: string; label: string; deviceName: string }[]
+    if (requests.length === 0) {
+      const empty = document.createElement('p')
+      empty.textContent = 'Nobody is waiting for approval.'
+      list.replaceChildren(empty)
+      return
+    }
+    list.replaceChildren(...requests.map(request => {
+      const row = document.createElement('div')
+      row.className = 'request'
+      const text = document.createElement('p')
+      text.textContent = `${request.label} wants to sign in on ${request.deviceName}.`
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.className = 'primary'
+      button.textContent = `Approve ${request.label} with my fingerprint`
+      button.addEventListener('click', () => { void approve(request) })
+      row.append(text, button)
+      return row
+    }))
+  } catch (err) {
+    say(err instanceof Error ? err.message : 'The hub did not answer.')
+  }
+}
+
+$('managerRequests').addEventListener('click', () => { say(null); void loadRequests() })
+
 $('open').addEventListener('click', async () => {
   say(null)
   try {
@@ -221,6 +352,7 @@ $('open').addEventListener('click', async () => {
 
 $('forget').addEventListener('click', async () => {
   if (!window.confirm('Forget this hub? To use the till again, this phone has to scan the counter PC\'s code again.')) return
+  stopWaiting(null)
   await HubPin.forget()
   await show()
 })

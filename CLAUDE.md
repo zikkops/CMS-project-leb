@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1540
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1562
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -1232,9 +1232,65 @@ wraps the same React screens.
     - `readFirstName()` makes one short line of it.
     - Asserted in `verify:hub-sync`. The Staff Accounts page has not been looked
       at signed in.
+  - **The manager fallback** (owner's decisions S6, S15–S17), for a phone with
+    no fingerprint or strong face unlock. The rules and the signed message are
+    `shared/src/staffApprovals.ts`; the hub's side is
+    `shared/src/server/hubApprovals.ts`, behind `/api/hub/approvals` (hub
+    only, with no session in front of it).
+    - **Asking.** The phone lists the staff the hub pulled, by first name
+      (`view=people`, first names only).
+      - The staff member chooses themselves and asks.
+      - The hub keeps the request for 5 minutes, one waiting per person, and
+        gives the phone a secret to collect with. It stores only the secret's
+        hash.
+    - **Approving (S16).** A manager opens "Approve a sign-in" in their own
+      staff app (`view=waiting`, first name and phone name) and approves with
+      their fingerprint.
+      - Their phone signs `approveMessage(hub fingerprint, request id, key id,
+        nonce)` over a challenge from the same `issueChallenge()` that sign-in
+        uses.
+      - `consumeChallenge()` and `verifiedKey()` are shared with
+        `signInWithKey()`, so the two cannot drift.
+      - The approver's PULLED staff record must say manager or admin, and
+        nobody approves their own sign-in (`approvalProblem()`).
+      - The approval is logged under the approver with both first names and the
+        phone.
+      - A manager's session left open on a counter approves nobody: approving
+        is a fresh fingerprint signature, not a session.
+    - **Collecting (S17).** The asking phone polls `collect` with its secret.
+      Once approved, the request is marked collected in the same transaction
+      and a session is made THEN, for the person approved, until 05:00. No
+      token ever sits waiting in the hub, and collecting twice gets nothing.
+      Somebody no longer staff by collection time gets no session.
+    - `verify:hub-sync` runs all of it with real P-256 keys:
+      - a barista approving
+      - an approval signed for another hub or another request
+      - a challenge the hub never gave
+      - a demoted manager
+      - approving twice or too late
+      - the wrong secret
+      - the session made out for the manager instead
+      - approving your own sign-in
+    - 18 mutations, all caught by name. Two first survived: nothing signed an
+      approval over a challenge the hub never gave, and nothing had a demoted
+      manager approve.
+    - **Checked on the Android 37 emulator, 15 Sep 2026**, against the built
+      hub, with Rana (manager, registered key) and Sam (barista, no phone) as
+      pulled records.
+      - Sam chose his name from "Rana, Sam" and asked. The waiting screen
+        showed.
+      - Rana's "Approve a sign-in" listed "Sam wants to sign in on Google
+        sdk_gphone16k_x86_64". She approved with the emulator's fingerprint.
+      - The asking app collected and opened `https://10.0.2.2:3443/pos` as Sam
+        (barista), 10 hours to 05:00, with the fragment gone.
+      - Both roles ran in one app on one emulator, since the rules care about
+        the accounts, not the devices.
+      - The hub's activity log, read straight from its database afterwards,
+        said "Rana approved Sam's sign-in on Google sdk_gphone16k_x86_64 (no
+        fingerprint on that phone)" and "Signed in to the till with a
+        manager's approval".
   - **Not built yet:**
-    - the manager fallback when a phone has no strong biometrics (S6, S16,
-      S17)
+    - a manager denying a request (it simply runs out after 5 minutes)
     - proving at registration that the key lives in secure hardware (Android
       key attestation)
 

@@ -8,6 +8,9 @@
 // records it pulled. The phone asks for a challenge, signs it after a
 // fingerprint or face (S12), and the hub checks the signature against the
 // pulled key before opening a session until 05:00 (S14).
+//
+// A manager approving somebody else's sign-in (hubApprovals.ts) uses the same
+// challenge and the same signature check, over a message naming the request.
 
 import { createHash, randomBytes } from 'node:crypto'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
@@ -18,14 +21,23 @@ import { keyIdFor, readPublicKey, signatureValid } from './staffKeys'
 import { isRole } from '../roles'
 import { normalizeFingerprint } from '../hubNetwork'
 import { timestampMs } from '../timestamps'
-import { CHALLENGE_MS, STAFF_KEYS, isKeyId, isNonce, signInMessage, staffKeyRecord } from '../staffKeys'
+import { CHALLENGE_MS, STAFF_KEYS, isKeyId, isNonce, signInMessage, staffKeyRecord, type StaffKeyRecord } from '../staffKeys'
 
 const CHALLENGES = 'hubChallenges'
 
 const hashOf = (value: string) => createHash('sha256').update(value).digest('hex')
 
 /** One answer for every way a key sign-in fails, so a guesser learns nothing about which part was wrong. */
-const refused = () => new HttpError(401, 'The phone could not be signed in. Try again.')
+export const refused = () => new HttpError(401, 'The phone could not be signed in. Try again.')
+
+/** This hub's own certificate fingerprint as hex, or a 503 when the hub has no café-wifi door. */
+export function hubFingerprintHex(raw: string | undefined = process.env.BIG_CMS_HUB_CERT_SHA256): string {
+  const fingerprint = normalizeFingerprint(raw)
+  if (!fingerprint) {
+    throw new HttpError(503, 'This hub is not set up for phones. On the counter PC, set "hubLan": true in the POS app\'s config.json.')
+  }
+  return fingerprint
+}
 
 /**
  * A one-time challenge for a registered phone.
@@ -54,12 +66,54 @@ export async function issueChallenge(
 }
 
 /**
+ * Uses up a challenge: true only when it existed, was given to this key, and
+ * had not run out. Used up either way, BEFORE any signature is checked, so a
+ * wrong signature costs the challenge and cannot be retried against it.
+ */
+export async function consumeChallenge(db: Firestore, keyId: string, nonce: string, now: number): Promise<boolean> {
+  const ref = db.doc(`${CHALLENGES}/${hashOf(nonce)}`)
+  const challenge = await db.runTransaction(async tx => {
+    const snap = await tx.get(ref)
+    if (!snap.exists) return null
+    tx.delete(ref)
+    return snap.data() ?? null
+  })
+  return Boolean(challenge && challenge.keyId === keyId && timestampMs(challenge.expiresAt, 0) > now)
+}
+
+/**
+ * The registered key that made this signature over this message, or null. The
+ * key must be the one its id names: a pulled record cannot swap in another key.
+ */
+export async function verifiedKey(db: Firestore, keyId: string, message: string, signature: unknown): Promise<StaffKeyRecord | null> {
+  const record = staffKeyRecord((await db.doc(`${STAFF_KEYS}/${keyId}`).get()).data() ?? {})
+  const pub = record ? readPublicKey(record.publicKey) : null
+  if (!record || !pub || keyIdFor(pub.der) !== keyId) return null
+  return signatureValid(pub.key, message, signature) ? record : null
+}
+
+/** The staff record the hub pulled, when it still says staff with a role; null otherwise. */
+export async function pulledStaff(db: Firestore, uid: string): Promise<Record<string, unknown> | null> {
+  const staff = (await db.doc(`users/${uid}`).get()).data()
+  return staff && staff.isStaff === true && isRole(staff.role) ? staff : null
+}
+
+/** A hub session for a pulled staff record, until 05:00 (S14, S17). */
+export function sessionForStaff(uid: string, staff: Record<string, unknown>, now: number): Promise<{ token: string; caller: HubCaller }> {
+  return startHubSession({
+    uid,
+    staff: true,
+    role: staff.role,
+    branchIds: Array.isArray(staff.branchIds) ? staff.branchIds : typeof staff.branchId === 'string' ? [staff.branchId] : [],
+    superadmin: staff.superadmin === true,
+  }, now)
+}
+
+/**
  * Signs a staff member in with their phone's signature over a challenge.
  *
- * The challenge is used up BEFORE the signature is checked, so a wrong
- * signature costs the challenge and cannot be retried against it. The message
- * names this hub's own certificate fingerprint, so a signature made for a
- * machine pretending to be the hub does not work here.
+ * The message names this hub's own certificate fingerprint, so a signature made
+ * for a machine pretending to be the hub does not work here.
  */
 export async function signInWithKey(
   body: unknown,
@@ -69,40 +123,18 @@ export async function signInWithKey(
     hubFingerprint = process.env.BIG_CMS_HUB_CERT_SHA256,
   }: { db?: Firestore; now?: number; hubFingerprint?: string } = {},
 ): Promise<{ token: string; caller: HubCaller }> {
-  const fingerprint = normalizeFingerprint(hubFingerprint)
-  if (!fingerprint) {
-    throw new HttpError(503, 'This hub is not set up for phones. On the counter PC, set "hubLan": true in the POS app\'s config.json.')
-  }
+  const fingerprint = hubFingerprintHex(hubFingerprint)
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>
   if (!isKeyId(b.keyId) || !isNonce(b.nonce)) throw new HttpError(400, 'Not a phone sign-in.')
   const keyId = b.keyId
   const nonce = b.nonce
 
-  const ref = db.doc(`${CHALLENGES}/${hashOf(nonce)}`)
-  const challenge = await db.runTransaction(async tx => {
-    const snap = await tx.get(ref)
-    if (!snap.exists) return null
-    tx.delete(ref)
-    return snap.data() ?? null
-  })
-  if (!challenge || challenge.keyId !== keyId || !(timestampMs(challenge.expiresAt, 0) > now)) throw refused()
-
-  const record = staffKeyRecord((await db.doc(`${STAFF_KEYS}/${keyId}`).get()).data() ?? {})
-  const pub = record ? readPublicKey(record.publicKey) : null
-  // The key is the one its id names: a pulled record cannot swap in another key.
-  if (!record || !pub || keyIdFor(pub.der) !== keyId) throw refused()
-  if (!signatureValid(pub.key, signInMessage(fingerprint, keyId, nonce), b.signature)) throw refused()
+  if (!(await consumeChallenge(db, keyId, nonce, now))) throw refused()
+  const record = await verifiedKey(db, keyId, signInMessage(fingerprint, keyId, nonce), b.signature)
+  if (!record) throw refused()
 
   // The staff record the hub pulled decides who they are now (stage 4).
-  const staff = (await db.doc(`users/${record.uid}`).get()).data()
-  if (!staff || staff.isStaff !== true || !isRole(staff.role)) {
-    throw new HttpError(403, 'This account cannot sign in to the till.')
-  }
-  return startHubSession({
-    uid: record.uid,
-    staff: true,
-    role: staff.role,
-    branchIds: Array.isArray(staff.branchIds) ? staff.branchIds : typeof staff.branchId === 'string' ? [staff.branchId] : [],
-    superadmin: staff.superadmin === true,
-  }, now)
+  const staff = await pulledStaff(db, record.uid)
+  if (!staff) throw new HttpError(403, 'This account cannot sign in to the till.')
+  return sessionForStaff(record.uid, staff, now)
 }

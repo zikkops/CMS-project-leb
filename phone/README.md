@@ -36,8 +36,13 @@ second till.
     in until 05:00.
   - **Requests:** the app's own requests are native (`HubHttp.java`). To the
     hub, only the pinned certificate is trusted.
-- **Not yet:** the manager fallback for a phone with no strong biometrics (S6),
-  a list of phones in admin, and the kitchen display mode.
+- **No fingerprint on this phone? Ask a manager** (S6, S15–S17). The staff
+  member chooses their first name and asks. A manager taps "Approve a
+  sign-in" in their own app and approves with their fingerprint. This phone
+  then opens the till as the person approved, until 05:00.
+- **Not yet:** a manager denying a request (it runs out after 5 minutes), and
+  the kitchen display mode. Registered phones are listed and removed in admin
+  under Settings → Staff Phones.
 
 ## Build it
 

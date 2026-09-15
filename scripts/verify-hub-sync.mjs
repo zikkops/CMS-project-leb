@@ -36,7 +36,7 @@ try {
   execSync(
     'npx tsc shared/src/hubSync.ts shared/src/receiptBlocks.ts shared/src/server/hubDevices.ts shared/src/server/hubSync.ts ' +
     'shared/src/server/hubSession.ts shared/src/server/invoiceNumber.ts shared/src/server/hubLock.ts ' +
-    'shared/src/server/staffKeys.ts shared/src/server/hubKeySignIn.ts ' +
+    'shared/src/server/staffKeys.ts shared/src/server/hubKeySignIn.ts shared/src/server/hubApprovals.ts ' +
     `--outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -786,6 +786,102 @@ console.log('\nstaff phones register a key, and sign in at the hub with it (S12�
 
   eq('a phone\'s name is short and one line, and never empty',
     [SK.deviceName('  Pixel\n8  '), SK.deviceName(''), SK.deviceName('x'.repeat(80)).length], ['Pixel 8', 'Phone', 60])
+}
+
+console.log('\na manager approves a sign-in for a phone with no fingerprint (S6, S15–S17)')
+{
+  const K = await import(url('server/staffKeys.js'))
+  const KS = await import(url('server/hubKeySignIn.js'))
+  const A = await import(url('server/hubApprovals.js'))
+  const SA = await import(url('staffApprovals.js'))
+  const { generateKeyPairSync, sign: signWith } = await import('node:crypto')
+  const phone = () => {
+    const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
+    const der = publicKey.export({ type: 'spki', format: 'der' })
+    return {
+      publicKey: der.toString('base64'),
+      keyId: K.keyIdFor(der),
+      sign: message => signWith('sha256', Buffer.from(message, 'utf8'), { key: privateKey, dsaEncoding: 'der' }).toString('base64'),
+    }
+  }
+  const FP = Array(32).fill('AB').join(':')
+  const fpHex = 'ab'.repeat(32)
+  const hub = { db, hubFingerprint: FP }
+  await db.doc('users/u-sam').set({ isStaff: true, role: 'barista', branchIds: [branch], firstName: 'Sam' })
+  await db.doc('users/u-boss').set({ isStaff: true, role: 'manager', branchIds: [branch], firstName: 'Rana' })
+  await db.doc('users/u-barista2').set({ isStaff: true, role: 'barista', branchIds: [branch] })
+  const boss = phone()
+  await db.doc(`staffKeys/${boss.keyId}`).set({ uid: 'u-boss', publicKey: boss.publicKey, deviceName: 'Manager phone', revokedAt: null })
+  const colleague = phone()
+  await db.doc(`staffKeys/${colleague.keyId}`).set({ uid: 'u-barista2', publicKey: colleague.publicKey, deviceName: 'Barista phone', revokedAt: null })
+  const approveWith = async (p, id, fp = fpHex) => {
+    const { nonce } = await KS.issueChallenge(p.keyId, { db })
+    return { id, keyId: p.keyId, nonce, signature: p.sign(SA.approveMessage(fp, id, p.keyId, nonce)) }
+  }
+
+  const people = await A.listPeople({ db })
+  eq('who can ask is the staff the hub pulled, by first name, or by role for someone with no name yet',
+    ['Sam', 'Rana', 'a barista'].every(label => people.some(p => p.label === label)), true)
+  eq('...and nothing else about them', Object.keys(people[0]).sort(), ['label', 'uid'])
+
+  const asked = await A.askApproval({ uid: 'u-sam', deviceName: 'Samsung A12' }, { db })
+  eq('a staff member asks; the hub keeps only a hash of the asking phone\'s secret',
+    [SA.isApprovalId(asked.id), SA.isApprovalSecret(asked.secret), (await db.doc(`hubApprovals/${asked.id}`).get()).data().secretHash !== asked.secret, asked.label],
+    [true, true, true, 'Sam'])
+  eq('a manager sees it waiting, by first name and phone',
+    (await A.listWaiting({ db })).filter(w => w.id === asked.id).map(w => [w.label, w.deviceName]), [['Sam', 'Samsung A12']])
+  eq('collecting before anyone approves only says it is waiting', (await A.collectApproval({ id: asked.id, secret: asked.secret }, { db })).status, 'waiting')
+  await rejects('THE TRAP: the wrong secret collects nothing', () => A.collectApproval({ id: asked.id, secret: 'x'.repeat(43) }, { db }), e => e.status === 401)
+  await rejects('THE TRAP: a barista cannot approve anybody', async () => A.approveRequest(await approveWith(colleague, asked.id), hub), e => e.status === 403)
+  await rejects('THE TRAP: an approval signed for another hub is refused', async () => A.approveRequest(await approveWith(boss, asked.id, 'cd'.repeat(32)), hub), e => e.status === 401)
+  const other = await A.askApproval({ uid: 'u-barista2', deviceName: 'Other phone' }, { db })
+  await rejects('THE TRAP: an approval signed for another request does not approve this one',
+    async () => A.approveRequest({ ...(await approveWith(boss, other.id)), id: asked.id }, hub), e => e.status === 401)
+
+  const madeUp = 'n'.repeat(43)
+  await rejects('THE TRAP: an approval signed over a challenge the hub never gave is refused',
+    () => A.approveRequest({ id: asked.id, keyId: boss.keyId, nonce: madeUp, signature: boss.sign(SA.approveMessage(fpHex, asked.id, boss.keyId, madeUp)) }, hub),
+    e => e.status === 401)
+  await db.doc('users/u-boss').update({ isStaff: false })
+  await rejects('THE TRAP: a manager no longer staff in the pulled record approves nobody, whatever their phone signs',
+    async () => A.approveRequest(await approveWith(boss, asked.id), hub), e => e.status === 403)
+  await db.doc('users/u-boss').update({ isStaff: true })
+
+  const approved = await A.approveRequest(await approveWith(boss, asked.id), hub)
+  eq('the manager approves with their own phone\'s signature, and both names are there for the log',
+    [approved.approverLabel, approved.requestedLabel, approved.deviceName, approved.approverRole], ['Rana', 'Sam', 'Samsung A12', 'manager'])
+  await rejects('...and the same request cannot be approved twice', async () => A.approveRequest(await approveWith(boss, asked.id), hub), e => e.status === 409)
+
+  const collected = await A.collectApproval({ id: asked.id, secret: asked.secret }, { db })
+  const session = await HS.callerFromHubToken(collected.token)
+  eq('THE TRAP: the asking phone collects a session for the person approved, never the manager, until 05:00',
+    [collected.status, session?.uid, session?.role, collected.caller.expiresAt - Date.now() >= 4 * 3600_000], ['approved', 'u-sam', 'barista', true])
+  const second = await A.collectApproval({ id: asked.id, secret: asked.secret }, { db })
+  eq('collecting again gets no second session', [second.status, 'token' in second], ['collected', false])
+
+  const self = await A.askApproval({ uid: 'u-boss', deviceName: 'Spare phone' }, { db })
+  await rejects('THE TRAP: nobody approves their own sign-in', async () => A.approveRequest(await approveWith(boss, self.id), hub), e => e.status === 403)
+  const late = await A.askApproval({ uid: 'u-barista2', deviceName: 'Late phone' }, { db, now: Date.now() - 2 * SA.APPROVAL_MS })
+  await rejects('a request approved too late is refused', async () => A.approveRequest(await approveWith(boss, late.id), hub), e => e.status === 409)
+  eq('...and the phone that asked is told it ran out', (await A.collectApproval({ id: late.id, secret: late.secret }, { db })).status, 'expired')
+  await rejects('only the staff the hub pulled may ask', () => A.askApproval({ uid: 'u-nobody', deviceName: 'x' }, { db }), e => e.status === 400)
+
+  await A.askApproval({ uid: 'u-sam', deviceName: 'First try' }, { db })
+  await A.askApproval({ uid: 'u-sam', deviceName: 'Second try' }, { db })
+  eq('asking again replaces the last request: one waiting per person',
+    (await A.listWaiting({ db })).filter(w => w.label === 'Sam').map(w => w.deviceName), ['Second try'])
+
+  const demoted = await A.askApproval({ uid: 'u-barista2', deviceName: 'Demoted phone' }, { db })
+  await A.approveRequest(await approveWith(boss, demoted.id), hub)
+  await db.doc('users/u-barista2').update({ isStaff: false })
+  await rejects('THE TRAP: somebody no longer staff by the time they collect gets no session',
+    () => A.collectApproval({ id: demoted.id, secret: demoted.secret }, { db }), e => e.status === 403)
+  await db.doc('users/u-barista2').update({ isStaff: true })
+
+  eq('the rule itself: a manager or an admin, approving somebody else',
+    [SA.approvalProblem({ uid: 'a', role: 'manager' }, 'b'), SA.approvalProblem({ uid: 'a', role: 'admin' }, 'b'),
+      SA.approvalProblem({ uid: 'a', role: 'barista' }, 'b') !== null, SA.approvalProblem({ uid: 'a', role: 'manager' }, 'a') !== null],
+    [null, null, true, true])
 }
 
 console.log('\nwhere phones find the hub on the café wifi, and what its QR says (S11)')
