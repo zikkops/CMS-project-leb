@@ -17,7 +17,8 @@ import { auth } from '@big-cms/shared/firebase'
 import { setAdminSessionCookie } from '@big-cms/shared/adminAuth'
 import { BRAND } from '@big-cms/shared/brand'
 import { backend } from '../../lib/backend'
-import { startHubSessionFromFirebase } from '../../lib/backend/hub'
+import { adoptHubSession, startHubSessionFromFirebase } from '../../lib/backend/hub'
+import { tokenFromHandoff } from '@big-cms/shared/staffKeys'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -77,6 +78,25 @@ export default function PosLoginPage() {
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+
+  // The staff app signed this phone in with its key and handed the session over
+  // in the address (stage 5). Take it, take it out of the address, and go on.
+  useEffect(() => {
+    if (backend().kind !== 'hub') return
+    const token = tokenFromHandoff(window.location.hash)
+    if (!token) return
+    window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    setBusy(true)
+    adoptHubSession(token)
+      .then(() => {
+        setAdminSessionCookie()
+        router.replace('/pos')
+      })
+      .catch(err => {
+        setError(err instanceof Error ? err.message : 'The phone sign-in did not work. Sign in again.')
+        setBusy(false)
+      })
+  }, [router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

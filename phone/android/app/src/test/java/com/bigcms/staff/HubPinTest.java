@@ -72,6 +72,16 @@ public class HubPinTest {
     }
 
     @Test
+    public void theAppsOwnRequestsTrustOnlyThePinnedCertificate() {
+        assertTrue(HubPin.certificateMatches(FP, CERT));
+        assertTrue(HubPin.certificateMatches(FP.toUpperCase(), CERT));
+        assertFalse(HubPin.certificateMatches(FP, "impostor".getBytes(StandardCharsets.US_ASCII)));
+        assertFalse(HubPin.certificateMatches("abcd", CERT));
+        assertFalse(HubPin.certificateMatches(null, CERT));
+        assertFalse(HubPin.certificateMatches(FP, new byte[0]));
+    }
+
+    @Test
     public void onlyThePairedHubsPagesLoadInTheApp() {
         assertTrue(HubPin.isHubPage(HUB, HUB + "/pos/kds"));
         assertFalse(HubPin.isHubPage(HUB, "https://pos.example.com/pos"));

@@ -72,8 +72,29 @@ export async function startHubSessionFromFirebase(idToken: string): Promise<HubS
   if (!res.ok || typeof data.token !== 'string') {
     throw new Error(typeof data.error === 'string' ? data.error : 'The hub did not sign you in.')
   }
+  return keepHubSession(data.token, data)
+}
+
+/**
+ * Takes a session the staff app signed in with the phone's key (stage 5) and
+ * handed to this page (tokenFromHandoff). The hub is asked who it is, so the
+ * page stores what the hub says, never what the address said.
+ */
+export async function adoptHubSession(token: string): Promise<HubSession> {
+  let res: Response
+  try {
+    res = await fetch('/api/hub/session', { headers: { Authorization: `Bearer ${token}` } })
+  } catch {
+    throw new NetworkError('No connection — could not reach the hub.')
+  }
+  const data = await res.json().catch(() => ({})) as Record<string, unknown>
+  if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'The phone sign-in has run out. Sign in again.')
+  return keepHubSession(token, data)
+}
+
+function keepHubSession(token: string, data: Record<string, unknown>): HubSession {
   const session: HubSession = {
-    token: data.token,
+    token,
     expiresAt: Number(data.expiresAt),
     uid: String(data.uid ?? ''),
     email: typeof data.email === 'string' ? data.email : null,

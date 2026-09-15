@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1534
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1536
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -1158,9 +1158,55 @@ wraps the same React screens.
       to the till page), the manager fallback (S6), and a list of phones in
       admin. Registering does not yet prove the key lives in secure hardware;
       Android key attestation would.
+  - **Phone sign-in, the phone's side** (`phone/`).
+    - **The key:** `HubKeys.java` makes a P-256 key in the Android Keystore
+      that only `BIOMETRIC_STRONG` unlocks, for each use, never the phone's
+      PIN (S12). Adding a fingerprint to the phone invalidates it, so
+      somebody who learns the PIN cannot enrol their own finger and sign in.
+      `HubPinPlugin.sign()` shows the prompt with the signature as its
+      CryptoObject.
+    - **Requests:** `HubHttp.java` makes the app's requests natively.
+      - To the hub, it trusts only the pinned certificate
+        (`HubPin.certificateMatches`), the same trust the WebView gives it.
+      - To Firebase and the cloud, it uses ordinary https.
+      - The page never fetches across origins.
+    - **Registering (S13):** the app asks the hub for its cloud and the public
+      Firebase API key (`GET /api/hub/phone-setup`, over the pinned
+      connection).
+      - The email and password go to Firebase's `signInWithPassword`, and the
+        password is never kept.
+      - The phone makes its key and signs `enrolMessage` after the fingerprint.
+      - The cloud's `POST /api/staff-keys` stores the key.
+    - **Signing in:**
+      - The app gets a challenge, signs `signInMessage` after the fingerprint,
+        and signs in.
+      - It then opens `/pos/login#key-session=<token>`.
+      - **The till page takes the session from the fragment** (`tokenFromHandoff`
+        in `shared/src/staffKeys.ts`, `adoptHubSession()`). It removes the token
+        from the address and asks `GET /api/hub/session` who it is, storing what
+        the hub says, never what the address said.
+    - **Checked on an Android 37 emulator, 15 Sep 2026**, with a fingerprint
+      enrolled by the emulator's own sensor. The hub was the built POS with
+      the key sign-in routes, paired with a fake cloud.
+      - **Setup:** the app made its Keystore key (`strongBiometrics` true). Its
+        public key and a test barista record were put into the hub's database
+        by a script, as a pull would.
+      - **Enrolled finger:** it signed in and landed on
+        `https://10.0.2.2:3443/pos` with a session for that barista, 10 hours
+        left to 05:00. The fragment was gone from the address. The till said
+        "Point of Sale is switched off" only because the fake cloud sends no
+        feature switches.
+      - **A finger never enrolled, then Cancel:** nothing unlocked, and the app
+        stayed on its own page saying so.
+      - Android hides the biometric prompt from screenshots, so the prompt
+        was not looked at.
+      - **Not run:** registering through the app, which needs a real
+        password typed into it, and a real phone on the café wifi.
   - **Not built yet:**
-    - the phone's side of phone sign-in, and the manager fallback (stage 5,
-      S4–S6)
+    - the manager fallback when a phone has no strong biometrics (S6), and a
+      list of phones in admin
+    - proving at registration that the key lives in secure hardware (Android
+      key attestation)
 
 ## The host's CDN caches prerendered pages for a year
 

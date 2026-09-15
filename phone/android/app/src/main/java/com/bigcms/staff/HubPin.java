@@ -94,6 +94,16 @@ public final class HubPin {
         }
     }
 
+    /** Whether a certificate is the pinned one: its SHA-256 against the fingerprint, in constant time. */
+    public static boolean certificateMatches(String pinnedFingerprint, byte[] certificateDer) {
+        String fingerprint = normalizeFingerprint(pinnedFingerprint);
+        if (fingerprint == null || certificateDer == null || certificateDer.length == 0) return false;
+        return MessageDigest.isEqual(
+            fingerprint.getBytes(StandardCharsets.US_ASCII),
+            sha256Hex(certificateDer).getBytes(StandardCharsets.US_ASCII)
+        );
+    }
+
     /**
      * Whether a certificate Android refused may be trusted after all: only at
      * the paired hub's exact origin, and only if it is the pinned certificate.

@@ -25,15 +25,19 @@ second till.
 - **Only the app's own page can pair.** Capacitor exposes plugins to the app's
   origin, not to the hub's pages, so a page served by a hub (or by something
   pretending to be one) cannot re-pin the phone.
-- **Not yet:** the phone's side of fingerprint or face sign-in (S12–S14):
-  - a Keystore key that only strong biometrics unlock
-  - registering it through `POST /api/staff-keys`
-  - answering the hub's challenge at `POST /api/hub/key-signin`
-  - handing the session to the till page
-
-  The servers' side of all four is built and tested (CLAUDE.md, "Phone
-  sign-in"). Also not yet: the manager fallback (S6) and the kitchen display
-  mode. Staff still sign in with the hub's ordinary sign-in page.
+- **Fingerprint or face sign-in (S12–S14).**
+  - **The key:** a P-256 key in the Android Keystore that only strong
+    biometrics unlock (`HubKeys.java`), never the phone's PIN.
+  - **Register this phone:** needs the internet, once. Email and password go
+    to Firebase, then the fingerprint signs the registration, and the cloud
+    stores the public key.
+  - **Sign in with your fingerprint:** works with or without the internet. The
+    hub's challenge is signed after the fingerprint, and the till opens signed
+    in until 05:00.
+  - **Requests:** the app's own requests are native (`HubHttp.java`). To the
+    hub, only the pinned certificate is trusted.
+- **Not yet:** the manager fallback for a phone with no strong biometrics (S6),
+  a list of phones in admin, and the kitchen display mode.
 
 ## Build it
 

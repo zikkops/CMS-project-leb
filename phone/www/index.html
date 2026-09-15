@@ -14,8 +14,12 @@
     button { width: 100%; min-height: 56px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.07); color: inherit; font-size: 1rem; margin-top: 0.7rem; }
     button.primary { background: #2a9d8f; border-color: #2a9d8f; color: #fff; font-weight: 600; }
     button.danger { border-color: rgba(230, 57, 70, 0.6); color: #e63946; background: transparent; }
-    textarea { width: 100%; box-sizing: border-box; min-height: 88px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.05); color: inherit; padding: 0.7rem; font: 0.85rem ui-monospace, Consolas, monospace; }
+    button:disabled { opacity: 0.5; border-style: dashed; }
+    textarea, input { width: 100%; box-sizing: border-box; border-radius: 10px; border: 2px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.05); color: inherit; padding: 0.7rem; font-size: 1rem; margin-top: 0.5rem; }
+    textarea { min-height: 88px; font: 0.85rem ui-monospace, Consolas, monospace; }
+    label { display: block; margin-top: 0.8rem; font-size: 0.85rem; color: rgba(244, 241, 234, 0.6); }
     .problem { color: #e63946; }
+    .note { color: #e9c46a; }
     .mono { font: 0.72rem ui-monospace, Consolas, monospace; word-break: break-all; color: rgba(244, 241, 234, 0.45); }
     [hidden] { display: none !important; }
   </style>
@@ -35,7 +39,22 @@
     <section id="paired" hidden>
       <p>This phone trusts one hub: <strong id="address"></strong>, and only its certificate.</p>
       <p class="mono" id="fingerprint"></p>
-      <button id="open" class="primary" type="button">Open the till</button>
+      <p id="whoIsRegistered"></p>
+      <button id="signIn" class="primary" type="button" hidden>Sign in with your fingerprint</button>
+
+      <form id="registerForm" hidden>
+        <p style="margin-top:1rem">Registering needs the internet, once. Your password goes to your café's sign-in and is never kept on the phone. Then confirm with your fingerprint.</p>
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" required>
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <label for="deviceName">This phone's name</label>
+        <input id="deviceName" type="text" maxlength="60">
+        <button id="registerSubmit" class="primary" type="submit">Register with my fingerprint</button>
+      </form>
+
+      <button id="register" type="button">Register this phone</button>
+      <button id="open" type="button">Open the till's sign-in page</button>
       <button id="forget" class="danger" type="button">Forget this hub</button>
     </section>
 

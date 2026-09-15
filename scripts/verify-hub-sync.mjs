@@ -762,6 +762,13 @@ console.log('\nstaff phones register a key, and sign in at the hub with it (S12â
   await rejects('a malformed request is refused before anything is looked up',
     () => KS.signInWithKey({ keyId: 'short', nonce: c7.nonce, signature: 'x' }, hub), e => e.status === 400)
 
+  const handed = SK.handoffHash(signedIn.token)
+  eq('the app hands the till page its session in the fragment, and the page reads it back', SK.tokenFromHandoff(handed), signedIn.token)
+  eq('THE TRAP: any other fragment is not a session: another name, not a hub token, too short, or none',
+    [SK.tokenFromHandoff(`#other=${encodeURIComponent(signedIn.token)}`), SK.tokenFromHandoff('#key-session=firebase-id-token-looking-thing'),
+      SK.tokenFromHandoff('#key-session=hub.short'), SK.tokenFromHandoff('#key-session=%E0%A4%A'), SK.tokenFromHandoff(''), SK.tokenFromHandoff(null)],
+    [null, null, null, null, null, null])
+
   eq('a phone\'s name is short and one line, and never empty',
     [SK.deviceName('  Pixel\n8  '), SK.deviceName(''), SK.deviceName('x'.repeat(80)).length], ['Pixel 8', 'Phone', 60])
 }
