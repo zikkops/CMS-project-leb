@@ -24,6 +24,10 @@ const DEFAULT_CONFIG = Object.freeze({
   // sets phones up: nothing listens on the network before somebody asks it to.
   hubLan: false,
   hubLanPort: 3443,
+  // New versions of this app (owner's decisions S26–S27, update.js): checked on
+  // our own site, installed only when nobody is using the PC.
+  autoUpdate: true,
+  updatesUrl: 'https://pos.cms-projectlb.com/api/desktop-updates/',
 })
 
 const MODES = new Set(['online', 'hub'])
@@ -51,6 +55,21 @@ function readPosUrl(raw) {
 function readCloudUrl(raw) {
   const url = readPosUrl(raw)
   return url ? new URL(url).origin : null
+}
+
+/**
+ * Where new versions are looked for: the same rule as the POS address, as a
+ * folder (a trailing slash, no query), so an installer's name can only be
+ * looked up inside it.
+ */
+function readUpdatesUrl(raw) {
+  const href = readPosUrl(raw)
+  if (!href) return null
+  const url = new URL(href)
+  url.search = ''
+  url.hash = ''
+  if (!url.pathname.endsWith('/')) url.pathname += '/'
+  return url.href
 }
 
 const readMode = raw => (typeof raw === 'string' && MODES.has(raw) ? raw : null)
@@ -89,6 +108,8 @@ function readConfig(raw, env) {
     cloudUrl: readCloudUrl(env?.BIG_CMS_CLOUD_URL) ?? readCloudUrl(src.cloudUrl) ?? DEFAULT_CONFIG.cloudUrl,
     hubLan: typeof src.hubLan === 'boolean' ? src.hubLan : DEFAULT_CONFIG.hubLan,
     hubLanPort: readLanPort(src.hubLanPort, readPort(src.hubPort) ?? DEFAULT_CONFIG.hubPort),
+    autoUpdate: typeof src.autoUpdate === 'boolean' ? src.autoUpdate : DEFAULT_CONFIG.autoUpdate,
+    updatesUrl: readUpdatesUrl(src.updatesUrl) ?? DEFAULT_CONFIG.updatesUrl,
   }
 }
 
@@ -199,6 +220,6 @@ function hubRestartDelay(attempt) {
 }
 
 module.exports = {
-  DEFAULT_CONFIG, readPosUrl, readCloudUrl, readConfig, isAllowedNavigation, isAllowedPermission,
+  DEFAULT_CONFIG, readPosUrl, readCloudUrl, readUpdatesUrl, readConfig, isAllowedNavigation, isAllowedPermission,
   hubAddress, hubServerEnv, classifyHubProbe, hubRestartDelay,
 }

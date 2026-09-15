@@ -32,7 +32,8 @@ const eq = (name, got, want) => {
 
 const POS = 'https://pos.cms-projectlb.com/pos'
 const CLOUD = 'https://pos.cms-projectlb.com'
-const DEFAULTS = { posUrl: POS, kiosk: true, startWithWindows: true, mode: 'online', hubPort: 3100, cloudUrl: CLOUD, hubLan: false, hubLanPort: 3443 }
+const UPDATES = 'https://pos.cms-projectlb.com/api/desktop-updates/'
+const DEFAULTS = { posUrl: POS, kiosk: true, startWithWindows: true, mode: 'online', hubPort: 3100, cloudUrl: CLOUD, hubLan: false, hubLanPort: 3443, autoUpdate: true, updatesUrl: UPDATES }
 
 console.log('\nthe address the till opens')
 {
@@ -191,6 +192,123 @@ try {
     trusting.error, 'DEPTH_ZERO_SELF_SIGNED_CERT')
   front.close()
   upstream.close()
+  try { rmSync(dir, { recursive: true, force: true }) } catch { /* the OS cleans temp */ }
+} catch (err) {
+  console.log(`  FAIL  the run stopped: ${String(err?.stack ?? err).split('\n').slice(0, 3).join(' | ')}`)
+  fail++
+}
+
+console.log('\nautomatic updates: signed, checked, and installed only when nobody is using the PC (S26–S27)')
+try {
+  const U = require('../desktop/update.js')
+  const { generateKeyPairSync, sign, createHash, randomBytes } = await import('node:crypto')
+  const { existsSync, readdirSync, readFileSync } = await import('node:fs')
+
+  eq('updates are looked for on our own site by default, and on by default', [P.readConfig(null, {}).updatesUrl, P.readConfig(null, {}).autoUpdate], [UPDATES, true])
+  eq('an updates address is a folder: a trailing slash, no query',
+    P.readUpdatesUrl('https://pos.other.cafe/api/desktop-updates?x=1#y'), 'https://pos.other.cafe/api/desktop-updates/')
+  eq('THE TRAP: an updates address on plain http across a network falls back',
+    P.readConfig('{"updatesUrl": "http://192.168.1.10/updates/"}', {}).updatesUrl, UPDATES)
+  eq('switching updates off needs a real false', [P.readConfig('{"autoUpdate": false}', {}).autoUpdate, P.readConfig('{"autoUpdate": "false"}', {}).autoUpdate], [false, true])
+
+  eq('versions compare as numbers: 0.1.10 is after 0.1.9',
+    [U.isNewer('0.1.10', '0.1.9'), U.isNewer('0.2.0', '0.1.99'), U.isNewer('1.0.0', '0.9.9'), U.isNewer('0.1.0', '0.1.0'), U.isNewer('0.1.0', '0.2.0'), U.isNewer('0.2', '0.1.0'), U.isNewer('0.2.0-beta', '0.1.0')],
+    [true, true, true, false, false, false, false])
+
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519')
+  const testKey = publicKey.export({ type: 'spki', format: 'der' }).toString('base64')
+  const other = generateKeyPairSync('ed25519')
+  const installer = randomBytes(1_200_000)
+  const release = (overrides = {}) => ({
+    app: 'big-cms-counter', version: '0.2.0', file: 'BIG-CMS-POS-Setup-0.2.0.exe', size: installer.length,
+    sha512: createHash('sha512').update(installer).digest('base64'), ...overrides,
+  })
+  const signed = (payloadObject, key = privateKey) => {
+    const payload = JSON.stringify(payloadObject)
+    return JSON.stringify({ payload, signature: sign(null, Buffer.from(payload), key).toString('base64') })
+  }
+  eq('a manifest signed by the release key offers its version',
+    U.readManifest(signed(release()), testKey), { version: '0.2.0', file: 'BIG-CMS-POS-Setup-0.2.0.exe', size: installer.length, sha512: release().sha512 })
+  const tampered = JSON.parse(signed(release()))
+  tampered.payload = tampered.payload.replace('0.2.0', '9.9.9')
+  eq('THE TRAP: a manifest changed after signing is ignored', U.readManifest(JSON.stringify(tampered), testKey), null)
+  eq('THE TRAP: a manifest signed by any other key is ignored', U.readManifest(signed(release(), other.privateKey), testKey), null)
+  eq('THE TRAP: the app trusts only the pinned release key, not whoever signed a manifest',
+    U.readManifest(signed(release())), null)
+  eq('the pinned key is an Ed25519 key, the one scripts/release-desktop.mjs made',
+    [U.UPDATE_PUBLIC_KEY, (await import('node:crypto')).createPublicKey({ key: Buffer.from(U.UPDATE_PUBLIC_KEY, 'base64'), format: 'der', type: 'spki' }).asymmetricKeyType],
+    ['MCowBQYDK2VwAyEAW7Y9goSdq6sIuj9RSzqdRWoi9KowFRVvzH99HdSqTU4=', 'ed25519'])
+  eq('THE TRAP: even signed, a manifest cannot name another file, a path, another app, or nonsense',
+    [U.readManifest(signed(release({ file: 'BIG-CMS-POS-Setup-0.1.9.exe' })), testKey), U.readManifest(signed(release({ file: '../../Windows/evil.exe' })), testKey),
+      U.readManifest(signed(release({ app: 'something-else' })), testKey), U.readManifest(signed(release({ size: 10 })), testKey),
+      U.readManifest(signed(release({ sha512: 'abc' })), testKey), U.readManifest('not json', testKey), U.readManifest(JSON.stringify({ payload: 'x' }), testKey)],
+    [null, null, null, null, null, null, null])
+  eq('an installer is looked up inside the updates folder only',
+    [U.installerUrl(UPDATES, 'BIG-CMS-POS-Setup-0.2.0.exe'), (() => { try { return U.installerUrl(UPDATES, 'https://evil.example/x.exe') } catch { return 'refused' } })()],
+    [`${UPDATES}BIG-CMS-POS-Setup-0.2.0.exe`, 'refused'])
+
+  const at = (h, m = 0) => new Date(2026, 8, 16, h, m)
+  const idle = 11 * 60
+  eq('it installs after 05:00, with the PC idle for ten minutes and nobody signed in',
+    U.shouldInstallNow({ now: at(6), idleSeconds: idle, liveSessions: 0 }), true)
+  eq('THE TRAP: never mid-service: not before 05:00, not from 10:00, not while somebody used the PC, not while somebody is signed in',
+    [U.shouldInstallNow({ now: at(4, 59), idleSeconds: idle, liveSessions: 0 }), U.shouldInstallNow({ now: at(10), idleSeconds: idle, liveSessions: 0 }),
+      U.shouldInstallNow({ now: at(6), idleSeconds: 9 * 60, liveSessions: 0 }), U.shouldInstallNow({ now: at(6), idleSeconds: idle, liveSessions: 1 })],
+    [false, false, false, false])
+  eq('...and not when a hub did not say who is signed in', U.shouldInstallNow({ now: at(6), idleSeconds: idle, liveSessions: null }), false)
+  eq('the installer runs silently and starts the app again', U.installerArgs(), ['/S', '--force-run'])
+
+  // A local updates folder, over http on this PC.
+  let served = { manifest: signed(release()), installer }
+  let downloads = 0
+  const folder = createServer((req, res) => {
+    if (req.url === '/updates/latest.json') return res.end(served.manifest)
+    if (req.url === '/updates/BIG-CMS-POS-Setup-0.2.0.exe') { downloads++; return res.end(served.installer) }
+    res.statusCode = 404
+    res.end()
+  })
+  await new Promise(r => folder.listen(0, '127.0.0.1', r))
+  const base = `http://127.0.0.1:${folder.address().port}/updates/`
+  const dir = mkdtempSync(join(tmpdir(), 'desktop-updates-verify-'))
+  const fetchUpdate = (current = '0.1.0') => U.fetchUpdate({ baseUrl: base, currentVersion: current, dir, publicKey: testKey })
+
+  const ready = await fetchUpdate()
+  eq('a newer signed version is downloaded, checked and kept', [ready.status, ready.version, existsSync(ready.file), readFileSync(ready.file).equals(installer)], ['ready', '0.2.0', true, true])
+  await fetchUpdate()
+  eq('...and not downloaded again while the kept one still matches', downloads, 1)
+  writeFileSync(ready.file, randomBytes(installer.length))
+  const again = await fetchUpdate()
+  eq('THE TRAP: a kept installer that no longer matches is downloaded again, never reused', [downloads, readFileSync(again.file).equals(installer)], [2, true])
+  eq('the same version is current: nothing to do', (await fetchUpdate('0.2.0')).status, 'current')
+  eq('...and so is an older one offered to a newer app: never a downgrade', (await fetchUpdate('0.3.0')).status, 'current')
+
+  eq('the checked installer waits to run', await U.pendingInstaller(dir, '0.1.0'), ready.file)
+  U.markAttempt(dir)
+  eq('...still after one start', await U.pendingInstaller(dir, '0.1.0'), ready.file)
+  U.markAttempt(dir)
+  eq('THE TRAP: an installer started twice without the version changing is not started in a loop', await U.pendingInstaller(dir, '0.1.0'), null)
+  eq('once installed, the waiting installer is cleared', [await U.pendingInstaller(dir, '0.2.0'), readdirSync(dir)], [null, []])
+
+  await fetchUpdate()
+  writeFileSync(ready.file, randomBytes(installer.length))
+  eq('THE TRAP: an installer changed on disk after it was checked does not run, and is cleared',
+    [await U.pendingInstaller(dir, '0.1.0'), readdirSync(dir)], [null, []])
+
+  served = { manifest: signed(release()), installer: randomBytes(installer.length) }
+  let refusal = ''
+  try { await fetchUpdate() } catch (err) { refusal = err.message }
+  eq('THE TRAP: an installer that does not match its signed manifest is not kept, and nothing half-downloaded is left',
+    [/does not match/.test(refusal), readdirSync(dir)], [true, []])
+  served = { manifest: signed(release()), installer: Buffer.concat([installer, randomBytes(10)]) }
+  refusal = ''
+  try { await fetchUpdate() } catch (err) { refusal = err.message }
+  eq('...nor one larger than its manifest says', [/larger/.test(refusal), readdirSync(dir)], [true, []])
+  served = { manifest: signed(release(), other.privateKey), installer }
+  refusal = ''
+  try { await fetchUpdate() } catch (err) { refusal = err.message }
+  eq('THE TRAP: a manifest the release key did not sign downloads nothing', [/not signed/.test(refusal), downloads], [true, 5])
+
+  folder.close()
   try { rmSync(dir, { recursive: true, force: true }) } catch { /* the OS cleans temp */ }
 } catch (err) {
   console.log(`  FAIL  the run stopped: ${String(err?.stack ?? err).split('\n').slice(0, 3).join(' | ')}`)

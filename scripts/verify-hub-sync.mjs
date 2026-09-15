@@ -1506,6 +1506,13 @@ console.log('\nthe counter PC signs in with the person\'s own phone, and signs o
   eq('an idle limit outside a minute to twelve hours is not an idle limit',
     [(await HS.startHubSession({ uid: 'u-counter', staff: true, role: 'barista', idleMs: 5 }, t0)).caller.idleMs,
       (await HS.startHubSession({ uid: 'u-counter', staff: true, role: 'barista', idleMs: '900000' }, t0)).caller.idleMs], [null, null])
+  // What the Windows app asks before installing an update (S27): nobody signed in.
+  const quiet = await HS.startHubSession({ uid: 'u-counter', staff: true, role: 'barista', idleMs: CS.COUNTER_IDLE_MS }, t0)
+  const withIt = [await HS.liveHubSessions(t0 + 60_000), await HS.liveHubSessions(t0 + 16 * 60_000)]
+  await HS.endHubSession(quiet.token)
+  const without = [await HS.liveHubSessions(t0 + 60_000), await HS.liveHubSessions(t0 + 16 * 60_000)]
+  eq('a live session counts as somebody signed in; signed out, or idle past its limit, it does not',
+    [withIt[0] - without[0], withIt[1] - without[1]], [1, 0])
   await HS.endHubSession(idleSession.token)
   eq('a signed-out session cannot be touched', await HS.touchHubSession(idleSession.token, t0 + 60_000), false)
 }

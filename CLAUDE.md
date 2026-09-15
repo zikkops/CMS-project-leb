@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1723
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1753
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -660,6 +660,50 @@ wraps the same React screens.
 - **A smoke run reports its first outcome only.** A failed load is followed by
   Chromium's error page finishing, and reporting both turned "could not load
   the POS" into exit 0.
+- **The counter app updates itself** (owner's decisions S26–S27, 15 Sep 2026):
+  new versions from our own site, installed only when nobody is using the PC.
+  The rules are `desktop/update.js` (no Electron, asserted by
+  `verify:desktop`); releasing one is
+  [docs/desktop-updates.md](./docs/desktop-updates.md).
+  - **Where from (S26):** `updatesUrl`, by default
+    `https://pos.cms-projectlb.com/api/desktop-updates/`. The POS route serves
+    `latest.json` and `BIG-CMS-POS-Setup-x.y.z.exe` from `DESKTOP_UPDATES_DIR`,
+    a folder on the server outside the app (rebuilt on every deploy), and
+    nothing else. Not GitHub: the repository is private, and a token in every
+    counter PC could be copied from any of them.
+  - **Trust:** https is not enough, because the installer runs on every till.
+    The manifest must be signed by the Ed25519 release key; the app pins its
+    public half (`UPDATE_PUBLIC_KEY`). The installer's name is bound to its
+    version, and it must match the manifest's size and SHA-512 when downloaded
+    and again before it runs. An oversized or mismatched download is removed,
+    never kept. **The private key is `%USERPROFILE%\.big-cms\desktop-update-key.pem`
+    on the machine that made it, outside the repo and never printed**;
+    `scripts/release-desktop.mjs --make-key` refuses to replace it, since a new
+    key means reinstalling every counter PC by hand.
+  - **When (S27):** checked two minutes after start and every six hours. A
+    checked download installs at the next start, or between 05:00 and 10:00 on
+    the PC's own clock with the PC idle ten minutes (`powerMonitor`) and, on a
+    hub, `GET /api/hub/quiet` answering 0 live sessions (`liveHubSessions()`,
+    localhost only). A hub that does not answer counts as busy. The installer
+    runs silently (`/S --force-run`) and starts the app again. One started
+    twice without the version changing is not started again, so a broken
+    installer cannot restart a till in a loop. Never a downgrade.
+  - Only the installed app updates itself, and `"autoUpdate": false` in
+    `config.json` switches it off. `update.js` is in the asar's `files`.
+  - **Not run end to end:** no installer has been built, signed, served and
+    installed over an installed app. The download, checks and waiting installer
+    run against a real local http server in `verify:desktop` (29 more
+    assertions; one more in `verify:hub-sync` for the live-session count).
+    23 mutations, all caught by name. "A kept installer is reused without
+    checking it" first survived: nothing changed the kept file on disk between
+    two checks.
+  - **Checked over HTTP, 15 Sep 2026**, on the built POS. In cloud mode with
+    `DESKTOP_UPDATES_DIR` set: `latest.json` 200 `no-store`, the installer 200
+    `immutable`, and another file in the folder, a `../` path and a version not
+    there all 404. On the test hub: `/api/hub/quiet` answered the counter PC
+    `{ live: 3 }` (sessions until 05:00 from earlier tests) and a wifi Host 403,
+    and the updates route 404s there. The unpackaged app's smoke run still
+    loaded the live POS with the updater wired in.
 - **Stage 2 is the backend seam, `pos/app/lib/backend/`.** Nothing in the till
   talks to Firestore or the routes directly any more.
   - A screen's live read is a `PosQuery`: the open checks at a branch, one

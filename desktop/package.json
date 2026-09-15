@@ -19,12 +19,13 @@
   "build": {
     "appId": "com.bigcms.pos",
     "productName": "BIG CMS POS",
-    "files": ["main.js", "policy.js", "hubLan.js", "offline.html", "package.json", "!**/node_modules/**"],
+    "files": ["main.js", "policy.js", "hubLan.js", "update.js", "offline.html", "package.json", "!**/node_modules/**"],
     "extraResources": [{ "from": "hub-bundle", "to": ".", "filter": ["hub/**/*"] }],
     "npmRebuild": false,
     "directories": { "output": "dist" },
     "win": { "target": "nsis" },
     "nsis": {
+      "artifactName": "BIG-CMS-POS-Setup-${version}.${ext}",
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,

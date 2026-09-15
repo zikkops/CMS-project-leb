@@ -75,8 +75,15 @@ Keys for a manager: **Ctrl+Shift+Alt+K** leaves or returns to full screen,
 `config.json` in the app's data folder (`%APPDATA%\BIG CMS POS\`), all optional:
 
 ```json
-{ "mode": "online", "posUrl": "https://pos.cms-projectlb.com/pos", "kiosk": true, "startWithWindows": true, "hubPort": 3100, "hubLan": false, "hubLanPort": 3443 }
+{ "mode": "online", "posUrl": "https://pos.cms-projectlb.com/pos", "kiosk": true, "startWithWindows": true, "hubPort": 3100, "hubLan": false, "hubLanPort": 3443, "autoUpdate": true, "updatesUrl": "https://pos.cms-projectlb.com/api/desktop-updates/" }
 ```
+
+- **`autoUpdate`** (on by default) lets the installed app update itself
+  (`update.js`, owner's decisions S26–S27). It checks `updatesUrl` every six
+  hours, accepts only a manifest signed by the release key and an installer
+  matching it, and installs only when nobody is using the PC: after 05:00 with
+  the PC idle ten minutes and nobody signed in, or at the next start. Releasing
+  one is [docs/desktop-updates.md](../docs/desktop-updates.md).
 
 - **`mode`** is `online` or `hub`.
 - **`hubLan`** opens the encrypted port for phones on the café wifi, on

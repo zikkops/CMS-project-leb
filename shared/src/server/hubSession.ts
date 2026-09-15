@@ -175,6 +175,20 @@ export async function touchHubSession(token: string, now = Date.now()): Promise<
   return true
 }
 
+/**
+ * How many sessions are live on this hub: not ended, not run out, not idle past
+ * their limit. The Windows app installs an update only when this is 0 (S27).
+ */
+export async function liveHubSessions(now = Date.now()): Promise<number> {
+  const snap = await adminDb().collection(SESSIONS).where('endedAt', '==', null).get()
+  return snap.docs.filter(doc => {
+    const d = doc.data() ?? {}
+    if (!(timestampMs(d.expiresAt, 0) > now)) return false
+    const idleMs = readIdle(d.idleMs)
+    return idleMs === null || !idleOver(timestampMs(d.lastActiveAt, 0), idleMs, now)
+  }).length
+}
+
 /** Signs a session out. False when there was nothing live to end. */
 export async function endHubSession(token: string): Promise<boolean> {
   if (!isHubToken(token)) return false

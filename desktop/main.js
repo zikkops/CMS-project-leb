@@ -22,7 +22,8 @@
 
 'use strict'
 
-const { app, BrowserWindow, Menu, powerSaveBlocker, session, shell, utilityProcess } = require('electron')
+const { app, BrowserWindow, Menu, powerMonitor, powerSaveBlocker, session, shell, utilityProcess } = require('electron')
+const { spawn } = require('node:child_process')
 const fs = require('node:fs')
 const http = require('node:http')
 const path = require('node:path')
@@ -31,6 +32,7 @@ const {
   hubAddress, hubServerEnv, classifyHubProbe, hubRestartDelay,
 } = require('./policy')
 const { loadOrCreateCertificate, startLanFront } = require('./hubLan')
+const updates = require('./update')
 
 const SMOKE = process.argv.includes('--smoke')
 
@@ -302,6 +304,72 @@ function startHub(config, { onReady, onStopped, onFailed }) {
   return { stop, logFile }
 }
 
+// ── Automatic updates (S26–S27) ────────────────────────────────────────────
+// What to trust and when to install is update.js; this only schedules it and
+// runs the installer.
+
+const updatesDir = () => path.join(app.getPath('userData'), 'updates')
+
+/** Runs a checked installer silently and leaves, stopping the hub first. It starts the app again. */
+function runInstaller(file) {
+  console.log(`[pos] installing the update ${path.basename(file)}`)
+  updates.markAttempt(updatesDir())
+  if (hub) hub.stop()
+  spawn(file, updates.installerArgs(), { detached: true, stdio: 'ignore', windowsHide: true }).unref()
+  app.exit(0)
+}
+
+/** How many hub sessions are live, from the hub itself, or null when it does not say. */
+function liveHubSessions(port) {
+  return new Promise(resolve => {
+    const req = http.get({ host: '127.0.0.1', port, path: '/api/hub/quiet', timeout: 3000 }, res => {
+      let body = ''
+      res.setEncoding('utf8')
+      res.on('data', chunk => { if (body.length < 1024) body += chunk })
+      res.on('end', () => {
+        try {
+          const live = JSON.parse(body).live
+          resolve(res.statusCode === 200 && Number.isInteger(live) ? live : null)
+        } catch {
+          resolve(null)
+        }
+      })
+    })
+    req.on('timeout', () => { req.destroy(); resolve(null) })
+    req.on('error', () => resolve(null))
+  })
+}
+
+/** Looks for new versions every six hours, and installs one only when nobody is using the PC. */
+function startUpdates(config) {
+  let ready = false
+  const check = async () => {
+    try {
+      const result = await updates.fetchUpdate({ baseUrl: config.updatesUrl, currentVersion: app.getVersion(), dir: updatesDir() })
+      if (result.status === 'ready') {
+        if (!ready) console.log(`[pos] version ${result.version} is downloaded and checked; it installs when nobody is using this PC`)
+        ready = true
+      }
+    } catch (err) {
+      console.error(`[pos] no update this time: ${err?.message ?? err}`)
+    }
+    setTimeout(check, updates.CHECK_EVERY_MS)
+  }
+  const look = async () => {
+    if (ready) {
+      const live = config.mode === 'hub' ? await liveHubSessions(config.hubPort) : 0
+      if (updates.shouldInstallNow({ now: new Date(), idleSeconds: powerMonitor.getSystemIdleTime(), liveSessions: live })) {
+        const file = await updates.pendingInstaller(updatesDir(), app.getVersion())
+        if (file) return runInstaller(file)
+        ready = false
+      }
+    }
+    setTimeout(look, updates.INSTALL_LOOK_MS)
+  }
+  setTimeout(check, updates.FIRST_CHECK_MS)
+  setTimeout(look, updates.INSTALL_LOOK_MS)
+}
+
 // One till per PC. A second launch brings the first to the front instead of
 // opening a second POS beside it — and, on a hub, a second server fighting the
 // first for the same database.
@@ -317,11 +385,22 @@ if (!app.requestSingleInstanceLock()) {
     mainWindow.focus()
   })
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     const { config: settings, file } = loadConfig()
     const onHub = settings.mode === 'hub'
     const config = onHub ? { ...settings, posUrl: hubAddress(settings.hubPort) } : settings
     console.log(`[pos] ${config.mode} mode, ${config.posUrl} (settings: ${file})`)
+
+    // A checked update downloaded earlier installs at start, before anybody can
+    // be using the till (S27). Only the installed app updates itself.
+    const updating = app.isPackaged && !SMOKE && config.autoUpdate
+    if (updating) {
+      const pending = await updates.pendingInstaller(updatesDir(), app.getVersion()).catch(() => null)
+      if (pending) {
+        runInstaller(pending)
+        return
+      }
+    }
 
     Menu.setApplicationMenu(null)
 
@@ -340,6 +419,7 @@ if (!app.requestSingleInstanceLock()) {
     }
 
     mainWindow = createWindow(config, { load: !onHub })
+    if (updating) startUpdates(config)
 
     if (onHub) {
       showOffline(mainWindow, config, 'Starting the café hub…')
