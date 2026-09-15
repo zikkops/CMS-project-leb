@@ -145,6 +145,11 @@ export async function printText(text: string, printer: StationPrinter): Promise<
     case 'cloudprnt':
       return no('CloudPRNT is not wired up yet — the printer collects from a queue that does not exist.')
 
+    // The café hub prints to these itself (S28, server/hubPrinting.ts). A
+    // screen printing too would put every ticket on the pass twice.
+    case 'network':
+      return no('This station prints from the counter PC (café hub), not from a screen.')
+
     case 'none':
     default:
       return no('No printer set up for this station.')

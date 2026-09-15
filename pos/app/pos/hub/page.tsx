@@ -68,6 +68,78 @@ function when(ms: number | null): string {
   })
 }
 
+interface PrintingStatus {
+  printers: { station: string; address: string; ready: boolean }[]
+  printedToday: number
+  waiting: number
+  failures: { kind: string; station: string; reason: string; at: number }[]
+}
+
+/**
+ * Network printers the counter PC prints to itself (S28): which are ready, what
+ * failed today, and a test page for whoever is setting one up. Shown only on
+ * the counter PC: the route refuses anywhere else.
+ */
+function HubPrinters() {
+  const [printing, setPrinting] = useState<PrintingStatus | null>(null)
+  const [note, setNote] = useState('')
+  const [testing, setTesting] = useState<string | null>(null)
+
+  async function load() {
+    try {
+      const res = await fetch('/api/hub/printing', { cache: 'no-store' })
+      if (res.ok) setPrinting(await res.json() as PrintingStatus)
+    } catch { /* this PC's own hub; the next look says more */ }
+  }
+
+  useEffect(() => {
+    void load()
+    const poll = setInterval(() => { void load() }, 15_000)
+    return () => clearInterval(poll)
+  }, [])
+
+  async function test(station: string) {
+    setTesting(station)
+    setNote('')
+    try {
+      const res = await fetch('/api/hub/printing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ station }) })
+      const data = await res.json().catch(() => ({})) as { printed?: boolean; reason?: string | null; error?: string }
+      setNote(res.ok && data.printed ? `A test page went to the ${station} printer.` : (data.reason ?? data.error ?? 'The test page did not print.'))
+    } catch {
+      setNote('The test page did not print.')
+    } finally {
+      setTesting(null)
+    }
+  }
+
+  if (!printing || printing.printers.length === 0) return null
+  return (
+    <div style={{ ...row, flexDirection: 'column', gap: '0.6rem' }}>
+      <span style={{ opacity: 0.55 }}>Printers on the café network · {printing.printedToday} printed today{printing.waiting > 0 ? ` · ${printing.waiting} waiting` : ''}</span>
+      {printing.printers.map(p => (
+        <div key={p.station} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.8rem' }}>
+          <span style={{ fontSize: '0.85rem' }}>
+            {p.station} <span style={{ opacity: 0.5, fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: '0.75rem' }}>{p.address || 'no address'}</span>
+            {!p.ready && <span style={{ color: 'var(--red)', fontSize: '0.75rem' }}> · switched off or no address</span>}
+          </span>
+          {p.ready && (
+            <button type="button" onClick={() => { void test(p.station) }} disabled={testing !== null}
+              style={{ minHeight: '44px', padding: '0 1rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.25)', background: 'transparent', color: 'var(--offwhite)', cursor: testing ? 'default' : 'pointer' }}>
+              {testing === p.station ? 'Printing…' : 'Test page'}
+            </button>
+          )}
+        </div>
+      ))}
+      {note && <span style={{ fontSize: '0.8rem', opacity: 0.8, lineHeight: 1.6 }}>{note}</span>}
+      {printing.failures.map((f, i) => (
+        <span key={i} style={{ color: 'var(--red)', fontSize: '0.78rem', lineHeight: 1.6 }}>
+          {f.station} {f.kind} did not print ({when(f.at)}): {f.reason}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 export default function HubPage() {
   const isMobile = useIsMobile()
   const [status, setStatus] = useState<HubStatus | null>(null)
@@ -223,6 +295,7 @@ export default function HubPage() {
                 <span style={{ fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: '0.68rem', opacity: 0.45, wordBreak: 'break-all' }}>{status.lan.fingerprint}</span>
               </div>
             )}
+            <HubPrinters />
             {status.pushError && <p style={problem}>{status.pushError}</p>}
             {status.lastError && <p style={problem}>{status.lastError}</p>}
             {status.receiptError && <p style={problem}>{status.receiptError}</p>}

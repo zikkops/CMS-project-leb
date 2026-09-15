@@ -37,7 +37,7 @@ try {
     'npx tsc shared/src/hubSync.ts shared/src/receiptBlocks.ts shared/src/server/hubDevices.ts shared/src/server/hubSync.ts ' +
     'shared/src/server/hubSession.ts shared/src/server/invoiceNumber.ts shared/src/server/hubLock.ts ' +
     'shared/src/server/staffKeys.ts shared/src/server/keyAttestation.ts shared/src/server/hubKeySignIn.ts shared/src/server/hubApprovals.ts ' +
-    'shared/src/server/hubCounterSignIn.ts ' +
+    'shared/src/server/hubCounterSignIn.ts shared/src/server/hubPrinting.ts ' +
     `--outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -1515,6 +1515,98 @@ console.log('\nthe counter PC signs in with the person\'s own phone, and signs o
     [withIt[0] - without[0], withIt[1] - without[1]], [1, 0])
   await HS.endHubSession(idleSession.token)
   eq('a signed-out session cannot be touched', await HS.touchHubSession(idleSession.token, t0 + 60_000), false)
+}
+
+console.log('\nthe café hub prints to network printers itself (S28)')
+try {
+  const HP = await import(url('hubPrinting.js'))
+  const SPR = await import(url('server/hubPrinting.js'))
+  const PR = await import(url('printing.js'))
+  const now = Date.now()
+  const ts = ms => Timestamp.fromMillis(ms)
+  const net = { enabled: true, transport: 'network', width: 32, address: '192.168.1.50', copies: 1 }
+  const settingsDoc = { branches: { [branch]: { Kitchen: net, Bar: { ...net, transport: 'browser' } } }, receiptOnClose: true, receiptStation: 'Kitchen' }
+  const settings = PR.parsePrintingSettings(settingsDoc)
+
+  // ── The rules ──
+  const ticket = (over = {}) => ({ id: 't1', data: { branch, station: 'Kitchen', status: 'new', sentAt: ts(now - 1000), ...over } })
+  eq('a ticket just sent, for a station the hub prints for, is a print job', HP.ticketJob(ticket(), settings, branch, now), { id: 'ticket_t1', kind: 'ticket', refId: 't1', station: 'Kitchen' })
+  eq('THE TRAP: never the evening\'s backlog, another branch, a ticket already started, a station a screen prints for, or one not yet stamped',
+    [HP.ticketJob(ticket({ sentAt: ts(now - HP.PRINT_WINDOW_MS - 1000) }), settings, branch, now), HP.ticketJob(ticket({ branch: otherBranch }), settings, branch, now),
+      HP.ticketJob(ticket({ status: 'preparing' }), settings, branch, now), HP.ticketJob(ticket({ station: 'Bar' }), settings, branch, now), HP.ticketJob(ticket({ sentAt: null }), settings, branch, now)],
+    [null, null, null, null, null])
+  const check = (over = {}) => ({ id: 'c1', data: { branch, status: 'closed', receiptNumber: 'R-0001', closedAt: ts(now - 1000), ...over } })
+  eq('a check just closed with its receipt number is a receipt job at the receipt station', HP.receiptJob(check(), settings, branch, now), { id: 'receipt_c1', kind: 'receipt', refId: 'c1', station: 'Kitchen' })
+  eq('...but not with receipts on close off, before its receipt number, still open, or closed long ago',
+    [HP.receiptJob(check(), PR.parsePrintingSettings({ ...settingsDoc, receiptOnClose: false }), branch, now), HP.receiptJob(check({ receiptNumber: null }), settings, branch, now),
+      HP.receiptJob(check({ status: 'open' }), settings, branch, now), HP.receiptJob(check({ closedAt: ts(now - 3600_000) }), settings, branch, now)],
+    [null, null, null, null])
+  eq('a failed job is tried again after 10 seconds, then 30, then left failed', [1, 2, 3, 0].map(HP.retryDelay), [10000, 30000, null, null])
+
+  // ── The hub ──
+  await db.doc('appSettings/printing').set(settingsDoc)
+  eq('the hub knows its own branch', (await db.doc('hubMeta/device').get()).data()?.branch, branch)
+  const sent = []
+  let answer = { printed: true, reason: null }
+  const send = async (address, bytes) => { sent.push({ address, text: Buffer.from(bytes).toString('latin1') }); return answer }
+  const seqBefore = db.lastSeq()
+  await db.doc('kitchenTickets/print-t1').set({
+    branch, checkId: 'c', tableNumber: 12, station: 'Kitchen', status: 'new', round: 1,
+    lines: [{ lineId: 'l1', name: 'Fries', quantity: 2, modifiers: 'Large', seat: null, course: null, note: '', voided: false }],
+    sentBy: 'u-till', sentByEmail: 'till', sentAt: ts(Date.now() - 1000), bumpedAt: null, bumpedBy: null,
+  })
+  const plans = await SPR.planPrintJobs(db, db.changesSince(seqBefore, 50))
+  eq('a commit with a new ticket plans its job', plans.map(p => p.id), ['ticket_print-t1'])
+  eq('THE TRAP: recorded once, so the same ticket changing again prints nothing more', [await SPR.enqueuePrintJob(db, plans[0]), await SPR.enqueuePrintJob(db, plans[0])], [true, false])
+  const printed = await SPR.runPrintJob(db, 'ticket_print-t1', { send })
+  eq('the hub sends the ticket to the printer\'s address, laid out and cut',
+    [printed.outcome, sent[0]?.address, /TABLE 12/.test(sent[0]?.text ?? ''), /2  Fries/.test(sent[0]?.text ?? ''), (sent[0]?.text ?? '').endsWith('\x1dVB\x00')],
+    ['printed', { host: '192.168.1.50', port: 9100 }, true, true, true])
+  eq('...and a printed job is not printed again', (await SPR.runPrintJob(db, 'ticket_print-t1', { send })).outcome, 'skipped')
+
+  answer = { printed: false, reason: 'The printer at 192.168.1.50:9100 could not be reached (ECONNREFUSED).' }
+  await SPR.enqueuePrintJob(db, { id: 'ticket_retry', kind: 'ticket', refId: 'print-t1', station: 'Kitchen' })
+  const tries = [await SPR.runPrintJob(db, 'ticket_retry', { send }), await SPR.runPrintJob(db, 'ticket_retry', { send }), await SPR.runPrintJob(db, 'ticket_retry', { send })]
+  const retryJob = (await db.doc('hubPrintJobs/ticket_retry').get()).data()
+  eq('THE TRAP: a printer that is off fails the job, never the order: tried three times, then left failed with the reason',
+    [tries.map(t => t.outcome), retryJob?.status, /ECONNREFUSED/.test(retryJob?.lastError ?? '')], [['retry', 'retry', 'failed'], 'failed', true])
+
+  answer = { printed: true, reason: null }
+  const sentSoFar = sent.length
+  await SPR.enqueuePrintJob(db, { id: 'ticket_switched', kind: 'ticket', refId: 'print-t1', station: 'Kitchen' })
+  await db.doc('appSettings/printing').set({ ...settingsDoc, branches: { [branch]: { Kitchen: { ...net, enabled: false } } } })
+  const switched = await SPR.runPrintJob(db, 'ticket_switched', { send })
+  eq('a printer switched off before its job ran does not print, and says so', [switched.outcome, sent.length === sentSoFar, /switched off/.test(switched.reason ?? '')], ['failed', true, true])
+  await db.doc('appSettings/printing').set(settingsDoc)
+
+  await db.doc('checks/print-c1').set({ branch, status: 'closed', receiptNumber: 'R-0042', tableNumber: 12, guestCount: 2, openedByEmail: 'till', lines: [], closedAt: ts(Date.now() - 1000) })
+  await SPR.enqueuePrintJob(db, { id: 'receipt_print-c1', kind: 'receipt', refId: 'print-c1', station: 'Kitchen' })
+  const receipt = await SPR.runPrintJob(db, 'receipt_print-c1', { send })
+  eq('a closed check\'s receipt prints on the receipt station\'s printer, with its receipt number',
+    [receipt.outcome, receipt.reason, /R-0042/.test(sent.at(-1)?.text ?? '')], ['printed', null, true])
+
+  const status = await SPR.printingStatus(db)
+  eq('the hub\'s page shows its network printers, what printed, and what failed',
+    [status.printers.map(p => [p.station, p.ready]), status.printedToday >= 2, status.failures.length >= 1], [[['Kitchen', true]], true, true])
+  const test = await SPR.printTestPage(db, 'Kitchen', send)
+  eq('a test page goes straight to the station\'s printer', [test.printed, /Test print/.test(sent.at(-1)?.text ?? '')], [true, true])
+  eq('...but not to a station a screen prints for, or one that does not exist',
+    [(await SPR.printTestPage(db, 'Bar', send)).printed, (await SPR.printTestPage(db, 'Nowhere', send)).printed], [false, false])
+
+  const { createServer: netServer } = await import('node:net')
+  const got = []
+  const fakePrinter = netServer(sock => sock.on('data', d => got.push(d)))
+  await new Promise(r => fakePrinter.listen(0, '127.0.0.1', r))
+  const real = await SPR.sendToPrinter({ host: '127.0.0.1', port: fakePrinter.address().port }, Uint8Array.from([0x1b, 0x40, 0x41]))
+  await new Promise(r => setTimeout(r, 150))
+  eq('bytes reach a printer\'s port exactly as sent', [real.printed, Buffer.concat(got).toString('hex')], [true, '1b4041'])
+  fakePrinter.close()
+  const closedPort = await new Promise(r => { const s = netServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => r(p)) }) })
+  const refused = await SPR.sendToPrinter({ host: '127.0.0.1', port: closedPort }, Uint8Array.from([0x41]), 2000)
+  eq('a printer nobody answers for is a reason, never a throw', [refused.printed, /could not be reached/.test(refused.reason ?? '')], [false, true])
+} catch (err) {
+  console.log(`  FAIL  the printing section stopped: ${String(err?.stack ?? err).split('\n').slice(0, 3).join(' | ')}`)
+  fail++
 }
 
 console.log('\nwhere phones find the hub on the café wifi, and what its QR says (S11)')

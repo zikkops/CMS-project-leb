@@ -24,7 +24,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'printing-verify-'))
 execSync(
-  `npx tsc shared/src/printing.ts shared/src/checks.ts shared/src/receipt.ts ` +
+  `npx tsc shared/src/printing.ts shared/src/checks.ts shared/src/receipt.ts shared/src/escpos.ts ` +
   `shared/src/money.ts shared/src/modifiers.ts ` +
   `--outDir ${out} --module esnext --target es2022 --skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' },
@@ -257,6 +257,35 @@ eq('two closings arriving out of order both print',
 const empty = B.nextReceiptBatch(B.EMPTY_RECEIPT_STATE, [], [])
 eq('a branch with no closed checks yet primes to zero', empty.state.watermark, 0)
 eq('and its first closing prints', B.nextReceiptBatch(empty.state, [], [rd('n1', 10)]).print, ['n1'])
+
+console.log('\nnetwork printers, printed by the café hub itself (S28)')
+{
+  const E = await import(`file://${join(out, 'escpos.js')}`)
+  eq('a private address on the café network, port 9100 unless one is given',
+    [P.readPrinterAddress('192.168.1.50'), P.readPrinterAddress(' 10.0.0.7:9101 '), P.readPrinterAddress('172.16.4.2')],
+    [{ host: '192.168.1.50', port: 9100 }, { host: '10.0.0.7', port: 9101 }, { host: '172.16.4.2', port: 9100 }])
+  eq('THE TRAP: never a public address, this PC itself, a name, a url, or a port that is not one',
+    ['8.8.8.8', '127.0.0.1', 'printer.local', 'http://192.168.1.50', '192.168.1.50:0', '192.168.1.50:70000', '192.168.1.300', '', null].map(P.readPrinterAddress),
+    [null, null, null, null, null, null, null, null, null])
+
+  const network = { enabled: true, transport: 'network', width: 42, address: '192.168.1.50', copies: 2 }
+  eq('a stored network printer is read as one', P.parsePrintingSettings({ branches: { Main: { Kitchen: network } } }).branches.Main.Kitchen, network)
+  eq('a network printer with a good address is ready; without one it says what to fix',
+    [P.printerBlockedReason(network), /192\.168\.1\.50/.test(P.printerBlockedReason({ ...network, address: 'printer.local' }) ?? '')], [null, true])
+  eq('printed by the hub only when switched on and a network printer',
+    [P.printsFromHub(network), P.printsFromHub({ ...network, enabled: false }), P.printsFromHub({ ...network, transport: 'browser' })], [true, false, false])
+  const receiptAtKitchen = { branches: { Main: { Kitchen: network } }, receiptOnClose: true, receiptStation: 'Kitchen' }
+  eq('THE TRAP: a screen never prints a receipt the hub prints to a network printer: two receipts for one table',
+    [P.shouldPrintReceiptHere(P.parsePrintingSettings(receiptAtKitchen), 'Main', null), P.shouldPrintReceiptHere(P.parsePrintingSettings({ ...receiptAtKitchen, branches: { Main: { Kitchen: { ...network, transport: 'browser' } } } }), 'Main', null)],
+    [false, true])
+
+  eq('text reaches the printer one ASCII character for each character, so the columns still line up',
+    E.printableAscii('Café · 2×Latté — 5°\r\nنعم'), 'Cafe . 2xLatte - 5o\n???')
+  const job = [...E.escposJob('A\nB', 1)]
+  eq('a job initialises the printer, picks PC437, prints the text, feeds and cuts',
+    job, [0x1b, 0x40, 0x1b, 0x74, 0x00, 0x41, 0x0a, 0x42, 0x0a, 0x1b, 0x64, 0x04, 0x1d, 0x56, 0x42, 0x00])
+  eq('copies are whole jobs one after the other, never more than five', [E.escposJob('A', 2).length, E.escposJob('A', 9).length, E.escposJob('A', 0).length], [28, 70, 14])
+}
 
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail > 0 ? 1 : 0)

@@ -12,7 +12,7 @@ import { STATIONS, type Station } from '../checks'
 import { RECEIPT_WIDTHS } from '../receipt'
 import {
   PRINTING_DOC, PRINTING_DEFAULTS, PRINTER_DEFAULT, PRINT_TRANSPORTS,
-  parsePrintingSettings,
+  parsePrintingSettings, readPrinterAddress,
   type PrintingSettings, type StationPrinter, type PrintTransport,
 } from '../printing'
 
@@ -54,6 +54,11 @@ function parsePrinterInput(raw: unknown, where: string): StationPrinter {
   // fix it rather than at the pass during service.
   if (d.enabled === true && transport === 'epos' && address === '') {
     throw new Error(`${where}: ePOS needs the printer's address on the café network.`)
+  }
+  // A network printer (S28) must be somewhere on the café network the hub can
+  // reach: a private address, never a name or a public address.
+  if (d.enabled === true && transport === 'network' && !readPrinterAddress(address)) {
+    throw new Error(`${where}: a network printer needs its address on the café network, like 192.168.1.50 or 192.168.1.50:9100.`)
   }
   if (d.enabled === true && transport === 'none') {
     throw new Error(`${where}: choose how this station reaches its printer before switching it on.`)

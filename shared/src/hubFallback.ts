@@ -99,7 +99,7 @@ export function heldSummary(
   switch (collection) {
     case 'checks': {
       const lines = Array.isArray(d.lines) ? d.lines.filter(l => (l as { status?: unknown })?.status !== 'void').length : 0
-      return `Table ${text(d.tableNumber)}, ${text(d.status)}, ${lines} ${lines === 1 ? 'line' : 'lines'}${typeof d.invoiceNumber === 'string' ? `, receipt ${d.invoiceNumber}` : ''}`
+      return `Table ${text(d.tableNumber)}, ${text(d.status)}, ${lines} ${lines === 1 ? 'line' : 'lines'}${typeof d.receiptNumber === 'string' ? `, receipt ${d.receiptNumber}` : ''}`
     }
     case 'kitchenTickets':
       return `${text(d.station, 'Kitchen')} ticket, ${text(d.status)}`

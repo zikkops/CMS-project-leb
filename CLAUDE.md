@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1753
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1780
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -1756,6 +1756,35 @@ Six phases, 00 → 05, ending at a sellable POS. Current position:
     closes — from the device with **Print here** on, never the phone that
     pressed Close. The decisions are pure functions in
     `pos/app/lib/printBatch.ts`, asserted by `verify:printing`.
+
+    **On a café hub, the counter PC prints itself** (owner's decision S28,
+    15 Sep 2026; printers not chosen yet). Transport `network`: a private IPv4
+    address on the café network, port 9100 unless given (`readPrinterAddress()`
+    in `printing.ts`; saving refuses anything else). The hub follows its own
+    commits (`startHubPrinting()` in `server/hubPrinting.ts`, started from
+    `pos/instrumentation.ts`): a ticket just sent (`status: 'new'`, within ten
+    minutes) whose station prints from the hub, and a check just closed with its
+    `receiptNumber` when receipts on close are on, each become ONE job in
+    `hubPrintJobs` under the ticket's or check's id (`ticketJob()`,
+    `receiptJob()` in `shared/src/hubPrinting.ts`). A job is laid out with
+    `ticketToText()` / `receiptToText()` and `receiptOptionsFor()` (moved to
+    `shared/src/receiptOptions.ts` so the till and the hub cannot drift), turned
+    into ESC/POS by `escposJob()` (`shared/src/escpos.ts`: init, PC437, the text
+    made one ASCII character per character so columns stay aligned, feed, partial
+    cut) and sent over TCP, one job at a time. The printer is read as configured
+    when the job runs; a failure is tried three times (10 s, 30 s) and then left
+    failed with its reason, never thrown into a send. The window keeps a restart,
+    or a printer switched on later, from printing the backlog. The KDS skips
+    network printers and `shouldPrintReceiptHere()` is false for them, so nothing
+    prints twice. `/pos/hub` lists the network printers, today's count, failures
+    and a Test page button (`/api/hub/printing`, counter PC only).
+    **Not run against a real printer**: `verify:hub-sync` sends real bytes over a
+    real socket to a stand-in on this PC. 23 mutations: 22 caught by name. "A
+    failed job is tried forever" survives, and should: `runPrintJob()` stops at
+    `PRINT_ATTEMPTS` on its own, and the retry delays list has only two entries.
+    Writing the accent range as `\u` escapes through the editor put the real
+    combining characters in the file, invisible, and a mutation anchor could not
+    find them; the escapes are back.
 
     Choosing hardware now means implementing one `case` in `printText()`.
     The plan's "server sends ESC/POS to a LAN printer" does not work from a

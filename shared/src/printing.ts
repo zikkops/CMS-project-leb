@@ -32,6 +32,7 @@
 
 import { STATIONS, type Station } from './checks'
 import { RECEIPT_WIDTHS, type ReceiptWidth } from './receipt'
+import { isPrivateIPv4 } from './hubNetwork'
 
 export const PRINTING_DOC = 'appSettings/printing'
 
@@ -46,16 +47,38 @@ export const PRINTING_DOC = 'appSettings/printing'
  * whatever printer it is attached to, which needs no thermal hardware, no
  * network configuration and no decision. It is enough to pilot on.
  */
-export type PrintTransport = 'none' | 'browser' | 'epos' | 'cloudprnt'
+export type PrintTransport = 'none' | 'browser' | 'epos' | 'cloudprnt' | 'network'
 
-export const PRINT_TRANSPORTS: PrintTransport[] = ['none', 'browser', 'epos', 'cloudprnt']
+export const PRINT_TRANSPORTS: PrintTransport[] = ['none', 'browser', 'epos', 'cloudprnt', 'network']
 
 export const TRANSPORT_LABEL: Record<PrintTransport, string> = {
   none:      'Not set up',
   browser:   'This device’s printer',
   epos:      'Epson ePOS-Print (over the café wifi)',
   cloudprnt: 'Star CloudPRNT (printer collects)',
+  // POS software (owner's decision S28): the café hub itself sends ESC/POS to
+  // the printer's port 9100 on the café network, with or without the internet,
+  // and with no screen needing "Print here". Only a hub can reach it.
+  network:   'Network printer, printed by the counter PC (café hub)',
 }
+
+/**
+ * A network printer's address (S28): a private IPv4 address on the café
+ * network, optionally with a port, 9100 when none is given. Only private
+ * addresses, so a printer setting cannot turn the counter PC into something
+ * that connects out to the internet, or to itself.
+ */
+export function readPrinterAddress(raw: unknown): { host: string; port: number } | null {
+  if (typeof raw !== 'string') return null
+  const m = /^(\d{1,3}(?:\.\d{1,3}){3})(?::(\d{1,5}))?$/.exec(raw.trim())
+  if (!m || !isPrivateIPv4(m[1])) return null
+  const port = m[2] === undefined ? 9100 : Number(m[2])
+  if (!Number.isInteger(port) || port < 1 || port > 65535) return null
+  return { host: m[1], port }
+}
+
+/** Whether a printer is printed to by the café hub itself, never by a screen. */
+export const printsFromHub = (printer: StationPrinter): boolean => printer.enabled && printer.transport === 'network'
 
 /** What a station prints, and how. */
 export interface StationPrinter {
@@ -193,6 +216,9 @@ export function printerBlockedReason(printer: StationPrinter): string | null {
   if (printer.transport === 'epos' && printer.address === '') {
     return 'ePOS needs the printer’s address on the café network.'
   }
+  if (printer.transport === 'network' && !readPrinterAddress(printer.address)) {
+    return 'A network printer needs its address on the café network, like 192.168.1.50 (port 9100 unless you add one).'
+  }
   return null
 }
 
@@ -213,6 +239,10 @@ export function shouldPrintReceiptHere(
   screenStation: Station | null,
 ): boolean {
   if (!settings.receiptOnClose) return false
-  if (!printerFor(settings, branch, settings.receiptStation).enabled) return false
+  const printer = printerFor(settings, branch, settings.receiptStation)
+  if (!printer.enabled) return false
+  // The café hub prints to a network printer itself (S28): a screen printing
+  // it too would put two receipts on the counter.
+  if (printsFromHub(printer)) return false
   return screenStation === null || screenStation === settings.receiptStation
 }

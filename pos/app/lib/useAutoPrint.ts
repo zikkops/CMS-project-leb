@@ -133,7 +133,8 @@ export function useAutoPrintTickets(input: AutoPrintInput): PaperState {
         const ticket = byId.get(id)
         if (!ticket) continue
         const printer = printerFor(settings, branch, ticket.station)
-        if (!printer.enabled) continue
+        // A network printer is printed to by the café hub itself (S28).
+        if (!printer.enabled || printer.transport === 'network') continue
 
         const text = ticketToText(ticket, {
           businessName: BRAND.shortName,

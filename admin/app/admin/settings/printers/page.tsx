@@ -154,16 +154,23 @@ function StationRow({
             the browser transport prints to whatever this device is attached
             to — asking for an address in either case invites somebody to fill
             one in and wonder why it changes nothing. */}
-        {printer.transport === 'epos' && (
+        {(printer.transport === 'epos' || printer.transport === 'network') && (
           <div style={{ gridColumn: '1 / -1' }}>
             <span style={label}>Printer address on the café network</span>
             <input
               type="text"
               value={printer.address}
               onChange={e => set('address', e.target.value)}
-              placeholder="http://192.168.1.50/cgi-bin/epos/service.cgi"
+              placeholder={printer.transport === 'network' ? '192.168.1.50  or  192.168.1.50:9100' : 'http://192.168.1.50/cgi-bin/epos/service.cgi'}
               style={{ ...field, fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: '0.78rem' }}
             />
+            {printer.transport === 'network' && (
+              <p style={{ marginTop: '0.45rem', fontFamily: 'var(--font-inter)', fontSize: '0.72rem', lineHeight: 1.6, color: 'rgba(var(--offwhite-rgb),0.45)' }}>
+                The counter PC prints to it itself, with no screen needing Print here and no internet, but only
+                at a branch with a café hub. Most thermal printers take ESC/POS on port 9100; print a test page from
+                the counter PC&apos;s Café hub page.
+              </p>
+            )}
           </div>
         )}
       </div>
