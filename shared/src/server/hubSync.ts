@@ -59,9 +59,13 @@ export interface HubPairing {
   pairedAt: number
   cloudUrl: string
   revoked: boolean
+  /** An admin switched this hub's branch to the online till (S21), as the hub last heard. */
+  tradingOnline: boolean
 }
 
 export interface HubSyncStatus {
+  /** While true, this hub takes no orders, payments or drawer changes (hubLock.ts). */
+  tradingOnline: boolean
   paired: boolean
   revoked: boolean
   branch: string | null
@@ -144,6 +148,7 @@ async function readCredential(): Promise<(HubPairing & { secret: string }) | nul
     pairedAt: timestampMs(d.pairedAt, 0),
     cloudUrl: d.cloudUrl,
     revoked: d.revoked === true,
+    tradingOnline: d.tradingOnline === true,
   }
 }
 
@@ -203,11 +208,60 @@ export async function pairHub(rawCode: unknown, fetchImpl: Fetch = fetch, follow
     cloudUrl,
     pairedAt: Timestamp.fromMillis(pairedAt),
     revoked: false,
+    tradingOnline: false,
   })
   // A new pairing takes a whole snapshot, whatever was pulled before it.
   await db.doc(PULL_DOC).set({ digest: null })
   if (followUp) void syncOnce(fetchImpl)
-  return { deviceId: body.deviceId, branch: body.branch, name: String(body.name ?? ''), pairedAt, cloudUrl, revoked: false }
+  return { deviceId: body.deviceId, branch: body.branch, name: String(body.name ?? ''), pairedAt, cloudUrl, revoked: false, tradingOnline: false }
+}
+
+// ── While the branch trades on the online till (S21–S23) ──────────────────
+
+/**
+ * The trading this hub was master for: checks, tickets, drawer shifts, the
+ * drawer, and stock movements. Activity stays, as history.
+ */
+const TRADING_COLLECTIONS = [...PUSHED_COLLECTIONS.filter(c => c !== 'activityLog'), MOVES_COLLECTION]
+
+/**
+ * Removes this hub's trading, for a clean start when its branch is handed back
+ * (S23). The online till closed every table and the drawer before that was
+ * allowed, and everything this hub sent up since the branch went online was
+ * held for a manager (S22), so nothing here is still needed and none of it may
+ * go up again as the master's copy. Removals are never sent up.
+ */
+export async function clearTrading(store: HubStore): Promise<number> {
+  let removed = 0
+  for (const collection of TRADING_COLLECTIONS) {
+    const docs = (await store.collection(collection).get()).docs
+    for (let i = 0; i < docs.length; i += 400) {
+      const batch = store.batch()
+      for (const doc of docs.slice(i, i + 400)) batch.delete(doc.ref)
+      await batch.commit()
+    }
+    removed += docs.length
+  }
+  return removed
+}
+
+/**
+ * Follows what the cloud says about this hub's branch. Switched to the online
+ * till: the hub refuses till writes from now on. Handed back: it clears its old
+ * trading first and then trades again, so a crash between the two clears again
+ * at the next pull rather than trading on stale tables.
+ */
+export async function followTradingOnline(store: HubStore, online: boolean): Promise<'online' | 'handedBack' | 'unchanged'> {
+  const ref = store.doc(DEVICE_DOC)
+  const was = (await ref.get()).data()?.tradingOnline === true
+  if (online === was) return 'unchanged'
+  if (online) {
+    await ref.update({ tradingOnline: true })
+    return 'online'
+  }
+  await clearTrading(store)
+  await ref.update({ tradingOnline: false })
+  return 'handedBack'
 }
 
 // ── Sending the hub's trading up ───────────────────────────────────────────
@@ -271,6 +325,8 @@ export async function pushToCloud(fetchImpl: Fetch = fetch): Promise<{ docs: num
         if (status !== 200) {
           throw new HttpError(502, typeof body.error === 'string' ? body.error : `The cloud answered ${status} when sent this hub's trading.`)
         }
+        // Held for a manager (S22): the branch trades online, so stop taking orders now, not at the next pull.
+        if (body.tradingOnline === true) await followTradingOnline(store, true)
         // The cloud has these movements now, so a pull may take its count back.
         if (batch.moves.length > 0) {
           const done = store.batch()
@@ -359,7 +415,18 @@ export async function pullFromCloud(fetchImpl: Fetch = fetch): Promise<{ unchang
     const db = adminDb()
     const store = db as unknown as HubStore
     const last = (await db.doc(PULL_DOC).get()).data()?.digest
-    const url = `${credential.cloudUrl}/api/hub-sync/pull${typeof last === 'string' ? `?digest=${encodeURIComponent(last)}` : ''}`
+    // How far this hub has sent up, and how far its change log goes: equal
+    // means nothing is left to send, which a branch trading online needs to
+    // hear before it can be handed back (S23).
+    // Changes with nothing to send (a pull's writes, a session, the online flag
+    // itself) count as sent, or the flag written on hearing the branch went
+    // online would hold the hand-back back by a whole sync.
+    let sent = Number(store.readMeta(PUSHED_UP_TO) ?? 0)
+    const unsent = await collectPush(store, sent)
+    if (unsent.docs.length === 0 && unsent.moves.length === 0) sent = unsent.toSeq
+    const params = new URLSearchParams({ sent: String(sent), latest: String(store.lastSeq()) })
+    if (typeof last === 'string') params.set('digest', last)
+    const url = `${credential.cloudUrl}/api/hub-sync/pull?${params.toString()}`
     const { status, body } = await cloudFetch(fetchImpl, url, {
       headers: { Authorization: deviceAuthHeader(credential.deviceId, credential.secret) },
     })
@@ -370,6 +437,7 @@ export async function pullFromCloud(fetchImpl: Fetch = fetch): Promise<{ unchang
       throw new HttpError(409, typeof body.error === 'string' ? body.error : 'The cloud no longer accepts this hub. Pair it again.')
     }
     if (status !== 200) throw new HttpError(502, typeof body.error === 'string' ? body.error : `The cloud answered ${status}.`)
+    if (typeof body.tradingOnline === 'boolean') await followTradingOnline(store, body.tradingOnline)
 
     let result = { unchanged: true, written: 0, deleted: 0 }
     if (body.unchanged !== true) {
@@ -465,6 +533,7 @@ export async function hubSyncStatus(now = new Date()): Promise<HubSyncStatus> {
   const blocks = readBlocks((await db.doc(RECEIPTS_DOC).get()).data()?.blocks)
   const waiting = (await db.collection(MOVES_COLLECTION).get()).size
   return {
+    tradingOnline: pairing?.tradingOnline ?? false,
     paired: Boolean(pairing),
     revoked: pairing?.revoked ?? false,
     branch: pairing?.branch ?? null,

@@ -3,7 +3,9 @@
 //
 // GET    the hubs, active and unpaired                (admin)
 // POST   { branch, name }  → a one-time pairing code  (admin)
-// PATCH  { deviceId, action: 'revoke' }  unpair a hub  (admin)
+// PATCH  { deviceId, action: 'revoke' }    unpair a hub                                    (admin)
+// PATCH  { deviceId, action: 'online' }    its branch trades on the online till (S21)     (admin)
+// PATCH  { deviceId, action: 'handback' }  give the branch back to the hub (S23)          (admin)
 //
 // Admin only, as Printers is: pairing gives a PC this café's menu, settings and
 // staff roles, and unpairing is what happens to a PC that has been lost. The
@@ -11,7 +13,7 @@
 // may pair a PC.
 
 import { requireRole, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
-import { createPairingCode, listDevices, revokeDevice } from '@big-cms/shared/server/hubDevices'
+import { createPairingCode, handBackToHub, listDevices, revokeDevice, startOnlineTrading } from '@big-cms/shared/server/hubDevices'
 import { logActivity } from '@big-cms/shared/server/activityLog'
 
 export const runtime = 'nodejs'
@@ -51,12 +53,30 @@ export async function PATCH(request: Request): Promise<Response> {
   try {
     const actor: Caller = await requireRole(request, ['admin'])
     const body = await readBody(request)
-    if (body.action !== 'revoke') throw new HttpError(400, 'Unknown action.')
-    const hub = await revokeDevice(actor, body.deviceId)
-    if (!hub.already) {
-      await logActivity(actor, 'update', 'Café Hubs', `Café hub "${hub.name}" at ${hub.branch} unpaired`)
+    switch (body.action) {
+      case 'revoke': {
+        const hub = await revokeDevice(actor, body.deviceId)
+        if (!hub.already) {
+          await logActivity(actor, 'update', 'Café Hubs', `Café hub "${hub.name}" at ${hub.branch} unpaired`)
+        }
+        return Response.json({ ok: true, ...hub })
+      }
+      case 'online': {
+        const hub = await startOnlineTrading(actor, body.deviceId)
+        if (!hub.already) {
+          await logActivity(actor, 'update', 'Café Hubs',
+            `${hub.branch} switched to the online till while café hub "${hub.name}" is out of action; what it sends up is held for a manager`)
+        }
+        return Response.json({ ok: true, ...hub })
+      }
+      case 'handback': {
+        const hub = await handBackToHub(actor, body.deviceId)
+        await logActivity(actor, 'update', 'Café Hubs', `${hub.branch} handed back to café hub "${hub.name}"`)
+        return Response.json({ ok: true, ...hub })
+      }
+      default:
+        throw new HttpError(400, 'Unknown action.')
     }
-    return Response.json({ ok: true, ...hub })
   } catch (err) {
     return toResponse(err)
   }

@@ -28,6 +28,7 @@ function useIsMobile(breakpoint = 768) {
 }
 
 interface HubStatus {
+  tradingOnline: boolean
   paired: boolean
   revoked: boolean
   branch: string | null
@@ -177,6 +178,17 @@ export default function HubPage() {
 
         {status && !needsPairing && (
           <div>
+            {status.tradingOnline && (
+              <p role="status" style={{
+                padding: '0.9rem 1rem', marginBottom: '1rem', borderRadius: '8px', lineHeight: 1.6, fontSize: '0.88rem',
+                border: '2px solid rgba(var(--brand-secondary-rgb),0.55)', background: 'rgba(var(--brand-secondary-rgb),0.14)',
+              }}>
+                <strong style={{ color: 'var(--brand-secondary)' }}>{status.branch} is trading on the online till.</strong>{' '}
+                An admin switched it over while this PC was out of action, so this till takes no orders,
+                payments or drawer changes. What it sent up waits for a manager. An admin hands the branch
+                back from Settings → Café Hubs.
+              </p>
+            )}
             <div style={row}><span style={{ opacity: 0.55 }}>Branch</span><span>{status.branch}</span></div>
             <div style={row}><span style={{ opacity: 0.55 }}>This PC</span><span>{status.name || '—'}</span></div>
             <div style={row}><span style={{ opacity: 0.55 }}>Paired</span><span>{when(status.pairedAt)}</span></div>

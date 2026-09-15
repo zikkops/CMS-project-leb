@@ -178,6 +178,8 @@ export const ADMIN_NAV: AdminNavSection[] = [
       { label: 'Tips Calculator', href: '/admin/end-of-day/tips', access: SECTION_ACCESS.endOfDay, icon: faHandHoldingDollar, kind: 'use', desc: 'Split the tips between staff after the deduction.' },
       { label: 'End of Day Log', href: '/admin/end-of-day/log', access: SECTION_ACCESS.endOfDay, icon: faScroll, kind: 'use', desc: 'Who submitted or changed which end-of-day report, and when.' },
       { label: 'Sales Export', href: '/admin/exports', access: SECTION_ACCESS.endOfDay, icon: faFileExport, kind: 'use', desc: 'Closed checks for a date range, with VAT and both currencies, for the accountant.' },
+      // endOfDay, as the export: deciding a held sale is deciding what the branch took.
+      { label: 'Held Hub Sales', href: '/admin/settings/hubs/held', access: SECTION_ACCESS.endOfDay, icon: faStore, kind: 'use', desc: 'What a counter PC sent up while its branch traded online: apply or dismiss each one.' },
       { label: 'Staff Roster', href: '/admin/end-of-day/staff', access: ADMIN_ONLY, icon: faUsers, kind: 'setup', desc: 'The usual staff list per branch, for attendance on the report.' },
     ],
   },

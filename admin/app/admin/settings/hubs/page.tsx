@@ -41,7 +41,13 @@ interface HubRow {
   lastSeenAt: number | null
   revoked: boolean
   revokedAt: number | null
+  onlineSince: number | null
+  onlineByEmail: string
+  caughtUpAt: number | null
+  heldWaiting: number
 }
+
+type HubAction = 'revoke' | 'online' | 'handback'
 
 interface Issued {
   code: string
@@ -116,16 +122,27 @@ function ago(ms: number | null, now: number): string {
 }
 
 function HubCard({
-  hub, now, confirming, busy, onAsk, onCancel, onRevoke,
+  hub, now, confirming, busy, onAsk, onCancel, onConfirm,
 }: {
   hub: HubRow
   now: number
-  confirming: boolean
+  confirming: HubAction | null
   busy: boolean
-  onAsk: () => void
+  onAsk: (action: HubAction) => void
   onCancel: () => void
-  onRevoke: () => void
+  onConfirm: (action: HubAction) => void
 }) {
+  const online = hub.onlineSince !== null
+  const confirmText: Record<HubAction, string> = {
+    revoke: `Unpair ${hub.name || 'this hub'}? It stops taking the menu and settings at its next pull, and has to be paired again with a new code.`,
+    online: `Switch ${hub.branch} to the online till? Do this only when ${hub.name || 'the counter PC'} is out of action: the online till opens for ${hub.branch} straight away, the counter PC stops taking orders as soon as it is back in touch, and whatever it sends up then is held for a manager in Held Hub Sales.`,
+    handback: `Hand ${hub.branch} back to ${hub.name || 'the counter PC'}? The online till becomes view-only there again, and the counter PC starts clean, with no tables or drawer shift of its own.`,
+  }
+  const confirmLabel: Record<HubAction, [string, string]> = {
+    revoke: ['Unpair', 'Unpairing…'],
+    online: ['Trade online', 'Switching…'],
+    handback: ['Hand back', 'Handing back…'],
+  }
   return (
     <div style={{ padding: '1rem 0', borderTop: '1px solid rgba(var(--offwhite-rgb),0.07)' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
@@ -135,25 +152,52 @@ function HubCard({
         </span>
         <span style={{
           fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase',
-          color: hub.revoked ? 'rgba(var(--offwhite-rgb),0.4)' : 'var(--teal)',
-        }}>{hub.revoked ? `Unpaired ${when(hub.revokedAt)}` : 'Paired'}</span>
+          color: hub.revoked ? 'rgba(var(--offwhite-rgb),0.4)' : online ? 'var(--brand-secondary)' : 'var(--teal)',
+        }}>{hub.revoked ? `Unpaired ${when(hub.revokedAt)}` : online ? 'Branch trading online' : 'Paired'}</span>
       </div>
       <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.5)', lineHeight: 1.7, margin: '0.35rem 0 0' }}>
         Paired {when(hub.pairedAt)}{hub.pairedByEmail ? ` by ${hub.pairedByEmail}` : ''}
         {!hub.revoked && <> · last took the menu {ago(hub.lastSeenAt, now)}</>}
       </p>
 
+      {!hub.revoked && online && (
+        <div style={{
+          marginTop: '0.7rem', padding: '0.8rem 1rem', borderRadius: '4px',
+          border: '1px solid color-mix(in srgb, var(--brand-secondary) 55%, transparent)',
+          backgroundColor: 'color-mix(in srgb, var(--brand-secondary) 10%, transparent)',
+          fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.8)', lineHeight: 1.7,
+        }}>
+          {hub.branch} has traded on the online till since {when(hub.onlineSince)}{hub.onlineByEmail ? ` (switched by ${hub.onlineByEmail})` : ''}.
+          {' '}{hub.caughtUpAt && hub.onlineSince && hub.caughtUpAt >= hub.onlineSince
+            ? `The counter PC has been back in touch with nothing left unsent (${when(hub.caughtUpAt)}).`
+            : 'The counter PC has not been back in touch since, so it may still hold sales it never sent up.'}
+          {hub.heldWaiting > 0 && (
+            <> {' '}<a href="/admin/settings/hubs/held" style={{ color: 'var(--teal)' }}>
+              {hub.heldWaiting === 1 ? 'One item it sent up waits' : `${hub.heldWaiting} items it sent up wait`} in Held Hub Sales.
+            </a></>
+          )}
+        </div>
+      )}
+
       {!hub.revoked && !confirming && (
-        <button type="button" onClick={onAsk} style={{ ...button('quiet'), marginTop: '0.7rem' }}>Unpair</button>
+        <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: '0.7rem' }}>
+          <button type="button" onClick={() => onAsk('revoke')} style={button('quiet')}>Unpair</button>
+          {online
+            ? <button type="button" onClick={() => onAsk('handback')} style={button('main')}>Hand back to the counter PC</button>
+            : <button type="button" onClick={() => onAsk('online')} style={button('quiet')}>Trade online</button>}
+        </div>
       )}
       {!hub.revoked && confirming && (
         <div style={{ marginTop: '0.8rem' }}>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.75)', lineHeight: 1.6, marginBottom: '0.7rem' }}>
-            Unpair {hub.name || 'this hub'}? It stops taking the menu and settings at its next pull, and has to be paired again with a new code.
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.75)', lineHeight: 1.6, marginBottom: '0.7rem', maxWidth: '58ch' }}>
+            {confirmText[confirming]}
           </p>
           <div style={{ display: 'flex', gap: '0.8rem', justifyContent: 'space-between', maxWidth: '360px' }}>
             <button type="button" onClick={onCancel} disabled={busy} style={button('quiet', busy)}>Cancel</button>
-            <button type="button" onClick={onRevoke} disabled={busy} style={button('danger', busy)}>{busy ? 'Unpairing…' : 'Unpair'}</button>
+            <button type="button" onClick={() => onConfirm(confirming)} disabled={busy}
+              style={button(confirming === 'revoke' ? 'danger' : 'main', busy)}>
+              {busy ? confirmLabel[confirming][1] : confirmLabel[confirming][0]}
+            </button>
           </div>
         </div>
       )}
@@ -172,8 +216,8 @@ export default function HubsPage() {
   const [name, setName] = useState('')
   const [issuing, setIssuing] = useState(false)
   const [issued, setIssued] = useState<Issued | null>(null)
-  const [confirming, setConfirming] = useState<string | null>(null)
-  const [revoking, setRevoking] = useState(false)
+  const [confirming, setConfirming] = useState<{ id: string; action: HubAction } | null>(null)
+  const [acting, setActing] = useState(false)
   const [now, setNow] = useState(() => Date.now())
 
   async function loadHubs() {
@@ -218,17 +262,19 @@ export default function HubsPage() {
     }
   }
 
-  async function revoke(id: string) {
-    setRevoking(true)
+  async function act(id: string, action: HubAction) {
+    setActing(true)
     setError('')
     try {
-      await unwrap(await authedFetch('/api/admin/hubs', 'PATCH', { deviceId: id, action: 'revoke' }))
+      await unwrap(await authedFetch('/api/admin/hubs', 'PATCH', { deviceId: id, action }))
       setConfirming(null)
       await loadHubs()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not unpair the hub.')
+      // A refused hand-back says what is still in the way (S23).
+      setError(err instanceof Error ? err.message : 'Could not change the hub.')
+      setConfirming(null)
     } finally {
-      setRevoking(false)
+      setActing(false)
     }
   }
 
@@ -264,6 +310,16 @@ export default function HubsPage() {
           café&apos;s menu, settings and staff roles every few minutes while it is online.
           While a branch has a hub paired, the online till for that branch is view-only:
           tables, payments and the drawer are worked on the counter PC.
+        </p>
+        <p style={{
+          fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
+          color: 'rgba(var(--offwhite-rgb),0.4)', lineHeight: 1.7,
+          marginTop: '-1.5rem', marginBottom: '2.5rem', maxWidth: '56ch',
+        }}>
+          If a counter PC is out of action, <strong>Trade online</strong> opens the online till for
+          its branch. When the PC is back and has synced, close the online tables and the drawer
+          shift, decide anything it sent up in <a href="/admin/settings/hubs/held" style={{ color: 'var(--teal)' }}>Held Hub Sales</a>,
+          then hand the branch back.
         </p>
 
         <section style={panel}>
@@ -322,11 +378,11 @@ export default function HubsPage() {
               key={hub.id}
               hub={hub}
               now={now}
-              confirming={confirming === hub.id}
-              busy={revoking}
-              onAsk={() => setConfirming(hub.id)}
+              confirming={confirming?.id === hub.id ? confirming.action : null}
+              busy={acting}
+              onAsk={action => setConfirming({ id: hub.id, action })}
               onCancel={() => setConfirming(null)}
-              onRevoke={() => revoke(hub.id)}
+              onConfirm={action => act(hub.id, action)}
             />
           ))}
         </section>
@@ -335,7 +391,7 @@ export default function HubsPage() {
           <section style={{ ...panel, paddingBottom: '0.6rem' }}>
             <h2 style={{ ...panelTitle, marginBottom: '0.2rem' }}>Unpaired</h2>
             {unpaired.map(hub => (
-              <HubCard key={hub.id} hub={hub} now={now} confirming={false} busy={false} onAsk={() => {}} onCancel={() => {}} onRevoke={() => {}} />
+              <HubCard key={hub.id} hub={hub} now={now} confirming={null} busy={false} onAsk={() => {}} onCancel={() => {}} onConfirm={() => {}} />
             ))}
           </section>
         )}

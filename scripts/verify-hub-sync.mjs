@@ -641,6 +641,199 @@ console.log('\nwhile a café hub trades a branch, the online till is view-only t
   eq('THE TRAP: every till write route in the cloud asks about the right thing before it writes', unguarded, [])
 }
 
+console.log('\na broken counter PC: its branch trades online, what it sends is held, and the branch goes back clean (S21–S23)')
+{
+  const FB = await import(url('hubFallback.js'))
+  const L = await import(url('server/hubLock.js'))
+  const at = ms => Timestamp.fromMillis(ms)
+
+  // ── The rules ──
+  eq('a paired hub locks its branch; unpaired, or switched to the online till, it does not',
+    [FB.hubLocksBranch({ revokedAt: null }), FB.hubLocksBranch({ revokedAt: at(1) }), FB.hubLocksBranch({ revokedAt: null, onlineSince: at(1_700_000_000_000) })],
+    [true, false, false])
+  eq('a hub is caught up only when it has sent to the end of its change log',
+    [FB.caughtUp('9', '9'), FB.caughtUp('10', '9'), FB.caughtUp('8', '9'), FB.caughtUp(null, '9'), FB.caughtUp('', ''), FB.caughtUp('x', 'x'), FB.caughtUp('-1', '-1'), FB.caughtUp('1.5', '1')],
+    [true, true, false, false, false, false, false, false])
+  const clear = { branch, revoked: false, onlineSince: 1000, caughtUpAt: 2000, openChecks: 0, openShift: false, heldWaiting: 0 }
+  eq('a branch goes back when the hub caught up since going online and nothing is open or waiting', FB.handBackProblem(clear), null)
+  eq('THE TRAP: not while the counter PC has not been in touch since the branch went online — it may hold unsent sales',
+    [/not been in touch/.test(FB.handBackProblem({ ...clear, caughtUpAt: null })), /not been in touch/.test(FB.handBackProblem({ ...clear, caughtUpAt: 999 }))], [true, true])
+  eq('...nor with a table open online, the drawer shift open, or anything held still waiting (S23)',
+    [FB.handBackProblem({ ...clear, openChecks: 1 }), FB.handBackProblem({ ...clear, openChecks: 3 }), /drawer shift/.test(FB.handBackProblem({ ...clear, openShift: true })), /Held Hub Sales/.test(FB.handBackProblem({ ...clear, heldWaiting: 2 }))],
+    [`A table is still open at ${branch} on the online till. Close it first.`, `3 tables are still open at ${branch} on the online till. Close them first.`, true, true])
+  eq('...and not for an unpaired hub, or a branch that is not online',
+    [/unpaired/.test(FB.handBackProblem({ ...clear, revoked: true })), /not trading online/.test(FB.handBackProblem({ ...clear, onlineSince: null }))], [true, true])
+  eq('a held item is one plain line for the manager',
+    [FB.heldSummary('checks', { tableNumber: 7, status: 'open', lines: [{ status: 'sent' }, { status: 'void' }] }), FB.heldSummary('kitchenTickets', { station: 'Bar', status: 'ready' }),
+      FB.heldSummary('branchDrawers', { openShiftId: 's' }), FB.heldSummary('products', null, { collection: 'products', docId: 'mug', delta: -2 })],
+    ['Table 7, open, 1 line', 'Bar ticket, ready', 'Drawer: a shift open', 'Stock -2 of mug (products)'])
+
+  // ── The lock, both ways ──
+  const lockData = H.openHubStore(new DatabaseSync(':memory:'))
+  const lockRefused = async (target, onHub = false) => {
+    try { await L.refuseWhileHubbed(target, { db: lockData, onHub }); return null } catch (e) { return e.status ?? String(e) }
+  }
+  await lockData.doc('hubDevices/h-broken').set({ branch, name: 'Broken PC', revokedAt: null, onlineSince: at(Date.now()) })
+  eq('THE TRAP: switched to the online till, a paired hub no longer makes its branch view-only (S21)',
+    [await lockRefused({ branch }), await L.branchHub(branch, lockData)], [null, null])
+  eq('on the hub itself, while it has not heard, nothing is refused', await lockRefused({ branch }, true), null)
+  await lockData.doc('hubMeta/device').set({ branch, tradingOnline: true })
+  let hubMessage = ''
+  try { await L.refuseWhileHubbed({ branch }, { db: lockData, onHub: true }) } catch (e) { hubMessage = e.message }
+  eq('THE TRAP: once the hub hears its branch trades online, the hub refuses its own till writes, 409, and says why',
+    [await lockRefused({ branch }, true), await lockRefused({ checkId: 'anything' }, true), hubMessage.includes(branch), /online till/.test(hubMessage)], [409, 409, true, true])
+  await lockData.doc('hubMeta/device').set({ branch, tradingOnline: false })
+  eq('...and once it hears the branch is back, it trades again', await lockRefused({ branch }, true), null)
+
+  // ── The cloud ──
+  const fbPair = await D.pairDevice((await D.createPairingCode(admin, { branch, name: 'Broken PC' })).code)
+  const fbAuth = new Request('https://cloud.test/api/hub-sync/pull', { headers: { Authorization: P.deviceAuthHeader(fbPair.deviceId, fbPair.secret) } })
+  const fbDevice = () => D.deviceFromRequest(fbAuth)
+  const manager = { uid: 'u-mgr', email: 'mgr-placeholder', role: 'manager', branchIds: [branch], superadmin: false, isStaff: true }
+  const elsewhere = { ...manager, uid: 'u-mgr2', branchIds: [otherBranch] }
+  await db.doc('products/fb-mug').set({ name: 'Mug', stock: { [branch]: 20 } })
+  for (const d of (await db.collection('checks').where('branch', '==', branch).where('status', '==', 'open').get()).docs) await d.ref.update({ status: 'closed' })
+  await db.doc(`branchDrawers/${branch}`).set({ openShiftId: null, since: null })
+
+  eq('before the switch the hub trades its branch', (await fbDevice()).onlineSince, null)
+  await rejects('an unpaired hub\'s branch is not switched: it trades online already',
+    async () => D.startOnlineTrading(admin, (await D.pairDevice((await D.createPairingCode(admin, { branch, name: 'Gone PC' })).code).then(async p => { await D.revokeDevice(admin, p.deviceId); return p })).deviceId, db),
+    e => e.status === 409)
+  await rejects('a hub that is not one is refused', () => D.startOnlineTrading(admin, 'nope', db), e => e.status === 400)
+  const switched = await D.startOnlineTrading(admin, fbPair.deviceId, db)
+  const online = await fbDevice()
+  eq('an admin switches the branch to the online till (S21), and switching twice is an answer',
+    [switched.already, (await D.startOnlineTrading(admin, fbPair.deviceId, db)).already, typeof online.onlineSince], [false, true, 'number'])
+  const row = (await D.listDevices(db)).find(r => r.id === fbPair.deviceId)
+  eq('the admin list says so, and who', [typeof row.onlineSince, row.onlineByEmail, row.caughtUpAt, row.heldWaiting], ['number', 'admin-placeholder', null, 0])
+
+  const sentCheck = { collection: 'checks', id: 'fb-check-1', data: { branch, status: 'open', tableNumber: 7, lines: [{ status: 'sent' }], openedAt: { $fs: 'ts', s: 1_700_000_000, n: 0 } } }
+  const sentActivity = { collection: 'activityLog', id: 'fb-act-1', data: { action: 'create', section: 'POS', label: 'Opened table 7' } }
+  const sentMove = { id: 'fbMoveOne', collection: 'products', docId: 'fb-mug', branch, delta: -2 }
+  await db.doc(`hubAppliedMoves/${fbPair.deviceId}_fbMoveEarlier`).set({ applied: true })
+  const earlierMove = { ...sentMove, id: 'fbMoveEarlier' }
+  const heldPush = await D.applyPush(online, { seq: 40, docs: [sentCheck, sentActivity], moves: [sentMove, earlierMove] }, db)
+  eq('THE TRAP: while the branch trades online, what the hub sends is held, not applied (S22)',
+    [heldPush.docs, heldPush.moves, heldPush.held, heldPush.tradingOnline, (await db.doc('checks/fb-check-1').get()).exists, (await db.doc('products/fb-mug').get()).data().stock[branch]],
+    [0, 0, 2, true, false, 20])
+  eq('...activity is kept as history, marked with the hub', [(await db.doc('activityLog/fb-act-1').get()).data()?.hubId], [fbPair.deviceId])
+  eq('...and a movement the cloud applied before the switch is not held again',
+    (await db.doc(`hubHeldItems/${fbPair.deviceId}_move_fbMoveEarlier`).get()).exists, false)
+  await D.applyPush(online, { seq: 41, docs: [sentCheck], moves: [sentMove] }, db)
+  const heldNow = (await db.collection('hubHeldItems').where('deviceId', '==', fbPair.deviceId).get()).docs
+  eq('the same push again holds nothing twice', heldNow.length, 2)
+  await rejects('THE TRAP: held or not, another branch\'s check still refuses the whole push',
+    () => D.applyPush(online, { seq: 42, docs: [{ collection: 'checks', id: 'x', data: { branch: otherBranch, status: 'open' } }], moves: [] }, db), e => e.status === 400)
+
+  await rejects('THE TRAP: the branch is not handed back while the counter PC has not caught up since',
+    () => D.handBackToHub(admin, fbPair.deviceId, db), e => e.status === 409 && /not been in touch/.test(e.message))
+  eq('a hub with changes still to send is not caught up', await D.noteCaughtUp(online, '38', '41', db), false)
+  eq('...one with nothing left is, and it is written once per spell online',
+    [await D.noteCaughtUp(online, '41', '41', db), await D.noteCaughtUp(await fbDevice(), '41', '41', db)], [true, false])
+  eq('...and a hub trading its own branch is never noted', await D.noteCaughtUp({ ...online, onlineSince: null }, '1', '1', db), false)
+
+  await db.doc('checks/fb-online-1').set({ branch, status: 'open', tableNumber: 2 })
+  await rejects('THE TRAP: not handed back with a table open on the online till (S23)',
+    () => D.handBackToHub(admin, fbPair.deviceId, db), e => e.status === 409 && /still open/.test(e.message))
+  await db.doc('checks/fb-online-1').update({ status: 'closed' })
+  await db.doc(`branchDrawers/${branch}`).set({ openShiftId: 'fb-shift', since: null })
+  await rejects('...nor with its drawer shift open', () => D.handBackToHub(admin, fbPair.deviceId, db), e => e.status === 409 && /drawer shift/.test(e.message))
+  await db.doc(`branchDrawers/${branch}`).set({ openShiftId: null, since: null })
+  await rejects('...nor while held items wait for a manager', () => D.handBackToHub(admin, fbPair.deviceId, db), e => e.status === 409 && /Held Hub Sales/.test(e.message))
+
+  const listed = (await D.listHeldItems(db)).filter(i => i.deviceId === fbPair.deviceId)
+  const heldCheck = listed.find(i => i.kind === 'doc')
+  eq('the manager sees what the PC sent, and that the cloud has no copy of it',
+    [heldCheck?.summary, heldCheck?.cloudNow, heldCheck?.status, listed.find(i => i.kind === 'move')?.summary],
+    ['Table 7, open, 1 line', null, 'waiting', 'Stock -2 of fb-mug (products)'])
+  await rejects('THE TRAP: a manager at another branch decides nothing here', () => D.decideHeldItem(elsewhere, heldCheck.id, 'apply', db), e => e.status === 403)
+  await rejects('a decision is apply or dismiss', () => D.decideHeldItem(manager, heldCheck.id, 'maybe', db), e => e.status === 400)
+  await D.decideHeldItem(manager, heldCheck.id, 'apply', db)
+  const applied = (await db.doc('checks/fb-check-1').get()).data()
+  eq('applying writes the counter PC\'s version, its Timestamp a Timestamp', [applied?.tableNumber, applied?.openedAt instanceof Timestamp], [7, true])
+  await rejects('THE TRAP: an item is decided once', () => D.decideHeldItem(manager, heldCheck.id, 'dismiss', db), e => e.status === 409)
+  const heldMove = listed.find(i => i.kind === 'move')
+  await D.decideHeldItem(manager, heldMove.id, 'apply', db)
+  eq('applying a movement moves the cloud\'s count once', (await db.doc('products/fb-mug').get()).data().stock[branch], 18)
+  const late = await D.applyPush({ ...online, onlineSince: null }, { seq: 43, docs: [], moves: [sentMove] }, db)
+  eq('...and the same movement sent again later is not applied twice', [late.moves, late.movesAlreadyApplied, (await db.doc('products/fb-mug').get()).data().stock[branch]], [0, 1, 18])
+  await db.doc(`hubAppliedMoves/${fbPair.deviceId}_fbMoveTwice`).set({ applied: true })
+  await db.doc(`hubHeldItems/${fbPair.deviceId}_move_fbMoveTwice`).set({
+    deviceId: fbPair.deviceId, hubName: 'Broken PC', branch, status: 'waiting', kind: 'move', collection: 'products', docId: 'fb-mug', data: null,
+    move: { id: 'fbMoveTwice', collection: 'products', docId: 'fb-mug', branch, delta: -5 }, summary: 'x', heldAt: at(Date.now()),
+  })
+  await D.decideHeldItem(admin, `${fbPair.deviceId}_move_fbMoveTwice`, 'apply', db)
+  eq('THE TRAP: applying a held movement the cloud already has moves nothing', (await db.doc('products/fb-mug').get()).data().stock[branch], 18)
+  await db.doc(`hubHeldItems/${fbPair.deviceId}_checks_forged`).set({
+    deviceId: fbPair.deviceId, hubName: 'Broken PC', branch, status: 'waiting', kind: 'doc', collection: 'checks', docId: 'forged',
+    data: { branch: otherBranch, status: 'open' }, move: null, summary: 'x', heldAt: at(Date.now()),
+  })
+  await rejects('THE TRAP: applying still refuses a document for another branch', () => D.decideHeldItem(admin, `${fbPair.deviceId}_checks_forged`, 'apply', db), e => e.status === 400)
+  await D.decideHeldItem(admin, `${fbPair.deviceId}_checks_forged`, 'dismiss', db)
+  eq('dismissing leaves the cloud as it is', (await db.doc('checks/forged').get()).exists, false)
+
+  await rejects('an open check a manager applied is an open table like any other: closed before the branch goes back',
+    () => D.handBackToHub(admin, fbPair.deviceId, db), e => e.status === 409 && /still open/.test(e.message))
+  await db.doc('checks/fb-check-1').update({ status: 'closed' })
+  const handed = await D.handBackToHub(admin, fbPair.deviceId, db)
+  const back = await fbDevice()
+  eq('with all of that done, the branch goes back to its hub', [handed.id, back.onlineSince, back.caughtUpAt], [fbPair.deviceId, null, null])
+  const normal = await D.applyPush(back, { seq: 44, docs: [{ ...sentCheck, id: 'fb-check-2' }], moves: [] }, db)
+  eq('...which is master again: what it sends is applied', [normal.docs, normal.held, normal.tradingOnline, (await db.doc('checks/fb-check-2').get()).exists], [1, 0, false, true])
+  await rejects('handing back twice is refused', () => D.handBackToHub(admin, fbPair.deviceId, db), e => e.status === 409 && /not trading online/.test(e.message))
+  await D.startOnlineTrading(admin, fbPair.deviceId, db)
+  await rejects('THE TRAP: a new spell online needs the hub to catch up again, whatever it said before',
+    () => D.handBackToHub(admin, fbPair.deviceId, db), e => e.status === 409 && /not been in touch/.test(e.message))
+  await D.revokeDevice(admin, fbPair.deviceId)
+
+  // ── The hub ──
+  const staleSeq = db.lastSeq()
+  db.writeMeta('pushedSeq', String(staleSeq))
+  eq('the hub follows the cloud: switched online', [await S.followTradingOnline(db, true), await S.followTradingOnline(db, true), (await S.hubSyncStatus()).tradingOnline], ['online', 'unchanged', true])
+  await rejects('...and from then refuses its own till writes', () => L.refuseWhileHubbed({ branch }, { db, onHub: true }), e => e.status === 409)
+  await db.doc('checks/stale-open').set({ branch, status: 'open', tableNumber: 5 })
+  await db.doc('kitchenTickets/stale').set({ branch, status: 'new' })
+  await db.doc('drawerShifts/stale').set({ branch, status: 'open' })
+  await db.doc(`branchDrawers/${branch}`).set({ openShiftId: 'stale', since: null })
+  await db.doc('hubStockMoves/stale').set({ collection: 'products', docId: 'fb-mug', branch, delta: -1 })
+  await db.doc('activityLog/hub-history').set({ label: 'Opened table 5' })
+  db.writeMeta('pushedSeq', String(db.lastSeq()))
+  const beforeClear = db.lastSeq()
+  eq('THE TRAP: handed back, the hub clears its old tables, tickets, shifts, drawer and movements before trading again (S23)',
+    [await S.followTradingOnline(db, false),
+      ...(await Promise.all(['checks', 'kitchenTickets', 'drawerShifts', 'branchDrawers', 'hubStockMoves'].map(async c => (await db.collection(c).get()).size))),
+      (await db.doc('activityLog/hub-history').get()).exists, (await S.hubSyncStatus()).tradingOnline],
+    ['handedBack', 0, 0, 0, 0, 0, true, false])
+  const afterClear = await S.collectPush(db, beforeClear)
+  eq('...and none of those removals goes up', [afterClear.docs.length, afterClear.moves.length, afterClear.toSeq > beforeClear], [0, 0, true])
+
+  const calls = []
+  const fakeCloud = async (href, init = {}) => {
+    const u = new URL(href)
+    calls.push(u)
+    const body = u.pathname === '/api/hub-sync/push'
+      ? { docs: 0, moves: 0, movesAlreadyApplied: 0, held: 1, tradingOnline: true, seq: 1 }
+      : { unchanged: true, digest: 'd', tradingOnline: calls.filter(c => c.pathname === '/api/hub-sync/pull').length > 1 ? false : true }
+    return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }
+  db.writeMeta('pushedSeq', String(db.lastSeq()))
+  await db.doc('checks/sold-offline').set({ branch, status: 'closed', tableNumber: 8 })
+  await S.pushToCloud(fakeCloud)
+  eq('THE TRAP: a push held by the cloud stops the hub taking orders at once, not at the next pull',
+    [(await S.hubSyncStatus()).tradingOnline, await L.refuseWhileHubbed({ branch }, { db, onHub: true }).then(() => null, e => e.status)], [true, 409])
+  // Somebody signs in between the push and the pull: a change with nothing to send.
+  await db.doc('hubSessions/between-push-and-pull').set({ uid: 'u-till' })
+  await S.pullFromCloud(fakeCloud)
+  const pullUrl = calls.find(c => c.pathname === '/api/hub-sync/pull')
+  eq('...and its pull tells the cloud it has nothing left to send, a change with nothing to send not counted',
+    [pullUrl.searchParams.get('sent'), pullUrl.searchParams.get('sent') === pullUrl.searchParams.get('latest')], [String(db.lastSeq()), true])
+  await db.doc('checks/unsent').set({ branch, status: 'open', tableNumber: 1 })
+  await S.pullFromCloud(fakeCloud)
+  const second = calls.filter(c => c.pathname === '/api/hub-sync/pull')[1]
+  eq('a hub with a check still unsent does not say it is caught up', Number(second.searchParams.get('sent')) < Number(second.searchParams.get('latest')), true)
+  eq('...and hearing it is handed back, it clears and trades again', [(await S.hubSyncStatus()).tradingOnline, (await db.doc('checks/unsent').get()).exists], [false, false])
+}
+
 console.log('\nstaff phones register a key, and sign in at the hub with it (S12–S14)')
 {
   const K = await import(url('server/staffKeys.js'))

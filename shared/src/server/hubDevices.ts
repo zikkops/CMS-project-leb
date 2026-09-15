@@ -29,6 +29,7 @@ import { invoicePeriod } from '../invoiceFormat'
 import { PUSH_BATCH, moveField, moveProblem, pushProblem, type PushedDoc, type StockMove } from '../hubPush'
 import { STAFF_KEYS, staffKeyRecord } from '../staffKeys'
 import { STAFF_PROFILES, readFirstName } from '../staffProfiles'
+import { HELD_ITEMS, caughtUp, handBackProblem, heldSummary, isHeldDecision, onlineSinceOf, type HeldStatus } from '../hubFallback'
 
 const DEVICES = 'hubDevices'
 const CODES = 'hubPairingCodes'
@@ -41,6 +42,10 @@ export interface HubDevice {
   id: string
   branch: string
   name: string
+  /** When an admin switched this hub's branch to the online till (S21), or null while the hub trades it. */
+  onlineSince?: number | null
+  /** When the hub last said it had nothing left to send up. */
+  caughtUpAt?: number | null
 }
 
 export interface HubDeviceRow extends HubDevice {
@@ -49,6 +54,11 @@ export interface HubDeviceRow extends HubDevice {
   lastSeenAt: number | null
   revoked: boolean
   revokedAt: number | null
+  onlineSince: number | null
+  onlineByEmail: string
+  caughtUpAt: number | null
+  /** What this hub sent up while its branch traded online, still waiting for a manager (S22). */
+  heldWaiting: number
 }
 
 /** A one-time code for pairing a hub at a branch. Returned once; stored as a hash. */
@@ -145,12 +155,24 @@ export async function deviceFromRequest(request: Request, now = Date.now()): Pro
   if (now - timestampMs(d.lastSeenAt, 0) > 10 * 60_000) {
     await ref.update({ lastSeenAt: FieldValue.serverTimestamp() })
   }
-  return { id: snap.id, branch: String(d.branch), name: String(d.name ?? '') }
+  return {
+    id: snap.id,
+    branch: String(d.branch),
+    name: String(d.name ?? ''),
+    onlineSince: onlineSinceOf(d),
+    caughtUpAt: timestampMs(d.caughtUpAt, 0) || null,
+  }
 }
 
 /** Every hub, for the admin panel. Never a secret or its hash. */
-export async function listDevices(): Promise<HubDeviceRow[]> {
-  const snap = await adminDb().collection(DEVICES).orderBy('pairedAt', 'desc').get()
+export async function listDevices(db: Firestore = adminDb()): Promise<HubDeviceRow[]> {
+  const snap = await db.collection(DEVICES).orderBy('pairedAt', 'desc').get()
+  const waiting = await db.collection(HELD_ITEMS).where('status', '==', 'waiting').get()
+  const heldBy = new Map<string, number>()
+  for (const item of waiting.docs) {
+    const id = String(item.data()?.deviceId ?? '')
+    heldBy.set(id, (heldBy.get(id) ?? 0) + 1)
+  }
   return snap.docs.map(doc => {
     const d = doc.data() ?? {}
     return {
@@ -162,8 +184,92 @@ export async function listDevices(): Promise<HubDeviceRow[]> {
       lastSeenAt: timestampMs(d.lastSeenAt, 0) || null,
       revoked: Boolean(d.revokedAt),
       revokedAt: timestampMs(d.revokedAt, 0) || null,
+      onlineSince: onlineSinceOf(d),
+      onlineByEmail: String(d.onlineByEmail ?? ''),
+      caughtUpAt: timestampMs(d.caughtUpAt, 0) || null,
+      heldWaiting: heldBy.get(doc.id) ?? 0,
     }
   })
+}
+
+const deviceIdOf = (rawId: unknown) => (typeof rawId === 'string' && /^[A-Za-z0-9]{20}$/.test(rawId) ? rawId : '')
+
+/**
+ * Switches a hub's branch to the online till while the counter PC is out of
+ * action (S21): the lock comes off at once, and what the hub sends up from now
+ * on is held for a manager (S22). Switching twice is an answer, not an error.
+ */
+export async function startOnlineTrading(caller: Caller, rawId: unknown, db: Firestore = adminDb()): Promise<HubDevice & { already: boolean }> {
+  const id = deviceIdOf(rawId)
+  if (!id) throw new HttpError(400, 'Missing hub.')
+  const ref = db.doc(`${DEVICES}/${id}`)
+  return db.runTransaction(async tx => {
+    const d = (await tx.get(ref)).data()
+    if (!d) throw new HttpError(404, 'That hub does not exist.')
+    const device = { id, branch: String(d.branch ?? ''), name: String(d.name ?? '') }
+    if (d.revokedAt) throw new HttpError(409, 'That hub is unpaired, so its branch already trades online.')
+    if (onlineSinceOf(d) !== null) return { ...device, already: true }
+    tx.update(ref, {
+      onlineSince: FieldValue.serverTimestamp(),
+      onlineBy: caller.uid,
+      onlineByEmail: caller.email ?? '',
+      caughtUpAt: null,
+    })
+    return { ...device, already: false }
+  })
+}
+
+/**
+ * Hands a branch back to its hub (S23): only once the hub has been in touch
+ * with nothing left unsent since the branch went online, and the online till
+ * has no open table, no open drawer shift, and nothing from the hub still
+ * waiting for a manager. The hub clears its old trading when it hears.
+ */
+export async function handBackToHub(caller: Caller, rawId: unknown, db: Firestore = adminDb()): Promise<HubDevice> {
+  const id = deviceIdOf(rawId)
+  if (!id) throw new HttpError(400, 'Missing hub.')
+  const ref = db.doc(`${DEVICES}/${id}`)
+  return db.runTransaction(async tx => {
+    const d = (await tx.get(ref)).data()
+    if (!d) throw new HttpError(404, 'That hub does not exist.')
+    const branch = String(d.branch ?? '')
+    const [open, drawer, held] = await Promise.all([
+      tx.get(db.collection('checks').where('branch', '==', branch).where('status', '==', 'open').limit(100)),
+      tx.get(db.doc(`branchDrawers/${branch}`)),
+      tx.get(db.collection(HELD_ITEMS).where('deviceId', '==', id).where('status', '==', 'waiting').limit(100)),
+    ])
+    const problem = handBackProblem({
+      branch,
+      revoked: Boolean(d.revokedAt),
+      onlineSince: onlineSinceOf(d),
+      caughtUpAt: timestampMs(d.caughtUpAt, 0) || null,
+      openChecks: open.size,
+      openShift: Boolean(drawer.data()?.openShiftId),
+      heldWaiting: held.size,
+    })
+    if (problem) throw new HttpError(409, problem)
+    tx.update(ref, {
+      onlineSince: null,
+      caughtUpAt: null,
+      handedBackAt: FieldValue.serverTimestamp(),
+      handedBackBy: caller.uid,
+      handedBackByEmail: caller.email ?? '',
+    })
+    return { id, branch, name: String(d.name ?? '') }
+  })
+}
+
+/**
+ * Notes that a hub whose branch trades online has nothing left to send up, from
+ * how far it says it has sent and how far its change log goes. Written once per
+ * spell online, not at every pull. Returns whether it wrote.
+ */
+export async function noteCaughtUp(device: HubDevice, sent: unknown, latest: unknown, db: Firestore = adminDb()): Promise<boolean> {
+  const since = device.onlineSince ?? null
+  if (since === null || !caughtUp(sent, latest)) return false
+  if (device.caughtUpAt != null && device.caughtUpAt >= since) return false
+  await db.doc(`${DEVICES}/${device.id}`).update({ caughtUpAt: FieldValue.serverTimestamp() })
+  return true
 }
 
 /** Unpairs a hub: its credential stops working at its next pull. Unpairing twice is not an error. */
@@ -264,7 +370,67 @@ export interface PushResult {
   docs: number
   moves: number
   movesAlreadyApplied: number
+  /** Items held for a manager because the hub's branch trades online (S22). */
+  held: number
+  /** Whether the hub's branch trades on the online till, so the hub stops taking orders. */
+  tradingOnline: boolean
   seq: number
+}
+
+// Firestore's values back from a hub's tagged copy, for this database.
+function reviver(db: Firestore): Revive {
+  return (kind, data) => {
+    switch (kind) {
+      case 'ts': return new Timestamp(Number(data.s), Number(data.n))
+      case 'geo': return new GeoPoint(Number(data.lat), Number(data.lng))
+      case 'ref': return db.doc(String(data.path))
+      case 'bytes': return Buffer.from(String(data.b64), 'base64')
+      default: throw new HttpError(400, `A value of unknown kind "${kind}".`)
+    }
+  }
+}
+
+const heldDocId = (deviceId: string, collection: string, docId: string) => `${deviceId}_${collection}_${docId}`
+const heldMoveId = (deviceId: string, moveId: string) => `${deviceId}_move_${moveId}`
+
+/**
+ * Holds a push for a manager instead of applying it (S22). A document is held
+ * as it stands, and sent again after a change is waiting again with the new
+ * version. A movement is held once, and not at all when the cloud already
+ * applied it before the branch went online. Activity is written as usual: it
+ * records what happened on the counter PC, and changes nobody's trading.
+ */
+async function holdPush(device: HubDevice, docs: PushedDoc[], moves: StockMove[], db: Firestore): Promise<number> {
+  const base = { deviceId: device.id, hubName: device.name, branch: device.branch, status: 'waiting' satisfies HeldStatus, decidedBy: null, decidedByEmail: null, decidedAt: null }
+  let held = 0
+  for (let i = 0; i < docs.length; i += 400) {
+    const batch = db.batch()
+    for (const raw of docs.slice(i, i + 400)) {
+      if (raw.collection === 'activityLog') {
+        batch.set(db.doc(`${raw.collection}/${raw.id}`), { ...(decode(raw.data, reviver(db)) as Record<string, unknown>), hubId: device.id, branch: device.branch })
+        continue
+      }
+      batch.set(db.doc(`${HELD_ITEMS}/${heldDocId(device.id, raw.collection, raw.id)}`), {
+        ...base, kind: 'doc', collection: raw.collection, docId: raw.id, data: raw.data, move: null,
+        summary: heldSummary(raw.collection, raw.data), heldAt: FieldValue.serverTimestamp(),
+      })
+      held++
+    }
+    await batch.commit()
+  }
+  for (const move of moves) {
+    const item = db.doc(`${HELD_ITEMS}/${heldMoveId(device.id, move.id)}`)
+    const marker = db.doc(`${APPLIED_MOVES}/${device.id}_${move.id}`)
+    const [itemSnap, markerSnap] = await db.getAll(item, marker)
+    if (itemSnap.exists || markerSnap.exists) continue
+    await item.create({
+      ...base, kind: 'move', collection: move.collection, docId: move.docId, data: null,
+      move: { id: move.id, collection: move.collection, docId: move.docId, branch: move.branch, delta: move.delta },
+      summary: heldSummary(move.collection, null, move), heldAt: FieldValue.serverTimestamp(),
+    })
+    held++
+  }
+  return held
 }
 
 /**
@@ -299,16 +465,13 @@ export async function applyPush(device: HubDevice, body: unknown, db: Firestore 
     if (problem) throw new HttpError(400, problem)
   }
 
-  const revive: Revive = (kind, data) => {
-    switch (kind) {
-      case 'ts': return new Timestamp(Number(data.s), Number(data.n))
-      case 'geo': return new GeoPoint(Number(data.lat), Number(data.lng))
-      case 'ref': return db.doc(String(data.path))
-      case 'bytes': return Buffer.from(String(data.b64), 'base64')
-      default: throw new HttpError(400, `A value of unknown kind "${kind}".`)
-    }
+  if (device.onlineSince != null) {
+    const held = await holdPush(device, docs as PushedDoc[], moves as StockMove[], db)
+    await adminDb().doc(`${DEVICES}/${device.id}`).update({ pushedSeq: seq, lastPushAt: FieldValue.serverTimestamp() })
+    return { docs: 0, moves: 0, movesAlreadyApplied: 0, held, tradingOnline: true, seq }
   }
 
+  const revive = reviver(db)
   for (let i = 0; i < docs.length; i += 400) {
     const batch = db.batch()
     for (const raw of docs.slice(i, i + 400) as PushedDoc[]) {
@@ -341,7 +504,114 @@ export async function applyPush(device: HubDevice, body: unknown, db: Firestore 
   }
 
   await adminDb().doc(`${DEVICES}/${device.id}`).update({ pushedSeq: seq, lastPushAt: FieldValue.serverTimestamp() })
-  return { docs: docs.length, moves: applied, movesAlreadyApplied: already, seq }
+  return { docs: docs.length, moves: applied, movesAlreadyApplied: already, held: 0, tradingOnline: false, seq }
+}
+
+export interface HeldItemRow {
+  id: string
+  deviceId: string
+  hubName: string
+  branch: string
+  kind: 'doc' | 'move'
+  collection: string
+  docId: string
+  /** What the counter PC sent up, in one line. */
+  summary: string
+  /** The same document as the cloud has it now, in one line, or null when the cloud has none. Null for a movement. */
+  cloudNow: string | null
+  heldAt: number | null
+  status: HeldStatus
+  decidedByEmail: string
+  decidedAt: number | null
+}
+
+/** What hubs sent up while their branch traded online, newest first, for the managers deciding it (S22). */
+export async function listHeldItems(db: Firestore = adminDb()): Promise<HeldItemRow[]> {
+  const snap = await db.collection(HELD_ITEMS).orderBy('heldAt', 'desc').limit(300).get()
+  const rows = snap.docs.map(doc => ({ doc, d: doc.data() ?? {} }))
+  const targets = rows.filter(r => r.d.kind === 'doc').map(r => db.doc(`${String(r.d.collection)}/${String(r.d.docId)}`))
+  const now = new Map<string, Record<string, unknown> | null>()
+  if (targets.length > 0) {
+    for (const snapNow of await db.getAll(...targets)) now.set(snapNow.ref.path, snapNow.exists ? snapNow.data() ?? {} : null)
+  }
+  return rows.map(({ doc, d }) => {
+    const collection = String(d.collection ?? '')
+    const docId = String(d.docId ?? '')
+    const current = d.kind === 'doc' ? now.get(`${collection}/${docId}`) ?? null : null
+    const status: HeldStatus = d.status === 'applied' || d.status === 'dismissed' ? d.status : 'waiting'
+    return {
+      id: doc.id,
+      deviceId: String(d.deviceId ?? ''),
+      hubName: String(d.hubName ?? ''),
+      branch: String(d.branch ?? ''),
+      kind: d.kind === 'move' ? 'move' : 'doc',
+      collection,
+      docId,
+      summary: String(d.summary ?? ''),
+      cloudNow: current ? heldSummary(collection, current) : null,
+      heldAt: timestampMs(d.heldAt, 0) || null,
+      status,
+      decidedByEmail: String(d.decidedByEmail ?? ''),
+      decidedAt: timestampMs(d.decidedAt, 0) || null,
+    }
+  })
+}
+
+/**
+ * A manager's decision on one held item (S22). Apply writes the counter PC's
+ * version of the document over the cloud's, or applies the movement once, as a
+ * push would have. Dismiss leaves the cloud as it is. Either way it is decided
+ * once: a second decision is refused. A manager decides only for their own
+ * branches; an admin for any.
+ */
+export async function decideHeldItem(
+  caller: Caller,
+  rawId: unknown,
+  rawDecision: unknown,
+  db: Firestore = adminDb(),
+): Promise<{ id: string; decision: 'apply' | 'dismiss'; branch: string; hubName: string; summary: string }> {
+  const id = typeof rawId === 'string' && rawId.length <= 400 && /^[A-Za-z0-9_\-.:@+~]+$/.test(rawId) ? rawId : ''
+  if (!id) throw new HttpError(400, 'Missing item.')
+  if (!isHeldDecision(rawDecision)) throw new HttpError(400, 'Apply or dismiss.')
+  const ref = db.doc(`${HELD_ITEMS}/${id}`)
+  return db.runTransaction(async tx => {
+    const snap = await tx.get(ref)
+    const d = snap.data()
+    if (!d) throw new HttpError(404, 'That item is not there.')
+    const branch = String(d.branch ?? '')
+    const everywhere = caller.role === 'admin' || caller.superadmin
+    if (!everywhere && !(caller.branchIds ?? []).includes(branch)) throw new HttpError(403, `Only a manager at ${branch} or an admin decides this.`)
+    if (d.status !== 'waiting') throw new HttpError(409, 'Somebody has already decided this one.')
+    const out = { id, decision: rawDecision, branch, hubName: String(d.hubName ?? ''), summary: String(d.summary ?? '') }
+
+    if (rawDecision === 'apply' && d.kind === 'move') {
+      const move = d.move as StockMove
+      const problem = moveProblem(move, branch)
+      if (problem) throw new HttpError(400, problem)
+      const marker = db.doc(`${APPLIED_MOVES}/${String(d.deviceId)}_${move.id}`)
+      const target = db.doc(`${move.collection}/${move.docId}`)
+      const [markerSnap, targetSnap] = await tx.getAll(marker, target)
+      if (!markerSnap.exists) {
+        tx.create(marker, {
+          deviceId: String(d.deviceId), branch, collection: move.collection, docId: move.docId,
+          delta: move.delta, applied: targetSnap.exists, at: FieldValue.serverTimestamp(), heldItem: id,
+        })
+        if (targetSnap.exists) tx.update(target, { [moveField(move)]: FieldValue.increment(move.delta) })
+      }
+    } else if (rawDecision === 'apply') {
+      const pushed = { collection: String(d.collection ?? ''), id: String(d.docId ?? ''), data: d.data as Record<string, unknown> | null }
+      const problem = pushProblem(pushed, branch)
+      if (problem) throw new HttpError(400, problem)
+      tx.set(db.doc(`${pushed.collection}/${pushed.id}`), decode(pushed.data, reviver(db)) as Record<string, unknown>)
+    }
+    tx.update(ref, {
+      status: (rawDecision === 'apply' ? 'applied' : 'dismissed') satisfies HeldStatus,
+      decidedBy: caller.uid,
+      decidedByEmail: caller.email ?? '',
+      decidedAt: FieldValue.serverTimestamp(),
+    })
+    return out
+  })
 }
 
 // Firestore's values, tagged as a backup line tags them, so the hub gets a

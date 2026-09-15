@@ -9,11 +9,15 @@
 // opened online is a second open check the hub never sees. So the cloud's till
 // routes refuse to change that branch's trading. Reading it is still fine.
 //
-// Nothing is refused on the hub itself: there, it is the master.
+// On the hub itself it is the master, so nothing is refused there, except while
+// an admin has switched its branch to the online till because the counter PC
+// was out of action (S21). Then the hub refuses the same writes, until the
+// branch is handed back (S23).
 
 import type { Firestore } from 'firebase-admin/firestore'
 import { adminDb, hubDbPath } from './firebaseAdmin'
 import { HttpError } from './auth'
+import { hubLocksBranch } from '../hubFallback'
 
 const DEVICES = 'hubDevices'
 
@@ -25,9 +29,12 @@ export interface BranchHub {
   name: string
 }
 
-/** The paired hub trading a branch, from the hub rows, or null. An unpaired one no longer counts. */
+/**
+ * The paired hub trading a branch, from the hub rows, or null. An unpaired one
+ * no longer counts, nor does one whose branch an admin switched to the online till.
+ */
 export function activeHubFor(rows: readonly { id: string; data: Record<string, unknown> }[], branch: string): BranchHub | null {
-  const row = rows.find(r => r.data.branch === branch && !r.data.revokedAt)
+  const row = rows.find(r => r.data.branch === branch && hubLocksBranch(r.data))
   return row ? { id: row.id, name: typeof row.data.name === 'string' ? row.data.name : '' } : null
 }
 
@@ -56,15 +63,31 @@ async function targetBranch(target: TradingTarget, db: Firestore): Promise<strin
   return typeof branch === 'string' ? branch : null
 }
 
+/** What the counter PC says while its branch trades on the online till. */
+export function onlineInsteadMessage(branch: string): string {
+  return `${branch || 'This branch'} is trading on the online till while this counter PC was out of action, so it takes no orders, payments or drawer changes here. An admin hands it back from Settings → Café Hubs.`
+}
+
+/** On a hub: whether an admin switched its branch to the online till, as the hub last heard. */
+export async function hubTradingOnline(db: Firestore = adminDb()): Promise<{ online: boolean; branch: string }> {
+  const d = (await db.doc('hubMeta/device').get()).data()
+  return { online: d?.tradingOnline === true, branch: typeof d?.branch === 'string' ? d.branch : '' }
+}
+
 /**
- * Refuses, 409, a till write in the cloud for a branch a café hub is trading.
+ * Refuses, 409, a till write in the cloud for a branch a café hub is trading,
+ * and on a hub, every till write while its branch trades online.
  * Call it after the caller is checked and before anything is written.
  */
 export async function refuseWhileHubbed(
   target: TradingTarget,
   { db = adminDb(), onHub = Boolean(hubDbPath()) }: { db?: Firestore; onHub?: boolean } = {},
 ): Promise<void> {
-  if (onHub) return
+  if (onHub) {
+    const { online, branch } = await hubTradingOnline(db)
+    if (online) throw new HttpError(409, onlineInsteadMessage(branch))
+    return
+  }
   const branch = await targetBranch(target, db)
   if (!branch) return
   const hub = await branchHub(branch, db)

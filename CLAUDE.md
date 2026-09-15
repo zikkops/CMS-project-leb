@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1640
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1691
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -1029,6 +1029,53 @@ wraps the same React screens.
       survived: `branchHub()` already queries by branch, so the check in
       `activeHubFor()` was only proved once a test handed it another
       branch's row directly.
+  - **When the counter PC is out of action, the branch trades on the online
+    till** (owner's decisions S21–S23, 15 Sep 2026). The rules are
+    `shared/src/hubFallback.ts`; the cloud's side is `hubDevices.ts`, the hub's
+    `hubSync.ts`.
+    - **An admin switches it, by hand** (S21): "Trade online" on the hub's card
+      in Café Hubs (`PATCH /api/admin/hubs { action: 'online' }`,
+      `startOnlineTrading()`). Never automatic: the cloud cannot tell a broken PC
+      from a café whose internet is down while the hub trades, and phones on
+      mobile data would then trade online at the same time. `onlineSince` on the
+      hub row takes the lock off (`hubLocksBranch()`), at once.
+    - **What the hub sends up meanwhile is held for a manager** (S22). A push
+      from a hub whose branch trades online is validated as always, then written
+      to `hubHeldItems` (server-only, no rule) instead of applied: a document as
+      it stands (sent again after a change, it waits again with the new version),
+      a movement once, and not at all if the cloud applied it before the switch.
+      Activity is written as usual, as history. The push answers `tradingOnline`,
+      and **the hub stops taking orders at once**: `followTradingOnline()` sets
+      `hubMeta/device.tradingOnline`, and `refuseWhileHubbed()` on a hub refuses
+      every till write while it is set, with a notice on the hub's screens and
+      its `/pos/hub` page.
+    - **Held Hub Sales** (`/admin/settings/hubs/held`, gated on `endOfDay`, the
+      people who do the cash-up) lists each item with what the cloud has now.
+      Apply writes the hub's version, or the movement once through the same
+      marker a push uses; Dismiss leaves the cloud alone. Decided once; a manager
+      decides only for their own branches. Applying still runs `pushProblem()`.
+    - **Handing back** (S23, `handBackToHub()`) is refused until the hub has been
+      in touch with nothing left unsent SINCE the switch (`caughtUpAt`), there is
+      no open check and no open drawer shift for the branch in the cloud, and
+      nothing from the hub waits. The hub reports `sent` and `latest` on every
+      pull; changes with nothing to send (a sign-in between the push and the
+      pull) count as sent, or they would hold the hand-back back a whole sync.
+      **A hub still switched
+      off may hold sales it never sent; handed back first, it would send them up
+      as the master, over the online till's checks.** Switching online again
+      clears `caughtUpAt`.
+    - **Handed back, the hub starts clean**: on hearing, `clearTrading()` removes
+      its checks, tickets, shifts, drawer and movements (activity stays), and
+      only then trades again. Removals are never sent up.
+    - `verify:hub-sync` runs it all against a Firestore-shaped cloud and the
+      hub's real sync over a fake connection: 51 more assertions. 31
+      mutations: 30 caught, two of them only by the run stopping. Three first
+      survived and got tests: a hub flag of `false` read as online, a held
+      movement the cloud already had applied again, and a sign-in between push
+      and pull counted as unsent. **"A new spell online keeps the old caught-up"
+      survives, and should:** handing back clears `caughtUpAt` as well, and
+      `handBackProblem()` refuses a caught-up older than the switch anyway.
+    - **Not looked at signed in:** Café Hubs' new buttons and Held Hub Sales.
   - **Phones reach the hub on the café wifi encrypted, through the app, never
     over plain http** (owner's decision S11, 15 Sep 2026). On plain http, a
     signed-in session and the Firebase token behind it cross the wifi in the
