@@ -99,11 +99,15 @@ function readConfig(raw, env) {
     } catch { /* unreadable: the defaults */ }
   }
   const fromEnv = env && typeof env.BIG_CMS_POS_URL === 'string' ? readPosUrl(env.BIG_CMS_POS_URL) : null
+  const chosenMode = readMode(env?.BIG_CMS_DESKTOP_MODE) ?? readMode(src.mode)
   return {
     posUrl: fromEnv ?? readPosUrl(src.posUrl) ?? DEFAULT_CONFIG.posUrl,
     kiosk: typeof src.kiosk === 'boolean' ? src.kiosk : DEFAULT_CONFIG.kiosk,
     startWithWindows: typeof src.startWithWindows === 'boolean' ? src.startWithWindows : DEFAULT_CONFIG.startWithWindows,
-    mode: readMode(env?.BIG_CMS_DESKTOP_MODE) ?? readMode(src.mode) ?? DEFAULT_CONFIG.mode,
+    mode: chosenMode ?? DEFAULT_CONFIG.mode,
+    // Nobody has chosen online till or café hub on this PC yet (S29): the app
+    // opens its setup screen instead of guessing.
+    modeChosen: chosenMode !== null,
     hubPort: readPort(src.hubPort) ?? DEFAULT_CONFIG.hubPort,
     cloudUrl: readCloudUrl(env?.BIG_CMS_CLOUD_URL) ?? readCloudUrl(src.cloudUrl) ?? DEFAULT_CONFIG.cloudUrl,
     hubLan: typeof src.hubLan === 'boolean' ? src.hubLan : DEFAULT_CONFIG.hubLan,
@@ -213,6 +217,50 @@ function classifyHubProbe(status, body) {
   return 'other'
 }
 
+// ── Online till or café hub (owner's decisions S29–S30) ────────────────────
+
+/**
+ * The settings file with its mode set, every other setting kept as it was. A
+ * file that cannot be read is replaced by one with only the mode: nothing in it
+ * could be used anyway.
+ */
+function configWithMode(raw, mode) {
+  if (!MODES.has(mode)) throw new Error(`"${mode}" is not a mode.`)
+  let src = {}
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) src = parsed
+    } catch { /* unreadable: start again */ }
+  }
+  return `${JSON.stringify({ ...src, mode }, null, 2)}\n`
+}
+
+/** The manager's key combination for the setup screen: Ctrl+Shift+Alt+M. */
+function isSetupShortcut(input) {
+  return Boolean(input && input.type === 'keyDown' && input.control && input.shift && input.alt && String(input.key).toLowerCase() === 'm')
+}
+
+/**
+ * Whether a page may use the setup screen's bridge to the app: the app's own
+ * setup.html, loaded from the app's files, and nothing else. Never a POS page,
+ * which comes from the network.
+ */
+function isSetupPage(url) {
+  try {
+    const u = new URL(url)
+    return u.protocol === 'file:' && /\/setup\.html$/.test(u.pathname)
+  } catch {
+    return false
+  }
+}
+
+/** The name the old hub database is kept under when a PC leaves hub mode (S30): pos.db.hub-backup-20260915-221530. */
+function hubBackupName(date) {
+  const pad = n => String(n).padStart(2, '0')
+  return `pos.db.hub-backup-${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`
+}
+
 /** How long to wait before starting a stopped hub again: 1s, 2s, 4s… never more than 30s. */
 function hubRestartDelay(attempt) {
   const n = Number.isInteger(attempt) && attempt > 0 ? Math.min(attempt, 10) : 0
@@ -222,4 +270,5 @@ function hubRestartDelay(attempt) {
 module.exports = {
   DEFAULT_CONFIG, readPosUrl, readCloudUrl, readUpdatesUrl, readConfig, isAllowedNavigation, isAllowedPermission,
   hubAddress, hubServerEnv, classifyHubProbe, hubRestartDelay,
+  configWithMode, isSetupShortcut, isSetupPage, hubBackupName,
 }

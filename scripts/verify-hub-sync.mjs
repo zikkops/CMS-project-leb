@@ -1609,6 +1609,41 @@ try {
   fail++
 }
 
+console.log('\na counter PC stops being the café hub only when nothing would be left behind (S30)')
+try {
+  eq('nothing unsent and nothing open: it may leave', P.leaveHubReasons({ unsentDocs: 0, unsentMoves: 0, openChecks: 0, openShift: false }), [])
+  eq('THE TRAP: not with trading unsent, a stock movement unsent, a table open or the drawer open',
+    [P.leaveHubReasons({ unsentDocs: 2, unsentMoves: 0, openChecks: 0, openShift: false }).length, P.leaveHubReasons({ unsentDocs: 0, unsentMoves: 1, openChecks: 0, openShift: false })[0],
+      P.leaveHubReasons({ unsentDocs: 0, unsentMoves: 0, openChecks: 3, openShift: false })[0], P.leaveHubReasons({ unsentDocs: 0, unsentMoves: 0, openChecks: 0, openShift: true })[0]],
+    [1, 'One change has not been sent to the cloud yet. Connect the internet and wait a few minutes for the hub to sync.', '3 tables are still open. Close them first.', 'The drawer shift is still open. Close it with a count first.'])
+
+  for (const d of (await db.collection('checks').where('status', '==', 'open').get()).docs) await d.ref.update({ status: 'closed' })
+  for (const d of (await db.collection('branchDrawers').get()).docs) await d.ref.set({ openShiftId: null, since: null })
+  for (const d of (await db.collection('hubStockMoves').get()).docs) await d.ref.delete()
+  db.writeMeta('pushedSeq', String(db.lastSeq()))
+  eq('a hub with everything sent and nothing open is ready to leave', await S.readyToLeaveHub(db), { ready: true, reasons: [] })
+  await db.doc('checks/leave-open').set({ branch, status: 'open', tableNumber: 4 })
+  const blocked = await S.readyToLeaveHub(db)
+  eq('THE TRAP: a table opened since the last sync is both open and unsent, and the hub says both',
+    [blocked.ready, blocked.reasons.length, blocked.reasons.some(r => /not been sent/.test(r)), blocked.reasons.some(r => /still open/.test(r))], [false, 2, true, true])
+  await db.doc('checks/leave-open').update({ status: 'closed' })
+  db.writeMeta('pushedSeq', String(db.lastSeq()))
+  await db.doc(`branchDrawers/${branch}`).set({ openShiftId: 'leave-shift', since: null })
+  db.writeMeta('pushedSeq', String(db.lastSeq()))
+  eq('...and a drawer shift left open keeps it the hub', (await S.readyToLeaveHub(db)).reasons, ['The drawer shift is still open. Close it with a count first.'])
+  await db.doc(`branchDrawers/${branch}`).set({ openShiftId: null, since: null })
+  db.writeMeta('pushedSeq', String(db.lastSeq()))
+  // More changes with nothing to send than one batch holds, then a closed check not yet sent.
+  for (let i = 0; i < 205; i++) await db.doc(`hubSessions/leave-noise-${i}`).set({ uid: 'u-noise', n: i })
+  await db.doc('checks/leave-late').set({ branch, status: 'closed', tableNumber: 6 })
+  const late = await S.readyToLeaveHub(db)
+  eq('THE TRAP: a change past the first batch of the change log still keeps it the hub', [late.ready, late.reasons.length, /not been sent/.test(late.reasons[0] ?? '')], [false, 1, true])
+  db.writeMeta('pushedSeq', String(db.lastSeq()))
+} catch (err) {
+  console.log(`  FAIL  the leaving section stopped: ${String(err?.stack ?? err).split('\n').slice(0, 3).join(' | ')}`)
+  fail++
+}
+
 console.log('\nwhere phones find the hub on the café wifi, and what its QR says (S11)')
 {
   const N = await import(url('hubNetwork.js'))

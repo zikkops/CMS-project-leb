@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'">
+  <title>BIG CMS POS — set up this PC</title>
+  <!--
+    Online till or café hub (owner's decisions S29–S30). Shown by main.js the
+    first time the app starts, and when a manager presses Ctrl+Shift+Alt+M.
+    System colours and fonts, like offline.html: this page is the app's own and
+    cannot reach the POS's stylesheet.
+  -->
+  <style>
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+           background: Canvas; color: CanvasText; font: 18px/1.6 system-ui, sans-serif; }
+    main { max-width: 44rem; padding: 2rem; }
+    h1 { font-size: 1.9rem; margin: 0 0 0.4rem; text-align: center; }
+    .lead { text-align: center; opacity: 0.75; margin: 0 0 1.6rem; }
+    .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
+    button { font: inherit; text-align: left; padding: 1.2rem 1.4rem; border-radius: 12px; border: 2px solid ButtonText;
+             background: ButtonFace; color: ButtonText; cursor: pointer; min-height: 9rem; }
+    button strong { display: block; font-size: 1.2rem; margin-bottom: 0.3rem; }
+    button span { opacity: 0.75; font-size: 0.95rem; }
+    button[aria-current="true"] { outline: 4px solid Highlight; }
+    button:disabled { opacity: 0.5; border-style: dashed; cursor: default; }
+    .note { margin-top: 1.2rem; font-size: 0.95rem; opacity: 0.85; }
+    .problem { color: #e63946; }
+    ul { margin: 0.4rem 0 0; padding-left: 1.2rem; }
+    .close { display: block; margin: 1.4rem auto 0; min-height: 3rem; text-align: center; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Set up this PC</h1>
+    <p class="lead" id="lead">Choose what this counter PC is. A manager can change it later with Ctrl+Shift+Alt+M.</p>
+    <div class="choices">
+      <button type="button" id="online">
+        <strong>Online till</strong>
+        <span>Opens the POS on the internet, like a browser. Nothing is kept on this PC. Needs the internet to take orders.</span>
+      </button>
+      <button type="button" id="hub">
+        <strong>Café hub</strong>
+        <span>Runs the POS on this PC, so the café keeps trading with no internet. Next, it asks for the pairing code an admin gets from Settings → Café Hubs.</span>
+      </button>
+    </div>
+    <p class="note" id="note" hidden></p>
+    <button type="button" class="close" id="close" hidden>Back to the till, unchanged</button>
+  </main>
+  <script>
+    'use strict'
+    const setup = window.counterSetup
+    const note = document.getElementById('note')
+    const buttons = { online: document.getElementById('online'), hub: document.getElementById('hub') }
+
+    function say(text, problem, reasons) {
+      note.hidden = !text
+      note.className = problem ? 'note problem' : 'note'
+      note.textContent = text || ''
+      if (reasons && reasons.length) {
+        const list = document.createElement('ul')
+        for (const r of reasons) { const li = document.createElement('li'); li.textContent = r; list.appendChild(li) }
+        note.appendChild(list)
+      }
+    }
+
+    async function start() {
+      if (!setup) { say('This screen only works inside the BIG CMS POS app.', true); return }
+      const current = await setup.current()
+      if (current.chosen) {
+        document.getElementById('lead').textContent = `This PC is ${current.mode === 'hub' ? 'the café hub' : 'an online till'}. Choose the other to change it.`
+        buttons[current.mode].setAttribute('aria-current', 'true')
+        document.getElementById('close').hidden = false
+      }
+    }
+
+    async function choose(mode) {
+      buttons.online.disabled = true
+      buttons.hub.disabled = true
+      say(mode === 'online' ? 'Checking this PC can stop being the café hub…' : 'Setting up…', false)
+      try {
+        const result = await setup.choose(mode)
+        if (result.ok) {
+          say('Starting again…', false)
+        } else {
+          say(result.message || 'This PC was not changed.', true, result.reasons)
+          buttons.online.disabled = false
+          buttons.hub.disabled = false
+        }
+      } catch (err) {
+        say('This PC was not changed.', true)
+        buttons.online.disabled = false
+        buttons.hub.disabled = false
+      }
+    }
+
+    buttons.online.addEventListener('click', () => { void choose('online') })
+    buttons.hub.addEventListener('click', () => { void choose('hub') })
+    document.getElementById('close').addEventListener('click', () => { void setup.close() })
+    void start()
+  </script>
+</body>
+</html>

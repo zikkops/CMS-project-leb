@@ -26,7 +26,7 @@ import { stable } from '../backupCodec'
 import { BRANCHES } from '../branches'
 import { invoicePeriod } from '../invoiceFormat'
 import { timestampMs } from '../timestamps'
-import { deviceAuthHeader, normalizePairingCode, planPull, pullSpec, type PulledDoc } from '../hubSync'
+import { deviceAuthHeader, leaveHubReasons, normalizePairingCode, planPull, pullSpec, type PulledDoc } from '../hubSync'
 import { MOVES_COLLECTION, PUSHED_COLLECTIONS, PUSH_BATCH, type PushedDoc, type StockMove } from '../hubPush'
 import { addBlock, needsReceipts, readBlocks, receiptsLeft } from '../receiptBlocks'
 
@@ -522,6 +522,34 @@ export function startHubSync(fetchImpl: Fetch = fetch): void {
     setTimeout(tick, PULL_EVERY_MS).unref?.()
   }
   setTimeout(tick, 3_000).unref?.()
+}
+
+/**
+ * Whether this PC can stop being the café hub (S30): everything it is master
+ * for already sent up, no table open, no drawer shift open. The Windows app asks
+ * before it switches the PC to an online till.
+ */
+export async function readyToLeaveHub(store: HubStore = adminDb() as unknown as HubStore): Promise<{ ready: boolean; reasons: string[] }> {
+  hubOnly()
+  let unsentDocs = 0
+  let unsentMoves = 0
+  let from = Number(store.readMeta(PUSHED_UP_TO) ?? 0)
+  for (let round = 0; round < 100; round++) {
+    const batch = await collectPush(store, from)
+    unsentDocs += batch.docs.length
+    unsentMoves += batch.moves.length
+    if (batch.toSeq === from) break
+    from = batch.toSeq
+  }
+  const open = await store.collection('checks').where('status', '==', 'open').get()
+  const drawers = await store.collection('branchDrawers').get()
+  const reasons = leaveHubReasons({
+    unsentDocs,
+    unsentMoves,
+    openChecks: open.size,
+    openShift: drawers.docs.some(d => Boolean(d.data()?.openShiftId)),
+  })
+  return { ready: reasons.length === 0, reasons }
 }
 
 /** What the hub's page shows. Never the secret. */

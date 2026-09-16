@@ -22,7 +22,7 @@
 
 'use strict'
 
-const { app, BrowserWindow, Menu, powerMonitor, powerSaveBlocker, session, shell, utilityProcess } = require('electron')
+const { app, BrowserWindow, Menu, ipcMain, powerMonitor, powerSaveBlocker, session, shell, utilityProcess } = require('electron')
 const { spawn } = require('node:child_process')
 const fs = require('node:fs')
 const http = require('node:http')
@@ -30,7 +30,13 @@ const path = require('node:path')
 const {
   readConfig, isAllowedNavigation, isAllowedPermission,
   hubAddress, hubServerEnv, classifyHubProbe, hubRestartDelay,
+  configWithMode, isSetupShortcut, isSetupPage, hubBackupName,
 } = require('./policy')
+
+// A development check of the setup screen, and nothing else: the app's data in
+// a folder of its own, so this PC's real settings are never touched.
+if (process.env.BIG_CMS_USER_DATA) app.setPath('userData', process.env.BIG_CMS_USER_DATA)
+const SMOKE_SETUP = process.argv.includes('--smoke-setup')
 const { loadOrCreateCertificate, startLanFront } = require('./hubLan')
 const updates = require('./update')
 
@@ -78,17 +84,19 @@ function createWindow(config, { load }) {
     backgroundColor: '#0a0a0a',
     title: 'BIG CMS POS',
     autoHideMenuBar: true,
-    kiosk: config.kiosk && !SMOKE,
+    kiosk: config.kiosk && !SMOKE && !SMOKE_SETUP,
     webPreferences: {
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
       spellcheck: false,
       devTools: !app.isPackaged,
+      // Gives the setup screen, and only it, its bridge (preload.js).
+      preload: path.join(__dirname, 'preload.js'),
     },
   })
 
-  if (!SMOKE) win.once('ready-to-show', () => win.show())
+  if (!SMOKE && !SMOKE_SETUP) win.once('ready-to-show', () => win.show())
 
   const contents = win.webContents
 
@@ -142,6 +150,10 @@ function createWindow(config, { load }) {
     if (input.control && input.shift && input.alt && key === 'k') {
       event.preventDefault()
       win.setKiosk(!win.isKiosk())
+    } else if (isSetupShortcut(input)) {
+      // Online till or café hub (S29), for a manager.
+      event.preventDefault()
+      showSetup(win)
     } else if ((input.control && !input.shift && !input.alt && key === 'r') || input.key === 'F5') {
       event.preventDefault()
       contents.reload()
@@ -150,6 +162,93 @@ function createWindow(config, { load }) {
 
   if (load) win.loadURL(config.posUrl)
   return win
+}
+
+// ── Online till or café hub (S29–S30) ─────────────────────────────────────
+
+function showSetup(win) {
+  if (!win.isDestroyed()) win.loadFile(path.join(__dirname, 'setup.html'))
+}
+
+function hubDataDir() {
+  // BIG_CMS_HUB_DATA is for development, so a smoke run does not use the
+  // café's real database folder.
+  return process.env.BIG_CMS_HUB_DATA || path.join(app.getPath('userData'), 'hub')
+}
+
+/** A GET to this PC's own hub, as JSON, or null when it does not answer. */
+function hubJson(port, route) {
+  return new Promise(resolve => {
+    const req = http.get({ host: '127.0.0.1', port, path: route, timeout: 5000 }, res => {
+      let body = ''
+      res.setEncoding('utf8')
+      res.on('data', chunk => { if (body.length < 65_536) body += chunk })
+      res.on('end', () => { try { resolve({ status: res.statusCode, body: JSON.parse(body) }) } catch { resolve(null) } })
+    })
+    req.on('timeout', () => { req.destroy(); resolve(null) })
+    req.on('error', () => resolve(null))
+  })
+}
+
+/** Writes the chosen mode into config.json, keeping every other setting, and starts the app again in it. */
+function switchMode(file, mode) {
+  let raw = null
+  try { raw = fs.readFileSync(file, 'utf8') } catch { /* no file yet */ }
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, configWithMode(raw, mode))
+  console.log(`[pos] this PC is now ${mode === 'hub' ? 'the café hub' : 'an online till'}; starting again`)
+  if (hub) hub.stop()
+  app.relaunch()
+  app.exit(0)
+}
+
+/**
+ * The setup screen's calls, from the setup page only (isSetupPage), whatever
+ * preload.js let through. Leaving hub mode is refused until the hub says
+ * nothing is unsent and nothing is open (S30); then its database is kept as a
+ * backup file beside it before the app starts again online.
+ */
+function registerSetup({ config, file, window: getWindow }) {
+  const fromSetup = event => isSetupPage(event.senderFrame?.url ?? '')
+  ipcMain.handle('setup:current', event => {
+    if (!fromSetup(event)) throw new Error('Not the setup screen.')
+    return { mode: config.mode, chosen: config.modeChosen }
+  })
+  ipcMain.handle('setup:close', event => {
+    if (!fromSetup(event)) throw new Error('Not the setup screen.')
+    const win = getWindow()
+    if (config.modeChosen && win && !win.isDestroyed()) win.loadURL(config.posUrl)
+    return { ok: true }
+  })
+  ipcMain.handle('setup:choose', async (event, mode) => {
+    if (!fromSetup(event)) throw new Error('Not the setup screen.')
+    if (mode !== 'online' && mode !== 'hub') return { ok: false, message: 'Choose online till or café hub.' }
+    if (config.modeChosen && mode === config.mode) {
+      const win = getWindow()
+      if (win && !win.isDestroyed()) win.loadURL(config.posUrl)
+      return { ok: true }
+    }
+    if (config.modeChosen && config.mode === 'hub' && mode === 'online') {
+      const answer = await hubJson(config.hubPort, '/api/hub/leave')
+      if (!answer || answer.status !== 200) {
+        return { ok: false, message: 'The café hub on this PC did not answer, so it cannot be checked. Wait for it to start, then try again.' }
+      }
+      if (!answer.body.ready) {
+        return { ok: false, message: 'This PC is still the café hub, because:', reasons: Array.isArray(answer.body.reasons) ? answer.body.reasons.map(String) : [] }
+      }
+      if (hub) hub.stop()
+      await sleep(1500)
+      const dir = hubDataDir()
+      const backup = hubBackupName(new Date())
+      for (const suffix of ['', '-wal', '-shm']) {
+        const from = path.join(dir, `pos.db${suffix}`)
+        if (fs.existsSync(from)) fs.renameSync(from, path.join(dir, `${backup}${suffix}`))
+      }
+      console.log(`[pos] the café hub's database is kept as ${path.join(dir, backup)}`)
+    }
+    switchMode(file, mode)
+    return { ok: true }
+  })
 }
 
 // ── The café hub ───────────────────────────────────────────────────────────
@@ -188,9 +287,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
  */
 function startHub(config, { onReady, onStopped, onFailed }) {
   const serverPath = hubServerPath()
-  // BIG_CMS_HUB_DATA is for development, so a smoke run does not use the
-  // café's real database folder.
-  const dataDir = process.env.BIG_CMS_HUB_DATA || path.join(app.getPath('userData'), 'hub')
+  const dataDir = hubDataDir()
   fs.mkdirSync(dataDir, { recursive: true })
   const dbFile = path.join(dataDir, 'pos.db')
   const logFile = path.join(dataDir, 'hub.log')
@@ -418,14 +515,42 @@ if (!app.requestSingleInstanceLock()) {
       if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: config.startWithWindows })
     }
 
+    registerSetup({ config, file, window: () => mainWindow })
+
+    // First start, or a check of the setup screen: nobody has chosen online till
+    // or café hub yet (S29), so the app asks rather than guessing.
+    if (SMOKE_SETUP || (!config.modeChosen && !SMOKE)) {
+      mainWindow = createWindow(config, { load: false })
+      showSetup(mainWindow)
+      if (SMOKE_SETUP) {
+        mainWindow.webContents.once('did-finish-load', async () => {
+          try {
+            const seen = await mainWindow.webContents.executeJavaScript(
+              '(async () => ({ bridge: typeof window.counterSetup, current: window.counterSetup ? await window.counterSetup.current() : null, title: document.title }))()')
+            console.log(JSON.stringify({ ok: seen.bridge === 'object', ...seen }))
+            app.exit(seen.bridge === 'object' ? 0 : 1)
+          } catch (err) {
+            console.log(JSON.stringify({ ok: false, error: String(err?.message ?? err) }))
+            app.exit(1)
+          }
+        })
+      }
+      return
+    }
+
     mainWindow = createWindow(config, { load: !onHub })
     if (updating) startUpdates(config)
 
     if (onHub) {
       showOffline(mainWindow, config, 'Starting the café hub…')
       hub = startHub(config, {
-        onReady: () => {
-          if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.posUrl)
+        onReady: async () => {
+          if (!mainWindow || mainWindow.isDestroyed()) return
+          // A hub not paired yet opens its pairing page: the admin's code is the
+          // next step after choosing café hub (S29).
+          const pairing = await hubJson(config.hubPort, '/api/hub/pairing')
+          const paired = Boolean(pairing?.body?.paired) && !pairing?.body?.revoked
+          mainWindow.loadURL(paired ? config.posUrl : config.posUrl.replace(/\/pos$/, '/pos/hub'))
         },
         onStopped: code => {
           if (mainWindow) showOffline(mainWindow, config, `The café hub stopped (code ${code}). Starting it again.`)

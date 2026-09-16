@@ -85,7 +85,12 @@ Keys for a manager: **Ctrl+Shift+Alt+K** leaves or returns to full screen,
   the PC idle ten minutes and nobody signed in, or at the next start. Releasing
   one is [docs/desktop-updates.md](../docs/desktop-updates.md).
 
-- **`mode`** is `online` or `hub`.
+- **`mode`** is `online` or `hub`. With none set, the app asks on its first
+  start (`setup.html`, owner's decision S29): "Online till" or "Café hub", which
+  goes on to the pairing code. A manager reopens that screen with
+  **Ctrl+Shift+Alt+M**. Leaving hub mode is refused until the hub has sent
+  everything to the cloud and has no open table or drawer shift (S30); the old
+  database is then kept beside it as `pos.db.hub-backup-…`.
 - **`hubLan`** opens the encrypted port for phones on the café wifi, on
   `hubLanPort`. It is never the same port as `hubPort`, which stays on this PC.
 - **`posUrl`** must be https (or http on localhost). It is not used as the hub,

@@ -88,6 +88,22 @@ export interface PullSpec {
 /** The settings documents the till reads. Never the invoice counter, the error budget or anything else in appSettings. */
 export const PULLED_SETTINGS = ['features', 'business', 'printing'] as const
 
+/**
+ * Why a counter PC cannot stop being the café hub yet, or none (owner's decision
+ * S30): anything not yet in the cloud, or anything still open, would be left
+ * behind on this PC.
+ */
+export function leaveHubReasons(s: { unsentDocs: number; unsentMoves: number; openChecks: number; openShift: boolean }): string[] {
+  const reasons: string[] = []
+  if (s.unsentDocs + s.unsentMoves > 0) {
+    const n = s.unsentDocs + s.unsentMoves
+    reasons.push(`${n === 1 ? 'One change has' : `${n} changes have`} not been sent to the cloud yet. Connect the internet and wait a few minutes for the hub to sync.`)
+  }
+  if (s.openChecks > 0) reasons.push(`${s.openChecks === 1 ? 'A table is' : `${s.openChecks} tables are`} still open. Close ${s.openChecks === 1 ? 'it' : 'them'} first.`)
+  if (s.openShift) reasons.push('The drawer shift is still open. Close it with a count first.')
+  return reasons
+}
+
 export function pullSpec(branch: string): PullSpec[] {
   return [
     { collection: 'menuCategories' },

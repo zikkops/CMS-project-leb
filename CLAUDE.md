@@ -40,7 +40,7 @@ tomorrow is in the run without anybody updating a list. That matters because
 this list had already drifted: `verify:features` and `verify:hosts` existed for
 weeks without appearing in it. It prints the assertion count per verifier,
 because a verifier that silently asserts nothing still exits 0, and the count
-is the only thing that shows it. Currently 27 checks, 21 verifiers, 1780
+is the only thing that shows it. Currently 27 checks, 21 verifiers, 1794
 assertions, about 50 seconds of work across four lanes. It deliberately does
 not run the builds — three Next builds take minutes to prove compilation that
 tsc proves faster.
@@ -660,6 +660,33 @@ wraps the same React screens.
 - **A smoke run reports its first outcome only.** A failed load is followed by
   Chromium's error page finishing, and reporting both turned "could not load
   the POS" into exit 0.
+- **Online till or café hub is chosen on the PC** (owner's decisions S29–S30,
+  15 Sep 2026). One installer. A PC whose `config.json` names no mode
+  (`modeChosen` false in `readConfig()`) opens `desktop/setup.html` instead of
+  guessing: "Online till" or "Café hub". Café hub starts the hub and, while it
+  is not paired, opens `/pos/hub` for the admin's pairing code, so only that code
+  makes a PC a working hub. **Ctrl+Shift+Alt+M** reopens the screen for a
+  manager.
+  - **The bridge is narrow.** `preload.js` exposes `counterSetup` only to the
+    app's own `setup.html` (a `file:` page), and every `ipcMain` handler checks
+    the sender again with `isSetupPage()`: a POS page, which comes from the
+    network, can never switch the PC. `configWithMode()` writes the mode and keeps
+    every other setting; the app then starts again in that mode.
+  - **Leaving hub mode waits (S30).** The app asks the hub `GET /api/hub/leave`
+    (counter PC only; `readyToLeaveHub()` with the pure `leaveHubReasons()`):
+    refused, with the reasons on screen, while any change is unsent (walked to
+    the end of the change log), any check is open, or any drawer shift is open.
+    Ready, it stops the hub and renames `pos.db` (and `-wal`, `-shm`) to
+    `pos.db.hub-backup-YYYYMMDD-HHMMSS` beside it before starting online.
+  - `npm --prefix desktop run smoke:setup` loads the setup screen hidden, with
+    `BIG_CMS_USER_DATA` pointing at a folder of its own, and reports whether the
+    bridge reached it. Run 15 Sep 2026: the bridge reached the page, not chosen,
+    and no settings file was written; the ordinary smoke still loaded the live
+    POS.
+  - 13 mutations, all caught by name. "Only the first batch of unsent changes is
+    counted" first survived: nothing put more than a batch of changes with
+    nothing to send in front of an unsent check.
+  - **Not run:** the switch itself on a real hub, and the backup rename.
 - **The counter app updates itself** (owner's decisions S26–S27, 15 Sep 2026):
   new versions from our own site, installed only when nobody is using the PC.
   The rules are `desktop/update.js` (no Electron, asserted by

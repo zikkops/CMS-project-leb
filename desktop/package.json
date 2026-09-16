@@ -9,6 +9,7 @@
   "scripts": {
     "start": "electron .",
     "smoke": "electron . --smoke",
+    "smoke:setup": "electron . --smoke-setup",
     "hub:prepare": "node ../scripts/package-hub.mjs",
     "dist": "node ../scripts/package-hub.mjs && electron-builder --win nsis && node ../scripts/check-hub-shipped.mjs"
   },
@@ -19,7 +20,7 @@
   "build": {
     "appId": "com.bigcms.pos",
     "productName": "BIG CMS POS",
-    "files": ["main.js", "policy.js", "hubLan.js", "update.js", "offline.html", "package.json", "!**/node_modules/**"],
+    "files": ["main.js", "policy.js", "hubLan.js", "update.js", "preload.js", "offline.html", "setup.html", "package.json", "!**/node_modules/**"],
     "extraResources": [{ "from": "hub-bundle", "to": ".", "filter": ["hub/**/*"] }],
     "npmRebuild": false,
     "directories": { "output": "dist" },

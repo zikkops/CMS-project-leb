@@ -33,7 +33,7 @@ const eq = (name, got, want) => {
 const POS = 'https://pos.cms-projectlb.com/pos'
 const CLOUD = 'https://pos.cms-projectlb.com'
 const UPDATES = 'https://pos.cms-projectlb.com/api/desktop-updates/'
-const DEFAULTS = { posUrl: POS, kiosk: true, startWithWindows: true, mode: 'online', hubPort: 3100, cloudUrl: CLOUD, hubLan: false, hubLanPort: 3443, autoUpdate: true, updatesUrl: UPDATES }
+const DEFAULTS = { posUrl: POS, kiosk: true, startWithWindows: true, mode: 'online', modeChosen: false, hubPort: 3100, cloudUrl: CLOUD, hubLan: false, hubLanPort: 3443, autoUpdate: true, updatesUrl: UPDATES }
 
 console.log('\nthe address the till opens')
 {
@@ -196,6 +196,30 @@ try {
 } catch (err) {
   console.log(`  FAIL  the run stopped: ${String(err?.stack ?? err).split('\n').slice(0, 3).join(' | ')}`)
   fail++
+}
+
+console.log('\nonline till or café hub, chosen on the PC (S29–S30)')
+{
+  eq('THE TRAP: a PC nobody has set up asks, rather than guessing online',
+    [P.readConfig(null, {}).modeChosen, P.readConfig('{"kiosk": false}', {}).modeChosen, P.readConfig('{"mode": "sideways"}', {}).modeChosen], [false, false, false])
+  eq('...and a mode in the file, or the environment, counts as chosen',
+    [P.readConfig('{"mode": "online"}', {}).modeChosen, P.readConfig('{"mode": "hub"}', {}).modeChosen, P.readConfig(null, { BIG_CMS_DESKTOP_MODE: 'hub' }).modeChosen], [true, true, true])
+  const written = P.configWithMode('{"kiosk": false, "hubLan": true, "mode": "hub"}', 'online')
+  eq('choosing a mode keeps every other setting', [JSON.parse(written), P.readConfig(written, {}).modeChosen], [{ kiosk: false, hubLan: true, mode: 'online' }, true])
+  eq('...an unreadable file becomes one with the mode', [JSON.parse(P.configWithMode('{oops', 'hub')), JSON.parse(P.configWithMode(null, 'online'))], [{ mode: 'hub' }, { mode: 'online' }])
+  let refused = null
+  try { P.configWithMode('{}', 'offline') } catch (err) { refused = err.message }
+  eq('a mode that does not exist is refused, not written', refused, '"offline" is not a mode.')
+
+  eq('the manager\'s key combination is Ctrl+Shift+Alt+M, on a key press',
+    [P.isSetupShortcut({ type: 'keyDown', control: true, shift: true, alt: true, key: 'M' }), P.isSetupShortcut({ type: 'keyUp', control: true, shift: true, alt: true, key: 'm' }),
+      P.isSetupShortcut({ type: 'keyDown', control: true, shift: true, alt: false, key: 'm' }), P.isSetupShortcut({ type: 'keyDown', control: true, shift: true, alt: true, key: 'k' })],
+    [true, false, false, false])
+  eq('THE TRAP: only the app\'s own setup page may switch the PC: never a POS page from the network, or a look-alike',
+    [P.isSetupPage('file:///C:/Program%20Files/BIG%20CMS%20POS/resources/app.asar/setup.html'), P.isSetupPage('https://pos.cms-projectlb.com/setup.html'),
+      P.isSetupPage('http://localhost:3100/pos'), P.isSetupPage('file:///C:/x/offline.html'), P.isSetupPage('file:///C:/x/setup.html.evil'), P.isSetupPage('nonsense')],
+    [true, false, false, false, false, false])
+  eq('the old hub database is kept under a dated backup name', P.hubBackupName(new Date(2026, 8, 15, 22, 15, 30)), 'pos.db.hub-backup-20260915-221530')
 }
 
 console.log('\nautomatic updates: signed, checked, and installed only when nobody is using the PC (S26–S27)')
