@@ -653,9 +653,9 @@ wraps the same React screens.
   into the app: a 370 MB `app.asar` with Firebase, firebase-admin and the rest.
   No secrets went in, but it shipped the whole platform's code. `files` ends in
   `!**/node_modules/**` and `npmRebuild` is false, because the app has no runtime
-  dependencies. The asar is 13 KB and holds exactly main.js, policy.js,
-  offline.html and package.json. **After changing the build config, list the
-  asar** (`npx @electron/asar list dist/win-unpacked/resources/app.asar`) before
+  dependencies. The asar holds exactly main.js, policy.js, hubLan.js,
+  update.js, preload.js, offline.html, setup.html and package.json (listed
+  16 Sep 2026). **After changing the build config, list the asar** (`npx @electron/asar list dist/win-unpacked/resources/app.asar`) before
   shipping an installer.
 - **A smoke run reports its first outcome only.** A failed load is followed by
   Chromium's error page finishing, and reporting both turned "could not load
@@ -717,8 +717,15 @@ wraps the same React screens.
     installer cannot restart a till in a loop. Never a downgrade.
   - Only the installed app updates itself, and `"autoUpdate": false` in
     `config.json` switches it off. `update.js` is in the asar's `files`.
-  - **Not run end to end:** no installer has been built, signed, served and
-    installed over an installed app. The download, checks and waiting installer
+  - **A real release was built and signed, 16 Sep 2026:** `npm --prefix desktop
+    run dist` made `BIG-CMS-POS-Setup-0.1.0.exe` (118.6 MB, the hub's 2,514
+    files whole, no service account found), and `release-desktop.mjs` signed it
+    with the real key. Served from this PC, `update.js` with its PINNED key
+    accepted the manifest, downloaded and checked the installer, accepted it
+    again as the waiting installer, and called version 0.1.0 current: the pinned
+    public key matches the private key. The packaged `.exe` passed both smoke
+    runs (setup screen, online till). **Not run:** an installer served from the
+    real site and installed over an installed app. The download, checks and waiting installer
     run against a real local http server in `verify:desktop` (29 more
     assertions; one more in `verify:hub-sync` for the live-session count).
     23 mutations, all caught by name. "A kept installer is reused without
