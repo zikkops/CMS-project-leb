@@ -25,7 +25,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faPlus, faCashRegister, faReceipt, faFire, faChartColumn, faPen, faClock, faXmark, faCheck,
   faDoorOpen, faStore, faMoneyBillWave, faCircleCheck, faTableCells, faScaleBalanced, faRotateLeft,
-  faTriangleExclamation, faUserGroup, faWheatAwnCircleExclamation, type IconDefinition,
+  faTriangleExclamation, faUserGroup, faWheatAwnCircleExclamation, faRightFromBracket, type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
 import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useTillAccess } from '../lib/useTillAccess'
@@ -40,6 +40,7 @@ import { PosButton, Chip, StatusBadge, PosLoading, Stepper } from '../lib/posUi'
 import { floorReadings, readReadingChoice, READINGS, type ReadingKey } from '../lib/floorReadings'
 import { ReadyPanel } from '../lib/ReadyPanel'
 import { useHubOnly, HubOnlyBanner } from '../lib/useHubOnly'
+import { backend } from '../lib/backend'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -387,14 +388,19 @@ export default function FloorPage() {
       }}>
         <div>
 
-        <div style={{ marginBottom: '1.25rem' }}>
-          <p style={{
-            fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(var(--offwhite-rgb),0.55)', marginBottom: '0.3rem', fontWeight: 700,
-          }}>{branch}</p>
-          <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.4rem', color: 'var(--offwhite)', lineHeight: 1 }}>
-            Open tables
-          </h1>
+        <div style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+          <div>
+            <p style={{
+              fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase',
+              color: 'rgba(var(--offwhite-rgb),0.55)', marginBottom: '0.3rem', fontWeight: 700,
+            }}>{branch}</p>
+            <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.4rem', color: 'var(--offwhite)', lineHeight: 1 }}>
+              Open tables
+            </h1>
+          </div>
+          {/* The till had no way to sign out (UPGRADE.md T1.11). */}
+          <PosButton icon={faRightFromBracket} label="Sign out" tone="quiet" size="sm"
+            onClick={() => { void backend().signOut().then(() => router.replace('/pos/login')) }} />
         </div>
 
         {isMobile && (

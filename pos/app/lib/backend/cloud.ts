@@ -9,11 +9,12 @@ import {
   collection, doc, limit, onSnapshot, orderBy, query, where, Timestamp,
   type QueryConstraint,
 } from 'firebase/firestore'
-import { onAuthStateChanged } from 'firebase/auth'
+import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { auth, db } from '@big-cms/shared/firebase'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import { planQuery, type FilterValue, type LocalDoc } from './queries'
 import type { PosBackend } from './types'
+import { clearAdminSessionCookie } from '@big-cms/shared/adminAuth'
 
 /** A plan's value as Firestore wants it: a timestamp as a Timestamp, a list as a plain array. */
 function firestoreValue(value: FilterValue): unknown {
@@ -31,6 +32,10 @@ export const cloudBackend: PosBackend = {
   watchAuth: onChange => onAuthStateChanged(auth, user => onChange(Boolean(user))),
 
   signedIn: () => Boolean(auth.currentUser),
+  signOut: async () => {
+    clearAdminSessionCookie()
+    try { await signOut(auth) } catch { /* signed out here regardless */ }
+  },
 
   watch(q, onData, onError) {
     const plan = planQuery(q)

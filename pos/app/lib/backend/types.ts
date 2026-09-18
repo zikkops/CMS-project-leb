@@ -27,6 +27,8 @@ export interface PosBackend {
   watchAuth(onChange: (signedIn: boolean) => void): () => void
   /** Whether somebody is signed in at this moment. */
   signedIn(): boolean
+  /** Signs this device out. Never throws: signed out here even if the other end cannot be told. */
+  signOut(): Promise<void>
   /** A live query. Returns an unsubscribe. */
   watch(query: PosQuery, onSnapshot: (snapshot: Snapshot) => void, onError: (err: unknown) => void): () => void
   /**

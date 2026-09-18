@@ -144,6 +144,12 @@ export default function HubPage() {
   const isMobile = useIsMobile()
   const [status, setStatus] = useState<HubStatus | null>(null)
   const [notHub, setNotHub] = useState(false)
+  // A hub that has not answered in 20 s is said to be slow, not left at "Looking…" (UPGRADE.md T1.11).
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setSlow(true), 20_000)
+    return () => clearTimeout(t)
+  }, [])
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -217,7 +223,9 @@ export default function HubPage() {
           </p>
         )}
 
-        {!notHub && !status && <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Looking…</p>}
+        {!notHub && !status && (slow
+          ? <ErrorNote tone="warn" message="The hub is not answering yet. It may still be starting: the first start takes up to 30 seconds. If this stays, restart the BIG CMS POS app." />
+          : <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Looking…</p>)}
 
         {status && needsPairing && (
           <form onSubmit={pair} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
@@ -318,7 +326,8 @@ export default function HubPage() {
         )}
 
         <p style={{ textAlign: 'center', marginTop: '1.8rem' }}>
-          <a href="/pos/login" style={{ color: 'var(--teal)', fontSize: '0.85rem' }}>Back to sign in</a>
+          <a href="/pos" style={{ color: 'var(--offwhite)', fontSize: '0.95rem', fontWeight: 600, marginRight: '1.5rem' }}>Go to the till</a>
+          <a href="/pos/login" style={{ color: 'rgba(var(--offwhite-rgb),0.7)', fontSize: '0.95rem' }}>Sign in</a>
         </p>
       </div>
     </main>

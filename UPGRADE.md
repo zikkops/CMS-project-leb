@@ -134,9 +134,10 @@ The owner's goals it answers:
 - [x] **T1.10 Kitchen display tile follows the KDS switch.** It shows even
   with KDS off (`pos/app/pos/page.tsx`, the `NavTile` for `/pos/kds`).
   *Done: the floor's Kitchen display tile shows only with KDS on.*
-- [ ] **T1.11 Hub page has a way back and a timeout.** "Looking…" forever when
+- [x] **T1.11 Hub page has a way back and a timeout.** "Looking…" forever when
   the hub never answers. The only link is "Back to sign in"; add "Go to the
   till". Put **Sign out** on the floor; the till has none today.
+  *Done: the hub page says the hub is not answering after 20 s instead of "Looking…" forever, and links "Go to the till" and "Sign in". The floor has Sign out (PosBackend.signOut(), cloud and hub); checked on the test hub: it lands on sign-in with the session gone.*
 - [ ] **T1.12 Login page, two clear cards.** "With your phone" and "With
   email", with visible labels on the inputs. Show "Loading staff…" or "No
   staff on this hub yet" instead of an empty grid.

@@ -380,6 +380,7 @@ export const hubBackend: PosBackend = {
   kind: 'hub',
 
   watchAuth: onChange => watchHubSession(s => onChange(Boolean(s))),
+  signOut: () => signOutHubSession(),
 
   signedIn: () => Boolean(readHubSession()),
 
