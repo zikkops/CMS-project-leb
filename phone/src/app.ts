@@ -22,6 +22,7 @@ import { parseHubLink } from '../../shared/src/hubNetwork'
 import { enrolMessage, handoffHash, signInMessage } from '../../shared/src/staffKeys'
 import { approveMessage, denyMessage } from '../../shared/src/staffApprovals'
 import { counterSignInMessage, isCounterCode, readCounterCode } from '../../shared/src/counterSignIn'
+import { phoneMessage, scanWasCancelled, SCAN_FAILED } from '../../shared/src/phoneMessages'
 
 interface Reply { status: number; body: string }
 
@@ -114,7 +115,7 @@ async function pairWith(text: string) {
     say(null)
     await show()
   } catch (err) {
-    say(err instanceof Error ? err.message : 'This phone could not be paired.')
+    say(phoneMessage(err, 'This phone could not be paired.'))
   }
 }
 
@@ -127,7 +128,7 @@ $('scan').addEventListener('click', async () => {
     })
     await pairWith(result.ScanResult ?? '')
   } catch (err) {
-    say(`Scanning did not work${err instanceof Error && err.message ? ` (${err.message})` : ''}. Paste the link instead.`)
+    if (!scanWasCancelled(err)) say(SCAN_FAILED)
   }
 })
 
@@ -195,7 +196,7 @@ $('registerForm').addEventListener('submit', async e => {
     await show()
     say('Registered. The hub picks this phone up at its next sync, within two minutes; then sign in with your fingerprint.', true)
   } catch (err) {
-    say(err instanceof Error ? err.message : 'This phone could not be registered.')
+    say(phoneMessage(err, 'This phone could not be registered.'))
   } finally {
     passwordField.value = ''
     button.disabled = false
@@ -224,7 +225,7 @@ $('signIn').addEventListener('click', async () => {
     say(null)
     await HubPin.open({ hash: handoffHash(token) })
   } catch (err) {
-    say(err instanceof Error ? err.message : 'The phone could not sign you in.')
+    say(phoneMessage(err, 'The phone could not sign you in.'))
   }
 })
 
@@ -266,7 +267,7 @@ $('counterForm').addEventListener('submit', async e => {
     $('counterForm').hidden = true
     say('The counter PC signs in as you in a moment. It signs out after 15 minutes without a tap.', true)
   } catch (err) {
-    say(err instanceof Error ? err.message : 'The counter was not signed in.')
+    say(phoneMessage(err, 'The counter was not signed in.'))
   } finally {
     button.disabled = false
   }
@@ -292,7 +293,7 @@ $('askManager').addEventListener('click', async () => {
     $<HTMLSelectElement>('person').replaceChildren(...people.map(p => new Option(p.label, p.uid)))
     $('askForm').hidden = false
   } catch (err) {
-    say(err instanceof Error ? err.message : 'The hub did not answer.')
+    say(phoneMessage(err, 'The hub did not answer.'))
   }
 })
 
@@ -330,7 +331,7 @@ async function askAndWait(body: Record<string, unknown>, waitingText: string) {
     }
     waiting = setTimeout(() => { void poll() }, 3_000)
   } catch (err) {
-    say(err instanceof Error ? err.message : 'The hub did not take the request.')
+    say(phoneMessage(err, 'The hub did not take the request.'))
   }
 }
 
@@ -376,7 +377,7 @@ async function answer(request: { id: string; label: string; deviceName: string }
     say(approve ? `Approved ${request.label}. Their phone opens the till in a moment.` : `Turned down ${request.label}. Their phone is told.`, true)
     await loadRequests()
   } catch (err) {
-    say(err instanceof Error ? err.message : 'The answer did not go through.')
+    say(phoneMessage(err, 'The answer did not go through.'))
   }
 }
 
@@ -412,7 +413,7 @@ async function loadRequests() {
       return row
     }))
   } catch (err) {
-    say(err instanceof Error ? err.message : 'The hub did not answer.')
+    say(phoneMessage(err, 'The hub did not answer.'))
   }
 }
 
@@ -423,7 +424,7 @@ $('open').addEventListener('click', async () => {
   try {
     await HubPin.open()
   } catch (err) {
-    say(err instanceof Error ? err.message : 'The till could not be opened.')
+    say(phoneMessage(err, 'The till could not be opened.'))
   }
 })
 
@@ -434,4 +435,4 @@ $('forget').addEventListener('click', async () => {
   await show()
 })
 
-void show().catch(err => say(err instanceof Error ? err.message : 'The app could not start.'))
+void show().catch(err => say(phoneMessage(err, 'The app could not start.')))

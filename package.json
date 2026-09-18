@@ -53,6 +53,7 @@
     "verify:food-safety": "node scripts/verify-food-safety.mjs",
     "verify:admin-nav": "node scripts/verify-admin-nav.mjs",
     "verify:sections": "node scripts/verify-sections.mjs",
+    "verify:phone": "node scripts/verify-phone.mjs",
     "verify:desktop": "node scripts/verify-desktop.mjs",
     "verify:backend": "node scripts/verify-backend.mjs",
     "verify:hub": "node scripts/verify-hub.mjs",

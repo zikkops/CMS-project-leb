@@ -31,7 +31,38 @@ final class HubHttp {
         Reply(int status, String body) { this.status = status; this.body = body; }
     }
 
+    /** How long to wait for a reply once connected. */
     private static final int TIMEOUT_MS = 15_000;
+    /**
+     * How long to wait for a connection. A hub on the café wifi answers in
+     * milliseconds; five seconds of nothing means it is not there (another
+     * network, mobile data, the PC off), and fifteen was a long time to say so.
+     */
+    private static final int CONNECT_TIMEOUT_MS = 5_000;
+
+    /**
+     * What a failed request means, as a code the app turns into words
+     * (shared/src/phoneMessages.ts): UNREACHABLE when nothing answered at the
+     * hub's address, WRONG_HUB when something answered without the pinned
+     * certificate, OFFLINE when an internet request got no answer, and null
+     * when it is none of those. The whole cause chain is looked at, because
+     * HttpsURLConnection wraps what went wrong.
+     */
+    static String classify(Throwable error, boolean toHub) {
+        for (Throwable e = error; e != null; e = e.getCause()) {
+            if (e instanceof javax.net.ssl.SSLHandshakeException || e instanceof javax.net.ssl.SSLPeerUnverifiedException
+                || e instanceof java.security.cert.CertificateException) {
+                return toHub ? "WRONG_HUB" : "OFFLINE";
+            }
+            if (e instanceof java.net.ConnectException || e instanceof java.net.SocketTimeoutException
+                || e instanceof java.net.NoRouteToHostException || e instanceof java.net.UnknownHostException
+                || e instanceof java.net.PortUnreachableException) {
+                return toHub ? "UNREACHABLE" : "OFFLINE";
+            }
+            if (e.getCause() == e) break;
+        }
+        return null;
+    }
 
     /** A request to the paired hub, trusting only its pinned certificate. */
     static Reply hub(String address, String fingerprint, String method, String path, String json) throws Exception {
@@ -72,7 +103,7 @@ final class HubHttp {
 
     private static Reply send(HttpsURLConnection conn, String method, String json, String bearer) throws Exception {
         try {
-            conn.setConnectTimeout(TIMEOUT_MS);
+            conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
             conn.setReadTimeout(TIMEOUT_MS);
             conn.setRequestMethod(method);
             conn.setRequestProperty("Accept", "application/json");

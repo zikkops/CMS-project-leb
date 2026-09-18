@@ -167,7 +167,7 @@ The owner's goals it answers:
 
 ### Phone app and counter PC
 
-- [ ] **T1.18 Friendly phone errors.** Staff saw "failed to connect to
+- [x] **T1.18 Friendly phone errors.** Staff saw "failed to connect to
   /192.168.68.148 (port 3443) from /10.32.155.185 … after 15000 ms". The fix:
   - Map exceptions to codes in `HubPinPlugin.java`/`HubHttp.java`
     (`ConnectException`, `SocketTimeoutException`, `NoRouteToHostException` →
@@ -183,6 +183,7 @@ The owner's goals it answers:
     - "Couldn't read the code. Hold the phone about 20 cm from the screen, or
       paste the link."
     - "Sign-in cancelled."
+  *Done: HubHttp.classify() in Java gives UNREACHABLE / WRONG_HUB / OFFLINE (JVM-tested, HubHttpTest), a closed fingerprint prompt is CANCELLED, the connect timeout is 5 s; shared/src/phoneMessages.ts turns codes into the words above and every catch in phone/src/app.ts uses it; npm run verify:phone (13 checks; it caught 'toString' being read as a code).*
 - [ ] **T1.19 Hub pages that fail show the app's page**, not Chromium's error
   (`HubWebViewClient.onReceivedError` → the app page with `?error=unreachable`).
 - [ ] **T1.20 Honest Forget wording, and re-scan without forgetting.**

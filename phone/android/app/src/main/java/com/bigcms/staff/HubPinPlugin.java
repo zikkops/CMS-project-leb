@@ -196,7 +196,10 @@ public class HubPinPlugin extends Plugin {
 
                 @Override
                 public void onAuthenticationError(int code, CharSequence text) {
-                    call.reject(String.valueOf(text), String.valueOf(code));
+                    // Closing the prompt is not a failure to explain.
+                    boolean cancelled = code == BiometricPrompt.ERROR_USER_CANCELED
+                        || code == BiometricPrompt.ERROR_NEGATIVE_BUTTON || code == BiometricPrompt.ERROR_CANCELED;
+                    call.reject(String.valueOf(text), cancelled ? "CANCELLED" : String.valueOf(code));
                 }
             });
             BiometricPrompt.PromptInfo info = new BiometricPrompt.PromptInfo.Builder()
@@ -222,7 +225,9 @@ public class HubPinPlugin extends Plugin {
                 call.getString("method", "GET"), call.getString("path"), body == null ? null : body.toString());
             call.resolve(reply(reply));
         } catch (Exception e) {
-            call.reject("The phone could not reach the hub: " + e.getMessage(), "NETWORK");
+            // A code, so the app can say what to do about it (phoneMessages.ts).
+            String code = HubHttp.classify(e, true);
+            call.reject("The phone could not reach the hub: " + e.getMessage(), code == null ? "NETWORK" : code);
         }
     }
 
@@ -235,7 +240,8 @@ public class HubPinPlugin extends Plugin {
                 call.getString("url"), call.getString("method", "GET"), body == null ? null : body.toString(), call.getString("bearer"));
             call.resolve(reply(reply));
         } catch (Exception e) {
-            call.reject("The phone could not reach the internet: " + e.getMessage(), "NETWORK");
+            String code = HubHttp.classify(e, false);
+            call.reject("The phone could not reach the internet: " + e.getMessage(), code == null ? "NETWORK" : code);
         }
     }
 
