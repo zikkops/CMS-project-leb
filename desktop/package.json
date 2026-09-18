@@ -11,7 +11,7 @@
     "smoke": "electron . --smoke",
     "smoke:setup": "electron . --smoke-setup",
     "hub:prepare": "node ../scripts/package-hub.mjs",
-    "dist": "node ../scripts/package-hub.mjs && electron-builder --win nsis && node ../scripts/check-hub-shipped.mjs"
+    "dist": "node ../scripts/check-desktop-version.mjs && node ../scripts/package-hub.mjs && electron-builder --win nsis && node ../scripts/check-hub-shipped.mjs"
   },
   "devDependencies": {
     "electron": "44.3.0",

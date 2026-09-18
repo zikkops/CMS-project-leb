@@ -242,8 +242,28 @@ function markAttempt(dir) {
   } catch { /* nothing pending */ }
 }
 
+/**
+ * Why an installer about to be built must not be, or null (UPGRADE.md T0.3).
+ *
+ * A counter PC installs only a HIGHER version, so a second build under the
+ * version already released never reaches any PC by update, and two different
+ * builds with one number cannot be told apart by anybody. That is how, on 16
+ * Sep 2026, a café laptop ran the 14 Sep build while everyone believed it had
+ * the 16 Sep one: both said 0.1.0. `published` is the version in the last
+ * signed latest.json, or null when nothing has been released from this PC.
+ */
+function releaseVersionProblem(version, published) {
+  if (!parseVersion(version)) return `"${version}" is not a version like 1.2.3. Set "version" in desktop/package.json.`
+  if (published === null || published === undefined) return null
+  if (!parseVersion(published)) return null
+  if (!isNewer(version, published)) {
+    return `Version ${version} is not higher than ${published}, which is already released. Raise "version" in desktop/package.json (a counter PC installs only a higher one).`
+  }
+  return null
+}
+
 module.exports = {
   UPDATE_PUBLIC_KEY, MAX_ATTEMPTS, FIRST_CHECK_MS, CHECK_EVERY_MS, INSTALL_LOOK_MS,
   parseVersion, isNewer, readManifest, installerUrl, shouldInstallNow, installerArgs,
-  fetchUpdate, pendingInstaller, markAttempt,
+  fetchUpdate, pendingInstaller, markAttempt, releaseVersionProblem,
 }

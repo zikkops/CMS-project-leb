@@ -63,12 +63,13 @@ The owner's goals it answers:
   sync and a badge), which ones a verifier enforces, and the order. Link it
   from CONTRIBUTING.md. It is the baseline the Tier 4 registry work replaces.
   *Done: docs/adding-a-section.md, linked from CONTRIBUTING.md.*
-- [ ] **T0.3 Version shown and bumped for every café build.** Two different
+- [x] **T0.3 Version shown and bumped for every café build.** Two different
   builds both said 0.1.0, and the auto-updater never replaces 0.1.0 with 0.1.0.
   Add a check to `npm --prefix desktop run dist`: refuse to build when
   `desktop/dist/updates/latest.json` already has this version. Make the
   installer's file name come only from `artifactName`, and add a README line
   saying to delete old installers.
+  *Done: scripts/check-desktop-version.mjs runs first in `npm --prefix desktop run dist` and refuses a version not higher than the last signed release (`releaseVersionProblem()` in update.js, asserted in verify:desktop). It removes old-named installers from desktop/dist. README and desktop-updates.md say so. Showing the version on screen is T1.25.*
 - [ ] **T0.4 Phone and counter setup notes in the READMEs**:
   - use the app, not a browser, for the hub page;
   - the first start takes 20–30 s;

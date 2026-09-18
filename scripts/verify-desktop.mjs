@@ -238,6 +238,10 @@ try {
   eq('versions compare as numbers: 0.1.10 is after 0.1.9',
     [U.isNewer('0.1.10', '0.1.9'), U.isNewer('0.2.0', '0.1.99'), U.isNewer('1.0.0', '0.9.9'), U.isNewer('0.1.0', '0.1.0'), U.isNewer('0.1.0', '0.2.0'), U.isNewer('0.2', '0.1.0'), U.isNewer('0.2.0-beta', '0.1.0')],
     [true, true, true, false, false, false, false])
+  eq('THE TRAP: a build under the version already released is refused, a higher one is not',
+    [U.releaseVersionProblem('0.1.0', '0.1.0') !== null, U.releaseVersionProblem('0.1.0', '0.2.0') !== null,
+      U.releaseVersionProblem('0.1.1', '0.1.0'), U.releaseVersionProblem('0.1.0', null), U.releaseVersionProblem('0.1', null) !== null],
+    [true, true, null, null, true])
 
   const { publicKey, privateKey } = generateKeyPairSync('ed25519')
   const testKey = publicKey.export({ type: 'spki', format: 'der' }).toString('base64')

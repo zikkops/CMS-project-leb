@@ -47,7 +47,8 @@ served from that folder.
 ## Each release
 
 1. Raise `"version"` in `desktop/package.json` (for example `0.1.0` → `0.2.0`).
-   A counter PC installs only a **higher** version.
+   A counter PC installs only a **higher** version, and `npm run dist` refuses
+   to build under the version already in `desktop/dist/updates/latest.json`.
 2. Build the installer: `npm --prefix desktop run dist`. It ends with the check
    that every hub file shipped.
 3. Smoke-run the packaged app, as the desktop README says, before anybody gets it.

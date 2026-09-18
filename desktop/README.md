@@ -22,6 +22,17 @@ npm run smoke      # loads the POS without a window, prints the result, exits
 npm run dist       # puts the POS server in, then builds the installer into desktop/dist
 ```
 
+**Every installer that leaves this PC has its own version.** `npm run dist`
+refuses to build under a version already signed into `dist/updates/latest.json`
+(`scripts/check-desktop-version.mjs`): raise `"version"` in `package.json`
+first. Two builds both called 0.1.0 is how a café laptop once ran an old build
+while everyone believed it had the new one, and the updater never replaces a
+version with the same one. The installer is always
+`BIG-CMS-POS-Setup-<version>.exe`; the build removes any older
+`BIG CMS POS Setup …` file left in `dist`, so only one naming exists.
+`BIG_CMS_SAME_VERSION=1` allows a same-version build for a local test that will
+never be released.
+
 Against a local POS instead of the hosted one:
 
 ```bash
