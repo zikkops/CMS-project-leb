@@ -484,6 +484,7 @@ export default function CounterPage() {
               type="button"
               onClick={() => { setSelected(t.checkId); setDrafts([]); setChange(null); setError('') }}
               aria-pressed={on}
+              aria-label={`Table ${t.tableNumber}${t.check ? '' : ', not on the server yet'}${t.waiting > 0 ? `, ${t.waiting} waiting to send` : ''}`}
               style={{
                 minHeight: '84px', minWidth: '96px', padding: '0.5rem 0.7rem', borderRadius: '12px', cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.3rem',
@@ -507,6 +508,7 @@ export default function CounterPage() {
         <form style={card} onSubmit={e => { e.preventDefault(); void handleOpen() }}>
           <SectionLabel>Open a table</SectionLabel>
           <input
+            aria-label="Table number"
             value={tableNumber}
             onChange={e => setTableNumber(e.target.value.replace(/[^0-9]/g, ''))}
             inputMode="numeric"

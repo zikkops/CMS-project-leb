@@ -142,8 +142,9 @@ The owner's goals it answers:
   email", with visible labels on the inputs. Show "Loading staff…" or "No
   staff on this hub yet" instead of an empty grid.
   *Done: the sign-in page is two titled cards, "With your phone" and "With your email", with visible labels, PosButtons, ErrorNote, and "Loading staff…" / "No staff on this hub yet…" instead of an empty grid. On the hub, the email card says it needs the internet.*
-- [ ] **T1.13 Labels and aria.** Add `htmlFor` on labels, and aria-labels on
+- [x] **T1.13 Labels and aria.** Add `htmlFor` on labels, and aria-labels on
   table tiles saying their state (open, free) and on icon-only buttons.
+  *Done: floor tiles read out table, total, how long since sent and what is unsent; counter tiles say whether the table is on the server and what waits; the table-number inputs are labelled (htmlFor or aria-label) and the guest chips are a labelled group. Icon-only PosButtons already carry their label.*
 
 ### Admin (`admin/`)
 

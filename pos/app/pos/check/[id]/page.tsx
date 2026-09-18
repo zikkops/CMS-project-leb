@@ -1308,6 +1308,7 @@ export default function CheckPage() {
                 required for the POS to work, so it cannot be the only way to
                 name a table here either. */}
             <input
+              aria-label="Table number to move to"
               value={moveTo}
               onChange={e => setMoveTo(e.target.value.replace(/[^0-9]/g, ''))}
               inputMode="numeric"

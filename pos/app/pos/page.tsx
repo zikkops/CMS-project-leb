@@ -124,10 +124,18 @@ function CheckCard({ check, now, onOpen, isMobile }: {
   const mins = sentAt === null ? null : minutesWaiting(sentAt, now)
   const level = mins === null ? 'fresh' : urgency(mins)
 
+  // Said in words as well as shown, for a screen reader (UPGRADE.md T1.13).
+  const spoken = [
+    `Table ${check.tableNumber}`, money(total),
+    mins === null ? 'nothing sent yet' : `sent ${mins} minutes ago${level === 'late' ? ', late' : ''}`,
+    unsent > 0 ? `${unsent} not sent` : '',
+  ].filter(Boolean).join(', ')
+
   return (
     <button
       type="button"
       onClick={onOpen}
+      aria-label={spoken}
       style={{
         // Square. aspectRatio rather than a fixed height so the tiles grow
         // with the column width instead of going letterbox on a wide screen.
@@ -590,11 +598,12 @@ export default function FloorPage() {
               Open a table
             </h2>
 
-            <label style={{
+            <label htmlFor="open-table-number" style={{
               display: 'block', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.08em',
               textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.6)', marginBottom: '0.45rem',
             }}>Table number</label>
             <input
+              id="open-table-number"
               value={tableNumber}
               onChange={e => setTableNumber(e.target.value.replace(/[^0-9]/g, ''))}
               // A numeric keypad, not a full keyboard: this is the one field a
@@ -610,11 +619,11 @@ export default function FloorPage() {
               }}
             />
 
-            <label style={{
+            <p id="open-table-guests" style={{
               display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.08em',
               textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.6)', margin: '1.1rem 0 0.5rem',
-            }}><FontAwesomeIcon icon={faUserGroup} />Guests</label>
-            <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            }}><FontAwesomeIcon icon={faUserGroup} />Guests</p>
+            <div role="group" aria-labelledby="open-table-guests" style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
               {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
                 <Chip key={n} label={String(n)} active={guests === String(n)} onClick={() => setGuests(String(n))} />
               ))}
