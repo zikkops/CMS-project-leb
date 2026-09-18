@@ -18,18 +18,20 @@ import { useState } from 'react'
 import { DISCOUNT_REASONS, type CheckDiscount, type CheckLine } from '@big-cms/shared/checks'
 import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import { discountLine, discountCheck, type DiscountRequest } from '../../../lib/usePos'
+import { PosButton, Chip, Sheet } from '../../../lib/posUi'
+import { faPercent, faXmark, faArrowLeft } from '@fortawesome/free-solid-svg-icons'
 
 export type DiscountTarget =
   | { mode: 'line'; checkId: string; line: CheckLine }
   | { mode: 'check'; checkId: string; current: CheckDiscount | null }
 
 const tap: React.CSSProperties = {
-  minHeight: '48px', padding: '0.7rem 1rem', borderRadius: '6px',
-  fontFamily: 'var(--font-inter)', fontSize: '0.9rem', cursor: 'pointer',
+  minHeight: '56px', padding: '0.7rem 1rem', borderRadius: '8px',
+  fontFamily: 'var(--font-inter)', fontSize: '1rem', cursor: 'pointer',
 }
 const label: React.CSSProperties = {
-  fontSize: '0.64rem', letterSpacing: '0.14em', textTransform: 'uppercase',
-  color: 'rgba(var(--offwhite-rgb),0.35)', margin: '1rem 0 0.45rem',
+  fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+  color: 'rgba(var(--offwhite-rgb),0.6)', margin: '1rem 0 0.45rem',
 }
 
 function describe(target: DiscountTarget): string | null {
@@ -88,21 +90,8 @@ export default function DiscountSheet({ target, onDone }: { target: DiscountTarg
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50,
-      }}
-      onClick={() => { if (!busy) onDone() }}
-    >
-      <div
-        style={{
-          backgroundColor: '#111', width: '100%', maxWidth: '640px', maxHeight: '88vh', overflowY: 'auto',
-          borderRadius: '10px 10px 0 0', padding: '1.25rem 1rem 2rem',
-          border: '1px solid rgba(255,255,255,0.1)', fontFamily: 'var(--font-inter)', color: 'var(--offwhite)',
-        }}
-        onClick={e => e.stopPropagation()}
-      >
+    <Sheet label="Discount" onClose={() => { if (!busy) onDone() }}>
+      <div style={{ fontFamily: 'var(--font-inter)', color: 'var(--offwhite)' }}>
         <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.15rem', marginBottom: '0.3rem' }}>
           {target.mode === 'line' ? `Discount — ${target.line.quantity}× ${target.line.name}` : 'Discount the check'}
         </h2>
@@ -114,22 +103,14 @@ export default function DiscountSheet({ target, onDone }: { target: DiscountTarg
             backgroundColor: 'rgba(var(--teal-rgb),0.12)', border: '1px solid var(--teal)',
           }}>
             <span style={{ fontSize: '0.88rem' }}>Now: <strong>{current}</strong></span>
-            <button onClick={() => apply(null)} disabled={busy} style={{
-              ...tap, minHeight: '40px', padding: '0.4rem 0.8rem', backgroundColor: 'transparent',
-              border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(var(--offwhite-rgb),0.75)',
-            }}>Remove</button>
+            <PosButton icon={faXmark} label="Remove" tone="quiet" size="sm" disabled={busy} onClick={() => { void apply(null) }} />
           </div>
         )}
 
         <p style={label}>{current ? 'Change it to' : 'What kind'}</p>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {kinds.map(k => (
-            <button key={k.kind} onClick={() => { setKind(k.kind); setValue('') }} disabled={busy} style={{
-              ...tap, flex: 1,
-              backgroundColor: kind === k.kind ? 'rgba(var(--teal-rgb),0.2)' : 'transparent',
-              border: `1px solid ${kind === k.kind ? 'var(--teal)' : 'rgba(255,255,255,0.14)'}`,
-              color: kind === k.kind ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.7)',
-            }}>{k.text}</button>
+            <Chip key={k.kind} label={k.text} active={kind === k.kind} disabled={busy} onClick={() => { setKind(k.kind); setValue('') }} />
           ))}
         </div>
 
@@ -171,20 +152,15 @@ export default function DiscountSheet({ target, onDone }: { target: DiscountTarg
         />
 
         {error && (
-          <p style={{ color: 'var(--red)', fontSize: '0.82rem', marginTop: '0.8rem', lineHeight: 1.6 }}>{error}</p>
+          <p style={{ color: 'var(--red)', fontSize: '0.95rem', marginTop: '0.8rem', lineHeight: 1.6 }}>{error}</p>
         )}
 
-        <button onClick={submit} disabled={busy || !ready} style={{
-          ...tap, width: '100%', marginTop: '1rem', border: 'none', color: '#fff',
-          backgroundColor: ready && !busy ? 'var(--teal)' : 'rgba(var(--teal-rgb),0.25)',
-          letterSpacing: '0.1em', textTransform: 'uppercase',
-        }}>{busy ? 'Applying…' : 'Apply'}</button>
+        <PosButton icon={faPercent} label={busy ? 'Applying…' : 'Apply'} tone="primary" size="lg" full style={{ marginTop: '1rem' }}
+          disabled={busy || !ready} onClick={() => { void submit() }} />
 
-        <button onClick={onDone} disabled={busy} style={{
-          ...tap, width: '100%', marginTop: '0.6rem', backgroundColor: 'transparent', border: 'none',
-          color: 'rgba(var(--offwhite-rgb),0.4)',
-        }}>Back to the check</button>
+        <PosButton icon={faArrowLeft} label="Back to the check" tone="quiet" full style={{ marginTop: '0.6rem' }}
+          disabled={busy} onClick={onDone} />
       </div>
-    </div>
+    </Sheet>
   )
 }

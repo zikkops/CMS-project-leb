@@ -239,10 +239,11 @@ The owner's goals it answers:
   `aria-modal`, Escape, focus handling. It keeps the modifier sheet's choices
   when the backdrop is tapped (today a stray tap throws them away).
   *Done: Sheet in posUi.tsx: role=dialog, aria-modal, a label, Escape closes, focus goes in (the autofocus field first) and back; backdropCloses={false} for the dish options; onSubmit makes it a form; center for a wide screen. All six order-screen sheets and the floor's Open a table use it. Checked on the test hub: Check options (labelled, focus in and back, Escape), the options sheet kept 'Large' through a backdrop tap, and Open a table focuses its number field and closes on Escape. PaySheet keeps its own overlay, moving with T2.4.*
-- [ ] **T2.4 PaySheet, DiscountSheet, CustomerSheet, receipt, login and hub
+- [x] **T2.4 PaySheet, DiscountSheet, CustomerSheet, receipt, login and hub
   on `PosButton`/`Chip`.** They still use their own 40–48px constants (under
   the 44px floor for chips), 0.64–0.82rem text, faded-teal disabled states,
   and two solid teal buttons at once. One or two screens per session.
+  *Done: PaySheet, DiscountSheet and CustomerSheet are Sheets built from PosButton/Chip (tenders with cash/card icons, 44px+ everywhere, readable labels, one loud button at a time: Scan code is neutral, Add is the action); the receipt page's Print and widths and the hub page's Test page too. The login page was done in T1.12. Checked on the test hub: the receipt page and the discount sheet.*
 - [ ] **T2.5 Native prompts become sheets.** `window.prompt` is used for
   kitchen notes and the "Other" void reason (`check/[id]/page.tsx`). It is
   tiny on touch screens and blocked by some kiosks.

@@ -15,7 +15,8 @@ import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { BRAND } from '@big-cms/shared/brand'
 import { startLoad } from '@big-cms/shared/startLoad'
-import { ErrorNote, Chip } from '../../lib/posUi'
+import { ErrorNote, Chip, PosButton } from '../../lib/posUi'
+import { faPrint } from '@fortawesome/free-solid-svg-icons'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -124,10 +125,8 @@ function HubPrinters() {
             {!p.ready && <span style={{ color: 'var(--red)', fontSize: '0.75rem' }}> · switched off or no address</span>}
           </span>
           {p.ready && (
-            <button type="button" onClick={() => { void test(p.station) }} disabled={testing !== null}
-              style={{ minHeight: '44px', padding: '0 1rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.25)', background: 'transparent', color: 'var(--offwhite)', cursor: testing ? 'default' : 'pointer' }}>
-              {testing === p.station ? 'Printing…' : 'Test page'}
-            </button>
+            <PosButton icon={faPrint} label={testing === p.station ? 'Printing…' : 'Test page'} tone="neutral" size="sm"
+              disabled={testing !== null} onClick={() => { void test(p.station) }} />
           )}
         </div>
       ))}

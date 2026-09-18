@@ -22,7 +22,8 @@ import {
 import { splitEvenly, sharesByPerson, MAX_SPLIT_PEOPLE } from '@big-cms/shared/splits'
 import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import { payCheck } from '../../../lib/usePos'
-import { GOOD, GOOD_RGB } from '../../../lib/posUi'
+import { GOOD, GOOD_RGB, PosButton, Chip, Sheet } from '../../../lib/posUi'
+import { faMoneyBillWave, faCreditCard, faCashRegister, faReceipt, faArrowLeft, faEquals, faMinus, faPlus } from '@fortawesome/free-solid-svg-icons'
 
 const usd = (n: number) => `$${n.toFixed(2)}`
 const lbp = (n: number) => `${Math.round(n).toLocaleString('en-US')} LBP`
@@ -46,12 +47,12 @@ const TENDERS: { tender: Tender; currency: PayCurrency; label: string }[] = [
 ]
 
 const tap: React.CSSProperties = {
-  minHeight: '48px', padding: '0.7rem 1rem', borderRadius: '6px',
-  fontFamily: 'var(--font-inter)', fontSize: '0.9rem', cursor: 'pointer',
+  minHeight: '56px', padding: '0.7rem 1rem', borderRadius: '8px',
+  fontFamily: 'var(--font-inter)', fontSize: '1rem', cursor: 'pointer',
 }
 
 const chip: React.CSSProperties = {
-  ...tap, minHeight: '40px', padding: '0.45rem 0.8rem', fontSize: '0.82rem',
+  ...tap, minHeight: '44px', padding: '0.45rem 0.8rem', fontSize: '0.92rem',
   backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.14)',
   color: 'rgba(var(--offwhite-rgb),0.75)',
 }
@@ -115,18 +116,14 @@ function SplitPanel({ check, onFill, disabled }: {
   })
 
   const tab = (m: SplitMode, label: string) => (
-    <button
-      key={m}
-      disabled={disabled}
-      onClick={() => { setMode(mode === m ? 'none' : m); setChosen(null) }}
-      style={{ ...chip, ...picked(mode === m) }}
-    >{label}</button>
+    <Chip key={m} label={label} size="sm" disabled={disabled} active={mode === m}
+      onClick={() => { setMode(mode === m ? 'none' : m); setChosen(null) }} />
   )
 
   return (
     <div style={{ marginTop: '1.1rem' }}>
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginRight: '0.2rem' }}>
+        <span style={{ fontSize: '0.9rem', color: 'rgba(var(--offwhite-rgb),0.6)', marginRight: '0.2rem' }}>
           Split
         </span>
         {tab('even', 'Evenly')}
@@ -137,7 +134,7 @@ function SplitPanel({ check, onFill, disabled }: {
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.7rem' }}>
             <span style={{ fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.55)', minWidth: '3.5rem' }}>People</span>
-            <button disabled={disabled || people <= 2} onClick={() => changePeople(people - 1)} style={chip}>−</button>
+            <PosButton icon={faMinus} label="One fewer person" iconOnly size="sm" disabled={disabled || people <= 2} onClick={() => changePeople(people - 1)} />
             <input
               value={typed ?? String(people)}
               inputMode="numeric"
@@ -148,7 +145,7 @@ function SplitPanel({ check, onFill, disabled }: {
               onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
               style={{ ...chip, width: '4.2rem', textAlign: 'center', color: 'var(--offwhite)', cursor: 'text' }}
             />
-            <button disabled={disabled || people >= MAX_SPLIT_PEOPLE} onClick={() => changePeople(people + 1)} style={chip}>+</button>
+            <PosButton icon={faPlus} label="One more person" iconOnly size="sm" disabled={disabled || people >= MAX_SPLIT_PEOPLE} onClick={() => changePeople(people + 1)} />
           </div>
 
           {mode === 'item' && (
@@ -168,10 +165,7 @@ function SplitPanel({ check, onFill, disabled }: {
                     </div>
                     <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
                       {Array.from({ length: people }, (_, i) => i + 1).map(p => (
-                        <button key={p} disabled={disabled} aria-pressed={who.includes(p)} onClick={() => toggle(l.id, p)}
-                          style={{ ...chip, minHeight: '40px', minWidth: '40px', padding: '0.3rem 0.55rem', ...picked(who.includes(p)) }}>
-                          {p}
-                        </button>
+                        <Chip key={p} label={String(p)} size="sm" disabled={disabled} active={who.includes(p)} onClick={() => toggle(l.id, p)} />
                       ))}
                     </div>
                   </div>
@@ -294,22 +288,8 @@ export default function PaySheet({
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50,
-      }}
-      onClick={() => { if (!busy && !locked) onDismiss() }}
-    >
-      <div
-        style={{
-          backgroundColor: '#111', width: '100%', maxWidth: '640px',
-          maxHeight: '88vh', overflowY: 'auto', borderRadius: '10px 10px 0 0',
-          padding: '1.25rem 1rem 2rem', border: '1px solid rgba(255,255,255,0.1)',
-          fontFamily: 'var(--font-inter)', color: 'var(--offwhite)',
-        }}
-        onClick={e => e.stopPropagation()}
-      >
+    <Sheet label="Payment" onClose={() => { if (!busy && !locked) onDismiss() }}>
+      <div style={{ fontFamily: 'var(--font-inter)', color: 'var(--offwhite)' }}>
         <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem', marginBottom: '0.9rem' }}>
           Table {check.tableNumber} — payment
         </h2>
@@ -376,18 +356,8 @@ export default function PaySheet({
               {TENDERS.map(t => {
                 const on = t.tender === tender && t.currency === currency
                 return (
-                  <button
-                    key={t.label}
-                    onClick={() => chooseTender(t.tender, t.currency)}
-                    disabled={locked}
-                    style={{
-                      ...tap,
-                      backgroundColor: on ? 'rgba(var(--teal-rgb),0.2)' : 'transparent',
-                      border: `1px solid ${on ? 'var(--teal)' : 'rgba(255,255,255,0.14)'}`,
-                      color: on ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.7)',
-                      opacity: locked && !on ? 0.4 : 1,
-                    }}
-                  >{t.label}</button>
+                  <Chip key={t.label} label={t.label} icon={t.tender === 'cash' ? faMoneyBillWave : faCreditCard}
+                    active={on} disabled={locked && !on} onClick={() => chooseTender(t.tender, t.currency)} />
                 )
               })}
             </div>
@@ -408,10 +378,7 @@ export default function PaySheet({
                   border: '1px solid rgba(255,255,255,0.14)', cursor: 'text', fontSize: '1rem',
                 }}
               />
-              <button onClick={exact} disabled={locked} style={{
-                ...tap, backgroundColor: 'transparent', color: 'rgba(var(--offwhite-rgb),0.7)',
-                border: '1px solid rgba(255,255,255,0.14)',
-              }}>Exact</button>
+              <PosButton icon={faEquals} label="Exact" tone="quiet" disabled={locked} onClick={exact} />
             </div>
 
             {preview && (
@@ -427,42 +394,23 @@ export default function PaySheet({
               </p>
             )}
 
-            <button
-              onClick={take}
-              disabled={busy || !preview || !preview.ok}
-              style={{
-                ...tap, width: '100%', marginTop: '0.8rem', border: 'none',
-                backgroundColor: busy || !preview || !preview.ok ? 'rgba(var(--teal-rgb),0.25)' : 'var(--teal)',
-                color: '#fff', letterSpacing: '0.1em', textTransform: 'uppercase',
-              }}
-            >{busy ? 'Taking…' : locked ? 'Take again' : 'Take payment'}</button>
+            <PosButton icon={faCashRegister} label={busy ? 'Taking…' : locked ? 'Take again' : 'Take payment'}
+              tone="primary" size="lg" full style={{ marginTop: '0.8rem' }}
+              disabled={busy || !preview || !preview.ok} onClick={() => { void take() }} />
           </>
         )}
 
         {error && (
-          <p style={{ color: 'var(--red)', fontSize: '0.82rem', marginTop: '0.8rem', lineHeight: 1.6 }}>{error}</p>
+          <p style={{ color: 'var(--red)', fontSize: '0.95rem', marginTop: '0.8rem', lineHeight: 1.6 }}>{error}</p>
         )}
 
         {b.settled && (
-          <button
-            onClick={onPaid}
-            style={{
-              ...tap, width: '100%', marginTop: '1.1rem', border: 'none',
-              backgroundColor: 'var(--red)', color: '#fff', letterSpacing: '0.1em', textTransform: 'uppercase',
-            }}
-          >Close &amp; issue receipt</button>
+          <PosButton icon={faReceipt} label="Close & issue receipt" tone="primary" size="lg" full style={{ marginTop: '1.1rem' }} onClick={onPaid} />
         )}
 
-        <button
-          onClick={onDismiss}
-          disabled={busy || locked}
-          style={{
-            ...tap, width: '100%', marginTop: '0.8rem', backgroundColor: 'transparent',
-            border: 'none', color: 'rgba(var(--offwhite-rgb),0.4)',
-            opacity: busy || locked ? 0.4 : 1,
-          }}
-        >Back to the check</button>
+        <PosButton icon={faArrowLeft} label="Back to the check" tone="quiet" full style={{ marginTop: '0.8rem' }}
+          disabled={busy || locked} onClick={onDismiss} />
       </div>
-    </div>
+    </Sheet>
   )
 }

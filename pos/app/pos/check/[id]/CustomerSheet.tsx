@@ -19,6 +19,8 @@ import type { Check } from '@big-cms/shared/checks'
 import { formatMemberCode, normalizeMemberCode } from '@big-cms/shared/memberCode'
 import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import { setCheckCustomer } from '../../../lib/usePos'
+import { PosButton, Sheet } from '../../../lib/posUi'
+import { faCamera, faPlus, faXmark, faArrowLeft } from '@fortawesome/free-solid-svg-icons'
 
 type Detector = { detect: (source: CanvasImageSource) => Promise<{ rawValue: string }[]> }
 
@@ -28,8 +30,8 @@ function makeDetector(): Detector | null {
 }
 
 const tap: React.CSSProperties = {
-  minHeight: '48px', padding: '0.7rem 1rem', borderRadius: '6px',
-  fontFamily: 'var(--font-inter)', fontSize: '0.9rem', cursor: 'pointer',
+  minHeight: '56px', padding: '0.7rem 1rem', borderRadius: '8px',
+  fontFamily: 'var(--font-inter)', fontSize: '1rem', cursor: 'pointer',
 }
 
 export default function CustomerSheet({ check, onDone }: { check: Check; onDone: () => void }) {
@@ -91,21 +93,8 @@ export default function CustomerSheet({ check, onDone }: { check: Check; onDone:
   const code = normalizeMemberCode(typed)
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50,
-      }}
-      onClick={() => { if (!busy) onDone() }}
-    >
-      <div
-        style={{
-          backgroundColor: '#111', width: '100%', maxWidth: '640px', maxHeight: '88vh', overflowY: 'auto',
-          borderRadius: '10px 10px 0 0', padding: '1.25rem 1rem 2rem',
-          border: '1px solid rgba(255,255,255,0.1)', fontFamily: 'var(--font-inter)', color: 'var(--offwhite)',
-        }}
-        onClick={e => e.stopPropagation()}
-      >
+    <Sheet label="Loyalty customer" onClose={() => { if (!busy) onDone() }}>
+      <div style={{ fontFamily: 'var(--font-inter)', color: 'var(--offwhite)' }}>
         <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem', marginBottom: '0.6rem' }}>
           Loyalty customer
         </h2>
@@ -117,10 +106,7 @@ export default function CustomerSheet({ check, onDone }: { check: Check; onDone:
             backgroundColor: 'rgba(var(--teal-rgb),0.12)', border: '1px solid var(--teal)',
           }}>
             <span style={{ fontSize: '0.9rem' }}>Collecting: <strong>{check.loyalty.name}</strong></span>
-            <button onClick={() => attach(null)} disabled={busy} style={{
-              ...tap, minHeight: '40px', padding: '0.4rem 0.8rem', backgroundColor: 'transparent',
-              border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(var(--offwhite-rgb),0.75)',
-            }}>Remove</button>
+            <PosButton icon={faXmark} label="Remove" tone="quiet" size="sm" disabled={busy} onClick={() => { void attach(null) }} />
           </div>
         ) : (
           <p style={{ fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)', lineHeight: 1.6, marginBottom: '0.9rem' }}>
@@ -134,10 +120,8 @@ export default function CustomerSheet({ check, onDone }: { check: Check; onDone:
               width: '100%', borderRadius: '8px', backgroundColor: '#000', marginBottom: '0.7rem',
             }} />
           ) : (
-            <button onClick={() => { setError(''); setScanning(true) }} disabled={busy} style={{
-              ...tap, width: '100%', marginBottom: '0.7rem', border: 'none',
-              backgroundColor: 'var(--teal)', color: '#fff', letterSpacing: '0.1em', textTransform: 'uppercase',
-            }}>Scan code</button>
+            <PosButton icon={faCamera} label="Scan code" tone="neutral" full style={{ marginBottom: '0.7rem' }}
+              disabled={busy} onClick={() => { setError(''); setScanning(true) }} />
           )
         )}
 
@@ -154,10 +138,7 @@ export default function CustomerSheet({ check, onDone }: { check: Check; onDone:
               border: '1px solid rgba(255,255,255,0.14)', fontSize: '1rem', letterSpacing: '0.1em',
             }}
           />
-          <button onClick={() => code && attach(code)} disabled={busy || !code} style={{
-            ...tap, border: 'none', color: '#fff',
-            backgroundColor: code ? 'var(--teal)' : 'rgba(var(--teal-rgb),0.25)',
-          }}>{busy ? '…' : 'Add'}</button>
+          <PosButton icon={faPlus} label={busy ? '…' : 'Add'} tone="primary" disabled={busy || !code} onClick={() => { if (code) void attach(code) }} />
         </div>
         {typed.trim() !== '' && !code && (
           <p style={{ fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.45)', marginTop: '0.4rem' }}>
@@ -166,14 +147,12 @@ export default function CustomerSheet({ check, onDone }: { check: Check; onDone:
         )}
 
         {error && (
-          <p style={{ color: 'var(--red)', fontSize: '0.82rem', marginTop: '0.8rem', lineHeight: 1.6 }}>{error}</p>
+          <p style={{ color: 'var(--red)', fontSize: '0.95rem', marginTop: '0.8rem', lineHeight: 1.6 }}>{error}</p>
         )}
 
-        <button onClick={onDone} disabled={busy} style={{
-          ...tap, width: '100%', marginTop: '0.9rem', backgroundColor: 'transparent', border: 'none',
-          color: 'rgba(var(--offwhite-rgb),0.4)',
-        }}>Back to the check</button>
+        <PosButton icon={faArrowLeft} label="Back to the check" tone="quiet" full style={{ marginTop: '0.9rem' }}
+          disabled={busy} onClick={onDone} />
       </div>
-    </div>
+    </Sheet>
   )
 }

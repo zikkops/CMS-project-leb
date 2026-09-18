@@ -30,7 +30,8 @@ import {
   buildReceipt, receiptToText, receiptBlockedReason, RECEIPT_WIDTHS,
 } from '@big-cms/shared/receipt'
 import { useCheck } from '../../../../lib/usePos'
-import { PosLoading } from '../../../../lib/posUi'
+import { PosLoading, PosButton, Chip } from '../../../../lib/posUi'
+import { faPrint } from '@fortawesome/free-solid-svg-icons'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -44,18 +45,6 @@ function useIsMobile(breakpoint = 768) {
   return isMobile
 }
 
-const btn: React.CSSProperties = {
-  backgroundColor: 'rgba(255,255,255,0.05)',
-  border: '1px solid rgba(255,255,255,0.12)',
-  color: 'rgba(var(--offwhite-rgb),0.7)',
-  padding: '0.55rem 1.1rem',
-  borderRadius: '2px',
-  fontSize: '0.72rem',
-  letterSpacing: '0.08em',
-  textTransform: 'uppercase',
-  cursor: 'pointer',
-  fontFamily: 'var(--font-inter)',
-}
 
 export default function ReceiptPage() {
   // The routes are not optional here. Left off, useRequireRole falls back to
@@ -149,22 +138,11 @@ export default function ReceiptPage() {
             display: 'flex', gap: '0.6rem', flexWrap: 'wrap',
             alignItems: 'center', marginBottom: '1.25rem',
           }}>
-            <button onClick={() => window.print()} style={{
-              ...btn,
-              backgroundColor: 'var(--teal)', border: 'none',
-              color: '#000', fontWeight: 600,
-            }}>Print</button>
+            <PosButton icon={faPrint} label="Print" tone="primary" onClick={() => window.print()} />
 
             {([RECEIPT_WIDTHS.narrow, RECEIPT_WIDTHS.wide] as number[]).map(w => (
-              <button
-                key={w}
-                onClick={() => setWidth(w)}
-                style={{
-                  ...btn,
-                  color: width === w ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.5)',
-                  borderColor: width === w ? 'rgba(var(--teal-rgb),0.5)' : 'rgba(255,255,255,0.12)',
-                }}
-              >{w === RECEIPT_WIDTHS.narrow ? '58mm · 32 col' : '80mm · 42 col'}</button>
+              <Chip key={w} size="sm" active={width === w} onClick={() => setWidth(w)}
+                label={w === RECEIPT_WIDTHS.narrow ? '58mm · 32 col' : '80mm · 42 col'} />
             ))}
           </div>
 
