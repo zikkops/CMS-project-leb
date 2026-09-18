@@ -21,9 +21,9 @@
 //
 // Module-scope components only (CONTRIBUTING.md gotcha #2).
 
-import type { CSSProperties, ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import type { IconDefinition } from '@fortawesome/free-solid-svg-icons'
+import { faTriangleExclamation, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 
 export type Tone = 'primary' | 'neutral' | 'danger' | 'warn' | 'quiet'
 export type Size = 'sm' | 'md' | 'lg'
@@ -274,6 +274,51 @@ export function Stepper({ value, onChange, min = 1, max = 99, label }: {
       }}>{value}</span>
       <button type="button" aria-label={`More ${label.toLowerCase()}`} disabled={value >= max}
         onClick={() => onChange(Math.min(max, value + 1))} style={{ ...btn, opacity: value >= max ? 0.35 : 1 }}>+</button>
+    </div>
+  )
+}
+
+/**
+ * The first sentence of a message, and the rest. A server's refusal can run to
+ * several sentences, and a waiter reads one (UPGRADE.md T1.7).
+ */
+export function splitMessage(text: string): { head: string; rest: string } {
+  const m = text.match(/^(.+?[.!?])s+(S[sS]*)$/)
+  return m ? { head: m[1], rest: m[2] } : { head: text, rest: '' }
+}
+
+/**
+ * A problem, said in one sentence, with the rest behind "Details". `details`
+ * is what to show there; without it, anything after the message's first
+ * sentence goes there.
+ */
+export function ErrorNote({ message, details, tone = 'danger' }: {
+  message: string
+  details?: string | null
+  tone?: 'danger' | 'warn'
+}) {
+  const [open, setOpen] = useState(false)
+  const split = details === undefined ? splitMessage(message) : { head: message, rest: details ?? '' }
+  const colour = tone === 'danger' ? 'var(--red)' : 'var(--brand-secondary)'
+  const rgb = tone === 'danger' ? 'var(--red-rgb)' : 'var(--brand-secondary-rgb)'
+  return (
+    <div role="alert" style={{
+      color: colour, fontSize: '0.95rem', marginBottom: '1rem', lineHeight: 1.55,
+      background: `rgba(${rgb},0.1)`, border: `1px solid rgba(${rgb},0.35)`,
+      borderRadius: '8px', padding: '0.8rem 1rem', fontFamily: 'var(--font-inter)',
+    }}>
+      <FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.5rem' }} />
+      {split.head}
+      {split.rest && (
+        <>
+          {' '}
+          <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} style={{
+            background: 'none', border: 'none', padding: '0 0.2rem', color: 'inherit', cursor: 'pointer',
+            fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 700, textDecoration: 'underline',
+          }}>{open ? 'Less' : 'Details'}</button>
+          {open && <span style={{ display: 'block', marginTop: '0.4rem', opacity: 0.85, fontSize: '0.88rem' }}>{split.rest}</span>}
+        </>
+      )}
     </div>
   )
 }

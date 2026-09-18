@@ -55,7 +55,7 @@ import {
   addLines, sendCheck, voidLine, moveCheck, closeCheck, setStaffMeal,
   type DraftLine, type PosMenuItem, type PosProduct,
 } from '../../../lib/usePos'
-import { PosButton, Chip, StatusBadge, SectionLabel, kindColour, type Tone, PosLoading } from '../../../lib/posUi'
+import { PosButton, Chip, StatusBadge, SectionLabel, kindColour, type Tone, PosLoading, ErrorNote } from '../../../lib/posUi'
 import { useHubOnly, HubOnlyBanner } from '../../../lib/useHubOnly'
 import { useAllergenChart, readDishAllergens, type ChartDish, type DishAnswer } from '../../../lib/useAllergens'
 import { AllergenAnswer } from '../../../lib/allergenView'
@@ -808,8 +808,8 @@ export default function CheckPage() {
         // No answer: unknown whether anything arrived. Say what is true, and
         // that trying again is safe — because now it is.
         setError(!landed && drafts.length > 0
-          ? 'No connection. The order is still on this phone and may already have reached the server — tap Send again when you are back on the wifi; it will not be sent twice. If the wifi stays down, take it to the till.'
-          : 'No connection. The order is on the check but may not have reached the kitchen — tap Send again when you are back on the wifi.')
+          ? 'No connection. Tap Send again once the wifi is back; it will not be sent twice. The order is still on this phone and may already have reached the till. If the wifi stays down, take it to the counter.'
+          : 'No connection. Tap Send again once the wifi is back. The order is on the check but may not have reached the kitchen.')
       } else {
         // An answer, and it was no: nothing was written. The drafts are the
         // waiter's to change again.
@@ -933,21 +933,9 @@ export default function CheckPage() {
         </div>
       </div>
 
-      {liveError && (
-        <p style={{
-          color: 'var(--brand-secondary)', fontSize: '0.95rem', marginBottom: '1rem', lineHeight: 1.6,
-          background: 'rgba(var(--brand-secondary-rgb),0.1)', border: '1px solid rgba(var(--brand-secondary-rgb),0.35)',
-          borderRadius: '8px', padding: '0.8rem 1rem',
-        }}><FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.5rem' }} />{liveError}</p>
-      )}
+      {liveError && <ErrorNote message={liveError} tone="warn" />}
 
-      {error && (
-        <p style={{
-          color: 'var(--red)', fontSize: '0.95rem', marginBottom: '1rem', lineHeight: 1.6,
-          background: 'rgba(var(--red-rgb),0.1)', border: '1px solid rgba(var(--red-rgb),0.35)',
-          borderRadius: '8px', padding: '0.8rem 1rem',
-        }}><FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.5rem' }} />{error}</p>
-      )}
+      {error && <ErrorNote message={error} />}
       {busy && (
         <p style={{
           color: 'var(--teal)', fontSize: '0.95rem', marginBottom: '1rem', fontWeight: 600,

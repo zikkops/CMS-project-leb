@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { BRAND } from '@big-cms/shared/brand'
 import { startLoad } from '@big-cms/shared/startLoad'
+import { ErrorNote } from '../../lib/posUi'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -59,8 +60,6 @@ const row: React.CSSProperties = {
   padding: '0.7rem 0', borderTop: '1px solid rgba(255,255,255,0.08)',
   fontSize: '0.9rem',
 }
-
-const problem: React.CSSProperties = { color: 'var(--red)', fontSize: '0.82rem', lineHeight: 1.6, marginTop: '0.8rem' }
 
 function when(ms: number | null): string {
   if (!ms) return 'not yet'
@@ -299,9 +298,11 @@ export default function HubPage() {
               </div>
             )}
             <HubPrinters />
-            {status.pushError && <p style={problem}>{status.pushError}</p>}
-            {status.lastError && <p style={problem}>{status.lastError}</p>}
-            {status.receiptError && <p style={problem}>{status.receiptError}</p>}
+            {/* Sending up and taking down usually fail for the same reason and
+                say so in the same words: each problem once (UPGRADE.md T1.7). */}
+            {[...new Set([status.pushError, status.lastError, status.receiptError].filter((m): m is string => Boolean(m)))].map(m => (
+              <div key={m} style={{ marginTop: '0.8rem' }}><ErrorNote message={m} /></div>
+            ))}
             {status.receiptsLeft === 0 && (
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem', lineHeight: 1.7, marginTop: '0.8rem' }}>
                 With no receipt numbers left, checks can be opened, sent and paid, but not closed, until the hub is online and fetches more.

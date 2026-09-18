@@ -116,9 +116,10 @@ The owner's goals it answers:
   `onError` on the tile `<img>` to show the first-letter tile
   (`check/[id]/page.tsx`, counter).
   *Done: TileImage on the order screen's category and item tiles falls back to the icon or first letter when the picture fails; checked by breaking one picture's address (Americano showed A).*
-- [ ] **T1.7 Shorter error messages.** The Send network error is 45 words.
+- [x] **T1.7 Shorter error messages.** The Send network error is 45 words.
   Server strings (`err.message`, the hub's `pushError`/`lastError`) are shown
   raw. Use one sentence, with a "Details" toggle for the rest.
+  *Done: ErrorNote and splitMessage in posUi.tsx: the first sentence, the rest under Details. The Send errors lead with what to do. The hub page shows each sync problem once (the pull and push errors were the same sentence twice).*
 - [ ] **T1.8 Plainer counter labels.** "Record — the kitchen is here" becomes
   "Save order (offline)". "not rung up" becomes "Not sent".
 - [ ] **T1.9 Teal is only for the main action.** It is currently used for:
