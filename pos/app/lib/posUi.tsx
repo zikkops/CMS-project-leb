@@ -78,7 +78,11 @@ export function PosButton({
       title={title ?? (iconOnly && typeof label === 'string' ? label : undefined)}
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.55rem',
-        minHeight: `${HEIGHT[size]}px`, minWidth: iconOnly ? `${HEIGHT[size]}px` : undefined,
+        minHeight: `${HEIGHT[size]}px`,
+        // A button sharing a bar (grow) may shrink below its text's width: without
+        // this a flex item never goes narrower than its content, and on a phone
+        // the bar ran off the screen with Send half outside it (16 Sep, a café).
+        minWidth: iconOnly ? `${HEIGHT[size]}px` : grow ? 0 : undefined,
         padding: iconOnly ? '0' : size === 'sm' ? '0 0.85rem' : '0 1.1rem',
         width: full ? '100%' : undefined, flex: grow ? `${grow} 1 0` : undefined,
         borderRadius: '8px', cursor: disabled ? 'not-allowed' : 'pointer',
@@ -94,7 +98,7 @@ export function PosButton({
       }}
     >
       {icon && <FontAwesomeIcon icon={icon} style={{ fontSize: size === 'lg' ? '1.15em' : '1.05em', flexShrink: 0 }} />}
-      {!iconOnly && <span>{label}</span>}
+      {!iconOnly && <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{label}</span>}
       {badge !== undefined && badge !== null && badge !== 0 && (
         <span style={{
           minWidth: '1.6rem', height: '1.6rem', padding: '0 0.45rem', borderRadius: '999px',

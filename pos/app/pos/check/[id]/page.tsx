@@ -999,12 +999,17 @@ export default function CheckPage() {
   // One Check options button rather than three in a row: closing a check and
   // moving a table sat directly under the order, a thumb's width from it.
   // Send is the widest thing in the bar because it is the thing to press.
+  // On a phone the two secondary buttons put their icon above the word, so all
+  // three fit a 360px screen with Send still the widest.
+  const compact: React.CSSProperties | undefined = isMobile
+    ? { flexDirection: 'column', gap: '0.2rem', padding: '0.35rem 0.4rem', fontSize: '0.9rem' }
+    : undefined
   const actionBar = (
-    <div style={{ display: 'flex', gap: '0.6rem' }}>
-      <PosButton icon={faSliders} label="Check options" tone="neutral" grow={1}
+    <div style={{ display: 'flex', gap: isMobile ? '0.5rem' : '0.6rem' }}>
+      <PosButton icon={faSliders} label="Check options" tone="neutral" grow={1} style={compact}
         badge={check.staffDiscount ? 'staff' : null} onClick={() => setActions(true)} />
       {isMobile && (
-        <PosButton icon={faPlus} label="Add items" tone="neutral" grow={1} disabled={draftsLocked} onClick={() => setPicking(true)} />
+        <PosButton icon={faPlus} label="Add items" tone="neutral" grow={1} style={compact} disabled={draftsLocked} onClick={() => setPicking(true)} />
       )}
       <PosButton icon={faPaperPlane} label="Send" tone="primary" size="lg" grow={2}
         badge={sendCount > 0 ? sendCount : null}

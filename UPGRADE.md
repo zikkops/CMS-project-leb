@@ -32,18 +32,16 @@ The owner's goals it answers:
 
 ## Open bug (investigate first)
 
-- [ ] **B1. Items would not Send on the hub with the internet cut** (16 Sep, in
-  a café). Opening a table worked offline (check `n:68` on the test laptop), but
-  adding items and pressing Send did not. The server's add-lines path has no
-  network call in it, so the cause is probably on the page. Reproduce it on a
-  dev hub with the network adapter's gateway removed, read the exact message,
-  and fix it. Candidates:
-  - something on the check page waiting on Firebase or a remote image;
-  - the session check;
-  - `isNetworkFailure()` misreading a hub answer.
-
-  Done when the full order flow runs on a hub with no internet, and
-  `verify:hub` gains a case for whatever caused it.
+- [x] **B1. Items would not Send on the hub with the internet cut** (16 Sep, in
+  a café). **Done 18 Sep.** Reproduced on the built hub over a copy of the café
+  laptop's database, with every outside lookup and connection made to hang (a
+  router with no line): the server answered in 15 ms and the order sent. The
+  cause was the phone layout: a `PosButton` with `grow` could not shrink
+  below its text, so on a 360px phone the order screen's bar ran off the
+  screen with **Send half outside it**. Now `grow` buttons may shrink
+  (`posUi.tsx`), and on a phone the two secondary buttons put the icon above
+  the word. Checked at 360px: the bar fits and Send works with the hub offline.
+  The floor, counter, closed, KDS and hub pages have no sideways scroll either.
 
 ---
 
