@@ -83,5 +83,22 @@ console.log('\nwhich guide a page shows')
   eq('the dashboard has no guide strip', at('/admin'), null)
 }
 
+console.log('\nwho sees which item (visibleNav, the sidebar and the dashboard alike)')
+{
+  const sees = (viewer, flags, href) => N.visibleNav(viewer, flags).some(s => s.items.some(i => i.href === href))
+  const manager = { role: 'manager', sectionGrants: [], sectionRevocations: [] }
+  eq('a manager sees End of Day', sees(manager, null, '/admin/end-of-day'), true)
+  eq('THE TRAP: a section taken away from them is gone, on the dashboard too',
+    sees({ ...manager, sectionRevocations: ['endOfDay'] }, null, '/admin/end-of-day'), false)
+  eq('a retail hire granted the stock count sees it; without the grant, not',
+    [sees({ role: 'retail', sectionGrants: ['dailyInventory'] }, null, '/admin/supplies/daily'), sees({ role: 'retail' }, null, '/admin/supplies/daily')],
+    [true, false])
+  eq('a switched-off module hides its pages; while the switches load, nothing is hidden',
+    [sees(manager, { endOfDay: { enabled: false } }, '/admin/end-of-day'), sees(manager, {}, '/admin/end-of-day'), sees(manager, null, '/admin/end-of-day')],
+    [false, true, true])
+  eq('nobody signed in sees nothing', N.visibleNav({ role: null }, null).length, 0)
+  eq('an admin-only page is for admins only', [sees({ role: 'admin' }, null, '/admin/errors'), sees(manager, null, '/admin/errors')], [true, false])
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

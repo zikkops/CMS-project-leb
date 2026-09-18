@@ -8,21 +8,16 @@
 // says what it is for, and splits its pages into daily use and setup.
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { signOut } from 'firebase/auth'
-import { auth } from '@big-cms/shared/firebase'
-import { useRequireRole, hasSectionAccess, ALL_ROLES, SECTION_ACCESS, ROLE_LABELS } from '@big-cms/shared/adminAuth'
+import { useRequireRole, ALL_ROLES, SECTION_ACCESS, ROLE_LABELS } from '@big-cms/shared/adminAuth'
 import { useFeatureFlags } from '@big-cms/shared/useFeatures'
-import { featureForSection, isFeatureOn } from '@big-cms/shared/features'
-import { ADMIN_NAV, type AdminNavItem, type BadgeKey } from '@big-cms/shared/adminNav'
+import { visibleNav, type AdminNavItem, type BadgeKey } from '@big-cms/shared/adminNav'
 import { usePendingTransactions } from '@big-cms/shared/loyalty'
 import { usePendingRedemptions } from '@big-cms/shared/redemptions'
 import { usePendingEventReservations } from '@big-cms/shared/eventReservations'
 import { usePendingTableReservations } from '@big-cms/shared/tableReservations'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faThumbtack, faGear, faXmark, faBolt, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
-import { BRAND } from '@big-cms/shared/brand'
 
 // Events can be set to the literal branch "All Branches" in Manage Events —
 // always include it alongside a manager's real branchIds so those events
@@ -46,8 +41,7 @@ function useIsMobile(breakpoint = 768) {
 type Card = AdminNavItem & { color: string; count?: number }
 
 export default function AdminPage() {
-  const router  = useRouter()
-  const { checking, role, branchIds, sectionGrants, user } = useRequireRole(ALL_ROLES)
+  const { checking, role, branchIds, sectionGrants, sectionRevocations, user } = useRequireRole(ALL_ROLES)
   const { flags, loading: featuresLoading } = useFeatureFlags()
   const isMobile = useIsMobile()
 
@@ -94,11 +88,6 @@ export default function AdminPage() {
   // reset). The migrations are scripts/harden-customer-fields.mjs. Opening a
   // dashboard is a read, and now only a read.
 
-  async function handleSignOut() {
-    await signOut(auth)
-    router.replace('/admin/login')
-  }
-
   // Pins are read once per signed-in user. There is no user while the page is
   // rendered on the server, so this never reads localStorage there.
   const [pinnedHrefs, setPinnedHrefs] = useState<string[]>([])
@@ -126,22 +115,13 @@ export default function AdminPage() {
     tableReservations: pendingTableReservations.length,
   }
 
-  const sections = ADMIN_NAV
+  // The same answer as the sidebar's, revocations included (visibleNav() in
+  // adminNav.ts). Fails open while the flags load, like the sidebar.
+  const sections = visibleNav({ role, sectionGrants, sectionRevocations }, featuresLoading ? null : flags)
     .map(section => ({
       ...section,
-      cards: section.items
-        .filter(({ access }) => {
-          const key = Object.entries(SECTION_ACCESS).find(([, v]) => v === access)?.[0]
-          if (!hasSectionAccess(role, access, sectionGrants, key)) return false
-          // Fails open while the flags load, matching the sidebar: a card that
-          // briefly appears is better than the whole dashboard flickering empty.
-          if (featuresLoading || !key) return true
-          const feature = featureForSection(key)
-          return feature ? isFeatureOn(feature, flags) : true
-        })
-        .map(item => ({ ...item, color: section.color, count: item.badge ? counts[item.badge] : undefined }) as Card),
+      cards: section.items.map(item => ({ ...item, color: section.color, count: item.badge ? counts[item.badge] : undefined }) as Card),
     }))
-    .filter(section => section.cards.length > 0)
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
@@ -161,26 +141,8 @@ export default function AdminPage() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#0d0d0d', fontFamily: 'var(--font-inter)' }}>
 
-      {/* Top bar */}
-      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.02)', padding: isMobile ? '1rem 1.25rem' : '1rem 2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-          <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color: 'var(--offwhite)', letterSpacing: '0.05em' }}>{BRAND.shortName}</span>
-          <span style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.12)' }} />
-          <span style={{ fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
-            {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </span>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.45)', marginRight: '0.25rem' }}>{user?.email}</span>
-          <Link href="/" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(var(--offwhite-rgb),0.75)', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.8rem', textDecoration: 'none' }}>
-            View Site
-          </Link>
-          <button onClick={handleSignOut} style={{ background: 'rgba(var(--red-rgb),0.1)', border: '1px solid rgba(var(--red-rgb),0.35)', color: 'var(--red)', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer' }}>
-            Sign Out
-          </button>
-        </div>
-      </div>
-
+      {/* No bar of its own: "View Site" and "Sign Out" are in the sidebar, the
+          same as on every page (UPGRADE.md T1.15). */}
       <div style={{ maxWidth: '1240px', margin: '0 auto', padding: isMobile ? '1.5rem 1.25rem 4rem' : '2.5rem 2.5rem 5rem' }}>
 
         {/* Greeting */}
@@ -188,6 +150,9 @@ export default function AdminPage() {
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.7rem' : '2.1rem', color: 'var(--offwhite)', marginBottom: '0.35rem' }}>
             {greeting}
           </h1>
+          <p style={{ fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.45)', marginBottom: '0.3rem' }}>
+            {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </p>
           <p style={{ fontSize: '0.92rem', color: 'rgba(var(--offwhite-rgb),0.55)' }}>
             {role ? ROLE_LABELS[role] : ''} — {allCards.length} pages in {sections.length} sections. The same pages are in the sidebar;
             each section says what it is for, and its <FontAwesomeIcon icon={faGear} style={{ fontSize: '0.8em' }} /> Setup pages are kept apart from daily use.

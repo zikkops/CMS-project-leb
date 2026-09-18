@@ -13,10 +13,9 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'firebase/auth'
 import { auth } from '@big-cms/shared/firebase'
-import { useAdminUser, hasSectionAccess, ROLE_LABELS, SECTION_ACCESS, type Role } from '@big-cms/shared/adminAuth'
-import { ADMIN_NAV, sectionForPath, type AdminNavSection, type AdminNavItem } from '@big-cms/shared/adminNav'
+import { useAdminUser, ROLE_LABELS } from '@big-cms/shared/adminAuth'
+import { ADMIN_NAV, sectionForPath, visibleNav, type AdminNavSection, type AdminNavItem } from '@big-cms/shared/adminNav'
 import { useFeatureFlags } from '@big-cms/shared/useFeatures'
-import { featureForSection, isFeatureOn } from '@big-cms/shared/features'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faBars, faChevronLeft, faChevronRight, faXmark, faRightFromBracket, faGear, faHouse,
@@ -227,21 +226,13 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   // reference equality — every item passes SECTION_ACCESS.xxx directly, so the
   // array object is the same one. Same trick useRequireRole() uses to find its
   // section key.
-  function itemVisible(access: Role[]): boolean {
-    const sectionKey = Object.entries(SECTION_ACCESS).find(([, v]) => v === access)?.[0]
-    // Section grants and revocations count, the same as on the dashboard — a
-    // barista granted the stock count must see its link.
-    if (!hasSectionAccess(role, access, sectionGrants, sectionKey, sectionRevocations)) return false
-    if (featuresLoading || !sectionKey) return true   // fail open while unknown; not a section — nothing to gate
-    const feature = featureForSection(sectionKey)
-    return feature ? isFeatureOn(feature, flags) : true
-  }
-
   // Resolve once role/loading is known — before then, render no nav items
-  // rather than briefly flashing the full unfiltered list.
-  const visibleSections = (loading || !user) ? [] : ADMIN_NAV
-    .map(section => ({ ...section, items: section.items.filter(it => itemVisible(it.access)) }))
-    .filter(section => section.items.length > 0)
+  // rather than briefly flashing the full unfiltered list. The same answer as
+  // the dashboard's: visibleNav() in adminNav.ts.
+  const visibleSections = (loading || !user) ? [] : visibleNav(
+    { role, sectionGrants, sectionRevocations },
+    featuresLoading ? null : flags,
+  )
 
   const compact = collapsed && !isMobile
   const sidebarWidth = collapsed ? COLLAPSED_W : EXPANDED_W

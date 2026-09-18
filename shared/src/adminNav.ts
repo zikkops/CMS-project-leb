@@ -34,7 +34,8 @@ import {
   faChampagneGlasses, faStar, faWarehouse, faMoon, faScrewdriverWrench, faTableCells,
   type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
-import { SECTION_ACCESS, ALL_ROLES, type Role } from './roles'
+import { SECTION_ACCESS, ALL_ROLES, hasSectionAccess, type Role } from './roles'
+import { featureForSection, isFeatureOn, type FeatureFlags } from './features'
 
 export type NavKind = 'use' | 'setup'
 
@@ -251,4 +252,41 @@ export function sectionForPath(pathname: string): { section: AdminNavSection; it
     }
   }
   return best
+}
+
+/** Who is looking: their role and their per-person section changes. */
+export interface NavViewer {
+  role: Role | null
+  sectionGrants?: string[]
+  sectionRevocations?: string[]
+}
+
+/**
+ * Whether an item shows for this person, with these modules switched on.
+ *
+ * One answer for the sidebar and the dashboard, which used to work it out
+ * separately and drifted: the dashboard ignored revocations, so a section
+ * taken away from somebody vanished from the sidebar but stayed on the
+ * dashboard (UPGRADE.md T1.14).
+ *
+ * - Section grants and revocations count, as useRequireRole() counts them.
+ * - `flags` null means the switches are still loading: shown, so nothing
+ *   flickers; a link to a switched-off module is a dead end, not a hole —
+ *   useRequireFeature() and the server are what stop anything.
+ * - The section is found through SECTION_ACCESS by reference, the same array
+ *   an item passes (verify:sections checks that).
+ */
+export function navItemVisible(access: Role[], viewer: NavViewer, flags: FeatureFlags | null): boolean {
+  const sectionKey = Object.entries(SECTION_ACCESS).find(([, v]) => v === access)?.[0]
+  if (!hasSectionAccess(viewer.role, access, viewer.sectionGrants, sectionKey, viewer.sectionRevocations)) return false
+  if (flags === null || !sectionKey) return true
+  const feature = featureForSection(sectionKey)
+  return feature ? isFeatureOn(feature, flags) : true
+}
+
+/** The navigation as this person sees it: only visible items, and only sections with any. */
+export function visibleNav(viewer: NavViewer, flags: FeatureFlags | null): AdminNavSection[] {
+  return ADMIN_NAV
+    .map(section => ({ ...section, items: section.items.filter(item => navItemVisible(item.access, viewer, flags)) }))
+    .filter(section => section.items.length > 0)
 }

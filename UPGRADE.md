@@ -148,12 +148,14 @@ The owner's goals it answers:
 
 ### Admin (`admin/`)
 
-- [ ] **T1.14 Dashboard honours revoked sections.** `admin/app/admin/page.tsx`
+- [x] **T1.14 Dashboard honours revoked sections.** `admin/app/admin/page.tsx`
   calls `hasSectionAccess()` without `sectionRevocations`, while the sidebar
   (`AdminShell.tsx`) passes them. Add `visibleNav(role, grants, revocations,
   flags)` to `adminNav.ts` and use it in both.
-- [ ] **T1.15 Remove the dashboard's second top bar.** "View Site" and "Sign
+  *Done: visibleNav() and navItemVisible() in adminNav.ts are the one answer for the sidebar and the dashboard, revocations included; verify:admin-nav asserts who sees what (6 more checks, 4 of 4 mutations caught).*
+- [x] **T1.15 Remove the dashboard's second top bar.** "View Site" and "Sign
   Out" are duplicated from the sidebar.
+  *Done: the dashboard's own View Site / Sign Out bar is gone (the sidebar has both); the date moved under the greeting.*
 - [ ] **T1.16 Group the permission grid.** `/admin/users` shows 22 grant boxes
   in `Object.keys` order. Group them under their nav sections.
 - [x] **T1.17 First name required for staff accounts.** The counter's sign-in
