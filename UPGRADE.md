@@ -106,14 +106,16 @@ The owner's goals it answers:
 - [x] **T1.4 Guest count 1–8 plus a stepper.** The chips are
   `[1,2,3,4,5,6,8]`, with no 7 and no 9+ (floor and counter).
   *Done: chips 1–8 plus a shared Stepper (posUi.tsx) up to 60, floor and counter. Buttons sharing a bar now have tighter sides, so their word fits at 366px.*
-- [ ] **T1.5 Offline sign-in message.** On a hub with no internet, email
+- [x] **T1.5 Offline sign-in message.** On a hub with no internet, email
   sign-in says "That email and password did not match". Detect
   `isNetworkFailure()` and say "No internet. Sign in with your phone above."
   (`pos/app/pos/login/page.tsx`).
-- [ ] **T1.6 Broken menu pictures fall back to the letter.** Pictures are
+  *Done: a network failure on email sign-in says there is no internet (on a hub: sign in with your phone), not that the password is wrong.*
+- [x] **T1.6 Broken menu pictures fall back to the letter.** Pictures are
   remote (imgbb, unsplash), so offline tiles are blank or broken. Add
   `onError` on the tile `<img>` to show the first-letter tile
   (`check/[id]/page.tsx`, counter).
+  *Done: TileImage on the order screen's category and item tiles falls back to the icon or first letter when the picture fails; checked by breaking one picture's address (Americano showed A).*
 - [ ] **T1.7 Shorter error messages.** The Send network error is 45 words.
   Server strings (`err.message`, the hub's `pushError`/`lastError`) are shown
   raw. Use one sentence, with a "Details" toggle for the rest.

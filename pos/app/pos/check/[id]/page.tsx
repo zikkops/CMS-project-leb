@@ -434,7 +434,7 @@ function CategoryTile({ name, image, colour, count, icon, onClick }: {
       display: 'flex', alignItems: 'flex-end', textAlign: 'left', WebkitTapHighlightColor: 'transparent',
     }}>
       {image
-        ? <img src={image} alt="" loading="lazy" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+        ? <TileImage src={image} fallback={icon ? <FontAwesomeIcon icon={icon} style={{ position: 'absolute', top: '1rem', right: '1rem', fontSize: '2.2rem', color: colour }} /> : null} />
         : icon && <FontAwesomeIcon icon={icon} style={{ position: 'absolute', top: '1rem', right: '1rem', fontSize: '2.2rem', color: colour }} />}
       <span style={{
         position: 'relative', width: '100%', padding: '2rem 0.9rem 0.8rem',
@@ -447,6 +447,29 @@ function CategoryTile({ name, image, colour, count, icon, onClick }: {
         </span>
       </span>
     </button>
+  )
+}
+
+/**
+ * A tile's picture, or its fallback when the picture cannot load. Pictures live
+ * on the internet (imgbb, the media library), so on a café hub with the line
+ * down every one of them fails, and a broken-image box on every tile reads as a
+ * broken till (UPGRADE.md T1.6). Module scope.
+ */
+function TileImage({ src, fallback }: { src: string; fallback: React.ReactNode }) {
+  const [failed, setFailed] = useState<string | null>(null)
+  if (failed === src) return <>{fallback}</>
+  return <img src={src} alt="" loading="lazy" onError={() => setFailed(src)}
+    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+}
+
+/** A dish's first letter, where its picture would be. Module scope. */
+function TileLetter({ name, colour }: { name: string; colour: string }) {
+  return (
+    <span style={{
+      position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: 'var(--font-cinzel)', fontSize: '2.4rem', color: colour,
+    }}>{name.slice(0, 1)}</span>
   )
 }
 
@@ -471,11 +494,8 @@ function ItemTile({ name, image, colour, locked, onClick, children }: {
         background: `color-mix(in srgb, ${colour} 16%, #151515)`,
       }}>
         {image
-          ? <img src={image} alt="" loading="lazy" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <span style={{
-              position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'var(--font-cinzel)', fontSize: '2.4rem', color: colour,
-            }}>{name.slice(0, 1)}</span>}
+          ? <TileImage src={image} fallback={<TileLetter name={name} colour={colour} />} />
+          : <TileLetter name={name} colour={colour} />}
       </span>
       <span style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', padding: '0.6rem 0.75rem 0.7rem' }}>
         <span style={{ fontSize: '1.02rem', fontWeight: 600, lineHeight: 1.25 }}>{name}</span>

@@ -25,6 +25,7 @@ import { tokenFromHandoff } from '@big-cms/shared/staffKeys'
 import { isCounterHost } from '@big-cms/shared/counterSignIn'
 import { startLoad } from '@big-cms/shared/startLoad'
 import { useClientValue } from '@big-cms/shared/useClientValue'
+import { isNetworkFailure } from '@big-cms/shared/netErrors'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -222,10 +223,20 @@ export default function PosLoginPage() {
     setError('')
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password)
-    } catch {
-      // Deliberately one message for every failure. Distinguishing "no such
-      // account" from "wrong password" tells anyone holding the login form
-      // which emails are real.
+    } catch (err) {
+      // No internet is not a wrong password: email sign-in asks Google, and on
+      // a café hub with the line down it cannot. Said as it is, with the way
+      // that does work (UPGRADE.md T1.5).
+      if (isNetworkFailure(err)) {
+        setError(backend().kind === 'hub'
+          ? 'No internet, so email sign-in cannot work. Sign in with your phone instead.'
+          : 'No internet connection. Check the wifi and try again.')
+        setBusy(false)
+        return
+      }
+      // Otherwise deliberately one message for every failure. Distinguishing
+      // "no such account" from "wrong password" tells anyone holding the login
+      // form which emails are real.
       setError('That email and password did not match an account.')
       setBusy(false)
       return
