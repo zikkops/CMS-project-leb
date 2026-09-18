@@ -19,6 +19,7 @@ import { useMyNotifications, markNotificationRead, type StatusNotification } fro
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faChevronDown, faBell } from '@fortawesome/free-solid-svg-icons'
 import { BRAND } from '@big-cms/shared/brand'
+import { useKeyed } from '@big-cms/shared/useKeyed'
 
 const INVITE_TYPE_LABELS: Record<ParticipantInvite['reservationType'], string> = {
   event: 'Event',
@@ -57,7 +58,9 @@ export default function Navbar() {
   // uid that will never appear in any of them.
   const { user: signedInUser, loading: customerLoading, isStaff } = useCustomerUser()
   const customerUser = isStaff ? null : signedInUser
-  const [customerName, setCustomerName] = useState<string | null>(null)
+  const nameFor = useKeyed<string | null>(customerUser?.uid ?? null, null)
+  const customerName = nameFor.value
+  const { put: putCustomerName } = nameFor
   const { invites: pendingInvites } = usePendingInvites(customerUser?.uid ?? null)
   const friendRequests = useIncomingRequests(customerUser?.uid ?? null)
   const statusNotifications = useMyNotifications(customerUser?.uid ?? null)
@@ -91,20 +94,21 @@ export default function Navbar() {
   }
 
   useEffect(() => {
-    if (!customerUser) { setCustomerName(null); return }
-    const unsub = onSnapshot(doc(db, 'users', customerUser.uid), snap => {
+    if (!customerUser) return
+    const uid = customerUser.uid
+    const unsub = onSnapshot(doc(db, 'users', uid), snap => {
       const data = snap.data() as { displayName?: string; username?: string } | undefined
       // Rendered as "Welcome, {name}", so the fallback has to read after a
       // comma. It was "Adventurer" (a games café's word), then briefly "there",
       // which made "Welcome, there". The customer's own email handle is theirs
       // to see, and "friend" covers an account with no email at all.
-      setCustomerName(
+      putCustomerName(uid,
         data?.username || data?.displayName || customerUser.displayName
         || customerUser.email?.split('@')[0] || 'friend'
       )
     }, err => console.error('[Navbar] users/{uid} listener failed:', err))
     return unsub
-  }, [customerUser])
+  }, [customerUser, putCustomerName])
 
   async function handleLogout() {
     await signOutCustomer()
@@ -143,7 +147,12 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', fn)
   }, [])
 
-  useEffect(() => { setOpen(false) }, [pathname])
+  // The menu closes when the page changes.
+  const [menuPath, setMenuPath] = useState(pathname)
+  if (menuPath !== pathname) {
+    setMenuPath(pathname)
+    setOpen(false)
+  }
 
   function isActive(href: string) {
     return pathname === href || pathname.startsWith(href + '/')
@@ -368,7 +377,7 @@ export default function Navbar() {
                                 </p>
                                 {!approved && n.rejectionReason && (
                                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--red-rgb),0.7)', marginTop: '0.2rem' }}>
-                                    "{n.rejectionReason}"
+                                    &quot;{n.rejectionReason}&quot;
                                   </p>
                                 )}
                               </div>

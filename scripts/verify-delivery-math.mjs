@@ -55,7 +55,7 @@ const eq = (name, got, want) => {
     ? Math.abs(got - want) < 1e-9
     : got === want
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(48)} got=${got} want=${want}`)
-  ok ? pass++ : fail++
+  if (ok) pass++; else fail++
 }
 
 console.log('\nweightedAverageCost')

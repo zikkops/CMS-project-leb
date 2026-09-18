@@ -11,6 +11,7 @@ import {
   fetchCustomerDirectory, sendFriendRequest, acceptFriendRequest, declineFriendRequest, removeFriend,
   type DirectoryUser,
 } from '@big-cms/shared/friends'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 interface OwnProfile {
   displayName: string
@@ -88,11 +89,17 @@ export default function FriendsPage() {
 
   useEffect(() => {
     if (!user) return
-    setLoadingDir(true)
-    fetchCustomerDirectory(user.uid).then(list => {
-      setDirectory(list)
-      setLoadingDir(false)
+    let alive = true
+    startLoad(() => {
+      if (!alive) return
+      setLoadingDir(true)
+      return fetchCustomerDirectory(user.uid).then(list => {
+        if (!alive) return
+        setDirectory(list)
+        setLoadingDir(false)
+      })
     })
+    return () => { alive = false }
   }, [user])
 
   const friendUids  = useMemo(() => new Set(friends.map(f => f.uid)), [friends])

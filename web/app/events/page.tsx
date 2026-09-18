@@ -335,7 +335,7 @@ export default function EventsPage() {
               color: 'var(--purple)',
               marginBottom: '1rem',
               fontFamily: 'var(--font-inter)',
-            }}>What's On</p>
+            }}>What&apos;s On</p>
             <h1 style={{
               fontFamily: 'var(--font-cinzel)',
               fontSize: isMobile ? '2.2rem' : '3.5rem',
@@ -406,7 +406,7 @@ export default function EventsPage() {
                   fontSize: isMobile ? '1.5rem' : '2rem',
                   color: 'var(--offwhite)',
                   marginBottom: '1.5rem',
-                }}>Don't Miss Out</h2>
+                }}>Don&apos;t Miss Out</h2>
                 <div style={{
                   width: '60px', height: '2px',
                   backgroundColor: 'var(--purple)',

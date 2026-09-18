@@ -82,6 +82,9 @@ export default function WebError({
             }}
           >Try again</button>
 
+          {/* A full page load on purpose, not <Link>: this page shows because
+              the app broke, and a fresh load is the way out of that state. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
             href="/"
             style={{

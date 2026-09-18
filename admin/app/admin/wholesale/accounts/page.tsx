@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db, auth } from '@big-cms/shared/firebase'
 import { useRequireRole } from '@big-cms/shared/adminAuth'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 interface Account {
   uid:         string
@@ -60,7 +61,7 @@ export default function WholesaleAccountsPage() {
     setLoading(false)
   }
 
-  useEffect(() => { if (!checking) load() }, [checking])
+  useEffect(() => { if (!checking) startLoad(load) }, [checking])
 
   async function call(method: 'POST' | 'PATCH', body: Record<string, unknown>) {
     const idToken = await auth.currentUser?.getIdToken()

@@ -327,9 +327,12 @@ export default function CustomerProfilePage() {
   const [verificationSent, setVerificationSent] = useState(false)
   const [checkingVerified, setCheckingVerified] = useState(false)
 
-  useEffect(() => {
-    if (user) setEmailVerified(user.emailVerified)
-  }, [user])
+  // Follows the signed-in user, whenever that changes.
+  const [verifiedFrom, setVerifiedFrom] = useState<typeof user | null>(null)
+  if (user && user !== verifiedFrom) {
+    setVerifiedFrom(user)
+    setEmailVerified(user.emailVerified)
+  }
 
   async function handleResendVerification() {
     setResendingVerification(true)

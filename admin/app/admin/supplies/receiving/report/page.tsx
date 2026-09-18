@@ -36,6 +36,7 @@ import {
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import type { TheoreticalFoodCost, WasteSummary } from '@big-cms/shared/recipes'
 import { voidReason } from '@big-cms/shared/checks'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 type Theory = TheoreticalFoodCost & { checks: number; waste: WasteSummary }
 
@@ -138,61 +139,61 @@ export default function FoodCostReportPage() {
   const [theory,     setTheory]     = useState<Theory | null>(null)
   const [theoryErr,  setTheoryErr]  = useState('')
 
-  useEffect(() => {
-    if (checking) return
-    if (branch) return
-    // 'all' is admin-only on purpose. A manager scoped to two branches picking
-    // it would issue a query across every branch, including ones they are not
-    // supposed to see — the listener would be scoped by nothing at all.
-    setBranch(role === 'admin' ? 'all' : (branchOptions[0] ?? ''))
-  }, [checking, branch, branchOptions, role])
+  // 'all' is admin-only on purpose. A manager scoped to two branches picking
+  // it would issue a query across every branch, including ones they are not
+  // supposed to see — the listener would be scoped by nothing at all.
+  const defaultBranch = role === 'admin' ? 'all' : (branchOptions[0] ?? '')
+  if (!checking && !branch && defaultBranch) setBranch(defaultBranch)
 
   useEffect(() => {
     if (checking || !branch || !from || !to) return
     if (from > to) return
 
     let cancelled = false
-    setLoading(true)
-    setErr('')
+    startLoad(() => {
+      if (cancelled) return
+      setLoading(true)
+      setErr('')
 
-    // End of the last day, not its midnight — otherwise everything received on
-    // the closing date falls outside the range and the period reads light.
-    const fromDate = new Date(`${from}T00:00:00`)
-    const toDate   = new Date(`${to}T23:59:59.999`)
+      // End of the last day, not its midnight — otherwise everything received on
+      // the closing date falls outside the range and the period reads light.
+      const fromDate = new Date(`${from}T00:00:00`)
+      const toDate   = new Date(`${to}T23:59:59.999`)
 
-    Promise.all([
-      listDeliveriesBetween(branch, fromDate, toDate),
-      listEndOfDayReportsBetween(branch, from, to),
-    ])
-      .then(([d, r]) => {
-        if (cancelled) return
-        setDeliveries(d)
-        setReports(r)
-      })
-      .catch(() => {
-        if (cancelled) return
-        // A permission-denied read renders as an empty list unless it is
-        // caught and said out loud — that exact bug shipped on the POS floor
-        // this month.
-        setErr('Could not load the report. If this persists, your account may not have access to delivery costs.')
-        setDeliveries([])
-        setReports([])
-      })
-      .finally(() => { if (!cancelled) setLoading(false) })
+      Promise.all([
+        listDeliveriesBetween(branch, fromDate, toDate),
+        listEndOfDayReportsBetween(branch, from, to),
+      ])
+        .then(([d, r]) => {
+          if (cancelled) return
+          setDeliveries(d)
+          setReports(r)
+        })
+        .catch(() => {
+          if (cancelled) return
+          // A permission-denied read renders as an empty list unless it is
+          // caught and said out loud — that exact bug shipped on the POS floor
+          // this month.
+          setErr('Could not load the report. If this persists, your account may not have access to delivery costs.')
+          setDeliveries([])
+          setReports([])
+        })
+        .finally(() => { if (!cancelled) setLoading(false) })
 
-    // The theoretical side is fetched on its own and fails on its own: the
-    // actual figure above is complete without it, and one route being down
-    // should not blank a report that has everything else it needs.
-    setTheory(null)
-    setTheoryErr('')
-    const params = new URLSearchParams({ from, to, branch })
-    authedFetch(`/api/admin/food-cost?${params}`, 'GET')
-      .then(unwrap)
-      .then(result => { if (!cancelled) setTheory(result as unknown as Theory) })
-      .catch((e: unknown) => {
-        if (!cancelled) setTheoryErr(e instanceof Error ? e.message : 'Could not work out the theoretical food cost.')
-      })
+      // The theoretical side is fetched on its own and fails on its own: the
+      // actual figure above is complete without it, and one route being down
+      // should not blank a report that has everything else it needs.
+      setTheory(null)
+      setTheoryErr('')
+      const params = new URLSearchParams({ from, to, branch })
+      authedFetch(`/api/admin/food-cost?${params}`, 'GET')
+        .then(unwrap)
+        .then(result => { if (!cancelled) setTheory(result as unknown as Theory) })
+        .catch((e: unknown) => {
+          if (!cancelled) setTheoryErr(e instanceof Error ? e.message : 'Could not work out the theoretical food cost.')
+        })
 
+    })
     return () => { cancelled = true }
   }, [checking, branch, from, to])
 

@@ -9,7 +9,7 @@
 // shop can't submit an order priced at $0.01 by editing what the browser sends.
 
 import { adminAuth, adminDb } from '@big-cms/shared/server/firebaseAdmin'
-import { toResponse, HttpError, bearerToken, requireSection } from '@big-cms/shared/server/auth'
+import { toResponse, HttpError, bearerToken } from '@big-cms/shared/server/auth'
 import { sendEmail, emailConfigured } from '@big-cms/shared/server/email'
 import { FieldValue } from 'firebase-admin/firestore'
 import { INVOICE_NUMBER_PATTERN, INVOICE_IMAGE_URL_PATTERN } from '@big-cms/shared/invoiceFormat'

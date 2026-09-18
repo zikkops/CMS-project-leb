@@ -13,6 +13,7 @@ import { useRequireRole, type Role } from '@big-cms/shared/adminAuth'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import { BRAND } from '@big-cms/shared/brand'
 import { MAX_KEYS_PER_STAFF } from '@big-cms/shared/staffKeys'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -136,7 +137,7 @@ export default function StaffPhonesPage() {
 
   useEffect(() => {
     if (checking) return
-    void load()
+    startLoad(load)
   }, [checking])
 
   async function remove(keyId: string) {

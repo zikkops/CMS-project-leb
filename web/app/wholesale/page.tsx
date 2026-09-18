@@ -71,7 +71,6 @@ function ProductCard({
       <Link href={`/shop/${product.id}`} style={{ textDecoration: 'none' }}>
         <div style={{ position: 'relative', width: '100%', paddingTop: '66%', overflow: 'hidden', background: '#ffffff' }}>
           {product.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={product.image}
               alt={product.name}

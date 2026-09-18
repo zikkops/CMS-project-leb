@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import {
   collection, query, where, orderBy, onSnapshot, doc, addDoc, updateDoc,
   arrayRemove, increment, serverTimestamp, type Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { useKeyed } from './useKeyed'
 
 // Adding a registered customer as a participant on an event reservation is,
 // functionally, the same kind of "the other party has to confirm" situation
@@ -61,12 +62,11 @@ export async function createParticipantInvites(input: {
 
 // Pending invites for the signed-in customer — shown on their profile.
 export function usePendingInvites(uid: string | null) {
-  const [invites, setInvites] = useState<ParticipantInvite[]>([])
-  const [loading, setLoading] = useState(true)
+  const answer = useKeyed<ParticipantInvite[]>(uid, NO_INVITES)
+  const { put } = answer
 
   useEffect(() => {
-    if (!uid) { setInvites([]); setLoading(false); return }
-    setLoading(true)
+    if (!uid) return
     const q = query(
       collection(db, 'participantInvites'),
       where('inviteeUid', '==', uid),
@@ -74,14 +74,15 @@ export function usePendingInvites(uid: string | null) {
       orderBy('createdAt', 'desc')
     )
     const unsub = onSnapshot(q, snap => {
-      setInvites(snap.docs.map(d => ({ id: d.id, ...d.data() } as ParticipantInvite)))
-      setLoading(false)
+      put(uid, snap.docs.map(d => ({ id: d.id, ...d.data() } as ParticipantInvite)))
     })
     return unsub
-  }, [uid])
+  }, [uid, put])
 
-  return { invites, loading }
+  return { invites: answer.value, loading: answer.loading }
 }
+
+const NO_INVITES: ParticipantInvite[] = []
 
 // Accepting an event invite only flips this invite's own status — the
 // reservation it points at already passed capacity validation when it was

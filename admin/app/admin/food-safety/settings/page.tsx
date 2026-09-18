@@ -21,6 +21,7 @@ import {
   ALLERGENS_EU14, LIMIT_LABELS, UK_SFBB_LIMITS, UNIT_KINDS,
   type ChecklistItem, type FoodSafetyLimits, type LimitKey, type UnitKind,
 } from '@big-cms/shared/foodSafety'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 interface Unit { id: string; name: string; kind: UnitKind; active: boolean }
 interface Settings { limits: FoodSafetyLimits; allergens: string[]; openingChecks: ChecklistItem[]; closingChecks: ChecklistItem[] }
@@ -114,7 +115,7 @@ export default function FoodSafetySettingsPage() {
     }
   }, [branch])
 
-  useEffect(() => { void loadUnits() }, [loadUnits])
+  useEffect(() => { startLoad(loadUnits) }, [loadUnits])
 
   if (checking) return null
 

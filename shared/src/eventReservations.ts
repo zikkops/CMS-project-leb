@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import {
-  collection, query, where, orderBy, onSnapshot, doc, addDoc,
+  collection, query, where, orderBy, onSnapshot, addDoc,
   serverTimestamp, type Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { createParticipantInvites } from './participantInvites'
 import { createStatusNotification } from './notifications'
 import { authedFetch, unwrap } from './apiClient'
+import { useKeyed, branchFilterKey, branchFilterFromKey } from './useKeyed'
 
 // Unlike D&D reservations, there's no single-person resource to avoid
 // double-booking here — multiple people can attend the same event together.
@@ -95,48 +96,46 @@ export async function createEventReservationRequest(input: {
 
 // Customer's own event reservations, newest first.
 export function useUserEventReservations(uid: string | null) {
-  const [reservations, setReservations] = useState<EventReservation[]>([])
-  const [loading, setLoading] = useState(true)
+  const answer = useKeyed<EventReservation[]>(uid, NO_EVENT_RESERVATIONS)
+  const { put } = answer
 
   useEffect(() => {
-    if (!uid) { setReservations([]); setLoading(false); return }
-    setLoading(true)
+    if (!uid) return
     const q = query(collection(db, 'eventReservations'), where('userId', '==', uid), orderBy('createdAt', 'desc'))
     const unsub = onSnapshot(q, snap => {
-      setReservations(snap.docs.map(d => ({ id: d.id, ...d.data() } as EventReservation)))
-      setLoading(false)
+      put(uid, snap.docs.map(d => ({ id: d.id, ...d.data() } as EventReservation)))
     })
     return unsub
-  }, [uid])
+  }, [uid, put])
 
-  return { reservations, loading }
+  return { reservations: answer.value, loading: answer.loading }
 }
+
+const NO_EVENT_RESERVATIONS: EventReservation[] = []
 
 // Manager/admin queue — pending reservations for one or more branches (an
 // admin's 'all', or a manager's assigned branchIds). Mirrors the same
 // branch-array filtering already used for loyalty approvals and redemptions
 // — the caller must memoize any array it passes in.
 export function usePendingEventReservations(branchFilter: string[] | 'all' | null) {
-  const [reservations, setReservations] = useState<EventReservation[]>([])
-  const [loading, setLoading] = useState(true)
+  const key = branchFilterKey(branchFilter)
+  const answer = useKeyed<EventReservation[]>(key, NO_EVENT_RESERVATIONS)
+  const { put } = answer
 
   useEffect(() => {
-    if (!branchFilter || (Array.isArray(branchFilter) && branchFilter.length === 0)) {
-      setReservations([]); setLoading(false); return
-    }
-    setLoading(true)
+    if (!key) return
+    const filter = branchFilterFromKey(key)
     const base = collection(db, 'eventReservations')
-    const q = branchFilter === 'all'
+    const q = filter === 'all'
       ? query(base, where('status', '==', 'pending'), orderBy('createdAt', 'asc'))
-      : query(base, where('branch', 'in', branchFilter), where('status', '==', 'pending'), orderBy('createdAt', 'asc'))
+      : query(base, where('branch', 'in', filter), where('status', '==', 'pending'), orderBy('createdAt', 'asc'))
     const unsub = onSnapshot(q, snap => {
-      setReservations(snap.docs.map(d => ({ id: d.id, ...d.data() } as EventReservation)))
-      setLoading(false)
+      put(key, snap.docs.map(d => ({ id: d.id, ...d.data() } as EventReservation)))
     })
     return unsub
-  }, [branchFilter])
+  }, [key, put])
 
-  return { reservations, loading }
+  return { reservations: answer.value, loading: answer.loading }
 }
 
 /**

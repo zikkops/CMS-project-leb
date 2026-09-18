@@ -7,7 +7,7 @@ import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { BRANCHES, normalizeStock } from '@big-cms/shared/branches'
 import { transferGameStock } from '@big-cms/shared/productPurchases'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSearch, faArrowRight, faXmark, faPlus } from '@fortawesome/free-solid-svg-icons'
+import { faSearch, faArrowRight, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { useIsMobile } from '@big-cms/shared/useIsMobile'
 
 interface Product {
@@ -66,17 +66,17 @@ export default function TransferStockPage() {
   const [result, setResult]         = useState<{ ok: boolean; msg: string } | null>(null)
 
   // Keep fromBranch in sync if the retail's branchIds load after mount
-  useEffect(() => {
+  const [seenLockedFrom, setSeenLockedFrom] = useState(lockedFrom)
+  if (lockedFrom !== seenLockedFrom) {
+    setSeenLockedFrom(lockedFrom)
     if (lockedFrom) setFromBranch(lockedFrom)
-  }, [lockedFrom])
+  }
 
   // Avoid "from === to" once fromBranch is locked
-  useEffect(() => {
-    if (fromBranch === toBranch) {
-      const other = BRANCHES.find(b => b !== fromBranch)
-      if (other) setToBranch(other)
-    }
-  }, [fromBranch, toBranch])
+  if (fromBranch === toBranch) {
+    const other = BRANCHES.find(b => b !== fromBranch)
+    if (other) setToBranch(other)
+  }
 
   useEffect(() => {
     getDocs(collection(db, 'products')).then(snap => {

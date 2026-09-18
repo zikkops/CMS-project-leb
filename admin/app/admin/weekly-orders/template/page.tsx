@@ -11,6 +11,7 @@ import {
   type OrderTemplateItem, type OrderProvider, type OrderUnit, type Department,
   UNIT_LABELS, DEPARTMENTS,
 } from '@big-cms/shared/weeklyOrders'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 const UNITS: OrderUnit[] = ['box', 'kg', 'liter', 'gallon', 'bottle', 'bag', 'pcs', 'jar', 'block', 'can']
 
@@ -139,7 +140,11 @@ function ItemRow({ item, providers, onUpdated, onDeleted }: {
   const isMobile = useIsMobile()
 
   // Reset category when provider changes — old category may not exist on new provider
-  useEffect(() => { setCategory('') }, [providerId])
+  const [seenProvider, setSeenProvider] = useState(providerId)
+  if (providerId !== seenProvider) {
+    setSeenProvider(providerId)
+    setCategory('')
+  }
 
   async function save() {
     setSaving(true)
@@ -317,7 +322,7 @@ export default function OrderTemplatePage() {
     setLoading(false)
   }
 
-  useEffect(() => { if (!checking) load() }, [checking])
+  useEffect(() => { if (!checking) startLoad(load) }, [checking])
 
   // Group: dept → provider groups
   const grouped = useMemo(() =>

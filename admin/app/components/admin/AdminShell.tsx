@@ -23,6 +23,7 @@ import {
   faGlobe, faCircleQuestion, faChevronDown, faChevronUp,
 } from '@fortawesome/free-solid-svg-icons'
 import { BRAND } from '@big-cms/shared/brand'
+import { useClientValue } from '@big-cms/shared/useClientValue'
 
 const COLLAPSE_KEY = 'admin_sidebar_collapsed'
 const GUIDE_KEY = 'admin_guide_hidden'
@@ -166,40 +167,39 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const isMobile = useIsMobile()
   const { user, role, loading, sectionGrants, sectionRevocations } = useAdminUser()
 
-  const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [hydrated, setHydrated] = useState(false)
-  const [guideHidden, setGuideHidden] = useState(false)
   const [signOutHovered, setSignOutHovered] = useState(false)
 
-  // Read the persisted preferences after mount only — reading localStorage
-  // during the initial render would make the server-rendered and
-  // first-client-rendered markup disagree (hydration mismatch).
-  useEffect(() => {
-    try {
-      if (window.localStorage.getItem(COLLAPSE_KEY) === '1') setCollapsed(true)
-      if (window.localStorage.getItem(GUIDE_KEY) === '1') setGuideHidden(true)
-    } catch { /* private mode: defaults */ }
-    setHydrated(true)
-  }, [])
+  // The persisted preferences are the browser's: read through useClientValue,
+  // so the server-rendered and first-client-rendered markup agree (reading
+  // localStorage during the first render would be a hydration mismatch). A
+  // click this session overrides what was remembered.
+  const hydrated = useClientValue(() => true, false)
+  const storedCollapsed = useClientValue(() => remembered(COLLAPSE_KEY), false)
+  const storedGuideHidden = useClientValue(() => remembered(GUIDE_KEY), false)
+  const [collapsedChoice, setCollapsedChoice] = useState<boolean | null>(null)
+  const [guideChoice, setGuideChoice] = useState<boolean | null>(null)
+  const collapsed = collapsedChoice ?? storedCollapsed
+  const guideHidden = guideChoice ?? storedGuideHidden
 
   function toggleCollapsed() {
-    setCollapsed(prev => {
-      const next = !prev
-      try { window.localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0') } catch { /* private mode */ }
-      return next
-    })
+    const next = !collapsed
+    setCollapsedChoice(next)
+    try { window.localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0') } catch { /* private mode */ }
   }
 
   function toggleGuide() {
-    setGuideHidden(prev => {
-      const next = !prev
-      try { window.localStorage.setItem(GUIDE_KEY, next ? '1' : '0') } catch { /* private mode */ }
-      return next
-    })
+    const next = !guideHidden
+    setGuideChoice(next)
+    try { window.localStorage.setItem(GUIDE_KEY, next ? '1' : '0') } catch { /* private mode */ }
   }
 
-  useEffect(() => { setMobileOpen(false) }, [pathname])
+  // The mobile menu closes when the page changes.
+  const [menuPath, setMenuPath] = useState(pathname)
+  if (menuPath !== pathname) {
+    setMenuPath(pathname)
+    setMobileOpen(false)
+  }
 
   async function handleSignOut() {
     await signOut(auth)
@@ -466,4 +466,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       </div>
     </div>
   )
+}
+
+/** Whether a preference was remembered as on ("1"). Private mode reads as off. */
+function remembered(key: string): boolean {
+  try { return window.localStorage.getItem(key) === '1' } catch { return false }
 }

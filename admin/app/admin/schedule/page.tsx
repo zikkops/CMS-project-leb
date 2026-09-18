@@ -8,6 +8,7 @@ import type { TableReservation } from '@big-cms/shared/tableReservations'
 import type { EventReservation } from '@big-cms/shared/eventReservations'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCalendarDay, faChessRook, faCalendarCheck } from '@fortawesome/free-solid-svg-icons'
+import { useClientValue } from '@big-cms/shared/useClientValue'
 
 type ScheduleEntry =
   | { type: 'table'; data: TableReservation; startMs: number }
@@ -59,12 +60,11 @@ export default function TodaySchedulePage() {
 
   const [entries, setEntries]   = useState<ScheduleEntry[]>([])
   const [loading, setLoading]   = useState(true)
-  const [todayLabel, setTodayLabel] = useState('')
-
-  useEffect(() => {
-    const now = new Date()
-    setTodayLabel(now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
-  }, [])
+  // The device's own date, so it is read in the browser, never on the server.
+  const todayLabel = useClientValue(
+    () => new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+    '',
+  )
 
   useEffect(() => {
     if (checking || (Array.isArray(branchFilter) && branchFilter.length === 0 && role !== 'admin')) return

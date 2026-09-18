@@ -5,6 +5,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@big-cms/shared/firebase'
 import { useRequireRole, updateOrderDepts, ROLE_LABELS, ROLE_COLORS, type Role } from '@big-cms/shared/adminAuth'
 import { DEPARTMENTS, type Department } from '@big-cms/shared/weeklyOrders'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 const DEPT_COLOR: Record<Department, string> = {
   Kitchen:  'var(--teal)',
@@ -48,7 +49,7 @@ export default function WeeklyOrdersAccessPage() {
     setLoading(false)
   }
 
-  useEffect(() => { if (!checking) loadAccounts() }, [checking])
+  useEffect(() => { if (!checking) startLoad(loadAccounts) }, [checking])
 
   async function toggleDept(account: StaffAccount, dept: Department) {
     const next = account.orderDepts.includes(dept)

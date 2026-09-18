@@ -19,6 +19,7 @@ import {
   type ChecklistItem, type FoodSafetyLimits, type UnitKind, type DayAccess,
 } from '@big-cms/shared/foodSafety'
 import { BRAND } from '@big-cms/shared/brand'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 interface Unit { id: string; name: string; kind: UnitKind; active: boolean }
 interface StoredAnswer { key: string; done: boolean; note?: string; by?: string; at?: string }
@@ -238,7 +239,7 @@ function FoodSafetyDiaryInner() {
     }
   }, [branch, date])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => { startLoad(load) }, [load])
 
   const units = useMemo(() => {
     if (!view) return []

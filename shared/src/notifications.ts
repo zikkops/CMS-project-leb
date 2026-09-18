@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import {
   collection, query, where, orderBy, onSnapshot,
   addDoc, doc, updateDoc, serverTimestamp, type Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { useKeyed } from './useKeyed'
 
 export interface StatusNotification {
   id: string
@@ -23,10 +24,11 @@ export interface StatusNotification {
 
 // Real-time feed of this user's unread status notifications, newest first.
 export function useMyNotifications(uid: string | null): StatusNotification[] {
-  const [notifications, setNotifications] = useState<StatusNotification[]>([])
+  const answer = useKeyed<StatusNotification[]>(uid, NO_NOTIFICATIONS)
+  const { put } = answer
 
   useEffect(() => {
-    if (!uid) { setNotifications([]); return }
+    if (!uid) return
     const q = query(
       collection(db, 'notifications'),
       where('uid', '==', uid),
@@ -34,12 +36,14 @@ export function useMyNotifications(uid: string | null): StatusNotification[] {
       orderBy('createdAt', 'desc'),
     )
     return onSnapshot(q, snap => {
-      setNotifications(snap.docs.map(d => ({ id: d.id, ...d.data() } as StatusNotification)))
+      put(uid, snap.docs.map(d => ({ id: d.id, ...d.data() } as StatusNotification)))
     }, err => console.error('[useMyNotifications] notifications listener failed:', err))
-  }, [uid])
+  }, [uid, put])
 
-  return notifications
+  return answer.value
 }
+
+const NO_NOTIFICATIONS: StatusNotification[] = []
 
 // Written by staff-side approve/reject functions — fire-and-forget from the
 // caller's perspective since a notification failure must not block the

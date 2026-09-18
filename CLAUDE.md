@@ -67,6 +67,26 @@ npm run verify:delivery-math # if you touched receiving or costing
 npm run audit:writes         # must stay at 0
 ```
 
+**`npm run lint` is clean, and stays clean** (since 18 Sep 2026, about 45 s).
+It ignores build output (`dist/`, the counter app's bundle, the phone's native
+project); linting those took it past ten minutes. React's
+`react-hooks/set-state-in-effect` is the rule new code trips most. Three
+helpers in `shared/` answer it, so reach for them rather than a disable
+comment:
+
+- `startLoad(load)` (`startLoad.ts`) starts a loader from an effect on the
+  next microtask: `useEffect(() => { startLoad(load) }, [])`.
+- `useKeyed(key, empty)` (`useKeyed.ts`) for a listener's answer that
+  belongs to a uid or a branch: loading and "nothing yet" are worked out while
+  rendering, so the effect only calls `put()` from the callback.
+- `useClientValue(read, serverValue)` (`useClientValue.ts`) for what only
+  the browser knows (localStorage, the device's date), without a hydration
+  mismatch.
+
+State that follows a prop (a branch chosen by default, a menu closing when the
+path changes) is adjusted while rendering, behind a "seen" value, as React's
+docs describe.
+
 Then hit the routes you touched. A successful build verifies the code compiles,
 not that the feature works. For anything visual, actually look at it — three
 separate bugs this month were invisible to both tsc and the build: a CSP that

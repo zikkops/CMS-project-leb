@@ -414,7 +414,7 @@ function RecipeEditor({
             </p>
           )}
 
-          <p style={{ ...muted, marginTop: '0.7rem' }}>Also in it, from things not in supplies (bought-in bread, a "may contain" warning):</p>
+          <p style={{ ...muted, marginTop: '0.7rem' }}>Also in it, from things not in supplies (bought-in bread, a &quot;may contain&quot; warning):</p>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '0.25rem 0.8rem', marginTop: '0.35rem' }}>
             {ALLERGENS_EU14.map(a => (
               <label key={a.key} style={{ fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.8)', fontFamily: 'var(--font-inter)', display: 'flex', gap: '0.3rem', alignItems: 'center' }}>

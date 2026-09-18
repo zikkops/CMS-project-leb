@@ -24,6 +24,7 @@ import {
   STATUS_COLOR, WHOLESALE_ORDERS_EMAIL, WHOLESALE_ORDER_STATUSES,
   type WholesaleOrder, type WholesaleOrderStatus,
 } from '@big-cms/shared/wholesale'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false)
@@ -77,7 +78,7 @@ export default function WholesaleOrdersAdminPage() {
     setLoading(false)
   }
 
-  useEffect(() => { if (!checking) load() }, [checking])
+  useEffect(() => { if (!checking) startLoad(load) }, [checking])
 
   // Approving generates the invoice first (a <canvas>, so it has to happen
   // here in the browser), then hands the URL to the route, which records the

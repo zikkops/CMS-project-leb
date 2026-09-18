@@ -99,14 +99,17 @@ export default function AdminPage() {
     router.replace('/admin/login')
   }
 
+  // Pins are read once per signed-in user. There is no user while the page is
+  // rendered on the server, so this never reads localStorage there.
   const [pinnedHrefs, setPinnedHrefs] = useState<string[]>([])
-  useEffect(() => {
-    if (!user?.uid) return
+  const [pinsReadFor, setPinsReadFor] = useState<string | null>(null)
+  if (user?.uid && pinsReadFor !== user.uid) {
+    setPinsReadFor(user.uid)
     try {
       const saved = localStorage.getItem(`quickaccess-${user.uid}`)
-      if (saved) setPinnedHrefs(JSON.parse(saved))
+      setPinnedHrefs(saved ? JSON.parse(saved) : [])
     } catch { /* unreadable or private mode: nothing pinned */ }
-  }, [user?.uid])
+  }
 
   function togglePin(href: string) {
     setPinnedHrefs(prev => {

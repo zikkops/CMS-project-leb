@@ -12,6 +12,7 @@ import { formatUsd } from '@big-cms/shared/money'
 import MediaPickerModal from '../../components/admin/MediaPickerModal'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faSearch } from '@fortawesome/free-solid-svg-icons'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 interface Product {
   id: string
@@ -102,12 +103,12 @@ export default function AdminGamesPage() {
 
   async function loadCategories() {
     const snap = await getDocs(collection(db, 'productCategories'))
-    setCategories(snap.docs.map(d => (d.data() as any).name))
+    setCategories(snap.docs.map(d => String((d.data() as { name?: unknown }).name ?? '')))
   }
 
   useEffect(() => {
-    loadGames()
-    loadCategories()
+    startLoad(loadGames)
+    startLoad(loadCategories)
   }, [])
 
   async function addCategory() {

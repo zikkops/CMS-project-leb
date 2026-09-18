@@ -65,7 +65,7 @@ const field: React.CSSProperties = {
 }
 
 function StationRow({
-  branch, station, printer, onChange,
+  station, printer, onChange,
 }: {
   branch: string
   station: Station

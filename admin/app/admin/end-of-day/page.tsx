@@ -18,6 +18,7 @@ import {
   type AttendanceEntry, type EndOfDayReport, type StaffUser,
 } from '@big-cms/shared/endOfDay'
 import { ROLE_LABELS } from '@big-cms/shared/adminAuth'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 const inp: React.CSSProperties = {
   backgroundColor: 'rgba(255,255,255,0.04)',
@@ -118,21 +119,20 @@ function EndOfDayInner() {
       .catch(() => setStaffListErr(true))
   }, [])
 
-  // Pre-select branch for non-admin with one branch
-  useEffect(() => {
-    if (checking) return
-    if (role !== 'admin' && branchIds.length === 1) setBranch(branchIds[0])
-  }, [checking, role, branchIds])
-
-  // Pre-fill from URL params if navigating from history.
-  // Only allow setting a branch the user actually has access to.
-  useEffect(() => {
-    if (checking) return
+  // Once the role is known: a manager with one branch gets it chosen, and a
+  // link from history pre-fills its branch and date. Only a branch the user
+  // actually has access to. Worked out while rendering, and again whenever
+  // the address changes.
+  const paramKey = checking ? null : params.toString()
+  const [seenParams, setSeenParams] = useState<string | null>(null)
+  if (paramKey !== null && paramKey !== seenParams) {
+    if (seenParams === null && role !== 'admin' && branchIds.length === 1) setBranch(branchIds[0])
+    setSeenParams(paramKey)
     const pb = params.get('branch')
     const pd = params.get('date')
     if (pb && (role === 'admin' || branchIds.includes(pb))) setBranch(pb)
     if (pd) setDate(pd)
-  }, [params, checking, role, branchIds])
+  }
 
   const resetForm = useCallback((report: EndOfDayReport | null, rosterNames: string[]) => {
     if (report) {
@@ -164,16 +164,19 @@ function EndOfDayInner() {
   useEffect(() => {
     if (!branch || !date) return
     let cancelled = false
-    setLoading(true)
-    Promise.all([
-      getEndOfDayReport(branch, date),
-      getBranchStaff(branch),
-    ]).then(([report, staffDoc]) => {
+    startLoad(() => {
       if (cancelled) return
-      const rosterNames = staffDoc?.staff ?? []
-      resetForm(report, rosterNames)
-      setLoading(false)
-    }).catch(() => { if (!cancelled) setLoading(false) })
+      setLoading(true)
+      return Promise.all([
+        getEndOfDayReport(branch, date),
+        getBranchStaff(branch),
+      ]).then(([report, staffDoc]) => {
+        if (cancelled) return
+        const rosterNames = staffDoc?.staff ?? []
+        resetForm(report, rosterNames)
+        setLoading(false)
+      }).catch(() => { if (!cancelled) setLoading(false) })
+    })
     return () => { cancelled = true }
   }, [branch, date, resetForm])
 

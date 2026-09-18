@@ -23,6 +23,7 @@ import { listDailyInventoriesForDate, type DailyInventoryReport, type InventoryL
 import { supplyCategoryColor } from '@big-cms/shared/departments'
 import { countVariance } from '@big-cms/shared/recipes'
 import { formatUsd } from '@big-cms/shared/money'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 function variance(i: InventoryLine) {
   return countVariance(i.previousQty, i.countedQty ?? Number.NaN, i.unitCostUsd)
@@ -75,14 +76,20 @@ export default function DailyInventoryDayPage() {
 
   useEffect(() => {
     if (checking || !date) return
-    setLoading(true)
-    listDailyInventoriesForDate(date)
-      .then(r => {
-        r.sort((a, b) => a.branch.localeCompare(b.branch) || a.department.localeCompare(b.department))
-        setReports(r)
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
+    let alive = true
+    startLoad(() => {
+      if (!alive) return
+      setLoading(true)
+      return listDailyInventoriesForDate(date)
+        .then(r => {
+          if (!alive) return
+          r.sort((a, b) => a.branch.localeCompare(b.branch) || a.department.localeCompare(b.department))
+          setReports(r)
+          setLoading(false)
+        })
+        .catch(() => { if (alive) setLoading(false) })
+    })
+    return () => { alive = false }
   }, [checking, date])
 
   if (checking) return null

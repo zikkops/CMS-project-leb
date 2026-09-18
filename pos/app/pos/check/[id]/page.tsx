@@ -30,7 +30,7 @@ import {
   faArrowLeft, faPaperPlane, faPlus, faMinus, faEllipsisVertical, faTrashCan, faNoteSticky,
   faChair, faLayerGroup, faSliders, faBan, faRotateLeft, faPercent, faUserTag, faArrowRightArrowLeft,
   faCashRegister, faXmark, faUtensils, faBagShopping, faCheck, faPen, faHourglassHalf, faUserGroup,
-  faClock, faCircleCheck, faTriangleExclamation, faWheatAwnCircleExclamation,
+  faCircleCheck, faTriangleExclamation, faWheatAwnCircleExclamation,
   type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
 import { categoryImage } from '@big-cms/shared/menuCategoryImages'

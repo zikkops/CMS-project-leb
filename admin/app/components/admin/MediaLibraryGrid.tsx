@@ -80,7 +80,6 @@ export default function MediaLibraryGrid({
               backgroundColor: 'transparent',
             }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={item.url} alt={item.fileName ?? ''} style={{
               width: '100%',
               height: '100%',

@@ -53,7 +53,6 @@ export default function MemberQr() {
       ) : (
         <>
           {/* A data: URL, so nothing is fetched from anywhere the CSP would have to allow. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={state.img} alt={`Member code ${formatMemberCode(state.code)}`} width={220} height={220}
             style={{ borderRadius: '6px' }} />
           <p style={{

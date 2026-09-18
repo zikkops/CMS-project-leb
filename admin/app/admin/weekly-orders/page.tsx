@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '@big-cms/shared/firebase'
-import { useRequireRole, ALL_ROLES, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
+import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import {
   listWeeklyReports, listTemplateItems, listProviders,
   generateOrderText, whatsappUrl, groupByProvider, groupByCategory, getProviderPhone,
@@ -29,10 +29,6 @@ interface Supply {
   unit: string
   threshold: number
   category: string
-}
-
-function minQty(qty: Record<SupplyBranch, number>): number {
-  return Math.min(...SUPPLY_BRANCHES.map(b => qty[b] ?? 0))
 }
 
 function SuppliesStatus() {
@@ -146,8 +142,6 @@ function ReportCard({
   providers,
   nameArMap,
   canEdit = false,
-  staffUid = '',
-  staffEmail = '',
   onDeleted,
 }: {
   report:      WeeklyOrderReport

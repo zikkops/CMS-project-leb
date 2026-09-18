@@ -69,7 +69,7 @@ let pass = 0, fail = 0
 const eq = (name, got, want) => {
   const ok = JSON.stringify(got) === JSON.stringify(want)
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(76)} got=${JSON.stringify(got)}`)
-  ok ? pass++ : fail++
+  if (ok) pass++; else fail++
 }
 /** Passes when the call is refused and the error fits: a regex on the message, or a predicate. */
 const rejects = async (name, fn, fits) => {
@@ -77,7 +77,7 @@ const rejects = async (name, fn, fits) => {
   try { await fn() } catch (e) { err = e }
   const ok = err !== null && (fits instanceof RegExp ? fits.test(String(err.message)) : fits(err))
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(76)} got=${err ? JSON.stringify(err.message) : 'no refusal'}`)
-  ok ? pass++ : fail++
+  if (ok) pass++; else fail++
 }
 const fresh = () => H.openHubStore(new DatabaseSync(':memory:'))
 const turn = () => new Promise(r => setImmediate(r))

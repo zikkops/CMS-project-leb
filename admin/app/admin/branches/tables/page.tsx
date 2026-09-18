@@ -10,6 +10,7 @@ import {
   type TableMarker,
 } from '@big-cms/shared/branchTableLayouts'
 import { uploadImage, recordMediaUpload } from '@big-cms/shared/media'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 // The first pointer-event-based drag/resize UI in this codebase (confirmed
 // no prior precedent) — plain Pointer Events + percent-based positioning,
@@ -107,44 +108,46 @@ export default function BranchTablesPage() {
   // edited in the brief window before that echo arrives).
   useEffect(() => {
     if (!layout) return
-    setImageUrl(layout.imageUrl)
-    setImageDeleteUrl(layout.imageDeleteUrl)
-    setImageFileName(layout.imageFileName)
-    setSelectedId(null)
-    setAdjacencyAnchorId(null)
+    startLoad(() => {
+      setImageUrl(layout.imageUrl)
+      setImageDeleteUrl(layout.imageDeleteUrl)
+      setImageFileName(layout.imageFileName)
+      setSelectedId(null)
+      setAdjacencyAnchorId(null)
 
-    if (!layout.imageUrl) {
-      setEditTables(layout.tables)
-      setImageWidth(null)
-      setImageHeight(null)
-      setDirty(false)
-      return
-    }
+      if (!layout.imageUrl) {
+        setEditTables(layout.tables)
+        setImageWidth(null)
+        setImageHeight(null)
+        setDirty(false)
+        return
+      }
 
-    if (layout.imageWidth && layout.imageHeight) {
-      // Already on the pixel-based scheme — nothing to convert.
-      setEditTables(layout.tables)
-      setImageWidth(layout.imageWidth)
-      setImageHeight(layout.imageHeight)
-      setDirty(false)
-      return
-    }
+      if (layout.imageWidth && layout.imageHeight) {
+        // Already on the pixel-based scheme — nothing to convert.
+        setEditTables(layout.tables)
+        setImageWidth(layout.imageWidth)
+        setImageHeight(layout.imageHeight)
+        setDirty(false)
+        return
+      }
 
-    // Saved before tables switched from percent to pixel sizing — measure
-    // the real image once, convert every table's stored 0-100 values into
-    // real pixels matching that size, and flag the result as unsaved so
-    // staff can confirm it with the normal Save Layout button (rather than
-    // writing on their behalf the moment a layout happens to load).
-    setMigrating(true)
-    measureImage(layout.imageUrl).then(({ width, height }) => {
-      setEditTables(migratePercentTablesToPixels(layout.tables, width, height))
-      setImageWidth(width)
-      setImageHeight(height)
-      setDirty(layout.tables.length > 0)
-    }).catch(err => {
-      console.error('[BranchTablesPage] failed to measure existing floor plan for px migration:', err)
-      setEditTables(layout.tables)
-    }).finally(() => setMigrating(false))
+      // Saved before tables switched from percent to pixel sizing — measure
+      // the real image once, convert every table's stored 0-100 values into
+      // real pixels matching that size, and flag the result as unsaved so
+      // staff can confirm it with the normal Save Layout button (rather than
+      // writing on their behalf the moment a layout happens to load).
+      setMigrating(true)
+      measureImage(layout.imageUrl).then(({ width, height }) => {
+        setEditTables(migratePercentTablesToPixels(layout.tables, width, height))
+        setImageWidth(width)
+        setImageHeight(height)
+        setDirty(layout.tables.length > 0)
+      }).catch(err => {
+        console.error('[BranchTablesPage] failed to measure existing floor plan for px migration:', err)
+        setEditTables(layout.tables)
+      }).finally(() => setMigrating(false))
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layout?.branch])
 
@@ -457,7 +460,7 @@ export default function BranchTablesPage() {
                         onChange={e => updateSelected({ height: Math.min((imageHeight ?? 1000) * 0.6, Math.max(5, Number(e.target.value))) })} style={inputStyle} />
                     </div>
                     <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.4rem' }}>
-                      Width × height in real pixels, matching the uploaded floor-plan photo's own resolution ({imageWidth ?? '?'}×{imageHeight ?? '?'}) — useful for setting an exact size precisely, e.g. on a hexagonal table, rather than only dragging the resize handle.
+                      Width × height in real pixels, matching the uploaded floor-plan photo&apos;s own resolution ({imageWidth ?? '?'}×{imageHeight ?? '?'}) — useful for setting an exact size precisely, e.g. on a hexagonal table, rather than only dragging the resize handle.
                     </p>
                   </div>
                   <div>

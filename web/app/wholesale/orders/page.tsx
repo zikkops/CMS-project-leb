@@ -35,11 +35,13 @@ export default function WholesaleOrdersPage() {
   const { account, loading: authLoading } = useWholesaleAccount()
   const isMobile = useIsMobile()
   const [orders, setOrders]   = useState<WholesaleOrder[]>([])
-  const [loading, setLoading] = useState(true)
+  const [fetching, setLoading] = useState(true)
+  // Signed out, there is nothing to load.
+  const loading = account ? fetching : false
   const [openId, setOpenId]   = useState<string | null>(null)
 
   useEffect(() => {
-    if (!account) { setLoading(false); return }
+    if (!account) return
     listMyWholesaleOrders(account.uid)
       .then(o => { setOrders(o); setLoading(false) })
       .catch(() => setLoading(false))

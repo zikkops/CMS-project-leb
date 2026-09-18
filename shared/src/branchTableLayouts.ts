@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { doc, onSnapshot, type Timestamp } from 'firebase/firestore'
 import { db } from './firebase'
 import { authedFetch, unwrap } from './apiClient'
+import { useKeyed } from './useKeyed'
 
 // One floor-plan layout per branch — doc id is the branch name itself
 // (see shared/src/branches.ts), so "does this branch have a layout yet" is a
@@ -164,22 +165,20 @@ function normalizeTable(raw: Partial<TableMarker> & { capacity?: number }): Tabl
 // editor (an upload prompt) and the customer map page (a "coming soon"
 // message) need a real object to render against immediately.
 export function useBranchTableLayout(branch: string | null) {
-  const [layout, setLayout] = useState<BranchTableLayout | null>(null)
-  const [loading, setLoading] = useState(true)
+  const answer = useKeyed<BranchTableLayout | null>(branch, null)
+  const { put } = answer
 
   useEffect(() => {
-    if (!branch) { setLayout(null); setLoading(false); return }
-    setLoading(true)
+    if (!branch) return
     const unsub = onSnapshot(doc(db, 'branchTableLayouts', branch), snap => {
-      if (!snap.exists()) { setLayout(emptyLayout(branch)); setLoading(false); return }
+      if (!snap.exists()) { put(branch, emptyLayout(branch)); return }
       const data = snap.data() as BranchTableLayout
-      setLayout({ ...data, tables: (data.tables ?? []).map(normalizeTable) })
-      setLoading(false)
+      put(branch, { ...data, tables: (data.tables ?? []).map(normalizeTable) })
     }, err => console.error('[useBranchTableLayout] listener failed:', err))
     return unsub
-  }, [branch])
+  }, [branch, put])
 
-  return { layout, loading }
+  return { layout: answer.value, loading: answer.loading }
 }
 
 /**

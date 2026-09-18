@@ -69,7 +69,6 @@ function ProductCard({ product }: { product: Product }) {
       {/* Image */}
       <div style={{ position: 'relative', width: '100%', paddingTop: '66%', overflow: 'hidden', background: '#ffffff' }}>
         {product.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={product.image}
             alt={product.name}
@@ -149,7 +148,8 @@ export default function BranchCataloguePage() {
   const BRANCH = BRAND.branches.find(b => b.toLowerCase() === requested.toLowerCase()) ?? ''
 
   const [products, setGames]           = useState<Product[]>([])
-  const [loading, setLoading]       = useState(true)
+  // A branch that does not exist has nothing to load.
+  const [loading, setLoading]       = useState(Boolean(BRANCH))
   const [search, setSearch]         = useState('')
   const [category, setCategory]     = useState('All')
   const [stockOnly, setStockOnly]   = useState(true)
@@ -157,7 +157,7 @@ export default function BranchCataloguePage() {
   const isMobile = useIsMobile()
 
   useEffect(() => {
-    if (!BRANCH) { setLoading(false); return }
+    if (!BRANCH) return
     async function load() {
       const [gamesSnap, catSnap] = await Promise.all([
         getDocs(collection(db, 'products')),

@@ -36,7 +36,7 @@ import {
   type FoodSafetyLimits, type StorageKind,
 } from '@big-cms/shared/foodSafety'
 import {
-  DELIVERY_BRANCHES, DELIVERY_DEPARTMENTS, DEFAULT_VAT_RATE,
+  DELIVERY_BRANCHES, DELIVERY_DEPARTMENTS,
   REJECT_REASON_LABELS, computeTotals, isShort, priceChange, round2,
   saveDelivery, seedLinesFromOrder, unplannedLine,
   type Currency, type DeliveryLine, type RejectReason,
@@ -416,16 +416,25 @@ function ReceivingInner() {
   const [done,    setDone]   = useState('')
   const [warning, setWarning] = useState('')
 
-  useEffect(() => { if (branchOptions.length === 1) setBranch(branchOptions[0]) }, [branchOptions])
-  useEffect(() => { if (departmentOptions.length === 1) setDepartment(departmentOptions[0]) }, [departmentOptions])
-
-  useEffect(() => {
-    if (checking) return
+  // Worked out while rendering, whenever what they depend on changes: a
+  // single choice is chosen for you, and a link pre-fills the branch (only
+  // one the user has access to) and the order.
+  const optionsKey = `${branchOptions.join('|')}#${departmentOptions.join('|')}`
+  const [seenOptions, setSeenOptions] = useState<string | null>(null)
+  if (optionsKey !== seenOptions) {
+    setSeenOptions(optionsKey)
+    if (branchOptions.length === 1) setBranch(branchOptions[0])
+    if (departmentOptions.length === 1) setDepartment(departmentOptions[0])
+  }
+  const prefillKey = checking ? null : `${params.toString()}#${branchOptions.join('|')}`
+  const [seenPrefill, setSeenPrefill] = useState<string | null>(null)
+  if (prefillKey !== null && prefillKey !== seenPrefill) {
+    setSeenPrefill(prefillKey)
     const pb = params.get('branch')
     const po = params.get('order')
     if (pb && branchOptions.includes(pb)) setBranch(pb)
     if (po) setOrderId(po)
-  }, [params, checking, branchOptions])
+  }
 
   useEffect(() => {
     Promise.all([
@@ -468,10 +477,7 @@ function ReceivingInner() {
   // Fill the rate box from configuration the first time it is known. Only
   // when untouched — someone typing the rate off the invoice in front of them
   // must not have it overwritten when the settings listener fires.
-  useEffect(() => {
-    if (settingsLoading || rateUsed !== '') return
-    setRateUsed(String(exchangeRate))
-  }, [settingsLoading, exchangeRate, rateUsed])
+  if (!settingsLoading && rateUsed === '') setRateUsed(String(exchangeRate))
 
   // Flipping the currency re-prices every open line. Without this the numbers
   // silently change meaning — 8.90 entered as dollars stays "8.90" and is
@@ -599,12 +605,9 @@ function ReceivingInner() {
   // Unplanned lines carry no template and so belong to no supplier on the
   // order. They stay visible whoever is selected, because they are being added
   // for the van standing at the door right now.
-  const visible = useMemo(() => {
-    const rows = lines.map((line, index) => ({ line, index }))
-    if (!providerId) return rows
-    return rows.filter(({ line }) =>
-      line.templateId === null || providerByTemplate.get(line.templateId) === providerId)
-  }, [lines, providerId, providerByTemplate])
+  const allRows = lines.map((line, index) => ({ line, index }))
+  const visible = !providerId ? allRows : allRows.filter(({ line }) =>
+    line.templateId === null || providerByTemplate.get(line.templateId) === providerId)
 
   const hiddenCount = lines.length - visible.length
 

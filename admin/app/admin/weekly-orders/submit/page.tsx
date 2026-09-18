@@ -46,7 +46,7 @@ const inp: React.CSSProperties = {
 
 export default function SubmitOrderPage() {
   const isMobile = useIsMobile()
-  const { checking, role, branchIds, orderDepts, user } = useRequireRole(ALL_ROLES)
+  const { checking, role, branchIds, orderDepts } = useRequireRole(ALL_ROLES)
 
   const [items,       setItems]    = useState<OrderTemplateItem[]>([])
   const [providerMap, setProvMap]  = useState<Record<string, OrderProvider>>({})
@@ -70,16 +70,21 @@ export default function SubmitOrderPage() {
     [orderDepts],
   )
 
-  // Auto-select branch when user only has one
-  useEffect(() => {
-    if (checking) return
+  // Auto-select the branch when the user only has one, once their role is known
+  const branchSeedKey = checking ? null : `${role}#${branchIds.join('|')}`
+  const [seenBranchSeed, setSeenBranchSeed] = useState<string | null>(null)
+  if (branchSeedKey !== null && branchSeedKey !== seenBranchSeed) {
+    setSeenBranchSeed(branchSeedKey)
     if (role !== 'admin' && branchIds.length === 1) setBranch(branchIds[0])
-  }, [checking, role, branchIds])
+  }
 
-  // Auto-select department when user only has one allowed
-  useEffect(() => {
+  // Auto-select the department when the user only has one allowed
+  const deptKey = allowedDepts.join('|')
+  const [seenDepts, setSeenDepts] = useState<string | null>(null)
+  if (deptKey !== seenDepts) {
+    setSeenDepts(deptKey)
     if (allowedDepts.length === 1) setDept(allowedDepts[0])
-  }, [allowedDepts])
+  }
 
   useEffect(() => {
     // Template items and providers are required; load supplies separately so a

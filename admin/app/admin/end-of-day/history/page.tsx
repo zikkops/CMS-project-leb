@@ -8,6 +8,9 @@ import {
   listEndOfDayReports, computeTotals, formatLbp, formatUsd,
   type EndOfDayReport,
 } from '@big-cms/shared/endOfDay'
+import { useKeyed } from '@big-cms/shared/useKeyed'
+
+const NO_REPORTS: EndOfDayReport[] = []
 
 export default function EndOfDayHistoryPage() {
   const isMobile = useIsMobile()
@@ -17,22 +20,24 @@ export default function EndOfDayHistoryPage() {
   const defaultBranch = role === 'admin' ? 'all' : (branchIds[0] ?? '')
 
   const [branch,  setBranch]  = useState(defaultBranch)
-  const [reports, setReports] = useState<EndOfDayReport[]>([])
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    if (checking) return
+  // A manager with one branch gets it chosen, once their role is known.
+  const [seeded, setSeeded] = useState(false)
+  if (!checking && !seeded) {
+    setSeeded(true)
     if (role !== 'admin' && branchIds.length === 1) setBranch(branchIds[0])
-  }, [checking, role, branchIds])
+  }
+
+  const reportsFor = useKeyed<EndOfDayReport[]>(branch || null, NO_REPORTS)
+  const { put } = reportsFor
+  const reports = reportsFor.value
+  const loading = reportsFor.loading
 
   useEffect(() => {
     if (!branch) return
-    setLoading(true)
-    listEndOfDayReports(branch as string | 'all').then(data => {
-      setReports(data)
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [branch])
+    listEndOfDayReports(branch as string | 'all')
+      .then(data => put(branch, data))
+      .catch(() => put(branch, NO_REPORTS))
+  }, [branch, put])
 
   if (checking) return null
 

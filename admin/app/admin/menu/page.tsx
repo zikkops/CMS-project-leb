@@ -18,6 +18,7 @@ import {
   useSortable, verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 type Section = 'Food' | 'Beverage' | 'Sweets'
 
@@ -248,11 +249,11 @@ export default function AdminMenuPage() {
 
     setCategories(cats)
     setItems(its)
-    if (cats.length > 0 && !activeCategory) setActiveCategory(cats[0].id)
+    if (cats.length > 0) setActiveCategory(prev => prev || cats[0].id)
     setLoading(false)
   }
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { startLoad(loadData) }, [])
 
   async function handleCatImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]

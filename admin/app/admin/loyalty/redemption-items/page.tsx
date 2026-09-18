@@ -43,7 +43,7 @@ const labelStyle = {
 }
 
 export default function RedemptionItemsPage() {
-  const { checking, user } = useRequireRole(SECTION_ACCESS.loyalty)
+  const { checking } = useRequireRole(SECTION_ACCESS.loyalty)
   const isMobile = useIsMobile()
   const { items, loading } = useRedemptionItems(false)
 

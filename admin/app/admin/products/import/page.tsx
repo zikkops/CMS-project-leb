@@ -8,6 +8,7 @@ import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { BRANCHES } from '@big-cms/shared/branches'
 import { recordMediaUpload } from '@big-cms/shared/media'
 import { parseCSV } from '@big-cms/shared/csv'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 type StaticFieldKey =
   | 'sku' | 'name' | 'description' | 'category' | 'price' | 'wholesalePrice'
@@ -154,7 +155,7 @@ export default function ImportGamesPage() {
     setLoadingExisting(false)
   }, [])
 
-  useEffect(() => { loadExisting() }, [loadExisting])
+  useEffect(() => { startLoad(loadExisting) }, [loadExisting])
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]

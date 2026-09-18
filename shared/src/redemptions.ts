@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import {
   collection, query, where, orderBy, limit, onSnapshot, doc, getDocs,
   addDoc, updateDoc, serverTimestamp, type Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { authedFetch, unwrap } from './apiClient'
+import { useKeyed, branchFilterKey, branchFilterFromKey } from './useKeyed'
 
 // Kept in its own file, separate from shared/src/loyalty.ts — redemptions are a
 // distinct flow (spending coins) from transactions (earning them), with
@@ -56,24 +57,25 @@ export interface Redemption {
 // activeOnly=true for the customer redeem page, false for manager item
 // management (which needs to see inactive items too).
 export function useRedemptionItems(activeOnly: boolean) {
-  const [items, setItems] = useState<RedemptionItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const key = activeOnly ? 'active' : 'every'
+  const answer = useKeyed<RedemptionItem[]>(key, NO_ITEMS)
+  const { put } = answer
 
   useEffect(() => {
-    setLoading(true)
     const base = collection(db, 'redemptionItems')
     const q = activeOnly
       ? query(base, where('isActive', '==', true), orderBy('coinCost', 'asc'))
       : query(base, orderBy('coinCost', 'asc'))
     const unsub = onSnapshot(q, snap => {
-      setItems(snap.docs.map(d => ({ id: d.id, ...d.data() } as RedemptionItem)))
-      setLoading(false)
+      put(key, snap.docs.map(d => ({ id: d.id, ...d.data() } as RedemptionItem)))
     }, err => console.error('[useRedemptionItems] redemptionItems listener failed:', err))
     return unsub
-  }, [activeOnly])
+  }, [activeOnly, key, put])
 
-  return { items, loading }
+  return { items: answer.value, loading: answer.loading }
 }
+
+const NO_ITEMS: RedemptionItem[] = []
 
 /**
  * The staff-managed reward catalogue.
@@ -152,48 +154,46 @@ export async function createRedemptionRequest(input: {
 
 // Customer's own redemption history, all statuses, newest first.
 export function useUserRedemptions(uid: string | null) {
-  const [redemptions, setRedemptions] = useState<Redemption[]>([])
-  const [loading, setLoading] = useState(true)
+  const answer = useKeyed<Redemption[]>(uid, NO_REDEMPTIONS)
+  const { put } = answer
 
   useEffect(() => {
-    if (!uid) { setRedemptions([]); setLoading(false); return }
-    setLoading(true)
+    if (!uid) return
     const q = query(collection(db, 'redemptions'), where('userId', '==', uid), orderBy('createdAt', 'desc'))
     const unsub = onSnapshot(q, snap => {
-      setRedemptions(snap.docs.map(d => ({ id: d.id, ...d.data() } as Redemption)))
-      setLoading(false)
+      put(uid, snap.docs.map(d => ({ id: d.id, ...d.data() } as Redemption)))
     })
     return unsub
-  }, [uid])
+  }, [uid, put])
 
-  return { redemptions, loading }
+  return { redemptions: answer.value, loading: answer.loading }
 }
+
+const NO_REDEMPTIONS: Redemption[] = []
 
 // Manager queue — pending redemptions for one or more branches (a manager
 // may now be assigned multiple), or 'all' for admin oversight. The caller
 // must memoize any array it passes in — a fresh array reference on every
 // render would re-subscribe this effect in a loop.
 export function usePendingRedemptions(branchFilter: string[] | 'all' | null) {
-  const [redemptions, setRedemptions] = useState<Redemption[]>([])
-  const [loading, setLoading] = useState(true)
+  const key = branchFilterKey(branchFilter)
+  const answer = useKeyed<Redemption[]>(key, NO_REDEMPTIONS)
+  const { put } = answer
 
   useEffect(() => {
-    if (!branchFilter || (Array.isArray(branchFilter) && branchFilter.length === 0)) {
-      setRedemptions([]); setLoading(false); return
-    }
-    setLoading(true)
+    if (!key) return
+    const filter = branchFilterFromKey(key)
     const base = collection(db, 'redemptions')
-    const q = branchFilter === 'all'
+    const q = filter === 'all'
       ? query(base, where('status', '==', 'pending'), orderBy('createdAt', 'asc'))
-      : query(base, where('branchId', 'in', branchFilter), where('status', '==', 'pending'), orderBy('createdAt', 'asc'))
+      : query(base, where('branchId', 'in', filter), where('status', '==', 'pending'), orderBy('createdAt', 'asc'))
     const unsub = onSnapshot(q, snap => {
-      setRedemptions(snap.docs.map(d => ({ id: d.id, ...d.data() } as Redemption)))
-      setLoading(false)
+      put(key, snap.docs.map(d => ({ id: d.id, ...d.data() } as Redemption)))
     })
     return unsub
-  }, [branchFilter])
+  }, [key, put])
 
-  return { redemptions, loading }
+  return { redemptions: answer.value, loading: answer.loading }
 }
 
 // Confirming and rejecting both run SERVER-SIDE now (Phase 00 standing rule).

@@ -8,6 +8,7 @@ import {
   refundOrder,
   regenerateOrderInvoice,
 } from '@big-cms/shared/productPurchases'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 function useIsMobile(bp = 768) {
   const [v, setV] = useState(false)
@@ -56,7 +57,7 @@ export default function InvoicesPage() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { startLoad(load) }, [])
 
   const visible = useMemo(() =>
     filter === 'all' ? orders : orders.filter(o => o.status === filter),
@@ -192,7 +193,7 @@ export default function InvoicesPage() {
                           </span>
                         </div>
                         <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
-                          {fmtDateTime(order.createdAt as any)} · {order.branch}
+                          {fmtDateTime(order.createdAt)} · {order.branch}
                         </p>
                       </div>
                       <div style={{ textAlign: 'right' }}>
@@ -232,7 +233,7 @@ export default function InvoicesPage() {
                         backgroundColor: 'rgba(var(--red-rgb),0.08)', marginBottom: '0.75rem',
                       }}>
                         <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--red-rgb),0.8)' }}>
-                          Refunded {fmtDate(order.refundedAt as any)} by {order.refundedBy}
+                          Refunded {fmtDate(order.refundedAt)} by {order.refundedBy}
                           {order.refundNote && ` — "${order.refundNote}"`}
                         </p>
                       </div>

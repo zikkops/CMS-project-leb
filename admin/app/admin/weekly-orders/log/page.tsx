@@ -13,7 +13,7 @@ function fmtTs(ts: { seconds: number } | null): string {
 }
 
 export default function WeeklyOrderLogPage() {
-  const { checking, role } = useRequireRole(SECTION_ACCESS.weeklyOrders)
+  const { checking } = useRequireRole(SECTION_ACCESS.weeklyOrders)
   const [logs,    setLogs]    = useState<WeeklyOrderLog[]>([])
   const [loading, setLoading] = useState(true)
 

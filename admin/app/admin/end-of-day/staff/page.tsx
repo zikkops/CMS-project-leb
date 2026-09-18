@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRequireRole, ROLE_LABELS, type Role } from '@big-cms/shared/adminAuth'
 import { BRANCHES } from '@big-cms/shared/branches'
 import { getBranchStaff, saveBranchStaff, listAllStaff, type StaffUser } from '@big-cms/shared/endOfDay'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 const inp: React.CSSProperties = {
   backgroundColor: 'rgba(255,255,255,0.04)',
@@ -48,18 +49,26 @@ export default function EndOfDayStaffPage() {
       .catch(() => setStaffListErr(true))
   }, [])
 
-  useEffect(() => {
-    if (checking) return
+  // A manager with one branch gets it chosen, once their role is known.
+  const [seeded, setSeeded] = useState(false)
+  if (!checking && !seeded) {
+    setSeeded(true)
     if (role !== 'admin' && branchIds.length === 1) setBranch(branchIds[0])
-  }, [checking, role, branchIds])
+  }
 
   useEffect(() => {
     if (!branch) return
-    setLoading(true)
-    getBranchStaff(branch).then(doc => {
-      setStaff(doc?.staff ?? [])
-      setLoading(false)
-    }).catch(() => setLoading(false))
+    let cancelled = false
+    startLoad(() => {
+      if (cancelled) return
+      setLoading(true)
+      return getBranchStaff(branch).then(doc => {
+        if (cancelled) return
+        setStaff(doc?.staff ?? [])
+        setLoading(false)
+      }).catch(() => { if (!cancelled) setLoading(false) })
+    })
+    return () => { cancelled = true }
   }, [branch])
 
   function addName() {

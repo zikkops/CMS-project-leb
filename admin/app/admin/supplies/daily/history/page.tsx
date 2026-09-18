@@ -9,6 +9,7 @@ import {
   INVENTORY_BRANCHES, DEPARTMENTS, listDailyInventories,
   type DailyInventoryReport,
 } from '@big-cms/shared/dailyInventory'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 
 // branchAbbrev() derives these from the configured names and de-duplicates
@@ -61,13 +62,18 @@ export default function DailyInventoryHistoryPage() {
 
   useEffect(() => {
     if (checking) return
-    setLoading(true)
-    // Fetched broadly (not scoped to the visible month) so switching months
-    // is instant — a plain branch+orderBy(date) query needs no composite
-    // index, unlike a branch+date-range query would.
-    listDailyInventories(branchFilter === 'all' ? 'all' : branchFilter, 1000)
-      .then(r => { setReports(r); setLoading(false) })
-      .catch(() => setLoading(false))
+    let alive = true
+    startLoad(() => {
+      if (!alive) return
+      setLoading(true)
+      // Fetched broadly (not scoped to the visible month) so switching months
+      // is instant — a plain branch+orderBy(date) query needs no composite
+      // index, unlike a branch+date-range query would.
+      return listDailyInventories(branchFilter === 'all' ? 'all' : branchFilter, 1000)
+        .then(r => { if (alive) { setReports(r); setLoading(false) } })
+        .catch(() => { if (alive) setLoading(false) })
+    })
+    return () => { alive = false }
   }, [checking, branchFilter])
 
   const byDate = useMemo(() => {

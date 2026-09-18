@@ -227,8 +227,9 @@ export default function BusinessSettingsPage() {
   // Seed the fields once the live values arrive, and again whenever they
   // change underneath — someone else saving in another tab should not leave
   // this form quietly holding stale numbers it would write back on Save.
-  useEffect(() => {
-    if (loading) return
+  const [seededFrom, setSeededFrom] = useState<typeof settings | null>(null)
+  if (!loading && seededFrom !== settings) {
+    setSeededFrom(settings)
     setVat(String(+(settings.vatRate * 100).toFixed(4)))
     setRate(String(settings.exchangeRate))
     setTips(String(+(settings.tipsDeductionRate * 100).toFixed(4)))
@@ -239,7 +240,7 @@ export default function BusinessSettingsPage() {
     setMarginDrink(String(+(settings.targetMarginDrink * 100).toFixed(4)))
     setNextVat(settings.vatNext ? String(+(settings.vatNext.rate * 100).toFixed(4)) : '')
     setNextVatFrom(settings.vatNext?.from ?? '')
-  }, [loading, settings])
+  }
 
   useEffect(() => {
     let cancelled = false

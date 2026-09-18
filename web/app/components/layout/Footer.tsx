@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faInstagram, faFacebook, faWhatsapp } from '@fortawesome/free-brands-svg-icons'
@@ -127,7 +128,7 @@ export default function Footer() {
                 phone: BRAND.contact.phone,
               })).map(({ city, hours, whatsapp, phone }) => (
                 <li key={city}>
-                  <a href="/#branches-section" style={{ textDecoration: 'none', display: 'block' }}>
+                  <Link href="/#branches-section" style={{ textDecoration: 'none', display: 'block' }}>
                     <span style={{
                       display: 'block',
                       fontSize: '0.82rem',
@@ -141,7 +142,7 @@ export default function Footer() {
                       color: 'rgba(var(--offwhite-rgb),0.25)',
                       fontFamily: 'var(--font-inter)',
                     }}>{hours}</span>
-                  </a>
+                  </Link>
                   <a
                     href={`https://wa.me/${whatsapp}`}
                     target="_blank"

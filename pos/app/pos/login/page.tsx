@@ -23,6 +23,8 @@ import {
 } from '../../lib/backend/hub'
 import { tokenFromHandoff } from '@big-cms/shared/staffKeys'
 import { isCounterHost } from '@big-cms/shared/counterSignIn'
+import { startLoad } from '@big-cms/shared/startLoad'
+import { useClientValue } from '@big-cms/shared/useClientValue'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -88,19 +90,20 @@ const bigButton: React.CSSProperties = {
  * itself: a phone signs itself in from the staff app.
  */
 function CounterSignIn({ onSignedIn }: { onSignedIn: (session: HubSession) => void }) {
-  const [shown, setShown] = useState(false)
+  // Only on the counter PC itself, and only on a hub: both are the browser's
+  // to know, so they are read after hydrating.
+  const shown = useClientValue(() => backend().kind === 'hub' && isCounterHost(window.location.host), false)
   const [people, setPeople] = useState<{ uid: string; label: string }[]>([])
   const [request, setRequest] = useState<CounterRequest | null>(null)
   const [problem, setProblem] = useState('')
   const [asking, setAsking] = useState(false)
 
   useEffect(() => {
-    if (backend().kind !== 'hub' || !isCounterHost(window.location.host)) return
-    setShown(true)
+    if (!shown) return
     counterPeople()
       .then(setPeople)
       .catch(err => setProblem(err instanceof Error ? err.message : 'The hub did not answer.'))
-  }, [])
+  }, [shown])
 
   // Waits for the person's phone, asking every two seconds, until the request runs out.
   useEffect(() => {
@@ -199,16 +202,18 @@ export default function PosLoginPage() {
     const token = tokenFromHandoff(window.location.hash)
     if (!token) return
     window.history.replaceState(null, '', window.location.pathname + window.location.search)
-    setBusy(true)
-    adoptHubSession(token)
-      .then(session => {
-        setAdminSessionCookie()
-        router.replace(session.scope === 'kds' ? '/pos/kds' : '/pos')
-      })
-      .catch(err => {
-        setError(err instanceof Error ? err.message : 'The phone sign-in did not work. Sign in again.')
-        setBusy(false)
-      })
+    startLoad(() => {
+      setBusy(true)
+      return adoptHubSession(token)
+        .then(session => {
+          setAdminSessionCookie()
+          router.replace(session.scope === 'kds' ? '/pos/kds' : '/pos')
+        })
+        .catch(err => {
+          setError(err instanceof Error ? err.message : 'The phone sign-in did not work. Sign in again.')
+          setBusy(false)
+        })
+    })
   }, [router])
 
   async function handleSubmit(e: React.FormEvent) {

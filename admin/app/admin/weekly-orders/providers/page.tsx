@@ -7,6 +7,7 @@ import {
   translateToArabic, type OrderProvider,
 } from '@big-cms/shared/weeklyOrders'
 import { BRANCHES } from '@big-cms/shared/branches'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 const inp: React.CSSProperties = {
   backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)',
@@ -428,7 +429,7 @@ export default function ProvidersPage() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { startLoad(load) }, [])
 
   async function handleAdd(p: Omit<OrderProvider, 'id' | 'createdAt'>) {
     await addProvider(p); await load()

@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { BRAND } from '@big-cms/shared/brand'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -93,7 +94,7 @@ function HubPrinters() {
   }
 
   useEffect(() => {
-    void load()
+    startLoad(load)
     const poll = setInterval(() => { void load() }, 15_000)
     return () => clearInterval(poll)
   }, [])
@@ -160,7 +161,7 @@ export default function HubPage() {
   }
 
   useEffect(() => {
-    void load()
+    startLoad(load)
     const poll = setInterval(() => { void load() }, 10_000)
     return () => clearInterval(poll)
   }, [])
@@ -168,13 +169,15 @@ export default function HubPage() {
   // The QR a phone scans to pair with this hub: where it is on the wifi, and
   // the one certificate to trust there (S11).
   const link = status?.lan?.links[0] ?? null
-  const [qr, setQr] = useState<string | null>(null)
+  // Drawn for one link; a QR drawn for another link is never shown.
+  const [drawn, setDrawn] = useState<{ link: string; img: string | null } | null>(null)
+  const qr = link && drawn?.link === link ? drawn.img : null
   useEffect(() => {
-    if (!link) { setQr(null); return }
+    if (!link) return
     let live = true
     QRCode.toDataURL(link, { margin: 1, width: 240 })
-      .then(img => { if (live) setQr(img) })
-      .catch(() => { if (live) setQr(null) })
+      .then(img => { if (live) setDrawn({ link, img }) })
+      .catch(() => { if (live) setDrawn({ link, img: null }) })
     return () => { live = false }
   }, [link])
 

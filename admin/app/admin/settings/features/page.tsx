@@ -141,10 +141,12 @@ export default function FeatureSwitchboardPage() {
   const [err,    setErr]    = useState('')
   const [done,   setDone]   = useState('')
 
-  useEffect(() => {
-    if (loading) return
+  // Seeded again whenever the stored document changes.
+  const [seededFrom, setSeededFrom] = useState<FeatureFlags | null>(null)
+  if (!loading && seededFrom !== stored) {
+    setSeededFrom(stored)
     setDraft(stored)
-  }, [loading, stored])
+  }
 
   function ownState(key: FeatureKey): boolean {
     const s = draft[key]?.enabled

@@ -37,11 +37,6 @@ function docUrl(path: string): string {
 // `idToken` is passed through as the Bearer auth on the Firestore REST call
 // itself — the read happens with the caller's own permissions, not the
 // server's, so it 403s exactly when their own browser-side `getDoc` would.
-async function ownDocExists(idToken: string, path: string): Promise<boolean> {
-  const res = await fetch(docUrl(path), { headers: { Authorization: `Bearer ${idToken}` } })
-  return res.ok
-}
-
 async function getOwnDocField(idToken: string, path: string, field: string): Promise<string | null> {
   const res = await fetch(docUrl(path), { headers: { Authorization: `Bearer ${idToken}` } })
   if (!res.ok) return null

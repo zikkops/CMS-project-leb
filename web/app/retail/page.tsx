@@ -60,7 +60,6 @@ function ProductCard({ product }: { product: Product }) {
       {/* Image */}
       <div style={{ position: 'relative', width: '100%', paddingTop: '66%', overflow: 'hidden', background: 'rgba(255,255,255,0.03)' }}>
         {product.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={product.image}
             alt={product.name}

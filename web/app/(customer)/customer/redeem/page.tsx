@@ -87,7 +87,7 @@ export default function RedeemPage() {
             Verify your email first
           </h1>
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.5)', lineHeight: 1.7, marginBottom: '2rem' }}>
-            Redeeming Points spends real value, so we need to confirm it's really you first.
+            Redeeming Points spends real value, so we need to confirm it&apos;s really you first.
             Check your inbox for the verification email, then head to your profile to confirm it.
           </p>
           <Link href="/customer/profile" style={{

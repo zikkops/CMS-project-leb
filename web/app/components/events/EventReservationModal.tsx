@@ -203,9 +203,9 @@ export default function EventReservationModal({ event, onClose }: {
               </p>
 
               <div>
-                <label style={{ ...labelStyle, marginBottom: '0.4rem' }}>Who's Coming? ({partySize})</label>
+                <label style={{ ...labelStyle, marginBottom: '0.4rem' }}>Who&apos;s Coming? ({partySize})</label>
                 <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.8rem' }}>
-                  Friends or members you add will get an invite to accept on their profile — phone numbers don't need one.
+                  Friends or members you add will get an invite to accept on their profile — phone numbers don&apos;t need one.
                 </p>
 
                 {(participants.length > 0 || participantPhones.length > 0) && (

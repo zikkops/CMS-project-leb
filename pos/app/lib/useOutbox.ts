@@ -21,6 +21,7 @@ import {
   EMPTY_OUTBOX, enqueue, replay, resolveStuck, waitingFor, changeDiffers,
   type OutboxAction, type OutboxState, type SendOutcome,
 } from './outbox'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 const STORAGE_KEY = 'pos.outbox.v1'
 const DEVICE_KEY = 'pos.counterDevice'
@@ -176,12 +177,15 @@ export function useOutbox(): Outbox {
     save(next)
   }, [])
 
+  // The queue is kept in this browser, so it is read once mounted.
   useEffect(() => {
-    const first = load()
-    current.current = first
-    setState(first)
-    setOnline(navigator.onLine)
-    setLoaded(true)
+    startLoad(() => {
+      const first = load()
+      current.current = first
+      setState(first)
+      setOnline(navigator.onLine)
+      setLoaded(true)
+    })
   }, [])
 
   useEffect(() => {
@@ -225,7 +229,7 @@ export function useOutbox(): Outbox {
   // is empty, which is nearly always.
   useEffect(() => {
     if (!loaded) return
-    void sync()
+    startLoad(sync)
     const onOnline = () => { void sync() }
     window.addEventListener('online', onOnline)
     const id = setInterval(() => { void sync() }, RETRY_MS)
@@ -310,15 +314,17 @@ export function useCounterDevice(): {
   const [supported, setSupported] = useState(true)
 
   useEffect(() => {
-    let on = false
-    try { on = localStorage.getItem(DEVICE_KEY) === 'yes' } catch { on = false }
-    setIsCounter(on)
-    setSupported('serviceWorker' in navigator)
-    setLoaded(true)
-    // Registered on every load rather than only when the switch is flipped: a
-    // worker can be evicted, and a till that quietly stopped being able to work
-    // offline would only be discovered during the outage.
-    if (on) void registerWorker()
+    startLoad(() => {
+      let on = false
+      try { on = localStorage.getItem(DEVICE_KEY) === 'yes' } catch { on = false }
+      setIsCounter(on)
+      setSupported('serviceWorker' in navigator)
+      setLoaded(true)
+      // Registered on every load rather than only when the switch is flipped: a
+      // worker can be evicted, and a till that quietly stopped being able to work
+      // offline would only be discovered during the outage.
+      if (on) void registerWorker()
+    })
   }, [])
 
   const setCounter = useCallback((on: boolean) => {

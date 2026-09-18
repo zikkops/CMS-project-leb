@@ -109,7 +109,6 @@ export default function LoyaltyPage() {
   const { user } = useCustomerUser()
   const { items: redemptionItems, loading: loadingRedemptions } = useRedemptionItems(true)
   const { perks: PERKS, loading: loadingPerks } = useTierPerks()
-  const [hoveredTierBtn, setHoveredTierBtn] = useState<string | null>(null)
   const [signInHovered, setSignInHovered] = useState(false)
   const [profileLinkHovered, setProfileLinkHovered] = useState(false)
   const [joinHovered, setJoinHovered] = useState(false)

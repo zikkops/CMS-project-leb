@@ -12,6 +12,7 @@ import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useIsMobile } from '@big-cms/shared/useIsMobile'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import { addDays } from '@big-cms/shared/foodSafety'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 interface DaySummary {
   date: string
@@ -61,11 +62,14 @@ export default function FoodSafetyHistoryPage() {
   useEffect(() => {
     if (!branch || !from || !to) return
     let alive = true
-    setLoading(true); setError('')
-    authedFetch(`/api/admin/food-safety?view=history&branch=${encodeURIComponent(branch)}&from=${from}&to=${to}`, 'GET').then(unwrap)
-      .then(r => { if (alive) { setDays(((r.days as DaySummary[]) ?? []).slice().reverse()); setMissed((r.missed as string[]) ?? []) } })
-      .catch(e => { if (alive) { setError(e instanceof Error ? e.message : 'Could not load the history.'); setDays([]); setMissed([]) } })
-      .finally(() => { if (alive) setLoading(false) })
+    startLoad(() => {
+      if (!alive) return
+      setLoading(true); setError('')
+      return authedFetch(`/api/admin/food-safety?view=history&branch=${encodeURIComponent(branch)}&from=${from}&to=${to}`, 'GET').then(unwrap)
+        .then(r => { if (alive) { setDays(((r.days as DaySummary[]) ?? []).slice().reverse()); setMissed((r.missed as string[]) ?? []) } })
+        .catch(e => { if (alive) { setError(e instanceof Error ? e.message : 'Could not load the history.'); setDays([]); setMissed([]) } })
+        .finally(() => { if (alive) setLoading(false) })
+    })
     return () => { alive = false }
   }, [branch, from, to])
 

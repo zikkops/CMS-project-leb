@@ -10,6 +10,7 @@ import {
   type EndOfDayReport,
 } from '@big-cms/shared/endOfDay'
 import { BRAND } from '@big-cms/shared/brand'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 const inp: React.CSSProperties = {
   backgroundColor: 'rgba(255,255,255,0.04)',
@@ -59,31 +60,34 @@ function EndOfDaySummaryInner() {
   const [saved,   setSaved]   = useState(false)
   const [err,     setErr]     = useState('')
 
-  useEffect(() => {
-    if (checking) return
-    if (role !== 'admin' && branchIds.length === 1) setBranch(branchIds[0])
-  }, [checking, role, branchIds])
-
-  // Pre-fill from URL params (e.g. coming from the EOD submit page)
-  useEffect(() => {
-    if (checking) return
+  // Once the role is known: a manager with one branch gets it chosen, and a
+  // link (e.g. from the EOD submit page) pre-fills its branch and date — only
+  // a branch the user has access to. Again whenever the address changes.
+  const paramKey = checking ? null : params.toString()
+  const [seenParams, setSeenParams] = useState<string | null>(null)
+  if (paramKey !== null && paramKey !== seenParams) {
+    if (seenParams === null && role !== 'admin' && branchIds.length === 1) setBranch(branchIds[0])
+    setSeenParams(paramKey)
     const pb = params.get('branch')
     const pd = params.get('date')
     if (pb && (role === 'admin' || branchIds.includes(pb))) setBranch(pb)
     if (pd) setDate(pd)
-  }, [params, checking, role, branchIds])
+  }
 
   useEffect(() => {
     if (!branch || !date) return
     let cancelled = false
-    setLoading(true)
-    setSaved(false)
-    getEndOfDayReport(branch, date).then(r => {
+    startLoad(() => {
       if (cancelled) return
-      setReport(r)
-      setTips(r?.tipsUsd ? String(r.tipsUsd) : '')
-      setLoading(false)
-    }).catch(() => { if (!cancelled) setLoading(false) })
+      setLoading(true)
+      setSaved(false)
+      return getEndOfDayReport(branch, date).then(r => {
+        if (cancelled) return
+        setReport(r)
+        setTips(r?.tipsUsd ? String(r.tipsUsd) : '')
+        setLoading(false)
+      }).catch(() => { if (!cancelled) setLoading(false) })
+    })
     return () => { cancelled = true }
   }, [branch, date])
 

@@ -5,6 +5,7 @@ import { collection, doc, onSnapshot, getDoc } from 'firebase/firestore'
 import { sendPasswordResetEmail } from 'firebase/auth'
 import { auth, db } from './firebase'
 import { authedFetch, unwrap } from './apiClient'
+import { useKeyed } from './useKeyed'
 
 export interface CustomerAccount {
   id: string
@@ -51,12 +52,13 @@ export interface StaffContactInfo {
 // Re-fetches only when the actual set of uids changes (not on every
 // render) — `key` is the stable, sorted/joined dependency.
 export function useStaffContactDirectory(uids: string[]): Record<string, StaffContactInfo> {
-  const [contacts, setContacts] = useState<Record<string, StaffContactInfo>>({})
   const key = useMemo(() => Array.from(new Set(uids)).sort().join(','), [uids])
+  const answer = useKeyed<Record<string, StaffContactInfo>>(key || null, NO_CONTACTS)
+  const { put } = answer
 
   useEffect(() => {
-    const list = key ? key.split(',') : []
-    if (list.length === 0) { setContacts({}); return }
+    if (!key) return
+    const list = key.split(',')
     let cancelled = false
     Promise.all(list.map(uid =>
       getDoc(doc(db, 'users', uid, 'private', 'contact')).then(snap => ({ uid, snap }))
@@ -73,14 +75,15 @@ export function useStaffContactDirectory(uids: string[]): Record<string, StaffCo
         }
       })
       console.log(`[useStaffContactDirectory] fetched contact info for ${Object.keys(next).length}/${list.length} uid(s)`)
-      setContacts(next)
+      put(key, next)
     }).catch(err => console.error('[useStaffContactDirectory] private/contact batch fetch failed:', err))
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key])
+  }, [key, put])
 
-  return contacts
+  return answer.value
 }
+
+const NO_CONTACTS: Record<string, StaffContactInfo> = {}
 
 // Live list of every customer account. This is an internal admin tool with a
 // manageable customer count, so one collection-wide listener (rather than

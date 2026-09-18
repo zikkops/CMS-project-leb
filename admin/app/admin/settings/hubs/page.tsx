@@ -19,6 +19,7 @@ import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import { BRANCHES } from '@big-cms/shared/branches'
 import { BRAND } from '@big-cms/shared/brand'
 import { PAIRING_CODE_MINUTES, formatPairingCode } from '@big-cms/shared/hubSync'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -233,7 +234,7 @@ export default function HubsPage() {
 
   useEffect(() => {
     if (checking) return
-    void loadHubs()
+    startLoad(loadHubs)
   }, [checking])
 
   // The countdown, and — while a code is showing — the list, so a hub that

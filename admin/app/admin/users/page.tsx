@@ -10,6 +10,7 @@ import {
   ROLE_LABELS, ROLE_COLORS, SECTION_ACCESS, SECTION_LABELS, type Role,
 } from '@big-cms/shared/adminAuth'
 import { BRANCHES, resolveBranchName } from '@big-cms/shared/branches'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 interface Account {
   id: string
@@ -77,7 +78,7 @@ export default function AdminUsersPage() {
     setLoading(false)
   }
 
-  useEffect(() => { loadAccounts() }, [])
+  useEffect(() => { startLoad(loadAccounts) }, [])
 
   function openNew() {
     setEditing(null)

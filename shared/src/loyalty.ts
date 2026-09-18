@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import {
   collection, query, where, orderBy, limit, onSnapshot, doc, getDocs,
   updateDoc, documentId, type Timestamp,
@@ -43,6 +43,7 @@ export interface Transaction {
 // The earn rates live in ./loyaltyTiers, which the server can also import.
 // Re-exported so existing call sites keep working.
 import { EVENT_POINTS_PER_PERSON } from './loyaltyTiers'
+import { useKeyed, branchFilterKey, branchFilterFromKey } from './useKeyed'
 export { POINTS_PER_DOLLAR, EVENT_POINTS_PER_PERSON, TABLE_CHECKIN_POINTS } from './loyaltyTiers'
 
 export interface ResolvedProfile {
@@ -56,29 +57,27 @@ export interface ResolvedProfile {
 // passes in — a fresh array reference on every render would re-subscribe
 // this effect in a loop.
 export function usePendingTransactions(branchFilter: string[] | 'all' | null) {
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(true)
+  const key = branchFilterKey(branchFilter)
+  const answer = useKeyed<Transaction[]>(key, NO_TRANSACTIONS)
+  const { put } = answer
 
   useEffect(() => {
-    if (!branchFilter || (Array.isArray(branchFilter) && branchFilter.length === 0)) {
-      setTransactions([])
-      setLoading(false)
-      return
-    }
-    setLoading(true)
+    if (!key) return
+    const filter = branchFilterFromKey(key)
     const base = collection(db, 'transactions')
-    const q = branchFilter === 'all'
+    const q = filter === 'all'
       ? query(base, where('status', '==', 'pending'), orderBy('createdAt', 'asc'))
-      : query(base, where('branchId', 'in', branchFilter), where('status', '==', 'pending'), orderBy('createdAt', 'asc'))
+      : query(base, where('branchId', 'in', filter), where('status', '==', 'pending'), orderBy('createdAt', 'asc'))
     const unsub = onSnapshot(q, snap => {
-      setTransactions(snap.docs.map(d => ({ id: d.id, ...d.data() } as Transaction)))
-      setLoading(false)
+      put(key, snap.docs.map(d => ({ id: d.id, ...d.data() } as Transaction)))
     })
     return unsub
-  }, [branchFilter])
+  }, [key, put])
 
-  return { transactions, loading }
+  return { transactions: answer.value, loading: answer.loading }
 }
+
+const NO_TRANSACTIONS: Transaction[] = []
 
 // Resolves customer profiles (users/{uid}) in as few reads as possible —
 // Firestore's `in` operator covers up to 30 ids per query, comfortably

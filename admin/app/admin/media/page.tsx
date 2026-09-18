@@ -5,6 +5,7 @@ import { useRequireRole, ALL_ROLES } from '@big-cms/shared/adminAuth'
 import { listMediaPage, deleteMediaItem, backfillMediaLibrary, type MediaItem } from '@big-cms/shared/media'
 import type { QueryDocumentSnapshot } from 'firebase/firestore'
 import MediaLibraryGrid from '../../components/admin/MediaLibraryGrid'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false)
@@ -47,7 +48,7 @@ export default function MediaLibraryPage() {
     setLoadingMore(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { startLoad(load) }, [])
 
   async function handleSync() {
     setSyncing(true)

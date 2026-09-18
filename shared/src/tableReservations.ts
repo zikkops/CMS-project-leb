@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import {
   collection, query, where, orderBy, onSnapshot, doc, getDocs,
   runTransaction, serverTimestamp, Timestamp,
@@ -25,6 +25,7 @@ import { authedFetch, unwrap } from './apiClient'
 export const RESERVATION_DURATION_MINUTES = 90   // placeholder — tune to the café's real seating policy
 export const TABLE_RESET_BUFFER_MINUTES = 15     // table turnover/bussing time; set to 0 to disable
 import { BUCKET_MINUTES, dateKey, lockDocId, bucketStartTimesInRange } from './tableLocks'
+import { useKeyed, branchFilterKey, branchFilterFromKey } from './useKeyed'
 export const DEFAULT_OPENING_START = '16:30'
 export const DEFAULT_OPENING_END = '01:30'
 
@@ -102,13 +103,13 @@ export function useAvailableStartTimes(
   openingStart: string = DEFAULT_OPENING_START,
   openingEnd: string = DEFAULT_OPENING_END
 ) {
-  const [times, setTimes] = useState<Date[]>([])
-  const [loading, setLoading] = useState(false)
   const idsKey = tableIds.join(',')
+  const key = branch && idsKey && dateStr ? [branch, idsKey, dateStr, openingStart, openingEnd].join('|') : null
+  const answer = useKeyed<Date[]>(key, NO_TIMES)
+  const { put } = answer
 
   useEffect(() => {
-    if (!branch || !idsKey || !dateStr) { setTimes([]); return }
-    setLoading(true)
+    if (!key || !dateStr) return
     const ids = idsKey.split(',')
     const candidates = allStartTimesForDate(dateStr, openingStart, openingEnd)
     // The opening window can cross midnight (e.g. 16:30 -> 01:30), so a
@@ -132,18 +133,17 @@ export function useAvailableStartTimes(
         const end = new Date(start.getTime() + RESERVATION_DURATION_MINUTES * 60000)
         return bucketStartTimesInRange(start, end).every(b => ids.every(id => !takenBuckets.has(lockDocId(id, b))))
       })
-      setTimes(available)
-      setLoading(false)
+      put(key, available)
     }).catch(err => {
       console.error('[useAvailableStartTimes] tableLocks query failed:', err)
-      setTimes([])
-      setLoading(false)
+      put(key, [])
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branch, idsKey, dateStr, openingStart, openingEnd])
+  }, [key, idsKey, dateStr, openingStart, openingEnd, put])
 
-  return { times, loading }
+  return { times: answer.value, loading: answer.loading }
 }
+
+const NO_TIMES: Date[] = []
 
 export async function createTableReservationRequest(input: {
   userId: string
@@ -210,74 +210,68 @@ export async function createTableReservationRequest(input: {
 
 // Customer's own table reservations, newest first.
 export function useUserTableReservations(uid: string | null) {
-  const [reservations, setReservations] = useState<TableReservation[]>([])
-  const [loading, setLoading] = useState(true)
+  const answer = useKeyed<TableReservation[]>(uid, NO_TABLE_RESERVATIONS)
+  const { put } = answer
 
   useEffect(() => {
-    if (!uid) { setReservations([]); setLoading(false); return }
-    setLoading(true)
+    if (!uid) return
     const q = query(collection(db, 'tableReservations'), where('userId', '==', uid), orderBy('startAt', 'desc'))
     const unsub = onSnapshot(q, snap => {
-      setReservations(snap.docs.map(d => ({ id: d.id, ...d.data() } as TableReservation)))
-      setLoading(false)
+      put(uid, snap.docs.map(d => ({ id: d.id, ...d.data() } as TableReservation)))
     }, err => console.error('[useUserTableReservations] listener failed:', err))
     return unsub
-  }, [uid])
+  }, [uid, put])
 
-  return { reservations, loading }
+  return { reservations: answer.value, loading: answer.loading }
 }
+
+const NO_TABLE_RESERVATIONS: TableReservation[] = []
 
 // Approved reservations that haven't been checked in yet — shown in the
 // admin "Approved" tab so staff can check customers in when they arrive.
 export function useApprovedTableReservations(branchFilter: 'all' | string[] | null) {
-  const [reservations, setReservations] = useState<TableReservation[]>([])
-  const [loading, setLoading] = useState(true)
+  const key = branchFilterKey(branchFilter)
+  const answer = useKeyed<TableReservation[]>(key, NO_TABLE_RESERVATIONS)
+  const { put } = answer
 
   useEffect(() => {
-    if (!branchFilter || (Array.isArray(branchFilter) && branchFilter.length === 0)) {
-      setReservations([]); setLoading(false); return
-    }
-    setLoading(true)
+    if (!key) return
+    const filter = branchFilterFromKey(key)
     const base = collection(db, 'tableReservations')
-    const q = branchFilter === 'all'
+    const q = filter === 'all'
       ? query(base, where('status', '==', 'approved'), where('checkedIn', '!=', true), orderBy('startAt', 'asc'))
-      : query(base, where('branch', 'in', branchFilter.slice(0, 30)), where('status', '==', 'approved'), where('checkedIn', '!=', true), orderBy('startAt', 'asc'))
+      : query(base, where('branch', 'in', filter.slice(0, 30)), where('status', '==', 'approved'), where('checkedIn', '!=', true), orderBy('startAt', 'asc'))
     const unsub = onSnapshot(q, snap => {
-      setReservations(snap.docs.map(d => ({ id: d.id, ...d.data() } as TableReservation)))
-      setLoading(false)
+      put(key, snap.docs.map(d => ({ id: d.id, ...d.data() } as TableReservation)))
     }, err => console.error('[useApprovedTableReservations] listener failed:', err))
     return unsub
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branchFilter === 'all' ? 'all' : branchFilter?.join(',')])
+  }, [key, put])
 
-  return { reservations, loading }
+  return { reservations: answer.value, loading: answer.loading }
 }
 
 // Admin/manager queue — 'all' sees every pending reservation, or a branch
 // array scopes it to a manager's own branches (same pattern as
 // usePendingEventReservations).
 export function usePendingTableReservations(branchFilter: 'all' | string[] | null) {
-  const [reservations, setReservations] = useState<TableReservation[]>([])
-  const [loading, setLoading] = useState(true)
+  const key = branchFilterKey(branchFilter)
+  const answer = useKeyed<TableReservation[]>(key, NO_TABLE_RESERVATIONS)
+  const { put } = answer
 
   useEffect(() => {
-    if (!branchFilter || (Array.isArray(branchFilter) && branchFilter.length === 0)) {
-      setReservations([]); setLoading(false); return
-    }
-    setLoading(true)
+    if (!key) return
+    const filter = branchFilterFromKey(key)
     const base = collection(db, 'tableReservations')
-    const q = branchFilter === 'all'
+    const q = filter === 'all'
       ? query(base, where('status', '==', 'pending'), orderBy('startAt', 'asc'))
-      : query(base, where('branch', 'in', branchFilter.slice(0, 30)), where('status', '==', 'pending'), orderBy('startAt', 'asc'))
+      : query(base, where('branch', 'in', filter.slice(0, 30)), where('status', '==', 'pending'), orderBy('startAt', 'asc'))
     const unsub = onSnapshot(q, snap => {
-      setReservations(snap.docs.map(d => ({ id: d.id, ...d.data() } as TableReservation)))
-      setLoading(false)
+      put(key, snap.docs.map(d => ({ id: d.id, ...d.data() } as TableReservation)))
     }, err => console.error('[usePendingTableReservations] listener failed:', err))
     return unsub
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branchFilter === 'all' ? 'all' : branchFilter?.join(',')])
+  }, [key, put])
 
-  return { reservations, loading }
+  return { reservations: answer.value, loading: answer.loading }
 }
 
 /**

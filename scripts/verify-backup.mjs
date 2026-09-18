@@ -35,7 +35,7 @@ let pass = 0, fail = 0
 const eq = (name, got, want) => {
   const ok = JSON.stringify(got) === JSON.stringify(want)
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(64)} got=${JSON.stringify(got)}`)
-  ok ? pass++ : fail++
+  if (ok) pass++; else fail++
 }
 
 // Stand-ins for the Firestore natives. The codec has never heard of them —

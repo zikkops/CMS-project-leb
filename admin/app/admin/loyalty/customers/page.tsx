@@ -68,9 +68,13 @@ export default function ManageCustomersPage() {
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
 
-  useEffect(() => {
-    if (!loadingSettings) setResetDateInput(settings?.nextResetDate ?? defaultDate)
-  }, [loadingSettings, settings, defaultDate])
+  // The date field follows the stored setting whenever that changes.
+  const storedResetDate = loadingSettings ? null : (settings?.nextResetDate ?? defaultDate)
+  const [seenResetDate, setSeenResetDate] = useState<string | null>(null)
+  if (storedResetDate !== null && storedResetDate !== seenResetDate) {
+    setSeenResetDate(storedResetDate)
+    setResetDateInput(storedResetDate)
+  }
 
   const filtered = useMemo(() => {
     if (!search.trim()) return customers

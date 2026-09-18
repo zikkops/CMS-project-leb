@@ -1,16 +1,17 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { collection, getDocs, serverTimestamp } from 'firebase/firestore'
 import { db } from '@big-cms/shared/firebase'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { readProposedAllergens } from '@big-cms/shared/allergens'
-import { listTemplateItems, listProviders, UNIT_LABELS, translateToArabic } from '@big-cms/shared/weeklyOrders'
+import { translateToArabic } from '@big-cms/shared/weeklyOrders'
 import { STOCKED_BRANCHES, PRIMARY_BRANCH, branchColor, emptyStock } from '@big-cms/shared/branches'
 import { SUPPLY_CATEGORY_COLOR as CAT_COLOR, type SupplyCategory as Category } from '@big-cms/shared/departments'
 import { suggestedFactor, describeQty, normalizeUnit } from '@big-cms/shared/recipes'
 import { ALLERGENS_EU14 } from '@big-cms/shared/foodSafety'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 
 // The branches that hold consumable stock, from configuration. This was a
@@ -164,7 +165,7 @@ export default function SuppliesPage() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { startLoad(load) }, [])
 
   function openAdd() { setForm(EMPTY_FORM); setFormQty(EMPTY_QTY); setEditing(null); setModal('add') }
   function openEdit(s: Supply) {

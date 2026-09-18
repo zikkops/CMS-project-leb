@@ -24,9 +24,10 @@ export default function TablesPage() {
   // measurement) keeps this correct if the banner's text wraps
   // differently as the table selection/capacity text changes.
   const [bannerEl, setBannerEl] = useState<HTMLDivElement | null>(null)
-  const [bannerHeight, setBannerHeight] = useState(0)
+  const [measuredHeight, setBannerHeight] = useState(0)
+  const bannerHeight = bannerEl ? measuredHeight : 0
   useEffect(() => {
-    if (!bannerEl) { setBannerHeight(0); return }
+    if (!bannerEl) return
     const observer = new ResizeObserver(([entry]) => setBannerHeight(entry.contentRect.height))
     observer.observe(bannerEl)
     return () => observer.disconnect()
@@ -96,7 +97,7 @@ export default function TablesPage() {
           ) : !layout?.imageUrl ? (
             <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center' }}>
               <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
-                The floor plan for {branch} isn't ready yet — check back soon.
+                The floor plan for {branch} isn&apos;t ready yet — check back soon.
               </p>
             </div>
           ) : (

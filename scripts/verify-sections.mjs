@@ -54,7 +54,7 @@ const check = (name, problems) => {
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}`)
   for (const p of problems.slice(0, 12)) console.log(`        - ${p}`)
   if (problems.length > 12) console.log(`        … and ${problems.length - 12} more`)
-  ok ? pass++ : fail++
+  if (ok) pass++; else fail++
 }
 
 const walk = (dir, keep, found = []) => {

@@ -8,6 +8,7 @@ import { useIsStaff } from '@big-cms/shared/adminAuth'
 import { BRAND } from '@big-cms/shared/brand'
 import { PLACEHOLDER } from '@big-cms/shared/placeholderAssets'
 import { adminUrl } from '@big-cms/shared/appUrls'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 // Resolved once at module scope: it comes from an environment variable, so it
 // cannot change between renders, and calling it per click would read the same
@@ -96,8 +97,10 @@ export default function Hero() {
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 768)
-    check()
-    setIntroReady(true)
+    startLoad(() => {
+      check()
+      setIntroReady(true)
+    })
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])

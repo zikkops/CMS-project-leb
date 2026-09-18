@@ -10,6 +10,7 @@ import MediaPickerModal from '../../components/admin/MediaPickerModal'
 import { BRANCHES as CONFIGURED_BRANCHES, PRIMARY_BRANCH } from '@big-cms/shared/branches'
 import { BRAND } from '@big-cms/shared/brand'
 import { todayYmd, ymdToLocalDate } from '@big-cms/shared/dates'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 // Not a branch — the "runs at every branch" option the picker offers alongside
 // the real ones. Named rather than inlined so the string appears once.
@@ -124,7 +125,7 @@ export default function AdminEventsPage() {
     setLoading(false)
   }
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { startLoad(loadData) }, [])
 
   async function addEventType() {
     if (!newType.trim()) return

@@ -81,14 +81,14 @@ let pass = 0, fail = 0
 const eq = (name, got, want) => {
   const ok = JSON.stringify(got) === JSON.stringify(want)
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(80)} got=${JSON.stringify(got)}`)
-  ok ? pass++ : fail++
+  if (ok) pass++; else fail++
 }
 const rejects = async (name, fn, fits) => {
   let err = null
   try { await fn() } catch (e) { err = e }
   const ok = err !== null && (fits instanceof RegExp ? fits.test(String(err.message)) : fits(err))
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(80)} got=${err ? JSON.stringify(err.message) : 'no refusal'}`)
-  ok ? pass++ : fail++
+  if (ok) pass++; else fail++
 }
 
 try {
@@ -809,7 +809,7 @@ console.log('\na broken counter PC: its branch trades online, what it sends is h
   eq('...and none of those removals goes up', [afterClear.docs.length, afterClear.moves.length, afterClear.toSeq > beforeClear], [0, 0, true])
 
   const calls = []
-  const fakeCloud = async (href, init = {}) => {
+  const fakeCloud = async (href) => {
     const u = new URL(href)
     calls.push(u)
     const body = u.pathname === '/api/hub-sync/push'

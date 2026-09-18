@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useIsMobile } from '@big-cms/shared/useIsMobile'
 import { branchColor } from '@big-cms/shared/branches'
@@ -11,6 +12,7 @@ import {
   getDailyInventory, saveDailyInventoryDraft, submitDailyInventory, listDailyInventories,
   type SupplyForCount, type InventoryLine, type DailyInventoryReport,
 } from '@big-cms/shared/dailyInventory'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 
 // Colours come from lib/branches so every screen agrees, and so a branch
@@ -66,25 +68,28 @@ function DailyInventoryInner() {
 
   const canReview = role === 'admin' || role === 'manager'
 
-  useEffect(() => {
+  // Worked out while rendering, whenever what they depend on changes: a
+  // single choice is chosen for you, and a link (e.g. "Open in Daily Count →"
+  // from the history sheet) pre-fills the form — only with a branch or
+  // department the user actually has access to.
+  const optionsKey = `${branchOptions.join('|')}#${departmentOptions.join('|')}`
+  const [seenOptions, setSeenOptions] = useState<string | null>(null)
+  if (optionsKey !== seenOptions) {
+    setSeenOptions(optionsKey)
     if (branchOptions.length === 1) setBranch(branchOptions[0])
-  }, [branchOptions])
-
-  useEffect(() => {
     if (departmentOptions.length === 1) setDepartment(departmentOptions[0])
-  }, [departmentOptions])
-
-  // Prefill from URL params (e.g. an "Open in Daily Count →" link from the
-  // history sheet) — only allow a branch the user actually has access to.
-  useEffect(() => {
-    if (checking) return
+  }
+  const prefillKey = checking ? null : `${params.toString()}#${optionsKey}`
+  const [seenPrefill, setSeenPrefill] = useState<string | null>(null)
+  if (prefillKey !== null && prefillKey !== seenPrefill) {
+    setSeenPrefill(prefillKey)
     const pb = params.get('branch')
     const pdept = params.get('department')
     const pd = params.get('date')
     if (pb && branchOptions.includes(pb)) setBranch(pb)
     if (pdept && departmentOptions.includes(pdept)) setDepartment(pdept)
     if (pd) setDate(pd)
-  }, [params, checking, branchOptions, departmentOptions])
+  }
 
   useEffect(() => {
     listSuppliesForCount().then(s => { setSupplies(s); setLoadingSupplies(false) })
@@ -98,23 +103,31 @@ function DailyInventoryInner() {
   useEffect(() => {
     if (!branch || !department || !date || loadingSupplies) return
     let cancelled = false
-    setLoading(true)
-    setSaved(null)
-    setErr('')
-    getDailyInventory(branch, date, department).then(existing => {
+    startLoad(() => {
       if (cancelled) return
-      const base = existing ?? emptyInventoryReport(branch, date, department, supplies, user?.uid ?? '', user?.email ?? '')
-      setReport(base)
-      setCounts(Object.fromEntries(base.items.map(i => [i.supplyId, i.countedQty == null ? '' : String(i.countedQty)])))
-      setLoading(false)
+      setLoading(true)
+      setSaved(null)
+      setErr('')
+      return getDailyInventory(branch, date, department).then(existing => {
+        if (cancelled) return
+        const base = existing ?? emptyInventoryReport(branch, date, department, supplies, user?.uid ?? '', user?.email ?? '')
+        setReport(base)
+        setCounts(Object.fromEntries(base.items.map(i => [i.supplyId, i.countedQty == null ? '' : String(i.countedQty)])))
+        setLoading(false)
+      })
     })
     return () => { cancelled = true }
   }, [branch, department, date, loadingSupplies, supplies, user])
 
   useEffect(() => {
     if (!canReview || !branch || !showHistory) return
-    setHistoryLoading(true)
-    listDailyInventories(branch, 30).then(h => { setHistory(h); setHistoryLoading(false) })
+    let cancelled = false
+    startLoad(() => {
+      if (cancelled) return
+      setHistoryLoading(true)
+      return listDailyInventories(branch, 30).then(h => { if (!cancelled) { setHistory(h); setHistoryLoading(false) } })
+    })
+    return () => { cancelled = true }
   }, [canReview, branch, showHistory])
 
   const visibleItems = useMemo(() => {
@@ -423,10 +436,10 @@ function DailyInventoryInner() {
                       textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)',
                     }}
                   >{showHistory ? '▾' : '▸'} Recent Submissions — {branch}</button>
-                  <a href="/admin/supplies/daily/history" style={{
+                  <Link href="/admin/supplies/daily/history" style={{
                     fontFamily: 'var(--font-inter)', fontSize: '0.72rem', letterSpacing: '0.05em',
                     color: '#6A9E5A', textDecoration: 'none',
-                  }}>View full history sheet →</a>
+                  }}>View full history sheet →</Link>
                 </div>
 
                 {showHistory && (

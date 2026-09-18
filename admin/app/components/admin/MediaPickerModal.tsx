@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { listMedia, deleteMediaItem, type MediaItem } from '@big-cms/shared/media'
 import MediaLibraryGrid from './MediaLibraryGrid'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false)
@@ -30,8 +31,13 @@ export default function MediaPickerModal({
 
   useEffect(() => {
     if (!open) return
-    setLoading(true)
-    listMedia().then(setItems).finally(() => setLoading(false))
+    let alive = true
+    startLoad(() => {
+      if (!alive) return
+      setLoading(true)
+      return listMedia().then(list => { if (alive) setItems(list) }).finally(() => { if (alive) setLoading(false) })
+    })
+    return () => { alive = false }
   }, [open])
 
   if (!open) return null
