@@ -222,7 +222,7 @@ The owner's goals it answers:
 
 ### The UI kit (do these before converting pages)
 
-- [ ] **T2.1 Admin UI kit, part 1.** `admin/app/components/ui/` with
+- [x] **T2.1 Admin UI kit, part 1.** `admin/app/components/ui/` with
   `Button`, `Input`/`Field`, `PageHeader`, `EmptyState`, `Spinner`, written in
   the house style (inline style objects, CSS variables).
   - Today `const inp` is re-declared in 19 files and there are 14 button
@@ -230,6 +230,7 @@ The owner's goals it answers:
   - There are 2,501 inline style blocks, `h1` in five different sizes, and 8
     page widths.
   - Convert **one** page as the example.
+  *Done: admin/app/components/ui/index.tsx: Page (three widths), PageHeader, Panel, Button (primary/danger/neutral/quiet, dashed when disabled), Field + inputStyle, Loading, EmptyState, ErrorLine. Staff Phones converted as the example. Looked at on a temporary unsigned preview page (removed), since admin pages need a sign-in.*
 - [ ] **T2.2 Admin UI kit, part 2**: `DataTable` (sortable header, empty
   state, search box) and `ConfirmDialog` + `useToast`. This replaces 30 native
   `confirm()`/`alert()` calls, one page at a time.

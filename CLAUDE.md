@@ -1717,6 +1717,12 @@ the operation behind a route handler if that matters.
 
 ## Styling — match, don't improve
 
+- **Admin pages have shared controls in `admin/app/components/ui/`** (`Page`,
+  `PageHeader`, `Panel`, `Button`, `Field` + `inputStyle`, `Loading`,
+  `EmptyState`, `ErrorLine`), written in the same inline-style way. Build new
+  admin pages from them, and move an old page over when touching it; the till's
+  equivalent is `pos/app/lib/posUi.tsx`.
+
 - **Hand-written inline `style={{}}` objects everywhere.** Tailwind is installed
   but nothing in `app/` uses it. Don't introduce classes, don't add CSS modules.
 - Palette via CSS vars: `var(--teal)`, `var(--red)`, `var(--purple)`,
