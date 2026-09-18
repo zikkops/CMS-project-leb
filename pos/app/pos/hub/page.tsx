@@ -316,6 +316,17 @@ export default function HubPage() {
                 <span style={{ fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: '0.68rem', opacity: 0.45, wordBreak: 'break-all' }}>{status.lan.fingerprint}</span>
               </div>
             )}
+            {!status.lan && (
+              // Said, not just hidden: the phone section used to vanish with
+              // no hint that it was a switch (UPGRADE.md T2.18).
+              <div style={{ ...row, flexDirection: 'column', gap: '0.4rem' }}>
+                <span style={{ opacity: 0.55 }}>Phones on the café wifi</span>
+                <span style={{ fontSize: '0.82rem', lineHeight: 1.6 }}>
+                  Off, so no phone can reach this hub. To let staff phones take orders, press Ctrl+Shift+Alt+M on
+                  this PC and switch <strong>Staff phones on the café Wi‑Fi</strong> on. The app starts again.
+                </span>
+              </div>
+            )}
             <HubPrinters />
             {/* Sending up and taking down usually fail for the same reason and
                 say so in the same words: each problem once (UPGRADE.md T1.7). */}

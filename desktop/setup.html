@@ -22,8 +22,13 @@
              background: ButtonFace; color: ButtonText; cursor: pointer; min-height: 9rem; }
     button strong { display: block; font-size: 1.2rem; margin-bottom: 0.3rem; }
     button span { opacity: 0.75; font-size: 0.95rem; }
-    button[aria-current="true"] { outline: 4px solid Highlight; }
+    button[aria-current="true"], button[aria-pressed="true"] { outline: 4px solid Highlight; }
     button:disabled { opacity: 0.5; border-style: dashed; cursor: default; }
+    .setting { margin-top: 1.6rem; padding: 1rem 1.2rem; border: 1px solid GrayText; border-radius: 12px; }
+    .setting h2 { font-size: 1.05rem; margin: 0 0 0.3rem; }
+    .setting p { margin: 0 0 0.8rem; font-size: 0.95rem; opacity: 0.8; }
+    .toggle { display: flex; gap: 0.6rem; }
+    .toggle button { min-height: 3rem; padding: 0.5rem 1.4rem; text-align: center; }
     .note { margin-top: 1.2rem; font-size: 0.95rem; opacity: 0.85; }
     .problem { color: #e63946; }
     ul { margin: 0.4rem 0 0; padding-left: 1.2rem; }
@@ -45,6 +50,14 @@
         <span>Runs the POS on this PC, so the café keeps trading with no internet. Next, it asks for the pairing code an admin gets from Settings → Café Hubs.</span>
       </button>
     </div>
+    <section class="setting" id="phonesSetting" hidden aria-labelledby="phonesTitle">
+      <h2 id="phonesTitle">Staff phones on the café Wi‑Fi</h2>
+      <p>On, staff phones with the BIG CMS Staff app can take orders through this PC, encrypted. Windows may ask once whether to allow it through the firewall: answer Allow. Off, nothing on this PC listens on the network.</p>
+      <div class="toggle" role="group" aria-label="Staff phones on the café Wi-Fi">
+        <button type="button" id="phonesOn">On</button>
+        <button type="button" id="phonesOff">Off</button>
+      </div>
+    </section>
     <p class="note" id="note" hidden></p>
     <button type="button" class="close" id="hubPage" hidden>Open the café hub page (phones, printers)</button>
     <button type="button" class="close" id="close" hidden>Back to the till, unchanged</button>
@@ -75,6 +88,12 @@
         buttons[current.mode].setAttribute('aria-current', 'true')
         document.getElementById('close').hidden = false
         document.getElementById('hubPage').hidden = current.mode !== 'hub'
+        // Phones are a café hub's; an online till has nothing for them to reach (T2.18).
+        if (current.mode === 'hub' && setup.phones) {
+          document.getElementById('phonesSetting').hidden = false
+          document.getElementById('phonesOn').setAttribute('aria-pressed', String(current.phones === true))
+          document.getElementById('phonesOff').setAttribute('aria-pressed', String(current.phones !== true))
+        }
       }
       if (/^\d+\.\d+\.\d+$/.test(String(current.version || ''))) document.getElementById('version').textContent = 'BIG CMS POS ' + current.version
     }
@@ -99,6 +118,31 @@
       }
     }
 
+    async function setPhones(on) {
+      const on_ = document.getElementById('phonesOn')
+      const off = document.getElementById('phonesOff')
+      on_.disabled = true
+      off.disabled = true
+      say(on ? 'Switching staff phones on…' : 'Switching staff phones off…', false)
+      try {
+        const result = await setup.phones(on)
+        if (result.ok && result.unchanged) {
+          say(on ? 'Staff phones are already on.' : 'Staff phones are already off.', false)
+        } else if (result.ok) {
+          say('Starting again…', false)
+          return
+        } else {
+          say(result.message || 'Nothing was changed.', true)
+        }
+      } catch (err) {
+        say('Nothing was changed.', true)
+      }
+      on_.disabled = false
+      off.disabled = false
+    }
+
+    document.getElementById('phonesOn').addEventListener('click', () => { void setPhones(true) })
+    document.getElementById('phonesOff').addEventListener('click', () => { void setPhones(false) })
     buttons.online.addEventListener('click', () => { void choose('online') })
     buttons.hub.addEventListener('click', () => { void choose('hub') })
     document.getElementById('close').addEventListener('click', () => { void setup.close() })

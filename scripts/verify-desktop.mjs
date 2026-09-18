@@ -13,7 +13,7 @@
 
 import { createRequire } from 'node:module'
 import { X509Certificate, createPrivateKey } from 'node:crypto'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { connect } from 'node:tls'
 import { tmpdir } from 'node:os'
@@ -226,6 +226,29 @@ console.log('\nonline till or café hub, chosen on the PC (S29–S30)')
       P.isSetupPage('http://localhost:3100/pos'), P.isSetupPage('file:///C:/x/offline.html'), P.isSetupPage('file:///C:/x/setup.html.evil'), P.isSetupPage('nonsense')],
     [true, false, false, false, false, false])
   eq('the old hub database is kept under a dated backup name', P.hubBackupName(new Date(2026, 8, 15, 22, 15, 30)), 'pos.db.hub-backup-20260915-221530')
+
+  // Staff phones on or off from the setup screen (UPGRADE.md T2.18).
+  const phonesOn = P.configWithSetting('{"kiosk": false, "mode": "hub", "posUrl": "https://pos.example.com/pos"}', 'hubLan', true)
+  eq('switching phones on keeps every other setting, and readConfig sees it',
+    [JSON.parse(phonesOn), P.readConfig(phonesOn, {}).hubLan, P.readConfig(P.configWithSetting(phonesOn, 'hubLan', false), {}).hubLan],
+    [{ kiosk: false, mode: 'hub', posUrl: 'https://pos.example.com/pos', hubLan: true }, true, false])
+  eq('...an unreadable file becomes one with just that setting', JSON.parse(P.configWithSetting('{oops', 'hubLan', true)), { hubLan: true })
+  const refusedSetting = (key, value) => { try { P.configWithSetting('{}', key, value); return null } catch (err) { return err.message } }
+  eq('THE TRAP: the setup screen changes only what it lists: never the till\'s address, kiosk or the mode by this door',
+    [refusedSetting('posUrl', 'https://evil.example'), refusedSetting('kiosk', false), refusedSetting('mode', 'online'), refusedSetting('__proto__', true), refusedSetting('toString', true)],
+    ['"posUrl" cannot be changed here.', '"kiosk" cannot be changed here.', '"mode" cannot be changed here.', '"__proto__" cannot be changed here.', '"toString" cannot be changed here.'])
+  eq('...and only to a value it takes: on or off, not "yes"', [refusedSetting('hubLan', 'yes'), refusedSetting('hubLan', 1)],
+    ['That is not a value for "hubLan".', 'That is not a value for "hubLan".'])
+
+  // Every handler the setup page can call checks, first thing, that the
+  // caller IS the setup page. preload.js only exposes the bridge there, but
+  // that is the renderer's promise; this is the main process's own check.
+  const mainSrc = readFileSync(join('desktop', 'main.js'), 'utf8')
+  const handlers = [...mainSrc.matchAll(/ipcMain\.handle\('(setup:[a-z]+)',[^\n]*\n\s*(.*)/gi)].map(m => ({ name: m[1], first: m[2] }))
+  eq('THE TRAP: every setup handler refuses a caller that is not the setup page, before anything else',
+    handlers.filter(h => !h.first.startsWith("if (!fromSetup(event)) throw")).map(h => h.name), [])
+  eq('...and the phones switch is one of them, exposed by preload.js',
+    [handlers.some(h => h.name === 'setup:phones'), /phones: on => ipcRenderer\.invoke\('setup:phones', on\)/.test(readFileSync(join('desktop', 'preload.js'), 'utf8'))], [true, true])
 }
 
 console.log('\nautomatic updates: signed, checked, and installed only when nobody is using the PC (S26–S27)')

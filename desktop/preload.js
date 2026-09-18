@@ -15,5 +15,6 @@ if (location.protocol === 'file:' && location.pathname.endsWith('/setup.html')) 
     choose: mode => ipcRenderer.invoke('setup:choose', mode),
     close: () => ipcRenderer.invoke('setup:close'),
     hubPage: () => ipcRenderer.invoke('setup:hubPage'),
+    phones: on => ipcRenderer.invoke('setup:phones', on),
   })
 }

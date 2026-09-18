@@ -30,7 +30,7 @@ const path = require('node:path')
 const {
   readConfig, isAllowedNavigation, isAllowedPermission,
   hubAddress, hubServerEnv, classifyHubProbe, hubRestartDelay,
-  configWithMode, isSetupShortcut, isSetupPage, hubBackupName,
+  configWithMode, configWithSetting, isSetupShortcut, isSetupPage, hubBackupName,
 } = require('./policy')
 
 // A development check of the setup screen, and nothing else: the app's data in
@@ -212,7 +212,24 @@ function registerSetup({ config, file, window: getWindow }) {
   const fromSetup = event => isSetupPage(event.senderFrame?.url ?? '')
   ipcMain.handle('setup:current', event => {
     if (!fromSetup(event)) throw new Error('Not the setup screen.')
-    return { mode: config.mode, chosen: config.modeChosen, version: app.getVersion() }
+    return { mode: config.mode, chosen: config.modeChosen, version: app.getVersion(), phones: config.hubLan }
+  })
+  // Staff phones on the café wifi, on or off (UPGRADE.md T2.18). It used to
+  // take "hubLan": true typed into config.json. Changing it starts the app
+  // again, because the encrypted door opens only when the hub starts.
+  ipcMain.handle('setup:phones', (event, on) => {
+    if (!fromSetup(event)) throw new Error('Not the setup screen.')
+    if (typeof on !== 'boolean') return { ok: false, message: 'Choose on or off.' }
+    if (on === config.hubLan) return { ok: true, unchanged: true }
+    let raw = null
+    try { raw = fs.readFileSync(file, 'utf8') } catch { /* no file yet */ }
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, configWithSetting(raw, 'hubLan', on))
+    console.log(`[pos] staff phones on the café wifi switched ${on ? 'on' : 'off'}; starting again`)
+    if (hub) hub.stop()
+    app.relaunch()
+    app.exit(0)
+    return { ok: true }
   })
   // On a café hub, the hub's own page (phones, printers, pairing), which was
   // only reachable through a small link on the sign-in screen (UPGRADE.md T1.24).

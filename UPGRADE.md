@@ -311,7 +311,7 @@ The owner's goals it answers:
 
 ### Counter PC and phones
 
-- [ ] **T2.18 Phones on/off in the setup screen.** Staff phones currently
+- [x] **T2.18 Phones on/off in the setup screen.** Staff phones currently
   need `"hubLan": true` typed into `config.json`, and the hub page hides the
   phone section without saying why.
   - Add `configWithSetting()` beside `configWithMode()` in
@@ -321,6 +321,7 @@ The owner's goals it answers:
     which restarts the app.
   - When it is off, the hub page says how to turn it on.
   - Asserted in `verify:desktop`.
+  *Done: configWithSetting(raw, key, value) in desktop/policy.js changes only what SETUP_SETTINGS lists (hubLan, a boolean), keeping every other setting; setup:phones in main.js (isSetupPage-checked) writes it and starts the app again; setup:current reports phones. setup.html shows a Staff phones On/Off switch on a café hub only (aria-pressed). With phones off, /pos/hub says so and how to switch them on. verify:desktop 115 (+6): other keys and values refused, and every setup: handler's first line refuses a caller that is not the setup page. Checked: smoke:setup (the bridge answers phones), and the screen with a stubbed bridge in a browser (Off marked, On asks, disables, says starting again). Not seen: the hub page's off message (no dev hub running), and the switch on an installed app.*
 - [ ] **T2.19 Firewall rule at install, and a Public-network warning.** An
   NSIS `customInstall` adds an inbound allow rule for TCP 3443 on private and
   domain profiles. The hub page shows "Windows treats this network as Public,

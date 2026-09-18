@@ -229,14 +229,36 @@ function classifyHubProbe(status, body) {
  */
 function configWithMode(raw, mode) {
   if (!MODES.has(mode)) throw new Error(`"${mode}" is not a mode.`)
-  let src = {}
+  return `${JSON.stringify({ ...parseConfigFile(raw), mode }, null, 2)}\n`
+}
+
+/** config.json as an object, or {} when it is missing or unreadable. */
+function parseConfigFile(raw) {
   if (typeof raw === 'string' && raw.trim()) {
     try {
       const parsed = JSON.parse(raw)
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) src = parsed
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed
     } catch { /* unreadable: start again */ }
   }
-  return `${JSON.stringify({ ...src, mode }, null, 2)}\n`
+  return {}
+}
+
+/**
+ * The settings the setup screen may change besides the mode, and what each
+ * may be set to (UPGRADE.md T2.18). Only these: the setup page is the app's
+ * own, but a list of what it may touch is what keeps it from becoming a way
+ * to re-point the till or switch kiosk off.
+ */
+const SETUP_SETTINGS = {
+  // Staff phones reach the hub through the encrypted door on the café wifi.
+  hubLan: value => typeof value === 'boolean',
+}
+
+/** The settings file with one setup setting changed and every other kept, as configWithMode does. */
+function configWithSetting(raw, key, value) {
+  if (!Object.prototype.hasOwnProperty.call(SETUP_SETTINGS, key)) throw new Error(`"${key}" cannot be changed here.`)
+  if (!SETUP_SETTINGS[key](value)) throw new Error(`That is not a value for "${key}".`)
+  return `${JSON.stringify({ ...parseConfigFile(raw), [key]: value }, null, 2)}\n`
 }
 
 /** The manager's key combination for the setup screen: Ctrl+Shift+Alt+M. */
@@ -273,5 +295,5 @@ function hubRestartDelay(attempt) {
 module.exports = {
   DEFAULT_CONFIG, readPosUrl, readCloudUrl, readUpdatesUrl, readConfig, isAllowedNavigation, isAllowedPermission,
   hubAddress, hubServerEnv, classifyHubProbe, hubRestartDelay,
-  configWithMode, isSetupShortcut, isSetupPage, hubBackupName,
+  configWithMode, configWithSetting, isSetupShortcut, isSetupPage, hubBackupName,
 }

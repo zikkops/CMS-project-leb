@@ -61,8 +61,10 @@ walks through the whole visit; these are the traps.
   The app shows its own "waiting for the café hub" screen meanwhile; a browser
   pointed at `localhost:3100` too early just says "connection refused".
   When a browser is needed, use `http://127.0.0.1:3100/pos/hub`.
-- **Staff phones need `"hubLan": true`** in `config.json`, then a restart.
-  Until then the hub page shows no QR code.
+- **Staff phones are switched on in the setup screen**: Ctrl+Shift+Alt+M,
+  then "Staff phones on the café Wi‑Fi: On". The app starts again. (It writes
+  `"hubLan": true` into `config.json`, which still works by hand.) Until then
+  the hub page shows no QR code and says how to switch them on.
 - **Reserve the counter PC's address in the router** (a DHCP reservation).
   Phones are paired to the address in the QR; if the router hands the PC a new
   one, every phone has to scan again.
@@ -95,7 +97,8 @@ walks through the whole visit; these are the traps.
   is started again, backing off to 30 seconds. The database is
   `%APPDATA%\BIG CMS POS\hub\pos.db`, with `hub.log` beside it.
 - **Phones on the café wifi reach the hub encrypted, never over plain http**
-  (`hubLan.js`), and only once `"hubLan": true` is set. The app then opens a
+  (`hubLan.js`), and only once `"hubLan": true` is set (the setup screen's
+  Staff phones switch, `configWithSetting()`). The app then opens a
   TLS port (`hubLanPort`, 3443) in front of the server, with the hub's own
   certificate (`hub-tls.crt` and `hub-tls.key` beside the database). Windows
   asks once whether to allow it through the firewall. No browser trusts that
