@@ -177,7 +177,7 @@ const HUB_ENV_KEEP = [
  */
 const FINGERPRINT = /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/
 
-function hubServerEnv(baseEnv, { port, dbFile, cloudUrl, lan = null }) {
+function hubServerEnv(baseEnv, { port, dbFile, cloudUrl, lan = null, appVersion = null }) {
   const env = {}
   for (const key of HUB_ENV_KEEP) {
     if (typeof baseEnv?.[key] === 'string') env[key] = baseEnv[key]
@@ -190,6 +190,9 @@ function hubServerEnv(baseEnv, { port, dbFile, cloudUrl, lan = null }) {
     HOSTNAME: '127.0.0.1',
     BIG_CMS_HUB_DB: dbFile,
     BIG_CMS_CLOUD_URL: cloudUrl,
+    // Which counter app this is, shown on the hub page (UPGRADE.md T1.25). Only
+    // a plain x.y.z, so nothing else can travel in it.
+    ...(typeof appVersion === 'string' && /^\d{1,4}\.\d{1,4}\.\d{1,6}$/.test(appVersion) ? { BIG_CMS_APP_VERSION: appVersion } : {}),
     // So the counter screen can show phones where the encrypted door is and
     // which certificate to trust. The server itself still listens on this PC only.
     ...(lan && readPort(lan.port) && FINGERPRINT.test(String(lan.fingerprint))

@@ -205,11 +205,13 @@ The owner's goals it answers:
   VirtualBox adapter can win. Skip virtual adapters, prefer Wi‑Fi/Ethernet,
   and label a QR per address.
   *Done: lanAddresses() skips Hyper-V/WSL/VirtualBox/VMware/Docker/VPN adapters and lists Wi-Fi/Ethernet first (verify:hub-sync: the old fixture had vEthernet's 172.20.0.1 as the first QR); the hub page offers a chip per network when there are several.*
-- [ ] **T1.24 Explain the first-start wait.** `desktop/offline.html` in hub
+- [x] **T1.24 Explain the first-start wait.** `desktop/offline.html` in hub
   mode says "This usually takes 20–30 seconds. The till opens by itself."
   `setup.html` gets an "Open café hub page (phones, printers)" button.
-- [ ] **T1.25 Show the app version** in the footer of `setup.html`,
+  *Done: offline.html in hub mode says the first start takes 20–30 s and later 10–20; the setup screen has "Open the café hub page (phones, printers)" on a hub (setup:hubPage, checked with isSetupPage like the others).*
+- [x] **T1.25 Show the app version** in the footer of `setup.html`,
   `offline.html` and `/pos/hub`.
+  *Done: setup.html and offline.html show "BIG CMS POS x.y.z"; the hub page shows it too, from BIG_CMS_APP_VERSION, which hubServerEnv() passes only as a plain x.y.z (verify:desktop). The setup smoke run reports version 0.1.0.*
 - [ ] **T1.26 Phone app icon and splash.** They are still Capacitor's
   defaults. Generate them with `@capacitor/assets`.
 

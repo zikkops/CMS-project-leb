@@ -33,10 +33,12 @@
     <div id="hub" hidden>
       <h1>Waiting for the café hub</h1>
       <p>This PC runs the POS for the café. It is starting, or starting again after a problem, and does not need the internet to do it.</p>
+      <p>The first start after installing takes about 20 to 30 seconds; after that, 10 to 20. The till opens by itself.</p>
       <p>This screen tries again on its own every 5 seconds.</p>
     </div>
     <p class="reason" id="reason"></p>
     <button id="retry" type="button">Try again now</button>
+    <p class="reason" id="version"></p>
   </main>
   <script>
     'use strict'
@@ -50,6 +52,9 @@
       document.title = 'BIG CMS POS — starting the café hub'
     }
     if (reason) document.getElementById('reason').textContent = onHub ? reason : 'Last error: ' + reason
+    // Which build this is, so two installs can be told apart (UPGRADE.md T1.25).
+    const version = params.get('version') || ''
+    if (/^\d+\.\d+\.\d+$/.test(version)) document.getElementById('version').textContent = 'BIG CMS POS ' + version
 
     // Only ever back to the POS address main.js gave, and only a web address.
     function retry() {

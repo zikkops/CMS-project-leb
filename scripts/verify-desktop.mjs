@@ -116,6 +116,12 @@ console.log('\nthe café hub (stages 3 and 4)')
     ['3100', 'C:\\Users\\till\\AppData\\Roaming\\BIG CMS POS\\hub\\pos.db', '127.0.0.1', 'production', CLOUD])
   eq('Windows still has what it needs to run it', [env.Path, env.SystemRoot, env.TEMP], ['C:\\Windows\\system32', 'C:\\Windows', 'C:\\Temp'])
 
+  eq('the hub page is told the app\'s version, and only ever a plain x.y.z (UPGRADE.md T1.25)',
+    [P.hubServerEnv({}, { port: 3100, dbFile: 'x', cloudUrl: CLOUD, appVersion: '0.2.0' }).BIG_CMS_APP_VERSION,
+      'BIG_CMS_APP_VERSION' in P.hubServerEnv({}, { port: 3100, dbFile: 'x', cloudUrl: CLOUD, appVersion: '0.2.0 --inspect' }),
+      'BIG_CMS_APP_VERSION' in P.hubServerEnv({ BIG_CMS_APP_VERSION: '9.9.9' }, { port: 3100, dbFile: 'x', cloudUrl: CLOUD })],
+    ['0.2.0', false, false])
+
   eq('our hub answers 401 as JSON: ready', P.classifyHubProbe(401, '{"error":"Not signed in."}'), 'ready')
   eq('no answer yet: starting', [P.classifyHubProbe(null, ''), P.classifyHubProbe(undefined, '')], ['starting', 'starting'])
   eq('THE TRAP: a POS server that is not a hub is not the hub', P.classifyHubProbe(404, '{"error":"Not found."}'), 'other')

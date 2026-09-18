@@ -14,5 +14,6 @@ if (location.protocol === 'file:' && location.pathname.endsWith('/setup.html')) 
     current: () => ipcRenderer.invoke('setup:current'),
     choose: mode => ipcRenderer.invoke('setup:choose', mode),
     close: () => ipcRenderer.invoke('setup:close'),
+    hubPage: () => ipcRenderer.invoke('setup:hubPage'),
   })
 }

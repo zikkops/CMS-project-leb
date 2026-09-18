@@ -46,7 +46,9 @@
       </button>
     </div>
     <p class="note" id="note" hidden></p>
+    <button type="button" class="close" id="hubPage" hidden>Open the café hub page (phones, printers)</button>
     <button type="button" class="close" id="close" hidden>Back to the till, unchanged</button>
+    <p class="note" id="version"></p>
   </main>
   <script>
     'use strict'
@@ -72,7 +74,9 @@
         document.getElementById('lead').textContent = `This PC is ${current.mode === 'hub' ? 'the café hub' : 'an online till'}. Choose the other to change it.`
         buttons[current.mode].setAttribute('aria-current', 'true')
         document.getElementById('close').hidden = false
+        document.getElementById('hubPage').hidden = current.mode !== 'hub'
       }
+      if (/^\d+\.\d+\.\d+$/.test(String(current.version || ''))) document.getElementById('version').textContent = 'BIG CMS POS ' + current.version
     }
 
     async function choose(mode) {
@@ -98,6 +102,7 @@
     buttons.online.addEventListener('click', () => { void choose('online') })
     buttons.hub.addEventListener('click', () => { void choose('hub') })
     document.getElementById('close').addEventListener('click', () => { void setup.close() })
+    document.getElementById('hubPage').addEventListener('click', () => { if (setup.hubPage) void setup.hubPage() })
     void start()
   </script>
 </body>

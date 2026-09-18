@@ -71,7 +71,7 @@ function openExternally(url) {
 
 function showOffline(win, config, reason) {
   if (win.isDestroyed()) return
-  const query = { url: config.posUrl, reason: String(reason ?? '') }
+  const query = { url: config.posUrl, reason: String(reason ?? ''), version: app.getVersion() }
   if (config.mode === 'hub') query.hub = '1'
   win.loadFile(path.join(__dirname, 'offline.html'), { query })
 }
@@ -212,7 +212,18 @@ function registerSetup({ config, file, window: getWindow }) {
   const fromSetup = event => isSetupPage(event.senderFrame?.url ?? '')
   ipcMain.handle('setup:current', event => {
     if (!fromSetup(event)) throw new Error('Not the setup screen.')
-    return { mode: config.mode, chosen: config.modeChosen }
+    return { mode: config.mode, chosen: config.modeChosen, version: app.getVersion() }
+  })
+  // On a café hub, the hub's own page (phones, printers, pairing), which was
+  // only reachable through a small link on the sign-in screen (UPGRADE.md T1.24).
+  ipcMain.handle('setup:hubPage', event => {
+    if (!fromSetup(event)) throw new Error('Not the setup screen.')
+    const win = getWindow()
+    if (config.modeChosen && config.mode === 'hub' && win && !win.isDestroyed()) {
+      win.loadURL(`http://localhost:${config.hubPort}/pos/hub`)
+      return { ok: true }
+    }
+    return { ok: false }
   })
   ipcMain.handle('setup:close', event => {
     if (!fromSetup(event)) throw new Error('Not the setup screen.')
@@ -356,6 +367,7 @@ function startHub(config, { onReady, onStopped, onFailed }) {
       env: hubServerEnv(process.env, {
         port: config.hubPort, dbFile, cloudUrl: config.cloudUrl,
         lan: lan && { port: lan.port, fingerprint: lan.fingerprint },
+        appVersion: app.getVersion(),
       }),
       stdio: 'pipe',
       serviceName: 'BIG CMS hub',

@@ -64,6 +64,8 @@ export interface HubPairing {
 }
 
 export interface HubSyncStatus {
+  /** The counter app's version, from the app (BIG_CMS_APP_VERSION); null on a dev hub. */
+  appVersion: string | null
   /** While true, this hub takes no orders, payments or drawer changes (hubLock.ts). */
   tradingOnline: boolean
   paired: boolean
@@ -577,5 +579,6 @@ export async function hubSyncStatus(now = new Date()): Promise<HubSyncStatus> {
     pushError: state.pushError,
     movesWaiting: waiting,
     lan: hubLanStatus(),
+    appVersion: process.env.BIG_CMS_APP_VERSION ?? null,
   }
 }

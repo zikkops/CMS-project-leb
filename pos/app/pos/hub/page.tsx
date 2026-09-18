@@ -30,6 +30,7 @@ function useIsMobile(breakpoint = 768) {
 }
 
 interface HubStatus {
+  appVersion?: string | null
   tradingOnline: boolean
   paired: boolean
   revoked: boolean
@@ -340,6 +341,10 @@ export default function HubPage() {
           <a href="/pos" style={{ color: 'var(--offwhite)', fontSize: '0.95rem', fontWeight: 600, marginRight: '1.5rem' }}>Go to the till</a>
           <a href="/pos/login" style={{ color: 'rgba(var(--offwhite-rgb),0.7)', fontSize: '0.95rem' }}>Sign in</a>
         </p>
+        {/* Which build this PC runs, so two installs can be told apart (UPGRADE.md T1.25). */}
+        {status?.appVersion && (
+          <p style={{ textAlign: 'center', marginTop: '0.8rem', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>BIG CMS POS {status.appVersion}</p>
+        )}
       </div>
     </main>
   )
