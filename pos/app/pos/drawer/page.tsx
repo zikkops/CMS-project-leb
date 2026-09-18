@@ -36,7 +36,7 @@ import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import {
   useOpenShift, openDrawer, readDrawer, closeDrawer, type ZResult,
 } from '../../lib/usePos'
-import { PosButton, StatusBadge, SectionLabel } from '../../lib/posUi'
+import { PosButton, StatusBadge, SectionLabel, PosLoading } from '../../lib/posUi'
 import { useHubOnly, HubOnlyBanner } from '../../lib/useHubOnly'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
@@ -183,7 +183,7 @@ export default function DrawerPage() {
   }
 
   if (blocked) return null
-  if (checking) return null
+  if (checking) return <PosLoading />
 
   const counted: Money2 = countedCash(countLbp, countUsd)
   // Short is red, exact is teal, over is the palette's third colour — over is

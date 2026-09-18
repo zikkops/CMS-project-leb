@@ -40,7 +40,7 @@ import { usePrintingSettings } from '../../lib/useTillSettings'
 import { activeStations } from '@big-cms/shared/printing'
 import { useAutoPrintTickets, useAutoPrintReceipts, usePrintsHere } from '../../lib/useAutoPrint'
 import { useBusinessSettings } from '../../lib/useTillSettings'
-import { PosButton, Chip, StatusBadge, STATION_COLOUR } from '../../lib/posUi'
+import { PosButton, Chip, StatusBadge, STATION_COLOUR, PosLoading } from '../../lib/posUi'
 import { useHubOnly, HubOnlyBanner } from '../../lib/useHubOnly'
 
 const STORAGE_KEY = 'kds.station'
@@ -359,7 +359,7 @@ export default function KdsPage() {
       </main>
     )
   }
-  if (checking) return null
+  if (checking) return <PosLoading />
 
   if (!station) {
     return (

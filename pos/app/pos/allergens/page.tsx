@@ -24,7 +24,7 @@ import { useTillAccess } from '../../lib/useTillAccess'
 import { useFeature } from '../../lib/useTillSettings'
 import { ALLERGENS_EU14 } from '@big-cms/shared/foodSafety'
 import { allergenVerdict } from '@big-cms/shared/allergens'
-import { PosButton, Chip, SectionLabel, StatusBadge } from '../../lib/posUi'
+import { PosButton, Chip, SectionLabel, StatusBadge, PosLoading } from '../../lib/posUi'
 import { useAllergenChart, type ChartDish } from '../../lib/useAllergens'
 import { AllergenAnswer, allergenName } from '../../lib/allergenView'
 
@@ -145,7 +145,7 @@ export default function PosAllergensPage() {
       </main>
     )
   }
-  if (checking || flagsLoading) return null
+  if (checking || flagsLoading) return <PosLoading />
 
   const rows = (list: ChartDish[]) => list.map(d => (
     <DishRow key={d.menuItemId} dish={d} isMobile={isMobile}

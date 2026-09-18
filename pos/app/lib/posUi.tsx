@@ -49,7 +49,7 @@ const TONE: Record<Tone, { bg: string; border: string; color: string }> = {
  * different shape, not a different shade.
  */
 export function PosButton({
-  icon, label, tone = 'neutral', size = 'md', onClick, disabled, badge, full, grow, style, ariaLabel, title, iconOnly,
+  icon, label, tone = 'neutral', size = 'md', onClick, disabled, badge, full, grow, style, ariaLabel, title, iconOnly, type = 'button',
 }: {
   icon?: IconDefinition
   label: ReactNode
@@ -67,11 +67,13 @@ export function PosButton({
   title?: string
   /** Show only the icon (the label is still the accessible name). */
   iconOnly?: boolean
+  /** 'submit' for the main button of a form, so Enter presses it. */
+  type?: 'button' | 'submit'
 }) {
   const t = TONE[tone]
   return (
     <button
-      type="button"
+      type={type}
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       aria-label={ariaLabel ?? (typeof label === 'string' ? label : undefined)}
@@ -83,7 +85,9 @@ export function PosButton({
         // this a flex item never goes narrower than its content, and on a phone
         // the bar ran off the screen with Send half outside it (16 Sep, a café).
         minWidth: iconOnly ? `${HEIGHT[size]}px` : grow ? 0 : undefined,
-        padding: iconOnly ? '0' : size === 'sm' ? '0 0.85rem' : '0 1.1rem',
+        // A button sharing a bar gets tighter sides, so its word still fits
+        // on one line when the bar is a phone's width.
+        padding: iconOnly ? '0' : size === 'sm' || grow ? '0 0.75rem' : '0 1.1rem',
         width: full ? '100%' : undefined, flex: grow ? `${grow} 1 0` : undefined,
         borderRadius: '8px', cursor: disabled ? 'not-allowed' : 'pointer',
         fontFamily: 'var(--font-inter)', fontSize: FONT[size], fontWeight: tone === 'primary' ? 700 : 600,
@@ -98,7 +102,7 @@ export function PosButton({
       }}
     >
       {icon && <FontAwesomeIcon icon={icon} style={{ fontSize: size === 'lg' ? '1.15em' : '1.05em', flexShrink: 0 }} />}
-      {!iconOnly && <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{label}</span>}
+      {!iconOnly && <span style={{ overflowWrap: 'break-word' }}>{label}</span>}
       {badge !== undefined && badge !== null && badge !== 0 && (
         <span style={{
           minWidth: '1.6rem', height: '1.6rem', padding: '0 0.45rem', borderRadius: '999px',
@@ -216,4 +220,60 @@ export const STATION_COLOUR: Record<string, string> = {
   Kitchen: '#F97316',
   Bar: '#3B82F6',
   Sweets: '#EC4899',
+}
+
+/**
+ * What a till screen shows while it checks who is signed in, instead of a
+ * blank page. On a slow phone that check can take a second or two, and a
+ * black screen reads as broken (UPGRADE.md T1.1).
+ */
+export function PosLoading({ label = 'Loading…' }: { label?: string }) {
+  return (
+    <main role="status" aria-live="polite" style={{
+      minHeight: '100vh', backgroundColor: 'var(--black)', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', gap: '0.7rem',
+      fontFamily: 'var(--font-inter)', fontSize: '1.05rem', color: 'rgba(var(--offwhite-rgb),0.6)',
+    }}>
+      <span aria-hidden style={{
+        width: '1.1rem', height: '1.1rem', borderRadius: '50%',
+        border: '2px solid rgba(var(--offwhite-rgb),0.2)', borderTopColor: 'rgba(var(--offwhite-rgb),0.7)',
+        animation: 'pos-spin 0.8s linear infinite',
+      }} />
+      {label}
+      <style>{'@keyframes pos-spin { to { transform: rotate(360deg) } }'}</style>
+    </main>
+  )
+}
+
+/**
+ * A number with − and + either side, for counts a chip row cannot hold: a
+ * party of eleven, a quantity of twelve (UPGRADE.md T1.4). Each button is a
+ * full touch target; the value between them is read out as it changes.
+ */
+export function Stepper({ value, onChange, min = 1, max = 99, label }: {
+  value: number
+  onChange: (next: number) => void
+  min?: number
+  max?: number
+  /** What is being counted, for screen readers: "Guests". */
+  label: string
+}) {
+  const btn: CSSProperties = {
+    width: `${HEIGHT.sm}px`, height: `${HEIGHT.sm}px`, borderRadius: '8px',
+    background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.2)',
+    color: 'var(--offwhite)', fontSize: '1.3rem', fontWeight: 700, cursor: 'pointer',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  }
+  return (
+    <div role="group" aria-label={label} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+      <button type="button" aria-label={`Fewer ${label.toLowerCase()}`} disabled={value <= min}
+        onClick={() => onChange(Math.max(min, value - 1))} style={{ ...btn, opacity: value <= min ? 0.35 : 1 }}>−</button>
+      <span aria-live="polite" style={{
+        minWidth: '2.4rem', textAlign: 'center', fontFamily: 'var(--font-inter)',
+        fontSize: '1.25rem', fontWeight: 700, color: 'var(--offwhite)',
+      }}>{value}</span>
+      <button type="button" aria-label={`More ${label.toLowerCase()}`} disabled={value >= max}
+        onClick={() => onChange(Math.min(max, value + 1))} style={{ ...btn, opacity: value >= max ? 0.35 : 1 }}>+</button>
+    </div>
+  )
 }

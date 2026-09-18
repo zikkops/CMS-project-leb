@@ -30,7 +30,7 @@ import { BRAND } from '@big-cms/shared/brand'
 import { checkTotals, VOID_REASONS, type Check } from '@big-cms/shared/checks'
 import { ymdInZone } from '@big-cms/shared/dates'
 import { useClosedChecks, refundCheck } from '../../lib/usePos'
-import { PosButton, StatusBadge } from '../../lib/posUi'
+import { PosButton, StatusBadge, PosLoading } from '../../lib/posUi'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -365,7 +365,7 @@ export default function ClosedChecksPage() {
   }, [checks])
 
   if (blocked) { router.replace('/pos'); return null }
-  if (checking) return null
+  if (checking) return <PosLoading />
 
   return (
     <main style={{

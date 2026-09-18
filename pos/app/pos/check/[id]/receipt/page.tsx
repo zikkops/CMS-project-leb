@@ -30,6 +30,7 @@ import {
   buildReceipt, receiptToText, receiptBlockedReason, RECEIPT_WIDTHS,
 } from '@big-cms/shared/receipt'
 import { useCheck } from '../../../../lib/usePos'
+import { PosLoading } from '../../../../lib/posUi'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -82,7 +83,7 @@ export default function ReceiptPage() {
     return receiptToText(rows, width)
   }, [check, blocked, settings.exchangeRate, width])
 
-  if (checking) return null
+  if (checking) return <PosLoading />
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--black)', padding: '1.5rem 1rem 4rem' }}>

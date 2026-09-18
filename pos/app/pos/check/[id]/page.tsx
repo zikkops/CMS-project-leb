@@ -55,7 +55,7 @@ import {
   addLines, sendCheck, voidLine, moveCheck, closeCheck, setStaffMeal,
   type DraftLine, type PosMenuItem, type PosProduct,
 } from '../../../lib/usePos'
-import { PosButton, Chip, StatusBadge, SectionLabel, kindColour, type Tone } from '../../../lib/posUi'
+import { PosButton, Chip, StatusBadge, SectionLabel, kindColour, type Tone, PosLoading } from '../../../lib/posUi'
 import { useHubOnly, HubOnlyBanner } from '../../../lib/useHubOnly'
 import { useAllergenChart, readDishAllergens, type ChartDish, type DishAnswer } from '../../../lib/useAllergens'
 import { AllergenAnswer } from '../../../lib/allergenView'
@@ -822,7 +822,7 @@ export default function CheckPage() {
   }
 
   if (blocked) { router.replace('/pos'); return null }
-  if (checking) return null
+  if (checking) return <PosLoading />
   if (!check) {
     return (
       <main style={{
@@ -1291,7 +1291,9 @@ export default function CheckPage() {
 
       {moving && (
         <div style={sheet} onClick={() => setMoving(false)}>
-          <div style={sheetInner} onClick={e => e.stopPropagation()}>
+          {/* A form, so Enter on a PC moves the table (UPGRADE.md T1.2). */}
+          <form style={sheetInner} onClick={e => e.stopPropagation()}
+            onSubmit={e => { e.preventDefault(); if (moveTo) void handleMove() }}>
             <h2 style={{ ...sheetTitle, marginBottom: '1rem' }}>Move to which table?</h2>
 
             {/* Typed, the same way a table is opened — the floor plan is not
@@ -1314,9 +1316,9 @@ export default function CheckPage() {
             <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem' }}>
               <PosButton icon={faXmark} label="Cancel" tone="quiet" grow={1} onClick={() => { setMoving(false); setMoveTo('') }} />
               <PosButton icon={faArrowRightArrowLeft} label={`Move to ${moveTo || '…'}`} tone="primary" size="lg" grow={2}
-                disabled={!moveTo} onClick={handleMove} />
+                type="submit" disabled={!moveTo} />
             </div>
-          </div>
+          </form>
         </div>
       )}
     </main>

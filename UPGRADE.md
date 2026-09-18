@@ -93,15 +93,19 @@ The owner's goals it answers:
 
 ### Till (`pos/`)
 
-- [ ] **T1.1 Friendly loading instead of blank.** Seven pages return `null`
+- [x] **T1.1 Friendly loading instead of blank.** Seven pages return `null`
   while the sign-in is checked (floor, check, closed, drawer, kds, allergens,
   receipt). Add one shared "Loading…" line in `posUi.tsx`.
-- [ ] **T1.2 Enter submits the number fields.** Open table, Move table and the
+  *Done: PosLoading in posUi.tsx, on the floor, check, receipt, closed, drawer, KDS and allergens pages.*
+- [x] **T1.2 Enter submits the number fields.** Open table, Move table and the
   counter's table box are not in a `<form>`, so "7 ⏎" does nothing on a PC.
-- [ ] **T1.3 Opening a table that is already open goes to its check**, instead
+  *Done: the floor's and counter's Open a table and the check's Move sheet are forms; the main button is type=submit (PosButton gained type).*
+- [x] **T1.3 Opening a table that is already open goes to its check**, instead
   of an error (`pos/app/pos/page.tsx`, the counter).
-- [ ] **T1.4 Guest count 1–8 plus a stepper.** The chips are
+  *Done: the floor and the counter go to (select) the open check instead of asking the server.*
+- [x] **T1.4 Guest count 1–8 plus a stepper.** The chips are
   `[1,2,3,4,5,6,8]`, with no 7 and no 9+ (floor and counter).
+  *Done: chips 1–8 plus a shared Stepper (posUi.tsx) up to 60, floor and counter. Buttons sharing a bar now have tighter sides, so their word fits at 366px.*
 - [ ] **T1.5 Offline sign-in message.** On a hub with no internet, email
   sign-in says "That email and password did not match". Detect
   `isNetworkFailure()` and say "No internet. Sign in with your phone above."

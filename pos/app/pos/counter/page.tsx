@@ -59,7 +59,7 @@ import {
   checkDue, draftsUsd, queuedUsd, replayApplied, takeBlocked,
 } from '../../lib/counterTotals'
 import type { OutboxAction } from '../../lib/outbox'
-import { PosButton, Chip, StatusBadge, SectionLabel, kindColour } from '../../lib/posUi'
+import { PosButton, Chip, StatusBadge, SectionLabel, kindColour, Stepper } from '../../lib/posUi'
 import { ReadyPanel } from '../../lib/ReadyPanel'
 import { useHubOnly, HubOnlyBanner } from '../../lib/useHubOnly'
 
@@ -311,6 +311,9 @@ export default function CounterPage() {
   async function handleOpen() {
     const n = Number(tableNumber)
     if (!Number.isInteger(n) || n < 1) { setError('Enter a table number.'); return }
+    // Already open here: select it, rather than an error saying so (UPGRADE.md T1.3).
+    const existing = tables.find(t => t.tableNumber === n)
+    if (existing) { setSelected(existing.checkId); setOpening(false); setTableNumber(''); setDrafts([]); setError(''); return }
     const guestCount = Math.max(1, Number(guests) || 1)
     setBusy('Opening…'); setError('')
 
@@ -500,7 +503,8 @@ export default function CounterPage() {
       </div>
 
       {opening && (
-        <div style={card}>
+        // A form, so Enter on the counter PC opens the table (UPGRADE.md T1.2).
+        <form style={card} onSubmit={e => { e.preventDefault(); void handleOpen() }}>
           <SectionLabel>Open a table</SectionLabel>
           <input
             value={tableNumber}
@@ -516,17 +520,18 @@ export default function CounterPage() {
             }}
           />
           <SectionLabel icon={faUserGroup}>Guests</SectionLabel>
-          <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
-            {[1, 2, 3, 4, 5, 6, 8].map(n => (
+          <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
               <Chip key={n} label={String(n)} active={guests === String(n)} onClick={() => setGuests(String(n))} size="sm" />
             ))}
+            <Stepper label="Guests" value={Math.max(1, Number(guests) || 1)} onChange={n => setGuests(String(n))} max={60} />
           </div>
           <div style={{ display: 'flex', gap: '0.55rem', marginTop: '1rem' }}>
             <PosButton icon={faXmark} label="Cancel" tone="quiet" grow={1} onClick={() => setOpening(false)} />
             <PosButton icon={faPlus} label={busy === 'Opening…' ? 'Opening…' : `Open table ${tableNumber || ''}`} tone="primary" size="lg" grow={2}
-              disabled={Boolean(busy) || !tableNumber} onClick={handleOpen} />
+              type="submit" disabled={Boolean(busy) || !tableNumber} />
           </div>
-        </div>
+        </form>
       )}
     </>
   )

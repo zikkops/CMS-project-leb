@@ -36,7 +36,7 @@ import { minutesWaiting, urgency } from '@big-cms/shared/tickets'
 import { todayYmd } from '@big-cms/shared/dates'
 import { closedAtParts } from '@big-cms/shared/salesExport'
 import { useOpenChecks, useChecksClosedSince, openCheck } from '../lib/usePos'
-import { PosButton, Chip, StatusBadge } from '../lib/posUi'
+import { PosButton, Chip, StatusBadge, PosLoading, Stepper } from '../lib/posUi'
 import { floorReadings, readReadingChoice, READINGS, type ReadingKey } from '../lib/floorReadings'
 import { ReadyPanel } from '../lib/ReadyPanel'
 import { useHubOnly, HubOnlyBanner } from '../lib/useHubOnly'
@@ -301,6 +301,9 @@ export default function FloorPage() {
   async function handleOpen() {
     const n = Number(tableNumber)
     if (!Number.isInteger(n) || n < 1) { setError('Enter a table number.'); return }
+    // Already open: go to it, rather than an error saying so (UPGRADE.md T1.3).
+    const existing = open.find(c => c.tableNumber === n)
+    if (existing) { router.push(`/pos/check/${existing.id}`); return }
     setBusy(true)
     setError('')
     try {
@@ -334,7 +337,7 @@ export default function FloorPage() {
       </main>
     )
   }
-  if (checking) return null
+  if (checking) return <PosLoading />
 
   const closedValue = closedLoading ? '…' : money(readings.closedTodayUsd)
   const readingValue: Record<ReadingKey, { value: string; sub?: string }> = {
@@ -567,7 +570,9 @@ export default function FloorPage() {
             display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 50,
           }}
         >
-          <div
+          <form
+            // A form, so Enter on a PC opens the table (UPGRADE.md T1.2).
+            onSubmit={e => { e.preventDefault(); void handleOpen() }}
             onClick={e => e.stopPropagation()}
             style={{
               backgroundColor: '#111', width: '100%', maxWidth: '560px',
@@ -603,10 +608,12 @@ export default function FloorPage() {
               display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.08em',
               textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.6)', margin: '1.1rem 0 0.5rem',
             }}><FontAwesomeIcon icon={faUserGroup} />Guests</label>
-            <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
-              {[1, 2, 3, 4, 5, 6, 8].map(n => (
+            <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
                 <Chip key={n} label={String(n)} active={guests === String(n)} onClick={() => setGuests(String(n))} />
               ))}
+              {/* A bigger party: the stepper goes past 8 (UPGRADE.md T1.4). */}
+              <Stepper label="Guests" value={Math.max(1, Number(guests) || 1)} onChange={n => setGuests(String(n))} max={60} />
             </div>
 
             {error && (
@@ -618,9 +625,9 @@ export default function FloorPage() {
             <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.3rem' }}>
               <PosButton icon={faXmark} label="Cancel" tone="quiet" grow={1} onClick={() => setAdding(false)} />
               <PosButton icon={faPlus} label={busy ? 'Opening…' : `Open table ${tableNumber || ''}`} tone="primary" size="lg" grow={2}
-                disabled={busy || !tableNumber} onClick={handleOpen} />
+                type="submit" disabled={busy || !tableNumber} />
             </div>
-          </div>
+          </form>
         </div>
       )}
     </main>
