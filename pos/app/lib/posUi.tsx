@@ -21,7 +21,7 @@
 //
 // Module-scope components only (CONTRIBUTING.md gotcha #2).
 
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTriangleExclamation, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 
@@ -326,6 +326,72 @@ export function ErrorNote({ message, details, tone = 'danger' }: {
           {open && <span style={{ display: 'block', marginTop: '0.4rem', opacity: 0.85, fontSize: '0.88rem' }}>{split.rest}</span>}
         </>
       )}
+    </div>
+  )
+}
+
+/**
+ * A sheet over the screen: the options for a dish, what to do with a line, how
+ * to close a check (UPGRADE.md T2.3). Each used to be two divs, which a screen
+ * reader did not know was a dialog, which Escape did not close, and which left
+ * the focus behind it on the page.
+ *
+ * - role="dialog", aria-modal, and a label.
+ * - Escape closes it, as the backdrop does.
+ * - Focus moves into it when it opens and back where it was when it closes.
+ * - `backdropCloses={false}` for a sheet holding choices a stray tap must not
+ *   throw away (the options for a dish).
+ * - `onSubmit` makes the panel a form, so Enter submits it.
+ * - `center` puts it in the middle of a wide screen instead of at the bottom.
+ */
+export function Sheet({ label, onClose, children, backdropCloses = true, onSubmit, center = false }: {
+  label: string
+  onClose: () => void
+  children: ReactNode
+  backdropCloses?: boolean
+  onSubmit?: () => void
+  center?: boolean
+}) {
+  const panel = useRef<HTMLElement | null>(null)
+  const closeRef = useRef(onClose)
+  useEffect(() => { closeRef.current = onClose })
+
+  useEffect(() => {
+    const before = document.activeElement as HTMLElement | null
+    // Into the sheet: its own autofocus field if it has one, else its first control.
+    const el = panel.current
+    if (el && !el.contains(document.activeElement)) {
+      const first = el.querySelector<HTMLElement>('[autofocus], input, select, textarea, button, [href], [tabindex]:not([tabindex="-1"])')
+      ;(first ?? el).focus()
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeRef.current() }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      if (before && document.contains(before)) before.focus()
+    }
+  }, [])
+
+  const inner: CSSProperties = {
+    backgroundColor: '#111', width: '100%', maxWidth: center ? '560px' : '720px',
+    maxHeight: '90vh', overflowY: 'auto', borderRadius: center ? '14px' : '14px 14px 0 0',
+    padding: '1.4rem 1.2rem 2rem', border: '1px solid rgba(255,255,255,0.12)', outline: 'none',
+  }
+  const common = {
+    role: 'dialog' as const, 'aria-modal': true, 'aria-label': label, tabIndex: -1, style: inner,
+    onClick: (e: React.MouseEvent) => e.stopPropagation(),
+  }
+  return (
+    <div
+      onClick={backdropCloses ? onClose : undefined}
+      style={{
+        position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)', zIndex: 50,
+        display: 'flex', alignItems: center ? 'center' : 'flex-end', justifyContent: 'center',
+      }}
+    >
+      {onSubmit
+        ? <form {...common} ref={el => { panel.current = el }} onSubmit={e => { e.preventDefault(); onSubmit() }}>{children}</form>
+        : <div {...common} ref={el => { panel.current = el }}>{children}</div>}
     </div>
   )
 }

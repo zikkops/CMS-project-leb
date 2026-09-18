@@ -36,7 +36,7 @@ import { minutesWaiting, urgency } from '@big-cms/shared/tickets'
 import { todayYmd } from '@big-cms/shared/dates'
 import { closedAtParts } from '@big-cms/shared/salesExport'
 import { useOpenChecks, useChecksClosedSince, openCheck } from '../lib/usePos'
-import { PosButton, Chip, StatusBadge, PosLoading, Stepper } from '../lib/posUi'
+import { PosButton, Chip, StatusBadge, PosLoading, Stepper, Sheet } from '../lib/posUi'
 import { floorReadings, readReadingChoice, READINGS, type ReadingKey } from '../lib/floorReadings'
 import { ReadyPanel } from '../lib/ReadyPanel'
 import { useHubOnly, HubOnlyBanner } from '../lib/useHubOnly'
@@ -577,73 +577,58 @@ export default function FloorPage() {
       )}
 
       {adding && (
-        <div
-          onClick={() => setAdding(false)}
-          style={{
-            position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)',
-            display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 50,
-          }}
-        >
-          <form
-            // A form, so Enter on a PC opens the table (UPGRADE.md T1.2).
-            onSubmit={e => { e.preventDefault(); void handleOpen() }}
-            onClick={e => e.stopPropagation()}
+        // A form, so Enter on a PC opens the table (UPGRADE.md T1.2), and a proper
+        // dialog: Escape closes it, focus goes in and comes back (T2.3).
+        <Sheet label="Open a table" onClose={() => setAdding(false)} onSubmit={() => { void handleOpen() }} center={!isMobile}>
+          <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem', color: 'var(--offwhite)', marginBottom: '1rem' }}>
+            Open a table
+          </h2>
+
+          <label htmlFor="open-table-number" style={{
+            display: 'block', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.08em',
+            textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.6)', marginBottom: '0.45rem',
+          }}>Table number</label>
+          <input
+            id="open-table-number"
+            value={tableNumber}
+            onChange={e => setTableNumber(e.target.value.replace(/[^0-9]/g, ''))}
+            // A numeric keypad, not a full keyboard: this is the one field a
+            // waiter fills on every single table.
+            inputMode="numeric"
+            autoFocus
+            placeholder="7"
             style={{
-              backgroundColor: '#111', width: '100%', maxWidth: '560px',
-              borderRadius: isMobile ? '14px 14px 0 0' : '14px', padding: '1.4rem 1.2rem 1.8rem',
-              border: '1px solid rgba(255,255,255,0.12)',
+              width: '100%', minHeight: '72px', textAlign: 'center',
+              background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.18)',
+              borderRadius: '10px', color: 'var(--offwhite)',
+              fontFamily: 'var(--font-cinzel)', fontSize: '2.2rem', outline: 'none',
             }}
-          >
-            <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem', color: 'var(--offwhite)', marginBottom: '1rem' }}>
-              Open a table
-            </h2>
+          />
 
-            <label htmlFor="open-table-number" style={{
-              display: 'block', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.08em',
-              textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.6)', marginBottom: '0.45rem',
-            }}>Table number</label>
-            <input
-              id="open-table-number"
-              value={tableNumber}
-              onChange={e => setTableNumber(e.target.value.replace(/[^0-9]/g, ''))}
-              // A numeric keypad, not a full keyboard: this is the one field a
-              // waiter fills on every single table.
-              inputMode="numeric"
-              autoFocus
-              placeholder="7"
-              style={{
-                width: '100%', minHeight: '72px', textAlign: 'center',
-                background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.18)',
-                borderRadius: '10px', color: 'var(--offwhite)',
-                fontFamily: 'var(--font-cinzel)', fontSize: '2.2rem', outline: 'none',
-              }}
-            />
+          <p id="open-table-guests" style={{
+            display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.08em',
+            textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.6)', margin: '1.1rem 0 0.5rem',
+          }}><FontAwesomeIcon icon={faUserGroup} />Guests</p>
+          <div role="group" aria-labelledby="open-table-guests" style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+              <Chip key={n} label={String(n)} active={guests === String(n)} onClick={() => setGuests(String(n))} />
+            ))}
+            {/* A bigger party: the stepper goes past 8 (UPGRADE.md T1.4). */}
+            <Stepper label="Guests" value={Math.max(1, Number(guests) || 1)} onChange={n => setGuests(String(n))} max={60} />
+          </div>
 
-            <p id="open-table-guests" style={{
-              display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.08em',
-              textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.6)', margin: '1.1rem 0 0.5rem',
-            }}><FontAwesomeIcon icon={faUserGroup} />Guests</p>
-            <div role="group" aria-labelledby="open-table-guests" style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-                <Chip key={n} label={String(n)} active={guests === String(n)} onClick={() => setGuests(String(n))} />
-              ))}
-              {/* A bigger party: the stepper goes past 8 (UPGRADE.md T1.4). */}
-              <Stepper label="Guests" value={Math.max(1, Number(guests) || 1)} onChange={n => setGuests(String(n))} max={60} />
-            </div>
+          {error && (
+            <p style={{ color: 'var(--red)', fontSize: '0.95rem', marginTop: '0.9rem' }}>
+              <FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.4rem' }} />{error}
+            </p>
+          )}
 
-            {error && (
-              <p style={{ color: 'var(--red)', fontSize: '0.95rem', marginTop: '0.9rem' }}>
-                <FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.4rem' }} />{error}
-              </p>
-            )}
-
-            <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.3rem' }}>
-              <PosButton icon={faXmark} label="Cancel" tone="quiet" grow={1} onClick={() => setAdding(false)} />
-              <PosButton icon={faPlus} label={busy ? 'Opening…' : `Open table ${tableNumber || ''}`} tone="primary" size="lg" grow={2}
-                type="submit" disabled={busy || !tableNumber} />
-            </div>
-          </form>
-        </div>
+          <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.3rem' }}>
+            <PosButton icon={faXmark} label="Cancel" tone="quiet" grow={1} onClick={() => setAdding(false)} />
+            <PosButton icon={faPlus} label={busy ? 'Opening…' : `Open table ${tableNumber || ''}`} tone="primary" size="lg" grow={2}
+              type="submit" disabled={busy || !tableNumber} />
+          </div>
+        </Sheet>
       )}
     </main>
   )

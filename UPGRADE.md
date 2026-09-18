@@ -235,9 +235,10 @@ The owner's goals it answers:
   state, search box) and `ConfirmDialog` + `useToast`. This replaces 30 native
   `confirm()`/`alert()` calls, one page at a time.
   *Done: DataTable (search box, sortable columns with aria-sort, empty and no-match states), useConfirm() (a dialog in the page's style; Escape and the backdrop say no) and useToast() in the kit. Manage Users' revoke uses them instead of confirm() and alert(). Checked on a temporary preview page: sorting, search, the dialog, Escape, the toast. The other 28 confirm/alert calls move as their pages are touched.*
-- [ ] **T2.3 POS `Sheet` wrapper** in `posUi.tsx`: `role="dialog"`,
+- [x] **T2.3 POS `Sheet` wrapper** in `posUi.tsx`: `role="dialog"`,
   `aria-modal`, Escape, focus handling. It keeps the modifier sheet's choices
   when the backdrop is tapped (today a stray tap throws them away).
+  *Done: Sheet in posUi.tsx: role=dialog, aria-modal, a label, Escape closes, focus goes in (the autofocus field first) and back; backdropCloses={false} for the dish options; onSubmit makes it a form; center for a wide screen. All six order-screen sheets and the floor's Open a table use it. Checked on the test hub: Check options (labelled, focus in and back, Escape), the options sheet kept 'Large' through a backdrop tap, and Open a table focuses its number field and closes on Escape. PaySheet keeps its own overlay, moving with T2.4.*
 - [ ] **T2.4 PaySheet, DiscountSheet, CustomerSheet, receipt, login and hub
   on `PosButton`/`Chip`.** They still use their own 40–48px constants (under
   the 44px floor for chips), 0.64–0.82rem text, faded-teal disabled states,

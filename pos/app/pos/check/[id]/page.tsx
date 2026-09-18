@@ -55,7 +55,7 @@ import {
   addLines, sendCheck, voidLine, moveCheck, closeCheck, setStaffMeal,
   type DraftLine, type PosMenuItem, type PosProduct,
 } from '../../../lib/usePos'
-import { PosButton, Chip, StatusBadge, SectionLabel, kindColour, type Tone, PosLoading, ErrorNote } from '../../../lib/posUi'
+import { PosButton, Chip, StatusBadge, SectionLabel, kindColour, type Tone, PosLoading, ErrorNote, Sheet } from '../../../lib/posUi'
 import { useHubOnly, HubOnlyBanner } from '../../../lib/useHubOnly'
 import { useAllergenChart, readDishAllergens, type ChartDish, type DishAnswer } from '../../../lib/useAllergens'
 import { AllergenAnswer } from '../../../lib/allergenView'
@@ -129,15 +129,6 @@ const URGENCY_TONE: Record<ReturnType<typeof urgency>, Tone> = {
   late: 'danger',
 }
 
-const sheet: React.CSSProperties = {
-  position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)',
-  display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50,
-}
-const sheetInner: React.CSSProperties = {
-  backgroundColor: '#111', width: '100%', maxWidth: '720px',
-  maxHeight: '90vh', overflowY: 'auto', borderRadius: '14px 14px 0 0',
-  padding: '1.4rem 1.2rem 2rem', border: '1px solid rgba(255,255,255,0.12)',
-}
 const sheetTitle: React.CSSProperties = {
   fontFamily: 'var(--font-cinzel)', fontSize: '1.35rem', color: 'var(--offwhite)',
 }
@@ -334,83 +325,81 @@ function ModifierSheet({
   const current = answer && answer.key === selectionKey ? answer : null
 
   return (
-    <div style={sheet} onClick={onCancel}>
-      <div style={sheetInner} onClick={e => e.stopPropagation()}>
-        <h2 style={{ ...sheetTitle, marginBottom: '0.2rem' }}>{item.name}</h2>
-        <p style={{ fontSize: '0.9rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginBottom: '0.6rem' }}>{money(item.price)}</p>
+    <Sheet label="Options" onClose={onCancel} backdropCloses={false}>
+      <h2 style={{ ...sheetTitle, marginBottom: '0.2rem' }}>{item.name}</h2>
+      <p style={{ fontSize: '0.9rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginBottom: '0.6rem' }}>{money(item.price)}</p>
 
-        {allergens && (
-          <div style={{
-            margin: '0.2rem 0 0.4rem', padding: '0.75rem 0.9rem', borderRadius: '10px',
-            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.12)',
+      {allergens && (
+        <div style={{
+          margin: '0.2rem 0 0.4rem', padding: '0.75rem 0.9rem', borderRadius: '10px',
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.12)',
+        }}>
+          <p style={{
+            display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.5rem',
+            fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.55)',
           }}>
-            <p style={{
-              display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.5rem',
-              fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.55)',
-            }}>
-              <FontAwesomeIcon icon={faWheatAwnCircleExclamation} />
-              {allIds.length > 0 ? 'Allergens with these options' : 'Allergens'}
-            </p>
-            {current?.dish ? (
-              <>
-                <AllergenAnswer size="md" verified={current.dish.verified} contains={current.dish.contains} others={current.dish.others} />
-                {current.dish.reasons.map(r => (
-                  <p key={r} style={{ fontSize: '0.88rem', color: 'var(--red)', marginTop: '0.4rem', lineHeight: 1.45 }}>{r}</p>
-                ))}
-              </>
-            ) : current?.error ? (
-              <p style={{ fontSize: '0.92rem', color: 'var(--red)', lineHeight: 1.5 }}>
-                <FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.4rem' }} />
-                {current.error} Ask the kitchen — do not guess.
-              </p>
-            ) : (
-              <p style={{ fontSize: '0.92rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>Checking…</p>
-            )}
-          </div>
-        )}
-
-        {groups.map(g => (
-          <div key={g.id}>
-            <SectionLabel icon={faSliders}>{g.name} · {selectionLabel(g)}</SectionLabel>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.5rem' }}>
-              {g.options.map(o => {
-                const on = (chosen[g.id] ?? []).includes(o.id)
-                return (
-                  <button key={o.id} type="button" onClick={() => toggle(g, o.id)} aria-pressed={on} style={{
-                    minHeight: '60px', borderRadius: '10px', cursor: 'pointer', textAlign: 'left',
-                    padding: '0.6rem 0.9rem', fontFamily: 'var(--font-inter)', fontSize: '1rem',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem',
-                    backgroundColor: on ? 'rgba(var(--teal-rgb),0.22)' : 'rgba(255,255,255,0.04)',
-                    border: `2px solid ${on ? 'var(--teal)' : 'rgba(255,255,255,0.14)'}`,
-                    color: 'var(--offwhite)', fontWeight: on ? 700 : 500,
-                  }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                      {on && <FontAwesomeIcon icon={faCheck} style={{ color: 'var(--teal)' }} />}
-                      {o.name}
-                    </span>
-                    {o.priceDelta > 0 && (
-                      <span style={{ color: 'rgba(var(--offwhite-rgb),0.6)', fontSize: '0.9rem' }}>+{money(o.priceDelta)}</span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-
-        {problem && (
-          <p style={{ color: 'var(--brand-secondary)', fontSize: '0.92rem', margin: '1rem 0 0' }}>
-            <FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.4rem' }} />{problem}
+            <FontAwesomeIcon icon={faWheatAwnCircleExclamation} />
+            {allIds.length > 0 ? 'Allergens with these options' : 'Allergens'}
           </p>
-        )}
-
-        <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.2rem' }}>
-          <PosButton icon={faXmark} label="Cancel" tone="quiet" grow={1} onClick={onCancel} />
-          <PosButton icon={faPlus} label={`Add ${money(item.price + extra)}`} tone="primary" size="lg" grow={2}
-            disabled={Boolean(problem)} onClick={() => onAdd(allIds, label)} />
+          {current?.dish ? (
+            <>
+              <AllergenAnswer size="md" verified={current.dish.verified} contains={current.dish.contains} others={current.dish.others} />
+              {current.dish.reasons.map(r => (
+                <p key={r} style={{ fontSize: '0.88rem', color: 'var(--red)', marginTop: '0.4rem', lineHeight: 1.45 }}>{r}</p>
+              ))}
+            </>
+          ) : current?.error ? (
+            <p style={{ fontSize: '0.92rem', color: 'var(--red)', lineHeight: 1.5 }}>
+              <FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.4rem' }} />
+              {current.error} Ask the kitchen — do not guess.
+            </p>
+          ) : (
+            <p style={{ fontSize: '0.92rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>Checking…</p>
+          )}
         </div>
+      )}
+
+      {groups.map(g => (
+        <div key={g.id}>
+          <SectionLabel icon={faSliders}>{g.name} · {selectionLabel(g)}</SectionLabel>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.5rem' }}>
+            {g.options.map(o => {
+              const on = (chosen[g.id] ?? []).includes(o.id)
+              return (
+                <button key={o.id} type="button" onClick={() => toggle(g, o.id)} aria-pressed={on} style={{
+                  minHeight: '60px', borderRadius: '10px', cursor: 'pointer', textAlign: 'left',
+                  padding: '0.6rem 0.9rem', fontFamily: 'var(--font-inter)', fontSize: '1rem',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem',
+                  backgroundColor: on ? 'rgba(var(--teal-rgb),0.22)' : 'rgba(255,255,255,0.04)',
+                  border: `2px solid ${on ? 'var(--teal)' : 'rgba(255,255,255,0.14)'}`,
+                  color: 'var(--offwhite)', fontWeight: on ? 700 : 500,
+                }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {on && <FontAwesomeIcon icon={faCheck} style={{ color: 'var(--teal)' }} />}
+                    {o.name}
+                  </span>
+                  {o.priceDelta > 0 && (
+                    <span style={{ color: 'rgba(var(--offwhite-rgb),0.6)', fontSize: '0.9rem' }}>+{money(o.priceDelta)}</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+
+      {problem && (
+        <p style={{ color: 'var(--brand-secondary)', fontSize: '0.92rem', margin: '1rem 0 0' }}>
+          <FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: '0.4rem' }} />{problem}
+        </p>
+      )}
+
+      <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.2rem' }}>
+        <PosButton icon={faXmark} label="Cancel" tone="quiet" grow={1} onClick={onCancel} />
+        <PosButton icon={faPlus} label={`Add ${money(item.price + extra)}`} tone="primary" size="lg" grow={2}
+          disabled={Boolean(problem)} onClick={() => onAdd(allIds, label)} />
       </div>
-    </div>
+    </Sheet>
   )
 }
 
@@ -1077,15 +1066,13 @@ export default function CheckPage() {
       )}
 
       {picking && isMobile && (
-        <div style={sheet} onClick={() => setPicking(false)}>
-          <div style={sheetInner} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <h2 style={sheetTitle}>Add items</h2>
-              <PosButton icon={faCheck} label="Done" tone="neutral" size="sm" onClick={() => setPicking(false)} />
-            </div>
-            {picker(2)}
+        <Sheet label="Add items" onClose={() => setPicking(false)}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+            <h2 style={sheetTitle}>Add items</h2>
+            <PosButton icon={faCheck} label="Done" tone="neutral" size="sm" onClick={() => setPicking(false)} />
           </div>
-        </div>
+          {picker(2)}
+        </Sheet>
       )}
 
       {modifierFor && (
@@ -1103,170 +1090,164 @@ export default function CheckPage() {
           this. Two deliberate taps and a sentence — a mis-tap does not get
           past the first. */}
       {lineMenu && (
-        <div style={sheet} onClick={() => setLineMenu(null)}>
-          <div style={sheetInner} onClick={e => e.stopPropagation()}>
-            <h2 style={{ ...sheetTitle, marginBottom: '0.3rem' }}>{lineMenu.quantity}× {lineMenu.name}</h2>
-            <p style={{ fontSize: '0.95rem', color: 'rgba(var(--offwhite-rgb),0.55)', marginBottom: '1rem' }}>
-              {lineMenu.status === 'sent'
-                ? 'Already sent to the kitchen. Voiding it tells the pass.'
-                : 'Not sent yet.'}
-            </p>
+        <Sheet label="Line options" onClose={() => setLineMenu(null)}>
+          <h2 style={{ ...sheetTitle, marginBottom: '0.3rem' }}>{lineMenu.quantity}× {lineMenu.name}</h2>
+          <p style={{ fontSize: '0.95rem', color: 'rgba(var(--offwhite-rgb),0.55)', marginBottom: '1rem' }}>
+            {lineMenu.status === 'sent'
+              ? 'Already sent to the kitchen. Voiding it tells the pass.'
+              : 'Not sent yet.'}
+          </p>
 
-            {/* A manager's comp or item discount — before any payment only. */}
-            {canDiscount && (check.payments ?? []).length === 0 && (
-              <PosButton
-                icon={faPercent} full tone={lineMenu.discount ? 'warn' : 'neutral'}
-                onClick={() => { const id = lineMenu.id; setLineMenu(null); setDiscounting({ mode: 'line', lineId: id }) }}
-                label={lineMenu.discount
-                  ? `${lineMenu.discount.kind === 'comp' ? 'On the house' : `${Math.round(lineMenu.discount.percent * 100)}% off`} — change`
-                  : 'Comp or discount this item'}
-              />
-            )}
+          {/* A manager's comp or item discount — before any payment only. */}
+          {canDiscount && (check.payments ?? []).length === 0 && (
+            <PosButton
+              icon={faPercent} full tone={lineMenu.discount ? 'warn' : 'neutral'}
+              onClick={() => { const id = lineMenu.id; setLineMenu(null); setDiscounting({ mode: 'line', lineId: id }) }}
+              label={lineMenu.discount
+                ? `${lineMenu.discount.kind === 'comp' ? 'On the house' : `${Math.round(lineMenu.discount.percent * 100)}% off`} — change`
+                : 'Comp or discount this item'}
+            />
+          )}
 
-            <SectionLabel icon={faBan} colour="var(--red)">Void — why?</SectionLabel>
+          <SectionLabel icon={faBan} colour="var(--red)">Void — why?</SectionLabel>
 
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.5rem' }}>
-              {VOID_REASONS.map(r => {
-                // The consequence is spelled out only where stock actually
-                // moves: merchandise, and — with the `recipes` switch on — a
-                // dish whose ingredients were snapshotted when it was added.
-                // "Goes back into stock" under a cappuccino with no recipe
-                // would be noise at best and a lie at worst.
-                const sent = lineMenu.status === 'sent'
-                const showsStock = lineMenu.source === 'product' && sent
-                const showsIngredients = lineMenu.source === 'menu' && sent
-                  && ((lineMenu.consumesPerServing?.length ?? 0) > 0 || (lineMenu.consumesUnknown?.length ?? 0) > 0)
-                // Waste first, the same precedence as ingredientOutcome() in
-                // recipes.ts, so the hint cannot promise what the server won't do.
-                const ingredientHint = r.isWaste
-                  ? 'ingredients recorded as waste'
-                  : r.returnsToStock ? 'ingredients go back into stock' : 'ingredients used'
-                const hint = showsStock
-                  ? (r.returnsToStock ? 'goes back on the shelf' : 'not returned to stock')
-                  : showsIngredients ? ingredientHint : null
-                return (
-                  <button
-                    key={r.key}
-                    type="button"
-                    onClick={() => {
-                      const note = r.key === 'other'
-                        ? (window.prompt('What happened?') ?? '')
-                        : ''
-                      if (r.key === 'other' && !note.trim()) return
-                      handleVoid(lineMenu.id, r.key, note)
-                    }}
-                    style={{
-                      minHeight: '64px', borderRadius: '10px', cursor: 'pointer', textAlign: 'left',
-                      padding: '0.6rem 0.9rem', fontFamily: 'var(--font-inter)',
-                      // Waste reasons in red: the food is gone. The others are
-                      // still a void, so still outlined red, but quieter.
-                      backgroundColor: r.isWaste ? 'rgba(var(--red-rgb),0.12)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${r.isWaste ? 'rgba(var(--red-rgb),0.6)' : 'rgba(var(--red-rgb),0.3)'}`,
-                      color: 'var(--offwhite)',
-                      display: 'flex', alignItems: 'center', gap: '0.7rem',
-                    }}
-                  >
-                    <FontAwesomeIcon icon={r.isWaste ? faTrashCan : faRotateLeft}
-                      style={{ color: r.isWaste ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.6)', fontSize: '1.1rem', width: '1.2rem' }} />
-                    <span style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                      <span style={{ fontSize: '1rem', fontWeight: 600 }}>{r.label}</span>
-                      {hint && (
-                        <span style={{
-                          fontSize: '0.82rem',
-                          color: hint === 'goes back on the shelf' || hint === 'ingredients go back into stock' ? 'var(--teal)' : 'rgba(var(--red-rgb),0.85)',
-                        }}>{hint}</span>
-                      )}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-
-            <div style={{ marginTop: '1rem' }}>
-              <PosButton icon={faXmark} label="Cancel" tone="quiet" full onClick={() => setLineMenu(null)} />
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.5rem' }}>
+            {VOID_REASONS.map(r => {
+              // The consequence is spelled out only where stock actually
+              // moves: merchandise, and — with the `recipes` switch on — a
+              // dish whose ingredients were snapshotted when it was added.
+              // "Goes back into stock" under a cappuccino with no recipe
+              // would be noise at best and a lie at worst.
+              const sent = lineMenu.status === 'sent'
+              const showsStock = lineMenu.source === 'product' && sent
+              const showsIngredients = lineMenu.source === 'menu' && sent
+                && ((lineMenu.consumesPerServing?.length ?? 0) > 0 || (lineMenu.consumesUnknown?.length ?? 0) > 0)
+              // Waste first, the same precedence as ingredientOutcome() in
+              // recipes.ts, so the hint cannot promise what the server won't do.
+              const ingredientHint = r.isWaste
+                ? 'ingredients recorded as waste'
+                : r.returnsToStock ? 'ingredients go back into stock' : 'ingredients used'
+              const hint = showsStock
+                ? (r.returnsToStock ? 'goes back on the shelf' : 'not returned to stock')
+                : showsIngredients ? ingredientHint : null
+              return (
+                <button
+                  key={r.key}
+                  type="button"
+                  onClick={() => {
+                    const note = r.key === 'other'
+                      ? (window.prompt('What happened?') ?? '')
+                      : ''
+                    if (r.key === 'other' && !note.trim()) return
+                    handleVoid(lineMenu.id, r.key, note)
+                  }}
+                  style={{
+                    minHeight: '64px', borderRadius: '10px', cursor: 'pointer', textAlign: 'left',
+                    padding: '0.6rem 0.9rem', fontFamily: 'var(--font-inter)',
+                    // Waste reasons in red: the food is gone. The others are
+                    // still a void, so still outlined red, but quieter.
+                    backgroundColor: r.isWaste ? 'rgba(var(--red-rgb),0.12)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${r.isWaste ? 'rgba(var(--red-rgb),0.6)' : 'rgba(var(--red-rgb),0.3)'}`,
+                    color: 'var(--offwhite)',
+                    display: 'flex', alignItems: 'center', gap: '0.7rem',
+                  }}
+                >
+                  <FontAwesomeIcon icon={r.isWaste ? faTrashCan : faRotateLeft}
+                    style={{ color: r.isWaste ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.6)', fontSize: '1.1rem', width: '1.2rem' }} />
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                    <span style={{ fontSize: '1rem', fontWeight: 600 }}>{r.label}</span>
+                    {hint && (
+                      <span style={{
+                        fontSize: '0.82rem',
+                        color: hint === 'goes back on the shelf' || hint === 'ingredients go back into stock' ? 'var(--teal)' : 'rgba(var(--red-rgb),0.85)',
+                      }}>{hint}</span>
+                    )}
+                  </span>
+                </button>
+              )
+            })}
           </div>
-        </div>
+
+          <div style={{ marginTop: '1rem' }}>
+            <PosButton icon={faXmark} label="Cancel" tone="quiet" full onClick={() => setLineMenu(null)} />
+          </div>
+        </Sheet>
       )}
 
       {/* Check options. Staff meal is not destructive and sits first; the two
           that change or end the check are below a divider, so the thumb has to
           travel to reach them. */}
       {actions && (
-        <div style={sheet} onClick={() => setActions(false)}>
-          <div style={sheetInner} onClick={e => e.stopPropagation()}>
-            <h2 style={{ ...sheetTitle, marginBottom: '1rem' }}>Table {check.tableNumber}</h2>
+        <Sheet label="Check options" onClose={() => setActions(false)}>
+          <h2 style={{ ...sheetTitle, marginBottom: '1rem' }}>Table {check.tableNumber}</h2>
+
+          <PosButton
+            icon={check.staffDiscount ? faCheck : faUtensils} full
+            tone={check.staffDiscount ? 'warn' : 'neutral'}
+            onClick={async () => {
+              setActions(false)
+              setError('')
+              try { await setStaffMeal(checkId, !check.staffDiscount) }
+              catch (err) { setError(err instanceof Error ? err.message : 'Could not change that.') }
+            }}
+            label={check.staffDiscount ? 'Staff meal — tap to remove' : 'Mark as a staff meal'}
+          />
+
+          <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '1.1rem 0' }} />
+
+          <div style={{ display: 'grid', gap: '0.6rem' }}>
+            {canDiscount && (check.payments ?? []).length === 0 && (
+              <PosButton
+                icon={faPercent} full tone={check.discount ? 'warn' : 'neutral'}
+                onClick={() => { setActions(false); setDiscounting({ mode: 'check' }) }}
+                label={check.discount
+                  ? `${check.discount.kind === 'percent'
+                      ? `${Math.round(check.discount.value * 100)}% off the check`
+                      : `$${check.discount.value.toFixed(2)} off the check`} — change`
+                  : 'Discount the check'}
+              />
+            )}
+
+            {loyaltyOn && (
+              <PosButton
+                icon={faUserTag} full tone={check.loyalty ? 'warn' : 'neutral'}
+                onClick={() => { setActions(false); setAddingCustomer(true) }}
+                label={check.loyalty ? `Loyalty: ${check.loyalty.name}` : 'Add loyalty customer'}
+              />
+            )}
+
+            <PosButton icon={faArrowRightArrowLeft} label="Move to another table" full tone="neutral"
+              onClick={() => { setActions(false); setMoving(true) }} />
 
             <PosButton
-              icon={check.staffDiscount ? faCheck : faUtensils} full
-              tone={check.staffDiscount ? 'warn' : 'neutral'}
-              onClick={async () => {
-                setActions(false)
-                setError('')
-                try { await setStaffMeal(checkId, !check.staffDiscount) }
-                catch (err) { setError(err instanceof Error ? err.message : 'Could not change that.') }
-              }}
-              label={check.staffDiscount ? 'Staff meal — tap to remove' : 'Mark as a staff meal'}
+              icon={takesPayment ? faCashRegister : faXmark} full tone="danger" size="lg"
+              onClick={() => { setActions(false); if (takesPayment) setPaying(true); else setClosing(true) }}
+              label={takesPayment ? 'Take payment and close' : 'Close this check'}
             />
-
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '1.1rem 0' }} />
-
-            <div style={{ display: 'grid', gap: '0.6rem' }}>
-              {canDiscount && (check.payments ?? []).length === 0 && (
-                <PosButton
-                  icon={faPercent} full tone={check.discount ? 'warn' : 'neutral'}
-                  onClick={() => { setActions(false); setDiscounting({ mode: 'check' }) }}
-                  label={check.discount
-                    ? `${check.discount.kind === 'percent'
-                        ? `${Math.round(check.discount.value * 100)}% off the check`
-                        : `$${check.discount.value.toFixed(2)} off the check`} — change`
-                    : 'Discount the check'}
-                />
-              )}
-
-              {loyaltyOn && (
-                <PosButton
-                  icon={faUserTag} full tone={check.loyalty ? 'warn' : 'neutral'}
-                  onClick={() => { setActions(false); setAddingCustomer(true) }}
-                  label={check.loyalty ? `Loyalty: ${check.loyalty.name}` : 'Add loyalty customer'}
-                />
-              )}
-
-              <PosButton icon={faArrowRightArrowLeft} label="Move to another table" full tone="neutral"
-                onClick={() => { setActions(false); setMoving(true) }} />
-
-              <PosButton
-                icon={takesPayment ? faCashRegister : faXmark} full tone="danger" size="lg"
-                onClick={() => { setActions(false); if (takesPayment) setPaying(true); else setClosing(true) }}
-                label={takesPayment ? 'Take payment and close' : 'Close this check'}
-              />
-            </div>
-
-            <div style={{ marginTop: '1.1rem' }}>
-              <PosButton icon={faXmark} label="Cancel" tone="quiet" full onClick={() => setActions(false)} />
-            </div>
           </div>
-        </div>
+
+          <div style={{ marginTop: '1.1rem' }}>
+            <PosButton icon={faXmark} label="Cancel" tone="quiet" full onClick={() => setActions(false)} />
+          </div>
+        </Sheet>
       )}
 
       {/* Closing had no confirmation at all, and it cannot be undone — the
           table goes free and the check leaves the floor. */}
       {closing && (
-        <div style={sheet} onClick={() => setClosing(false)}>
-          <div style={sheetInner} onClick={e => e.stopPropagation()}>
-            <h2 style={{ ...sheetTitle, marginBottom: '0.5rem' }}>Close table {check.tableNumber}?</h2>
-            <p style={{ fontSize: '1rem', color: 'rgba(var(--offwhite-rgb),0.6)', lineHeight: 1.7, marginBottom: '1.2rem' }}>
-              {money(totals.net)} across {check.lines.filter(l => l.status !== 'void').length} items.
-              The table goes free and this check leaves the floor. It cannot be reopened.
-            </p>
-            <div style={{ display: 'flex', gap: '0.6rem' }}>
-              <PosButton icon={faArrowLeft} label="Keep it open" tone="quiet" grow={1} onClick={() => setClosing(false)} />
-              <PosButton icon={faXmark} label="Close" tone="danger" size="lg" grow={2}
-                style={{ background: 'var(--red)', color: '#fff', border: '2px solid var(--red)' }}
-                onClick={() => { setClosing(false); handleClose() }} />
-            </div>
+        <Sheet label="Close the check" onClose={() => setClosing(false)}>
+          <h2 style={{ ...sheetTitle, marginBottom: '0.5rem' }}>Close table {check.tableNumber}?</h2>
+          <p style={{ fontSize: '1rem', color: 'rgba(var(--offwhite-rgb),0.6)', lineHeight: 1.7, marginBottom: '1.2rem' }}>
+            {money(totals.net)} across {check.lines.filter(l => l.status !== 'void').length} items.
+            The table goes free and this check leaves the floor. It cannot be reopened.
+          </p>
+          <div style={{ display: 'flex', gap: '0.6rem' }}>
+            <PosButton icon={faArrowLeft} label="Keep it open" tone="quiet" grow={1} onClick={() => setClosing(false)} />
+            <PosButton icon={faXmark} label="Close" tone="danger" size="lg" grow={2}
+              style={{ background: 'var(--red)', color: '#fff', border: '2px solid var(--red)' }}
+              onClick={() => { setClosing(false); handleClose() }} />
           </div>
-        </div>
+        </Sheet>
       )}
 
       {discounting && (() => {
@@ -1298,37 +1279,33 @@ export default function CheckPage() {
       )}
 
       {moving && (
-        <div style={sheet} onClick={() => setMoving(false)}>
-          {/* A form, so Enter on a PC moves the table (UPGRADE.md T1.2). */}
-          <form style={sheetInner} onClick={e => e.stopPropagation()}
-            onSubmit={e => { e.preventDefault(); if (moveTo) void handleMove() }}>
-            <h2 style={{ ...sheetTitle, marginBottom: '1rem' }}>Move to which table?</h2>
+        <Sheet label="Move to another table" onClose={() => setMoving(false)} onSubmit={() => { if (moveTo) void handleMove() }}>
+          <h2 style={{ ...sheetTitle, marginBottom: '1rem' }}>Move to which table?</h2>
 
-            {/* Typed, the same way a table is opened — the floor plan is not
-                required for the POS to work, so it cannot be the only way to
-                name a table here either. */}
-            <input
-              aria-label="Table number to move to"
-              value={moveTo}
-              onChange={e => setMoveTo(e.target.value.replace(/[^0-9]/g, ''))}
-              inputMode="numeric"
-              autoFocus
-              placeholder="Table number"
-              style={{
-                width: '100%', minHeight: '68px', textAlign: 'center',
-                background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.18)',
-                borderRadius: '10px', color: 'var(--offwhite)',
-                fontFamily: 'var(--font-cinzel)', fontSize: '2rem', outline: 'none',
-              }}
-            />
+          {/* Typed, the same way a table is opened — the floor plan is not
+              required for the POS to work, so it cannot be the only way to
+              name a table here either. */}
+          <input
+            aria-label="Table number to move to"
+            value={moveTo}
+            onChange={e => setMoveTo(e.target.value.replace(/[^0-9]/g, ''))}
+            inputMode="numeric"
+            autoFocus
+            placeholder="Table number"
+            style={{
+              width: '100%', minHeight: '68px', textAlign: 'center',
+              background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.18)',
+              borderRadius: '10px', color: 'var(--offwhite)',
+              fontFamily: 'var(--font-cinzel)', fontSize: '2rem', outline: 'none',
+            }}
+          />
 
-            <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem' }}>
-              <PosButton icon={faXmark} label="Cancel" tone="quiet" grow={1} onClick={() => { setMoving(false); setMoveTo('') }} />
-              <PosButton icon={faArrowRightArrowLeft} label={`Move to ${moveTo || '…'}`} tone="primary" size="lg" grow={2}
-                type="submit" disabled={!moveTo} />
-            </div>
-          </form>
-        </div>
+          <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem' }}>
+            <PosButton icon={faXmark} label="Cancel" tone="quiet" grow={1} onClick={() => { setMoving(false); setMoveTo('') }} />
+            <PosButton icon={faArrowRightArrowLeft} label={`Move to ${moveTo || '…'}`} tone="primary" size="lg" grow={2}
+              type="submit" disabled={!moveTo} />
+          </div>
+        </Sheet>
       )}
     </main>
   )
