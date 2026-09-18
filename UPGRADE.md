@@ -278,9 +278,10 @@ The owner's goals it answers:
   the screen, with scrolling. "Picked up" becomes a neutral button, with a
   5-second Undo.
   *Done: the ready list scrolls inside 40% of the screen, Picked up is neutral, and a tap waits 5 s with "Picked up · Undo" before it is recorded (leaving the screen records what is waiting). Checked on the test hub with 11 ready plates: the cap was 316px of 790, Undo put the card back, and a tap left alone was recorded after 5 s (11 → 10).*
-- [ ] **T2.13 Split the order screen file.** `check/[id]/page.tsx` is 1,319
+- [x] **T2.13 Split the order screen file.** `check/[id]/page.tsx` is 1,319
   lines. Move `MenuPicker`, `CategoryTile`, `ItemTile` and `ModifierSheet`
   into their own file. It is a pure move, so it goes before T2.6.
+  *Done: MenuPicker, CategoryTile, ItemTile, TileImage, TileLetter and ModifierSheet moved unchanged to check/[id]/MenuPicker.tsx (376 lines); page.tsx went from 1,434 to 1,079 lines. Checked: the menu, a category and a dish's options still open.*
 
 ### Admin, modern shell
 
