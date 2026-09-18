@@ -285,9 +285,10 @@ The owner's goals it answers:
 
 ### Admin, modern shell
 
-- [ ] **T2.14 Collapsible sidebar with a filter box.** 10 sections and 54
+- [x] **T2.14 Collapsible sidebar with a filter box.** 10 sections and 54
   items, all open. Save the open state per browser, and open the current
   section automatically.
+  *Done: sidebar groups fold (a button with aria-expanded per section), the open ones are remembered per browser (admin_nav_open), the current page's section always opens, and "Find a page…" filters every page by name, description and section through filterNav() (asserted in verify:admin-nav). Lint- and type-clean; not looked at signed in, since the sidebar draws only for a signed-in account.*
 - [ ] **T2.15 Ctrl+K command palette.** Search every page the user can open,
   built from the already-filtered `ADMIN_NAV` (label, desc). This is the single
   biggest "modern" win, and it scales to any number of sections.

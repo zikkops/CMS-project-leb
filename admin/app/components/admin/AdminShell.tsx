@@ -14,7 +14,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'firebase/auth'
 import { auth } from '@big-cms/shared/firebase'
 import { useAdminUser, ROLE_LABELS } from '@big-cms/shared/adminAuth'
-import { ADMIN_NAV, sectionForPath, visibleNav, type AdminNavSection, type AdminNavItem } from '@big-cms/shared/adminNav'
+import { ADMIN_NAV, sectionForPath, visibleNav, filterNav, type AdminNavSection, type AdminNavItem } from '@big-cms/shared/adminNav'
 import { useFeatureFlags } from '@big-cms/shared/useFeatures'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
@@ -26,6 +26,8 @@ import { useClientValue } from '@big-cms/shared/useClientValue'
 
 const COLLAPSE_KEY = 'admin_sidebar_collapsed'
 const GUIDE_KEY = 'admin_guide_hidden'
+/** Which nav groups were left open, as { sectionKey: true }. */
+const NAV_OPEN_KEY = 'admin_nav_open'
 const EXPANDED_W = 268
 const COLLAPSED_W = 68
 const MOBILE_BAR_H = 56
@@ -235,6 +237,23 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   )
 
   const compact = collapsed && !isMobile
+
+  // Ten sections and 54 pages, all open, made a very long sidebar (UPGRADE.md
+  // T2.14). Groups fold now: the section of the page being shown opens by
+  // itself, every other one as it was last left in this browser, and a filter
+  // at the top searches every page's name and description.
+  const [navFilter, setNavFilter] = useState('')
+  const storedOpen = useClientValue(() => { try { return window.localStorage.getItem(NAV_OPEN_KEY) ?? '' } catch { return '' } }, '')
+  const [openChoice, setOpenChoice] = useState<Record<string, boolean> | null>(null)
+  const openState: Record<string, boolean> = openChoice ?? (() => { try { return JSON.parse(storedOpen || '{}') as Record<string, boolean> } catch { return {} } })()
+  const currentSection = pathname ? sectionForPath(pathname)?.section.key ?? null : null
+  function toggleSection(key: string, open: boolean) {
+    const next = { ...openState, [key]: !open }
+    setOpenChoice(next)
+    try { window.localStorage.setItem(NAV_OPEN_KEY, JSON.stringify(next)) } catch { /* private mode */ }
+  }
+  const filtering = navFilter.trim() !== ''
+  const shownSections = filterNav(visibleSections, navFilter)
   const sidebarWidth = collapsed ? COLLAPSED_W : EXPANDED_W
 
   // The guide for the page being shown — not on the dashboard, which is the
@@ -277,6 +296,26 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       </div>
 
       <nav style={{ flex: 1, overflowY: 'auto', padding: compact ? '0.75rem 0.45rem' : '0.75rem 0.7rem' }}>
+        {!compact && (
+          <input
+            type="search"
+            value={navFilter}
+            onChange={e => setNavFilter(e.target.value)}
+            placeholder="Find a page…"
+            aria-label="Find a page"
+            style={{
+              width: '100%', boxSizing: 'border-box', minHeight: '38px', marginBottom: '0.8rem',
+              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px',
+              padding: '0.45rem 0.7rem', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem', outline: 'none',
+            }}
+          />
+        )}
+        {filtering && shownSections.length === 0 && (
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.45)', padding: '0 0.55rem 0.8rem' }}>
+            No page matches.
+          </p>
+        )}
+
         {/* The dashboard first, always — the one link every role has. */}
         <div style={{ marginBottom: '0.9rem' }}>
           <NavLink
@@ -285,9 +324,11 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           />
         </div>
 
-        {visibleSections.map(section => {
+        {shownSections.map(section => {
           const use = section.items.filter(i => i.kind === 'use')
           const setup = section.items.filter(i => i.kind === 'setup')
+          // Open while filtering, when it holds this page, or as last left.
+          const open = compact || filtering || section.key === currentSection || openState[section.key] === true
           return (
             <div key={section.key} style={{ marginBottom: '1.05rem' }}>
               {compact ? (
@@ -295,15 +336,25 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                   <span style={{ width: '26px', height: '3px', borderRadius: '2px', background: section.color }} />
                 </div>
               ) : (
-                <div title={section.purpose} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0 0.55rem', marginBottom: '0.35rem' }}>
+                <button type="button" title={section.purpose} aria-expanded={open}
+                  onClick={() => toggleSection(section.key, open)}
+                  disabled={filtering || section.key === currentSection}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.3rem 0.55rem',
+                    marginBottom: '0.35rem', background: 'none', border: 'none', cursor: filtering || section.key === currentSection ? 'default' : 'pointer', textAlign: 'left',
+                  }}>
                   <FontAwesomeIcon icon={section.icon} style={{ color: section.color, fontSize: '0.75rem', width: '0.9rem' }} />
-                  <p style={{
-                    fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase',
+                  <span style={{
+                    flex: 1, fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase',
                     color: section.color, fontFamily: 'var(--font-inter)', fontWeight: 700,
-                  }}>{section.title}</p>
-                </div>
+                  }}>{section.title}</span>
+                  {!filtering && section.key !== currentSection && (
+                    <span aria-hidden style={{ color: 'rgba(var(--offwhite-rgb),0.4)', fontSize: '0.7rem' }}>{open ? '▾' : '▸'}</span>
+                  )}
+                </button>
               )}
 
+              {open && (<>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
                 {use.map(item => (
                   <NavLink key={item.href} item={item} color={section.color} active={isActive(item.href)} compact={compact} />
@@ -329,6 +380,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                   </div>
                 </>
               )}
+              </>)}
             </div>
           )
         })}

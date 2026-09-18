@@ -314,3 +314,23 @@ export function sectionGroups(): { title: string; keys: SectionKey[] }[] {
   if (rest.length) groups.push({ title: 'Other', keys: rest })
   return groups
 }
+
+/**
+ * The navigation narrowed to what a filter typed into the sidebar matches
+ * (UPGRADE.md T2.14): an item whose label or description contains every word,
+ * in any case; a section with none left is dropped. An empty filter changes
+ * nothing.
+ */
+export function filterNav(sections: AdminNavSection[], query: string): AdminNavSection[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return sections
+  return sections
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => {
+        const text = `${item.label} ${item.desc} ${section.title}`.toLowerCase()
+        return words.every(w => text.includes(w))
+      }),
+    }))
+    .filter(section => section.items.length > 0)
+}

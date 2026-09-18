@@ -100,6 +100,21 @@ console.log('\nwho sees which item (visibleNav, the sidebar and the dashboard al
   eq('an admin-only page is for admins only', [sees({ role: 'admin' }, null, '/admin/errors'), sees(manager, null, '/admin/errors')], [true, false])
 }
 
+console.log('\nthe sidebar\'s filter box (filterNav)')
+{
+  const all = N.ADMIN_NAV
+  const hrefs = q => N.filterNav(all, q).flatMap(s => s.items.map(i => i.href))
+  eq('an empty filter changes nothing', N.filterNav(all, '  ').length, all.length)
+  eq('a word finds pages by name, in any case', hrefs('HUBS').includes('/admin/settings/hubs'), true)
+  eq('...and by what the page does', hrefs('fingerprint').includes('/admin/settings/phones') || hrefs('phones').includes('/admin/settings/phones'), true)
+  eq('every word has to match', hrefs('receipt printers').length > 0 && hrefs('receipt printers').every(h => {
+    const item = all.flatMap(s => s.items.map(i => ({ ...i, section: s.title }))).find(i => i.href === h)
+    const text = `${item.label} ${item.desc} ${item.section}`.toLowerCase()
+    return text.includes('receipt') && text.includes('printers')
+  }), true)
+  eq('a section with nothing left is dropped', N.filterNav(all, 'zzzz-nothing').length, 0)
+}
+
 console.log('\nhow Manage Users groups the per-person grants (sectionGroups)')
 {
   const R = await import(`file://${join(out, 'roles.js')}`)
