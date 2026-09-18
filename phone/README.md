@@ -60,6 +60,20 @@ second till.
   drawer. Registered phones are listed and removed in admin
   under Settings → Staff Phones.
 
+## At a café
+
+- **Android only.** There is no iPhone app yet; staff with an iPhone sign in
+  on the counter PC with their email, or on somebody else's phone with a
+  manager's approval.
+- **The phone must be on the café's main wifi**, the same network as the
+  counter PC, never the guest wifi and never mobile data. "Failed to connect …
+  from /10.x.x.x" means the phone is on mobile data.
+- **Registering needs the internet once**, and the café wifi too: the phone
+  asks the hub where the cloud is first. After registering, the hub learns
+  about the phone at its next sync, within two minutes.
+- **The app file is a test build** (`app-debug.apk`), installed from a file:
+  Android asks to allow installing from that source, and Play Protect may warn.
+
 ## Build it
 
 Outside the npm workspaces on purpose, like `desktop/`: Capacitor and Gradle

@@ -70,7 +70,7 @@ The owner's goals it answers:
   installer's file name come only from `artifactName`, and add a README line
   saying to delete old installers.
   *Done: scripts/check-desktop-version.mjs runs first in `npm --prefix desktop run dist` and refuses a version not higher than the last signed release (`releaseVersionProblem()` in update.js, asserted in verify:desktop). It removes old-named installers from desktop/dist. README and desktop-updates.md say so. Showing the version on screen is T1.25.*
-- [ ] **T0.4 Phone and counter setup notes in the READMEs**:
+- [x] **T0.4 Phone and counter setup notes in the READMEs**:
   - use the app, not a browser, for the hub page;
   - the first start takes 20–30 s;
   - reserve the counter PC's address in the router;
@@ -79,6 +79,7 @@ The owner's goals it answers:
 
   Fold in what the 16 Sep setup taught (`desktop/README.md`,
   `phone/README.md`).
+  *Done: desktop/README.md "Setting it up at a café" and phone/README.md "At a café".*
 - [ ] **T0.5 Retire old instructions.** POS pages say "Settings → Features" and
   "Staff Accounts". The nav calls them "Modules" and "Manage Users"
   (`pos/app/pos/page.tsx`, `kds/page.tsx`, `allergens/page.tsx`). They also say

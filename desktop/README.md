@@ -51,6 +51,36 @@ BIG_CMS_DESKTOP_MODE=hub BIG_CMS_HUB_DATA=../.hub/desktop npm start
 folder. A fresh hub has no menu: `npm run hub:seed -- --db=.hub/desktop/pos.db`
 from the repo root copies the demo one in (development only).
 
+## Setting it up at a café
+
+What the first real setup (16 Sep 2026) taught. The two-page install sheet
+walks through the whole visit; these are the traps.
+
+- **Use the app, not a browser, for the hub page.** The hub's till takes 20–30
+  seconds to start on the first run, and about 10–25 s on every start after.
+  The app shows its own "waiting for the café hub" screen meanwhile; a browser
+  pointed at `localhost:3100` too early just says "connection refused".
+  When a browser is needed, use `http://127.0.0.1:3100/pos/hub`.
+- **Staff phones need `"hubLan": true`** in `config.json`, then a restart.
+  Until then the hub page shows no QR code.
+- **Reserve the counter PC's address in the router** (a DHCP reservation).
+  Phones are paired to the address in the QR; if the router hands the PC a new
+  one, every phone has to scan again.
+- **Phones must be on the same network as the PC.** A mesh wifi behind the
+  internet provider's router is two networks: `192.168.68.x` on the wifi,
+  `192.168.1.x` on the provider's box. The PC, the phones and the printers
+  all go on the one the staff wifi uses. A phone on mobile data shows a
+  `10.x` address and cannot reach the hub at all.
+- **Windows must treat the café network as Private**, and the firewall prompt
+  must be allowed for Private networks, or phones are blocked. On somebody's
+  own laptop at a public wifi, allow the app on Public instead of making the
+  whole network Private.
+- **Printers often arrive on a factory address** (`192.168.123.100`,
+  `192.168.192.168`), which no device on the café network can reach. Print the
+  self-test page (hold FEED while switching on) and change the address first.
+- **Give every staff account a first name** before the visit. The counter's
+  sign-in list and the manager approvals show first names.
+
 ## What it does, and does not
 
 - Starts with Windows (installed app only), stays full screen, keeps the
