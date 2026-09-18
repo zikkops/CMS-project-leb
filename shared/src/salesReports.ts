@@ -221,3 +221,92 @@ export function voidDiscountReport(checks: readonly Check[], opts: { timeZone: s
     },
   }
 }
+
+// ── T3.3 Product mix ──────────────────────────────────────────────────────
+
+export interface MixItem {
+  /** source:refId, so a menu item and a retail product never share a row. */
+  key: string
+  name: string
+  category: string
+  quantity: number
+  /** What its lines came to, after the staff meal and any discount on the item. */
+  revenue: number
+  /** Share of all item revenue in the range, 0–1. */
+  share: number
+}
+
+export interface MixCategory { category: string; quantity: number; revenue: number; share: number; items: number }
+
+export interface ProductMix {
+  items: MixItem[]
+  categories: MixCategory[]
+  totals: {
+    checks: number
+    quantity: number
+    revenue: number
+    /** Whole-check discounts, which belong to no item: why item revenue is more than the checks' net. */
+    checkDiscounts: number
+  }
+}
+
+/** Where an item sits on the menu. A retail product is "Retail"; one the menu no longer has, "No longer on the menu". */
+export const RETAIL = 'Retail'
+export const OFF_MENU = 'No longer on the menu'
+
+/**
+ * What sold, by item and by category, over closed checks. Refunded and
+ * cancelled checks are left out: what was given back was not sold. Voided
+ * lines are not sales either. An item is grouped by what it is (its menu or
+ * product id), and named as it was most recently sold.
+ */
+export function productMix(
+  checks: readonly Check[],
+  opts: { categoryOf: Readonly<Record<string, string>> },
+): ProductMix {
+  const items = new Map<string, MixItem & { lastSeen: number }>()
+  let checkCount = 0
+  let checkDiscounts = 0
+
+  checks.forEach((check, order) => {
+    if (check.status !== 'closed') return
+    checkCount++
+    checkDiscounts += checkTotals(check).checkDiscount
+    const staff = check.staffDiscount ?? null
+    for (const line of check.lines ?? []) {
+      if (line.status === 'void') continue
+      const key = `${line.source}:${line.refId}`
+      const category = line.source === 'product' ? RETAIL : (opts.categoryOf[line.refId] ?? OFF_MENU)
+      const row = items.get(key) ?? { key, name: line.name, category, quantity: 0, revenue: 0, share: 0, lastSeen: -1 }
+      row.quantity += line.quantity
+      row.revenue = r2(row.revenue + lineTotal(line, staff))
+      if (order >= row.lastSeen) { row.name = line.name; row.lastSeen = order }
+      items.set(key, row)
+    }
+  })
+
+  const all = [...items.values()]
+  const revenue = r2(all.reduce((s, i) => s + i.revenue, 0))
+  const shareOf = (v: number) => (revenue > 0 ? Math.round((v / revenue) * 10_000) / 10_000 : 0)
+  const outItems: MixItem[] = all
+    .map(({ lastSeen: _lastSeen, ...i }) => ({ ...i, share: shareOf(i.revenue) }))
+    .sort((a, b) => b.revenue - a.revenue || b.quantity - a.quantity || a.name.localeCompare(b.name))
+
+  const byCategory = new Map<string, MixCategory>()
+  for (const i of outItems) {
+    const c = byCategory.get(i.category) ?? { category: i.category, quantity: 0, revenue: 0, share: 0, items: 0 }
+    c.quantity += i.quantity
+    c.revenue = r2(c.revenue + i.revenue)
+    c.items++
+    byCategory.set(i.category, c)
+  }
+  const categories = [...byCategory.values()]
+    .map(c => ({ ...c, share: shareOf(c.revenue) }))
+    .sort((a, b) => b.revenue - a.revenue || a.category.localeCompare(b.category))
+
+  return {
+    items: outItems,
+    categories,
+    totals: { checks: checkCount, quantity: outItems.reduce((s, i) => s + i.quantity, 0), revenue, checkDiscounts: r2(checkDiscounts) },
+  }
+}

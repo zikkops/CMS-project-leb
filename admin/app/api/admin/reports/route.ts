@@ -1,6 +1,6 @@
 // Reports over closed checks (UPGRADE.md T3.2–T3.4).
 //
-// GET ?report=voids&from=YYYY-MM-DD&to=YYYY-MM-DD&branch=
+// GET ?report=voids|mix&from=YYYY-MM-DD&to=YYYY-MM-DD&branch=
 //
 // Gated on `endOfDay`, as the accountant's export is: the same people, reading
 // the same money, and deliberately not a new SECTION_ACCESS key. The checks
@@ -11,10 +11,28 @@
 
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import { parseExportRange, readClosedChecks } from '@big-cms/shared/server/salesExport'
-import { voidDiscountReport } from '@big-cms/shared/salesReports'
+import { productMix, voidDiscountReport } from '@big-cms/shared/salesReports'
+import { adminDb } from '@big-cms/shared/server/firebaseAdmin'
 import { BRAND } from '@big-cms/shared/brand'
 
 export const runtime = 'nodejs'
+
+/**
+ * Which category each menu item is in NOW, by the item's id. Lines do not
+ * carry their category, and the menu is small (two collections, a few dozen
+ * documents), so it is read whole rather than per line.
+ */
+async function menuCategories(): Promise<Record<string, string>> {
+  const db = adminDb()
+  const [items, categories] = await Promise.all([db.collection('menuItems').get(), db.collection('menuCategories').get()])
+  const names = new Map(categories.docs.map(d => [d.id, String(d.data().name ?? '')]))
+  const out: Record<string, string> = {}
+  for (const d of items.docs) {
+    const name = names.get(String(d.data().categoryId ?? ''))
+    if (name) out[d.id] = name
+  }
+  return out
+}
 
 export async function GET(request: Request): Promise<Response> {
   try {
@@ -33,6 +51,16 @@ export async function GET(request: Request): Promise<Response> {
       const { checks, branches } = await readClosedChecks(range, { timeZone, branches: own })
       return Response.json(
         { ok: true, from: range.from, to: range.to, branches, checks: checks.length, ...voidDiscountReport(checks, { timeZone }) },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+    if (report === 'mix') {
+      const [{ checks, branches }, categoryOf] = await Promise.all([
+        readClosedChecks(range, { timeZone, branches: own }),
+        menuCategories(),
+      ])
+      return Response.json(
+        { ok: true, from: range.from, to: range.to, branches, ...productMix(checks, { categoryOf }) },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }

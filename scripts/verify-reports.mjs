@@ -122,6 +122,39 @@ console.log('\nthe day is the café\'s')
   eq('...and by day adds each day up apart', r.byDay.map(d => [d.day, d.voids, d.voidValue]), [['2026-09-12', 1, 2], ['2026-09-13', 1, 4]])
 }
 
+console.log('\nproduct mix — what sold, by item and by category (T3.3)')
+{
+  const categoryOf = { m1: 'Coffee', m2: 'Food' }
+  const mix = R.productMix([
+    check({ id: 'a', lines: [line({ quantity: 2 }), line({ id: 'l2', refId: 'm2', name: 'Toast', unitPrice: 6, station: 'Kitchen' })] }),
+    check({ id: 'b', lines: [
+      line({ name: 'Flat White (new name)' }),
+      voided({ refId: 'm2', name: 'Toast', unitPrice: 6 }),
+      line({ id: 'p1', source: 'product', refId: 'p-mug', name: 'Mug', unitPrice: 12, station: null }),
+      line({ id: 'x1', refId: 'm-gone', name: 'Old Special', unitPrice: 3 }),
+    ] }),
+    check({ id: 'c', status: 'refunded', lines: [line({ quantity: 10 })] }),
+    check({ id: 'd', status: 'cancelled', lines: [line({ quantity: 10 })] }),
+  ], { categoryOf })
+  const row = key => mix.items.find(i => i.key === key)
+  eq('an item is counted across checks, three flat whites', row('menu:m1').quantity, 3)
+  eq('...named as it was last sold', row('menu:m1').name, 'Flat White (new name)')
+  eq('THE TRAP: a voided line is not a sale, and a refunded or cancelled check sold nothing', [row('menu:m2').quantity, mix.totals.checks], [1, 2])
+  eq('a retail product is its own row, under Retail', [row('product:p-mug').category, row('product:p-mug').revenue], ['Retail', 12])
+  eq('an item the menu no longer has still counts, and says so', row('menu:m-gone').category, R.OFF_MENU)
+  eq('best sellers by revenue first', mix.items.map(i => i.key), ['menu:m1', 'product:p-mug', 'menu:m2', 'menu:m-gone'])
+  eq('the shares add up to one', Math.round(mix.items.reduce((s, i) => s + i.share, 0) * 1000) / 1000, 1)
+  eq('categories add their items up; the one no longer on the menu is its own', mix.categories.map(c => [c.category, c.quantity, c.revenue]), [['Coffee', 3, 12], ['Retail', 1, 12], ['Food', 1, 6], [R.OFF_MENU, 1, 3]])
+
+  const discounted = R.productMix([check({
+    lines: [line({ unitPrice: 10, discount: { kind: 'percent', percent: 0.5, reasonKey: 'regular', note: '', by: 'm', byEmail: 'x' } })],
+    discount: { kind: 'amount', value: 2, reasonKey: 'wait', note: '', by: 'm', byEmail: 'x' },
+  })], { categoryOf })
+  eq('an item\'s revenue is after its own discount: $10 at half is $5', discounted.items[0].revenue, 5)
+  eq('...and a whole-check discount belongs to no item, so it is shown apart', discounted.totals.checkDiscounts, 2)
+  eq('nothing sold: nothing to share, and no division by zero', R.productMix([], { categoryOf }).totals, { checks: 0, quantity: 0, revenue: 0, checkDiscounts: 0 })
+}
+
 rmSync(out, { recursive: true, force: true })
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
