@@ -289,9 +289,10 @@ The owner's goals it answers:
   items, all open. Save the open state per browser, and open the current
   section automatically.
   *Done: sidebar groups fold (a button with aria-expanded per section), the open ones are remembered per browser (admin_nav_open), the current page's section always opens, and "Find a page…" filters every page by name, description and section through filterNav() (asserted in verify:admin-nav). Lint- and type-clean; not looked at signed in, since the sidebar draws only for a signed-in account.*
-- [ ] **T2.15 Ctrl+K command palette.** Search every page the user can open,
+- [x] **T2.15 Ctrl+K command palette.** Search every page the user can open,
   built from the already-filtered `ADMIN_NAV` (label, desc). This is the single
   biggest "modern" win, and it scales to any number of sections.
+  *Done: CommandPalette.tsx, opened with Ctrl+K / ⌘K from any admin page: it searches the pages this person can open (visibleNav) through filterNav(), with arrow keys, Enter and Escape, and listbox roles. Checked on a temporary preview page with the full list: "hub" gave Held Hub Sales and Café Hubs, ↓ then Enter went to /admin/settings/hubs.*
 - [ ] **T2.16 Standard page header with breadcrumbs.** `PageHeader` shows
   "Section › Page" and the page's actions, from `sectionForPath()`. The guide
   strip folds into it as a small "?" rather than a big box.

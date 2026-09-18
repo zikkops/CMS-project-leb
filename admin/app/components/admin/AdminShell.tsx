@@ -23,6 +23,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 import { BRAND } from '@big-cms/shared/brand'
 import { useClientValue } from '@big-cms/shared/useClientValue'
+import { CommandPalette } from './CommandPalette'
 
 const COLLAPSE_KEY = 'admin_sidebar_collapsed'
 const GUIDE_KEY = 'admin_guide_hidden'
@@ -253,6 +254,19 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     try { window.localStorage.setItem(NAV_OPEN_KEY, JSON.stringify(next)) } catch { /* private mode */ }
   }
   const filtering = navFilter.trim() !== ''
+
+  // Ctrl+K / ⌘K opens the page finder from anywhere (UPGRADE.md T2.15).
+  const [palette, setPalette] = useState(false)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPalette(open => !open)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   const shownSections = filterNav(visibleSections, navFilter)
   const sidebarWidth = collapsed ? COLLAPSED_W : EXPANDED_W
 
@@ -301,7 +315,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             type="search"
             value={navFilter}
             onChange={e => setNavFilter(e.target.value)}
-            placeholder="Find a page…"
+            placeholder="Find a page…  (Ctrl+K)"
             aria-label="Find a page"
             style={{
               width: '100%', boxSizing: 'border-box', minHeight: '38px', marginBottom: '0.8rem',
@@ -428,6 +442,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--black)' }}>
+      {palette && visibleSections.length > 0 && (
+        <CommandPalette sections={visibleSections} onClose={() => setPalette(false)}
+          onGo={href => { setPalette(false); router.push(href) }} />
+      )}
 
       {/* Desktop sidebar */}
       {!isMobile && (
