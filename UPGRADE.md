@@ -58,10 +58,11 @@ The owner's goals it answers:
     some feature in `features.ts`;
   - an `admin/app/api/admin/**` route has no `requireSection`/`requireRole`.
   *Done: `npm run verify:sections` (5 checks, 5 of 5 mutations caught). It found and fixed the Weekly Order Log page passing its own role list, and claimed modifierGroups, appSettings, staffKeys, drawerShifts and branchDrawers in features.ts.*
-- [ ] **T0.2 Document "adding a section"**: a short `docs/adding-a-section.md`.
+- [x] **T0.2 Document "adding a section"**: a short `docs/adding-a-section.md`.
   It lists every file touched today (7 minimum, about 12 with a POS tile, hub
   sync and a badge), which ones a verifier enforces, and the order. Link it
   from CONTRIBUTING.md. It is the baseline the Tier 4 registry work replaces.
+  *Done: docs/adding-a-section.md, linked from CONTRIBUTING.md.*
 - [ ] **T0.3 Version shown and bumped for every café build.** Two different
   builds both said 0.1.0, and the auto-updater never replaces 0.1.0 with 0.1.0.
   Add a check to `npm --prefix desktop run dist`: refuse to build when

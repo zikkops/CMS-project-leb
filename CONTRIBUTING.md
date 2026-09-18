@@ -104,6 +104,13 @@ Four rules that are easy to get wrong:
 
 **The older pattern:** `shared/src/serverAuth.ts` still backs the two image routes. It verifies a token over REST and does authorization reads as the calling user, so it can only confirm facts the caller could already read for themselves. Leave it; don't extend it. The mistake it exists to prevent is still worth knowing: don't call the Firestore *client* SDK's `getDoc`/`getDocs` bare inside a route handler to check a role — there's no signed-in session on the server, so it runs as an unauthenticated read and either fails against real rules or pressures you into loosening one to anonymous-readable just to make the check possible.
 
+## Adding a section
+
+A new part of the product with its own permission (an admin page, a route, a
+module switch, maybe a till screen) touches seven files at least. The list, the
+order and which steps a verifier enforces are in
+[docs/adding-a-section.md](./docs/adding-a-section.md).
+
 ## Commit style
 
 Commits on this project tend to be large and feature-grouped (check `git log` for examples) rather than one-commit-per-file. A typical message describes everything a working session shipped, comma-separated, in the imperative ("Add X, fix Y, replace Z").
