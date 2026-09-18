@@ -47,7 +47,7 @@ The owner's goals it answers:
 
 ## Tier 0: no behaviour change (checks, docs, tooling)
 
-- [ ] **T0.1 A section consistency verifier**: `scripts/verify-sections.mjs`,
+- [x] **T0.1 A section consistency verifier**: `scripts/verify-sections.mjs`,
   picked up by `verify:all`. It fails when:
   - an admin page's `useRequireRole(...)` does not pass `SECTION_ACCESS.<key>`
     (a copied array silently breaks grants and the module switch);
@@ -57,6 +57,7 @@ The owner's goals it answers:
   - a collection in `pullSpec()` or `PUSHED_COLLECTIONS` is not claimed by
     some feature in `features.ts`;
   - an `admin/app/api/admin/**` route has no `requireSection`/`requireRole`.
+  *Done: `npm run verify:sections` (5 checks, 5 of 5 mutations caught). It found and fixed the Weekly Order Log page passing its own role list, and claimed modifierGroups, appSettings, staffKeys, drawerShifts and branchDrawers in features.ts.*
 - [ ] **T0.2 Document "adding a section"**: a short `docs/adding-a-section.md`.
   It lists every file touched today (7 minimum, about 12 with a POS tile, hub
   sync and a badge), which ones a verifier enforces, and the order. Link it

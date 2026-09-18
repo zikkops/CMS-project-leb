@@ -46,8 +46,9 @@ export interface FeatureDefinition {
 
 export const FEATURES = {
   // ── Locked core ──────────────────────────────────────────────────────────
-  auth:      { label: 'Authentication', group: 'Core', requires: [], locked: true, defaultEnabled: true },
-  dashboard: { label: 'Dashboard',      group: 'Core', requires: [], locked: true, defaultEnabled: true },
+  auth:      { label: 'Authentication', group: 'Core', requires: [], locked: true, defaultEnabled: true, collections: ['staffKeys'] },
+  // appSettings: the settings documents every screen reads (features, business, printing).
+  dashboard: { label: 'Dashboard',      group: 'Core', requires: [], locked: true, defaultEnabled: true, collections: ['appSettings'] },
   users:     { label: 'Staff Accounts', group: 'Core', requires: [], locked: true, defaultEnabled: true, collections: ['users'] },
   logs:      { label: 'Activity Log',   group: 'Core', requires: [], locked: true, defaultEnabled: true, collections: ['activityLog'] },
   media:     { label: 'Media Library',  group: 'Core', requires: [], locked: true, defaultEnabled: true, collections: ['mediaLibrary'] },
@@ -71,6 +72,7 @@ export const FEATURES = {
   // payments cover what it owes.
   payments: {
     label: 'Take Payment', group: 'Operations', requires: ['pos'], defaultEnabled: false,
+    collections: ['drawerShifts', 'branchDrawers'],
   },
   // Recipes (Sep 2026). This switch governs DEPLETION only — whether sending
   // an order takes its ingredients off the shelf. Entering recipes and seeing
@@ -84,7 +86,7 @@ export const FEATURES = {
   // ── Operations — the actual product ──────────────────────────────────────
   menu: {
     label: 'Menu', group: 'Operations', requires: [], defaultEnabled: true,
-    sections: ['menu'], collections: ['menuCategories', 'menuItems'],
+    sections: ['menu'], collections: ['menuCategories', 'menuItems', 'modifierGroups'],
   },
   supplies: {
     label: 'Inventory', group: 'Operations', requires: [], defaultEnabled: true,

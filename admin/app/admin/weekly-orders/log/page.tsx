@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRequireRole } from '@big-cms/shared/adminAuth'
+import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { listWeeklyOrderLogs, UNIT_LABELS, type WeeklyOrderLog } from '@big-cms/shared/weeklyOrders'
 
 function fmtTs(ts: { seconds: number } | null): string {
@@ -13,7 +13,7 @@ function fmtTs(ts: { seconds: number } | null): string {
 }
 
 export default function WeeklyOrderLogPage() {
-  const { checking, role } = useRequireRole(['admin', 'manager'])
+  const { checking, role } = useRequireRole(SECTION_ACCESS.weeklyOrders)
   const [logs,    setLogs]    = useState<WeeklyOrderLog[]>([])
   const [loading, setLoading] = useState(true)
 
