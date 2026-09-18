@@ -267,6 +267,50 @@ function DraftRow({ draft, locked, onRemove, onNote, onQuantity }: {
 }
 
 /** Choosing modifiers for one item, before it joins the draft. */
+/**
+ * A line of text for the kitchen or for the record, in a sheet (UPGRADE.md
+ * T2.5). It used to be window.prompt: tiny on a touch screen, and blocked
+ * outright by some kiosk browsers. Enter saves; Escape or Cancel leaves it.
+ * Module scope.
+ */
+function TextSheet({ title, initial = '', placeholder, required = false, submitLabel, danger = false, onSubmit, onCancel }: {
+  title: string
+  initial?: string
+  placeholder?: string
+  required?: boolean
+  submitLabel: string
+  danger?: boolean
+  onSubmit: (text: string) => void
+  onCancel: () => void
+}) {
+  const [text, setText] = useState(initial)
+  const ready = !required || text.trim() !== ''
+  return (
+    <Sheet label={title} onClose={onCancel} onSubmit={() => { if (ready) onSubmit(text.trim().slice(0, 200)) }}>
+      <h2 style={{ ...sheetTitle, marginBottom: '0.9rem' }}>{title}</h2>
+      <textarea
+        aria-label={title}
+        value={text}
+        onChange={e => setText(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit() } }}
+        autoFocus
+        rows={3}
+        maxLength={200}
+        placeholder={placeholder}
+        style={{
+          width: '100%', boxSizing: 'border-box', padding: '0.8rem 0.9rem', borderRadius: '10px',
+          background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.18)', color: 'var(--offwhite)',
+          fontFamily: 'var(--font-inter)', fontSize: '1.05rem', lineHeight: 1.5, outline: 'none', resize: 'vertical',
+        }}
+      />
+      <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem' }}>
+        <PosButton icon={faXmark} label="Cancel" tone="quiet" grow={1} onClick={onCancel} />
+        <PosButton icon={danger ? faBan : faCheck} label={submitLabel} tone={danger ? 'danger' : 'primary'} size="lg" grow={2} type="submit" disabled={!ready} />
+      </div>
+    </Sheet>
+  )
+}
+
 function ModifierSheet({
   item, groups, onCancel, onAdd, allergens,
 }: {
@@ -675,6 +719,9 @@ export default function CheckPage() {
   const [moving, setMoving] = useState(false)
   const [actions, setActions] = useState(false)
   const [lineMenu, setLineMenu] = useState<CheckLine | null>(null)
+  // The draft whose kitchen note is being written, and the line being voided for "Other".
+  const [noteFor, setNoteFor] = useState<number | null>(null)
+  const [otherVoid, setOtherVoid] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
   const [paying, setPaying] = useState(false)
   const [addingCustomer, setAddingCustomer] = useState(false)
@@ -977,15 +1024,7 @@ export default function CheckPage() {
                 setDrafts(list => list.map((x, n) =>
                   n === i ? { ...x, quantity: Math.min(next, 99) } : x))
               }}
-              onNote={() => {
-                // A prompt rather than a sheet: this is the rare path, and an
-                // allergy typed on a moving floor wants the fewest taps between
-                // thinking it and it being on the ticket.
-                const next = window.prompt('Note for the kitchen', d.note)
-                if (next === null) return
-                setDrafts(list => list.map((x, n) =>
-                  n === i ? { ...x, note: next.trim().slice(0, 200) } : x))
-              }}
+              onNote={() => setNoteFor(i)}
             />
           ))}
         </>
@@ -1135,11 +1174,9 @@ export default function CheckPage() {
                   key={r.key}
                   type="button"
                   onClick={() => {
-                    const note = r.key === 'other'
-                      ? (window.prompt('What happened?') ?? '')
-                      : ''
-                    if (r.key === 'other' && !note.trim()) return
-                    handleVoid(lineMenu.id, r.key, note)
+                    // "Other" needs a few words on what happened, in its own sheet.
+                    if (r.key === 'other') { setOtherVoid(lineMenu.id); setLineMenu(null); return }
+                    handleVoid(lineMenu.id, r.key, '')
                   }}
                   style={{
                     minHeight: '64px', borderRadius: '10px', cursor: 'pointer', textAlign: 'left',
@@ -1275,6 +1312,33 @@ export default function CheckPage() {
           liveRate={business.exchangeRate}
           onDismiss={() => setPaying(false)}
           onPaid={() => { setPaying(false); handleClose() }}
+        />
+      )}
+
+      {noteFor !== null && drafts[noteFor] && (
+        <TextSheet
+          title="Note for the kitchen"
+          initial={drafts[noteFor].note}
+          placeholder="e.g. no onions, nut allergy"
+          submitLabel="Save note"
+          onCancel={() => setNoteFor(null)}
+          onSubmit={text => {
+            const at = noteFor
+            setDrafts(list => list.map((x, n) => (n === at ? { ...x, note: text } : x)))
+            setNoteFor(null)
+          }}
+        />
+      )}
+
+      {otherVoid && (
+        <TextSheet
+          title="What happened?"
+          placeholder="A few words for the record"
+          required
+          danger
+          submitLabel="Void it"
+          onCancel={() => setOtherVoid(null)}
+          onSubmit={text => { const lineId = otherVoid; setOtherVoid(null); void handleVoid(lineId, 'other', text) }}
         />
       )}
 

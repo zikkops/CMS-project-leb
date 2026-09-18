@@ -244,9 +244,10 @@ The owner's goals it answers:
   the 44px floor for chips), 0.64–0.82rem text, faded-teal disabled states,
   and two solid teal buttons at once. One or two screens per session.
   *Done: PaySheet, DiscountSheet and CustomerSheet are Sheets built from PosButton/Chip (tenders with cash/card icons, 44px+ everywhere, readable labels, one loud button at a time: Scan code is neutral, Add is the action); the receipt page's Print and widths and the hub page's Test page too. The login page was done in T1.12. Checked on the test hub: the receipt page and the discount sheet.*
-- [ ] **T2.5 Native prompts become sheets.** `window.prompt` is used for
+- [x] **T2.5 Native prompts become sheets.** `window.prompt` is used for
   kitchen notes and the "Other" void reason (`check/[id]/page.tsx`). It is
   tiny on touch screens and blocked by some kiosks.
+  *Done: TextSheet (a Sheet with a textarea; Enter saves, Escape cancels) for the kitchen note and the "Other" void reason, which needs words before "Void it" lights up. Checked: the note sheet opened focused, took "nut allergy" and Enter put it on the line.*
 
 ### Till flows
 
