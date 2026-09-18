@@ -35,6 +35,7 @@ import { refundOf } from '../drawer'
 import { vatRateOn } from '../businessSettings'
 import { todayYmd } from '../dates'
 import { BRAND } from '../brand'
+import { isSoldOut, soldOutDay } from '../soldOut'
 import { validateSelection, toSelections, type ModifierGroup } from '../modifiers'
 import { effectivePrice } from '../productPricing'
 import { toTicketLines } from '../tickets'
@@ -134,7 +135,7 @@ export function parseBatchKey(body: Record<string, unknown>): string | null {
   return raw
 }
 
-async function buildLines(caller: Caller, requests: LineRequest[]): Promise<CheckLine[]> {
+async function buildLines(caller: Caller, requests: LineRequest[]): Promise<{ lines: CheckLine[]; soldOut: Map<string, unknown> }> {
   const db = adminDb()
 
   const menuIds = [...new Set(requests.filter(r => r.source === 'menu').map(r => r.refId))]
@@ -195,7 +196,7 @@ async function buildLines(caller: Caller, requests: LineRequest[]): Promise<Chec
   const recipeSupplies: Record<string, RecipeSupply> = Object.fromEntries(
     recipeSupplySnaps.filter(s => s.exists).map(s => [s.id, toRecipeSupply(s.id, s.data() ?? {})]))
 
-  return requests.map((req, i) => {
+  const lines = requests.map((req, i) => {
     const where = `Item ${i + 1}`
 
     if (req.source === 'product') {
@@ -264,6 +265,10 @@ async function buildLines(caller: Caller, requests: LineRequest[]): Promise<Chec
       ...(consumption && consumption.unknown.length > 0 ? { consumesUnknown: consumption.unknown } : {}),
     })
   })
+  // What each menu item says about being sold out, for addLines() to judge
+  // against the check's branch (UPGRADE.md T3.5).
+  const soldOut = new Map(menuSnaps.filter(s => s.exists).map(s => [s.id, s.data()?.soldOut as unknown]))
+  return { lines, soldOut }
 }
 
 function line(
@@ -485,7 +490,7 @@ export async function addLines(
 ): Promise<{ added: number; lines: CheckLine[]; duplicate: boolean }> {
   // Priced BEFORE the transaction: it reads menu items, categories and
   // modifier groups, and a transaction may not read after its first write.
-  const built = await buildLines(caller, requests)
+  const { lines: built, soldOut } = await buildLines(caller, requests)
 
   let duplicate = false
   await adminDb().runTransaction(async tx => {
@@ -500,6 +505,13 @@ export async function addLines(
     }
     if (check.lines.length + built.length > CHECK_LIMITS.linesPerCheck) {
       throw new HttpError(400, `A check can hold at most ${CHECK_LIMITS.linesPerCheck} items.`)
+    }
+    // Sold out at this branch today (UPGRADE.md T3.5). Not for orders taken
+    // during an outage: the kitchen already made those.
+    if (!madeOfflineAt) {
+      const today = soldOutDay(BRAND.locale.timezone)
+      const out = built.find(l => l.source === 'menu' && isSoldOut(soldOut.get(l.refId), check.branch, today))
+      if (out) throw new HttpError(409, `"${out.name}" is sold out at ${check.branch} today.`)
     }
     const stamped = built.map(l => ({
       ...l,

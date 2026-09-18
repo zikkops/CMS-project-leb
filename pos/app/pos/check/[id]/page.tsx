@@ -48,9 +48,11 @@ import { MenuPicker, ModifierSheet } from './MenuPicker'
 import { lineUnitPrice, describeSelections } from '@big-cms/shared/modifiers'
 import {
   useCheck, usePosMenu, useRetailProducts,
-  addLines, sendCheck, voidLine, moveCheck, closeCheck, setStaffMeal,
+  addLines, sendCheck, voidLine, moveCheck, closeCheck, setStaffMeal, markSoldOut,
   type DraftLine, type PosMenuItem, type PosProduct,
 } from '../../../lib/usePos'
+import { isSoldOut, soldOutDay } from '@big-cms/shared/soldOut'
+import { BRAND } from '@big-cms/shared/brand'
 import {
   PosButton, Chip, StatusBadge, SectionLabel, type Tone, PosLoading, ErrorNote, Sheet,
 } from '../../../lib/posUi'
@@ -346,6 +348,25 @@ export default function CheckPage() {
     () => (allergensShown && allergenChart.dishes ? new Map(allergenChart.dishes.map(d => [d.menuItemId, d])) : null),
     [allergensShown, allergenChart.dishes],
   )
+  // 86 from the till (UPGRADE.md T3.5): a manager switches "Mark sold out" on,
+  // and a tap on a dish marks it sold out at this branch for today, or back on.
+  const { on: soldOutOn } = useFeature('soldOut')
+  const canMarkSoldOut = soldOutOn && canDiscount
+  const [markingSoldOut, setMarkingSoldOut] = useState(false)
+  const [marking, setMarking] = useState<string | null>(null)
+  async function toggleSoldOut(item: PosMenuItem) {
+    if (!check || marking) return
+    setMarking(item.id)
+    setError('')
+    try {
+      await markSoldOut(check.branch, item.id, !isSoldOut(item.soldOut, check.branch, soldOutDay(BRAND.locale.timezone)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'That dish was not changed.')
+    } finally {
+      setMarking(null)
+    }
+  }
+
   function toggleAllergens() {
     setShowAllergens(prev => {
       const next = !prev
@@ -594,12 +615,23 @@ export default function CheckPage() {
       hasOptions={i => groupsOf(i).length > 0}
       onPick={pick}
       onProduct={addProduct}
+      isSoldOut={i => isSoldOut(i.soldOut, check.branch, soldOutDay(BRAND.locale.timezone))}
+      marking={canMarkSoldOut && markingSoldOut}
+      onMark={canMarkSoldOut ? item => { void toggleSoldOut(item) } : undefined}
       locked={draftsLocked}
       columns={columns}
       allergenMap={allergenMap}
-      allergenControl={allergensOn ? (
-        <Chip label="Allergens" icon={faWheatAwnCircleExclamation} size="sm" colour="var(--brand-secondary)"
-          active={showAllergens} onClick={toggleAllergens} />
+      allergenControl={allergensOn || canMarkSoldOut ? (
+        <span style={{ display: 'inline-flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {canMarkSoldOut && (
+            <Chip label={markingSoldOut ? 'Done marking' : 'Mark sold out'} icon={faBan} size="sm" colour="var(--red)"
+              active={markingSoldOut} onClick={() => setMarkingSoldOut(m => !m)} />
+          )}
+          {allergensOn && (
+            <Chip label="Allergens" icon={faWheatAwnCircleExclamation} size="sm" colour="var(--brand-secondary)"
+              active={showAllergens} onClick={toggleAllergens} />
+          )}
+        </span>
       ) : null}
       allergenNote={!allergensShown ? null : allergenChart.error ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', margin: '-0.3rem 0 0.9rem' }}>

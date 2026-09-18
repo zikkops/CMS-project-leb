@@ -33,7 +33,7 @@ rmSync(out, { recursive: true, force: true })
 try {
   execSync(
     'npx tsc shared/src/server/hubStore.ts shared/src/server/checks.ts shared/src/server/tickets.ts ' +
-    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts ' +
+    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts shared/src/server/soldOut.ts ' +
     `shared/src/server/drawer.ts --outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -287,6 +287,7 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
   const C = await import(url('server/checks.js'))
   const T = await import(url('server/tickets.js'))
   const D = await import(url('server/drawer.js'))
+  const SO = await import(url('server/soldOut.js'))
   const { BRAND } = await import(url('brand.js'))
   const db = FA.adminDb()
   eq('adminDb() is the hub\'s store when BIG_CMS_HUB_DB is set', db instanceof H.HubStore, true)
@@ -320,6 +321,23 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
   eq('items are priced from the hub\'s own menu', added.lines.map(l => `${l.name} ${l.unitPrice}`), ['Toast 4.5', 'Mug 12'])
   eq('THE TRAP: the same batch sent twice is added once',
     [resent.duplicate, (await db.doc(`checks/${checkId}`).get()).data().lines.length], [true, 2])
+
+  // 86 from the till (UPGRADE.md T3.5), on the hub's own menu.
+  const marked = await SO.setSoldOut('m-toast', branch, true)
+  eq('marking a dish sold out changes it once', [marked.changed, (await SO.setSoldOut('m-toast', branch, true)).changed], [true, false])
+  await rejects('THE TRAP: a sold-out dish cannot be added at that branch today',
+    () => C.addLines(staff, checkId, C.parseLineRequests({ lines: [{ source: 'menu', refId: 'm-toast', quantity: 1 }] }), 'batch-0086'),
+    e => e.status === 409 && /sold out/.test(e.message))
+  const madeOffline = await C.addLines(staff, checkId, C.parseLineRequests({ lines: [{ source: 'menu', refId: 'm-toast', quantity: 1 }] }), 'batch-0087', new Date().toISOString())
+  eq('...but an order the kitchen already made during an outage is still recorded', madeOffline.added, 1)
+  eq('another branch still sells it', (await db.doc('menuItems/m-toast').get()).data().soldOut, { [branch]: marked.day })
+  await SO.setSoldOut('m-toast', branch, false)
+  eq('put back on, the mark is gone, not left empty', (await db.doc('menuItems/m-toast').get()).data().soldOut, {})
+  await db.doc('menuItems/m-toast').update({ soldOut: { [branch]: '2020-01-01' } })
+  const nextDay = await C.addLines(staff, checkId, C.parseLineRequests({ lines: [{ source: 'menu', refId: 'm-toast', quantity: 1 }] }), 'batch-0088')
+  eq('a mark from another day has expired by itself', nextDay.added, 1)
+  await C.voidLine(staff, checkId, madeOffline.lines[0].id, 'rung-wrong', '')
+  await C.voidLine(staff, checkId, nextDay.lines[0].id, 'rung-wrong', '')
 
   const sent = await C.sendCheck(staff, checkId)
   eq('Send makes one ticket, for the kitchen', sent.tickets.map(t => `${t.station} ${t.lines}`), ['Kitchen 1'])

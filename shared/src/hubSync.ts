@@ -107,7 +107,9 @@ export function leaveHubReasons(s: { unsentDocs: number; unsentMoves: number; op
 export function pullSpec(branch: string): PullSpec[] {
   return [
     { collection: 'menuCategories' },
-    { collection: 'menuItems' },
+    // A dish the hub's till marked sold out (UPGRADE.md T3.5) stays marked:
+    // the hub is this branch's till, and the cloud does not know about it.
+    { collection: 'menuItems', keepLocal: ['soldOut'] },
     { collection: 'modifierGroups' },
     // The hub counts what it sells. The cloud's figure is behind it until the
     // hub's sales go up, so it never overwrites the hub's.
@@ -170,6 +172,20 @@ const pathOf = (collection: string, id: string) => `${collection}/${id}`
  * count only while it has stock movements the cloud does not have yet (S8).
  * Once they have landed, the cloud's count includes them, and it is taken.
  */
+/**
+ * Which documents keep their `keepLocal` fields in this pull, given the stock
+ * the hub has sold and not yet sent up (`pending`, collection/id).
+ *
+ * A product's count is the hub's only while its movements are on the way (S8);
+ * once they have landed the cloud's figure includes them, and is taken. Every
+ * other kept field is the hub's for good: a dish its till marked sold out
+ * (UPGRADE.md T3.5) is something the cloud never hears about, so a pull must
+ * never clear it.
+ */
+export function holdLocalFor(pending: ReadonlySet<string>): (collection: string, id: string) => boolean {
+  return (collection, id) => collection !== 'products' || pending.has(`${collection}/${id}`)
+}
+
 export function planPull(
   spec: readonly PullSpec[],
   local: ReadonlyMap<string, Record<string, unknown>>,

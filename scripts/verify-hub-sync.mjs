@@ -439,6 +439,18 @@ console.log('\nwhat a hub sends up: the rules')
   eq('THE TRAP: with its movements sent, a hub takes the cloud\'s count, deliveries included',
     P.planPull(spec, local, snap, json, () => false)[0].data.stock, { [branch]: 12 })
   eq('with movements still waiting, it keeps its own', P.planPull(spec, local, snap, json, () => true).length, 0)
+
+  // A dish the hub's till marked sold out (UPGRADE.md T3.5).
+  const hold = P.holdLocalFor(new Set(['products/p-waiting']))
+  const menuLocal = new Map([['menuItems/m1', { name: 'Fries', price: 4, soldOut: { [branch]: '2026-09-18' } }]])
+  const menuSnap = [{ collection: 'menuItems', id: 'm1', data: { name: 'Fries', price: 4.5 } }]
+  const pulled = P.planPull(spec, menuLocal, menuSnap, json, hold)
+  eq('THE TRAP: a pull takes the cloud\'s new price but never clears a dish the hub marked sold out',
+    [pulled.length, pulled[0]?.data.price, pulled[0]?.data.soldOut], [1, 4.5, { [branch]: '2026-09-18' }])
+  eq('...while product stock still follows the movements: kept only while some are on the way',
+    [hold('products', 'p-waiting'), hold('products', 'p-sent'), hold('menuItems', 'm1')], [true, false, true])
+  eq('a sold-out mark the hub never made is not invented from the cloud\'s copy either',
+    P.planPull(spec, new Map([['menuItems/m2', { name: 'Tea' }]]), [{ collection: 'menuItems', id: 'm2', data: { name: 'Tea', soldOut: { Other: '2026-09-18' } } }], json, hold)[0]?.data.soldOut, undefined)
 }
 
 console.log('\nthe hub\'s database records stock movements as it commits them')

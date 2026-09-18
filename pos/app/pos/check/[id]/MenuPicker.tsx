@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faArrowLeft, faPlus, faSliders, faXmark, faUtensils, faBagShopping, faCheck,
-  faTriangleExclamation, faWheatAwnCircleExclamation, type IconDefinition,
+  faTriangleExclamation, faWheatAwnCircleExclamation, faBan, type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
 import { categoryImage } from '@big-cms/shared/menuCategoryImages'
 import { validateSelection, selectionLabel, type ModifierGroup } from '@big-cms/shared/modifiers'
@@ -220,21 +220,37 @@ function TileLetter({ name, colour }: { name: string; colour: string }) {
 }
 
 /** One thing to tap, with its picture, or its first letter when it has none. Module scope. */
-function ItemTile({ name, image, colour, locked, onClick, children }: {
+function ItemTile({ name, image, colour, locked, onClick, children, soldOut = false, marking = false }: {
   name: string
   image: string
   colour: string
   locked: boolean
   onClick: () => void
   children: React.ReactNode
+  /** Sold out at this branch today (T3.5): greyed and not tappable, unless a manager is marking. */
+  soldOut?: boolean
+  marking?: boolean
 }) {
+  const off = marking ? false : locked || soldOut
   return (
-    <button type="button" onClick={() => !locked && onClick()} disabled={locked} style={{
-      borderRadius: '12px', overflow: 'hidden', cursor: locked ? 'not-allowed' : 'pointer', textAlign: 'left', padding: 0,
+    <button type="button" onClick={() => !off && onClick()} disabled={off}
+      aria-label={soldOut ? `${name}, sold out today${marking ? ': tap to put it back on' : ''}` : marking ? `${name}: tap to mark sold out` : undefined}
+      style={{
+      borderRadius: '12px', overflow: 'hidden', cursor: off ? 'not-allowed' : 'pointer', textAlign: 'left', padding: 0,
       backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)',
-      border: '1px solid rgba(255,255,255,0.12)', borderTop: `4px solid ${colour}`,
-      display: 'flex', flexDirection: 'column', opacity: locked ? 0.45 : 1, WebkitTapHighlightColor: 'transparent',
+      // Longhands only: a shorthand beside borderTop that changes between renders is a React styling bug.
+      borderWidth: marking ? '4px 2px 2px' : '4px 1px 1px', borderStyle: marking ? 'solid dashed dashed' : 'solid',
+      borderColor: `${soldOut ? 'var(--red)' : colour} ${marking ? 'var(--red)' : 'rgba(255,255,255,0.12)'} ${marking ? 'var(--red)' : 'rgba(255,255,255,0.12)'}`,
+      display: 'flex', flexDirection: 'column', opacity: off ? 0.45 : 1, WebkitTapHighlightColor: 'transparent',
+      position: 'relative',
     }}>
+      {soldOut && (
+        <span style={{
+          position: 'absolute', top: '0.5rem', left: '0.5rem', zIndex: 1, background: 'var(--red)', color: '#fff',
+          fontSize: '0.75rem', fontWeight: 700, borderRadius: '999px', padding: '0.2rem 0.6rem',
+          display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+        }}><FontAwesomeIcon icon={faBan} /> Sold out today</span>
+      )}
       <span style={{
         position: 'relative', display: 'block', width: '100%', aspectRatio: '4 / 3',
         background: `color-mix(in srgb, ${colour} 16%, #151515)`,
@@ -262,6 +278,7 @@ export function MenuPicker({
   categories, counts, activeCategory, onCategory,
   items, products, hasOptions, onPick, onProduct, locked, columns,
   allergenMap, allergenControl, allergenNote,
+  isSoldOut = () => false, marking = false, onMark,
 }: {
   categories: { id: string; name: string; image: string }[]
   /** Available items per category, for the tiles. */
@@ -280,6 +297,11 @@ export function MenuPicker({
   allergenMap: Map<string, ChartDish> | null
   allergenControl: React.ReactNode
   allergenNote: React.ReactNode
+  /** Sold out at this check's branch today (UPGRADE.md T3.5). */
+  isSoldOut?: (item: PosMenuItem) => boolean
+  /** A manager marking dishes: a tap marks the dish sold out, or back on, instead of adding it. */
+  marking?: boolean
+  onMark?: (item: PosMenuItem) => void
 }) {
   const grid: React.CSSProperties = { display: 'grid', gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gap: '0.7rem' }
   const empty = (text: string) => (
@@ -349,7 +371,9 @@ export function MenuPicker({
       ) : (
         <div style={grid}>
           {items.map(i => (
-            <ItemTile key={i.id} name={i.name} image={i.image} colour={colour} locked={locked} onClick={() => onPick(i)}>
+            <ItemTile key={i.id} name={i.name} image={i.image} colour={colour} locked={locked}
+              soldOut={isSoldOut(i)} marking={marking && Boolean(onMark)}
+              onClick={() => (marking && onMark ? onMark(i) : onPick(i))}>
               <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem' }}>
                 <span style={{ fontSize: '1rem', fontWeight: 700 }}>{money(i.price)}</span>
                 {hasOptions(i) && (

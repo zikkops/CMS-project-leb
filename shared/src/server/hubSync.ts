@@ -28,7 +28,7 @@ import { stable } from '../backupCodec'
 import { BRANCHES } from '../branches'
 import { invoicePeriod } from '../invoiceFormat'
 import { timestampMs } from '../timestamps'
-import { deviceAuthHeader, leaveHubReasons, normalizePairingCode, planPull, pullSpec, type PulledDoc } from '../hubSync'
+import { deviceAuthHeader, holdLocalFor, leaveHubReasons, normalizePairingCode, planPull, pullSpec, type PulledDoc } from '../hubSync'
 import { MOVES_COLLECTION, PUSHED_COLLECTIONS, PUSH_BATCH, type PushedDoc, type StockMove } from '../hubPush'
 import { addBlock, needsReceipts, readBlocks, receiptsLeft } from '../receiptBlocks'
 
@@ -418,7 +418,7 @@ export async function applySnapshot(
   }))
   // Compared as they would be stored, so two Timestamps for one instant are the same.
   const same = (a: unknown, b: unknown) => stable(encodeHubValue(a)) === stable(encodeHubValue(b))
-  const holdLocal = pending ? (collection: string, id: string) => pending.has(`${collection}/${id}`) : undefined
+  const holdLocal = pending ? holdLocalFor(pending) : undefined
   const writes = planPull(spec, local, snapshot, same, holdLocal)
   if (writes.length === 0) return { written: 0, deleted: 0 }
 

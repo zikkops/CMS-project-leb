@@ -31,6 +31,7 @@ import type { LocalDoc } from './backend/queries'
 import type { Check, Station } from '@big-cms/shared/checks'
 import type { PaymentRequest } from '@big-cms/shared/payments'
 import type { DenomCount, DrawerMovement, DrawerTotals, Money2 } from '@big-cms/shared/drawer'
+import { readSoldOut } from '@big-cms/shared/soldOut'
 import { ACTIVE_TICKET_STATUSES, type Ticket } from '@big-cms/shared/tickets'
 import { effectivePrice, saleIsActive } from '@big-cms/shared/productPricing'
 import { timestampMs } from '@big-cms/shared/timestamps'
@@ -376,6 +377,8 @@ export interface PosMenuItem {
   modifierGroupIds: string[]
   /** The item's picture; '' when it has none. */
   image: string
+  /** Branch → the café day it was marked sold out (UPGRADE.md T3.5); judge it with isSoldOut(). */
+  soldOut: Record<string, string>
 }
 
 export interface PosMenu {
@@ -427,6 +430,7 @@ export function usePosMenu(): PosMenu {
             modifierGroupIds: Array.isArray(data.modifierGroupIds)
               ? data.modifierGroupIds as string[] : [],
             image: typeof data.image === 'string' ? data.image : '',
+            soldOut: readSoldOut(data.soldOut),
           }
         }))
         setLoaded(l => ({ ...l, items: true }))
@@ -699,6 +703,12 @@ export async function readDrawer(shiftId: string): Promise<{ totals: DrawerTotal
   const data = await call(
     `/api/pos/drawer?shiftId=${encodeURIComponent(shiftId)}`, 'GET', undefined, { timeoutMs: POS_TIMEOUT_MS })
   return data as unknown as { totals: DrawerTotals; movements?: DrawerMovement[] }
+}
+
+/** Marks a dish sold out at a branch for the rest of the café day, or back on (UPGRADE.md T3.5). Managers only. */
+export async function markSoldOut(branch: string, menuItemId: string, soldOut: boolean): Promise<{ name: string; changed: boolean }> {
+  const data = await call('/api/pos/sold-out', 'POST', { branch, menuItemId, soldOut }, { timeoutMs: POS_TIMEOUT_MS })
+  return data as unknown as { name: string; changed: boolean }
 }
 
 /**

@@ -42,8 +42,10 @@ import {
   faWifi, faPlugCircleXmark, faTriangleExclamation, faArrowLeft, faRotateRight, faTrashCan, faCheck, faMinus,
   faPlus, faXmark, faHourglassHalf, faPen, faPaperPlane, faClipboardCheck, faMoneyBillWave, faCoins,
   faCreditCard, faEquals, faHandHoldingDollar, faReceipt, faUserGroup, faUtensils, faStore,
+  faBan,
 } from '@fortawesome/free-solid-svg-icons'
 import { BRAND } from '@big-cms/shared/brand'
+import { isSoldOut, soldOutDay } from '@big-cms/shared/soldOut'
 import { checkTotals, type Check } from '@big-cms/shared/checks'
 import {
   applyPayment, balance, type PayCurrency, type PaymentRequest, type Tender,
@@ -727,16 +729,22 @@ export default function CounterPage() {
       }}>
         {shown.map(i => {
           const colour = kindColour(Math.max(0, categories.findIndex(c => c.id === activeCategory)))
+          // Sold out at this branch today, marked by a manager (UPGRADE.md T3.5).
+          const out = isSoldOut(i.soldOut, branch, soldOutDay(BRAND.locale.timezone))
           return (
-            <button key={i.id} type="button" onClick={() => setDrafts(d => withDraft(d, i))} style={{
-              minHeight: '92px', borderRadius: '12px', cursor: 'pointer', textAlign: 'left',
+            <button key={i.id} type="button" disabled={out} onClick={() => !out && setDrafts(d => withDraft(d, i))}
+              aria-label={out ? `${i.name}, sold out today` : undefined} style={{
+              minHeight: '92px', borderRadius: '12px', cursor: out ? 'not-allowed' : 'pointer', textAlign: 'left',
               padding: '0.75rem 0.9rem 0.75rem 1rem', fontFamily: 'var(--font-inter)',
               backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--offwhite)',
-              border: '1px solid rgba(255,255,255,0.12)', borderLeft: `6px solid ${colour}`,
+              border: '1px solid rgba(255,255,255,0.12)', borderLeft: `6px solid ${out ? 'var(--red)' : colour}`,
               display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '0.35rem',
+              opacity: out ? 0.5 : 1,
             }}>
               <span style={{ fontSize: '1.02rem', fontWeight: 600, lineHeight: 1.25 }}>{i.name}</span>
-              <span style={{ fontSize: '1rem', fontWeight: 700 }}>{usd(i.price)}</span>
+              <span style={{ fontSize: '1rem', fontWeight: 700 }}>
+                {out ? <span style={{ color: 'var(--red)', fontSize: '0.88rem' }}><FontAwesomeIcon icon={faBan} /> Sold out today</span> : usd(i.price)}
+              </span>
             </button>
           )
         })}

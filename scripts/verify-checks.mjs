@@ -17,7 +17,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'checks-verify-'))
 execSync(
-  `npx tsc shared/src/checks.ts shared/src/tickets.ts shared/src/money.ts shared/src/netErrors.ts shared/src/requestKey.ts --outDir ${out} --module esnext ` +
+  `npx tsc shared/src/checks.ts shared/src/tickets.ts shared/src/money.ts shared/src/netErrors.ts shared/src/requestKey.ts shared/src/soldOut.ts --outDir ${out} --module esnext ` +
   `--target es2022 --skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' }
 )
@@ -28,6 +28,7 @@ for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
 
 const C = await import(`file://${join(out, 'checks.js')}`)
 const T = await import(`file://${join(out, 'tickets.js')}`)
+const SO = await import(`file://${join(out, 'soldOut.js')}`)
 const M = await import(`file://${join(out, 'money.js')}`)
 
 let pass = 0, fail = 0
@@ -404,6 +405,20 @@ console.log('\nthe front picking up a ready plate')
   eq('nor one the kitchen has not started', T.pickupOutcome('new').kind, 'refused')
   eq('a cancelled ticket says why', T.pickupOutcome('cancelled'),
     { kind: 'refused', reason: 'That ticket was cancelled — every item on it was voided.' })
+}
+
+console.log('\n86 from the till: sold out for the café day (UPGRADE.md T3.5)')
+{
+  // Beirut is UTC+3 in September.
+  const at = utc => new Date(`2026-09-13T${utc}:00.000Z`)
+  eq('THE TRAP: at 01:30 in Beirut it is still last night: a dish run out of at 22:00 stays out', SO.soldOutDay('Asia/Beirut', at('22:30')), '2026-09-13')
+  eq('...at 04:30 in Beirut too', SO.soldOutDay('Asia/Beirut', at('01:30')), '2026-09-12')
+  eq('...and from 05:00 it is a new day, back on the menu by itself', SO.soldOutDay('Asia/Beirut', at('02:30')), '2026-09-13')
+  eq('the mark counts only at its own branch and on its own day',
+    [SO.isSoldOut({ Main: '2026-09-13' }, 'Main', '2026-09-13'), SO.isSoldOut({ Main: '2026-09-13' }, 'Second', '2026-09-13'), SO.isSoldOut({ Main: '2026-09-12' }, 'Main', '2026-09-13')],
+    [true, false, false])
+  eq('anything that is not branch → day is read as nothing sold out', [SO.readSoldOut(null), SO.readSoldOut(['Main']), SO.readSoldOut({ Main: 7, Second: 'soon', Third: '2026-09-13' })],
+    [{}, {}, { Third: '2026-09-13' }])
 }
 
 console.log(`\n${pass} passed, ${fail} failed\n`)

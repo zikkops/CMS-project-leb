@@ -74,6 +74,11 @@ export const FEATURES = {
     label: 'Take Payment', group: 'Operations', requires: ['pos'], defaultEnabled: false,
     collections: ['drawerShifts', 'branchDrawers'],
   },
+  // A manager marks a dish sold out at one branch for the day, from the
+  // order screen (UPGRADE.md T3.5). On a hub it works with no internet.
+  soldOut: {
+    label: 'Sold Out from the Till', group: 'Operations', requires: ['pos'], defaultEnabled: false,
+  },
   // Paid-outs, pay-ins and safe drops on the drawer (UPGRADE.md T3.1): cash
   // that is not a sale, recorded on the open shift so the count still
   // reconciles. Needs the drawer, which comes with Take Payment.
