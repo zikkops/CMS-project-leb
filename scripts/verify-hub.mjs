@@ -356,9 +356,22 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
   eq('...and never keeps a counter of its own', (await db.doc('appSettings/invoiceCounter').get()).exists, false)
   await rejects('a closed check does not close twice', () => C.closeCheck(staff, checkId), e => e.status === 409)
 
-  const z = await D.closeShift(staff, shift.id, {}, { 50: 1, 20: 1, 1: 1 }, '')
-  eq('the Z close finds the payment through array-contains', z.totals.expected, { usd: 71, lbp: 0 })
+  // Cash that is not a sale (UPGRADE.md T3.1), on the shift itself.
+  const drop = { id: 'move-000001', kind: 'safeDrop', usd: 20, lbp: 0, reason: 'Taken to the safe', note: '' }
+  const first = await D.recordMovement(staff, shift.id, drop)
+  const again = await D.recordMovement(staff, shift.id, drop)
+  await D.recordMovement(staff, shift.id, { id: 'move-000002', kind: 'paidOut', usd: 1, lbp: 0, reason: 'Other', note: 'Ice' })
+  eq('THE TRAP: a safe drop sent twice is recorded once',
+    [first.alreadyRecorded, again.alreadyRecorded, (await db.doc(`drawerShifts/${shift.id}`).get()).data().movements.length], [false, true, 2])
+  eq('the X reading counts them: 71 − 20 dropped − 1 paid out', (await D.xReading(shift.id)).totals.expected, { usd: 50, lbp: 0 })
+  await rejects('a movement that is not one (a reason off the list) is refused before anything is written',
+    () => D.recordMovement(staff, shift.id, { ...drop, id: 'move-000003', reason: 'Lunch' }), e => e.status === 400)
+
+  const z = await D.closeShift(staff, shift.id, {}, { 50: 1 }, '')
+  eq('the Z close finds the payment through array-contains, less what left the drawer', z.totals.expected, { usd: 50, lbp: 0 })
   eq('...and the count agrees with it', z.difference, { usd: 0, lbp: 0 })
+  await rejects('nothing is recorded on a closed shift',
+    () => D.recordMovement(staff, shift.id, { ...drop, id: 'move-000004' }), e => e.status === 409)
   eq('the drawer is free again', (await db.doc(`branchDrawers/${branch}`).get()).data().openShiftId, null)
 
   const sql = new DatabaseSync(file)

@@ -256,6 +256,30 @@ eq('a card refund goes on the card, not out of the drawer', D.refundOf([shiftPay
 eq('sale then refund in one shift: the drawer is back to its float',
    D.drawerTotals(float, [shiftPays[0]], [ref]).expected, float)
 
+console.log('\npaid-outs, pay-ins and safe drops — cash that is not a sale (T3.1)')
+const moves = [
+  { kind: 'paidOut', usd: 12.5, lbp: 0 },
+  { kind: 'payIn', usd: 0, lbp: 500_000 },
+  { kind: 'safeDrop', usd: 40, lbp: 0 },
+]
+const mt = D.drawerTotals(float, shiftPays, [], moves)
+eq('each kind is added up on its own, per currency',
+  [mt.paidOuts, mt.payIns, mt.safeDrops], [{ usd: 12.5, lbp: 0 }, { usd: 0, lbp: 500_000 }, { usd: 40, lbp: 0 }])
+eq('THE DRAWER: out goes out, in comes in: USD 60 − 12.50 − 40', mt.expected.usd, 7.5)
+eq('...and LBP 1,051,000 + 500,000', mt.expected.lbp, 1_551_000)
+eq('a pay-in in lira is never a dollar figure', D.drawerTotals(float, [], [], [{ kind: 'payIn', usd: 0, lbp: 89_500 }]).expected, { usd: 50, lbp: 289_500 })
+eq('a kind that does not exist moves nothing', D.drawerTotals(float, [], [], [{ kind: 'gift', usd: 5, lbp: 0 }]).expected, float)
+eq('no movements: the totals say zero, not missing', [dt.paidOuts, dt.payIns, dt.safeDrops], [{ usd: 0, lbp: 0 }, { usd: 0, lbp: 0 }, { usd: 0, lbp: 0 }])
+const ok = { kind: 'paidOut', usd: 20, lbp: 0, reason: 'Supplier paid in cash', note: '' }
+eq('a paid-out with a listed reason: fine', D.movementProblem(ok), null)
+eq('THE TRAP: nothing to move, negative, a fraction of a cent or of a lira: refused',
+  [{ ...ok, usd: 0 }, { ...ok, usd: -5 }, { ...ok, usd: 1.005 }, { ...ok, usd: 0, lbp: 1500.5 }].map(m => typeof D.movementProblem(m)), ['string', 'string', 'string', 'string'])
+eq('a reason not on the list, or another kind\'s reason: refused',
+  [D.movementProblem({ ...ok, reason: 'Because' }), D.movementProblem({ ...ok, reason: 'Float topped up' })].map(p => typeof p), ['string', 'string'])
+eq('"Other" needs a note saying what it was', [typeof D.movementProblem({ ...ok, reason: 'Other' }), D.movementProblem({ ...ok, reason: 'Other', note: 'Gas bottle' })], ['string', null])
+eq('an unknown kind is refused', typeof D.movementProblem({ ...ok, kind: 'gift' }), 'string')
+eq('a kind\'s name on Object is not a kind', typeof D.movementProblem({ ...ok, kind: 'toString' }), 'string')
+
 console.log('\nthe count — per currency, never netted')
 eq('2 × $20 + 1 × $10 = $50', D.countedCash({}, { '20': 2, '10': 1 }).usd, 50)
 eq('2 × 100,000 LBP = 200,000', D.countedCash({ '100000': 2 }, {}).lbp, 200_000)

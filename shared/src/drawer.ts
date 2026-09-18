@@ -75,6 +75,61 @@ export function refundOf(payments: readonly DrawerPayment[]): Refund {
   }
 }
 
+// ── Cash that is not a sale (UPGRADE.md T3.1) ─────────────────────────────
+// A supplier paid from the drawer, the float topped up, notes taken to the
+// safe mid-shift: until these were recorded the drawer read short or over by
+// exactly that much, and the only record was somebody's memory at the count.
+// Each is per currency, like everything else here, and is never converted.
+
+export type MovementKind = 'paidOut' | 'payIn' | 'safeDrop'
+
+export const MOVEMENT_LABELS: Record<MovementKind, string> = {
+  paidOut: 'Paid out',
+  payIn: 'Paid in',
+  safeDrop: 'Safe drop',
+}
+
+/**
+ * Why cash left or came in. A short list rather than free text, so the
+ * report can add them up; "Other" needs a note. (Owner's choice to confirm,
+ * UPGRADE.md T3.1: the reasons, and who may record them.)
+ */
+export const MOVEMENT_REASONS: Record<MovementKind, readonly string[]> = {
+  paidOut: ['Supplier paid in cash', 'Café supplies bought', 'Staff advance', 'Other'],
+  payIn: ['Float topped up', 'Change brought from the safe or bank', 'Other'],
+  safeDrop: ['Taken to the safe'],
+}
+
+export interface DrawerMovement {
+  /** Made by the till, so the same movement sent twice is recorded once. */
+  id: string
+  kind: MovementKind
+  usd: number
+  lbp: number
+  reason: string
+  note: string
+  by?: string
+  byEmail?: string
+  /** Milliseconds. */
+  at?: number
+}
+
+/** Why this movement cannot be recorded, or null. Checked on the server. */
+export function movementProblem(m: Pick<DrawerMovement, 'kind' | 'usd' | 'lbp' | 'reason' | 'note'>): string | null {
+  if (!Object.prototype.hasOwnProperty.call(MOVEMENT_REASONS, m.kind)) return 'Choose paid out, paid in or safe drop.'
+  for (const [label, v, max] of [['USD', m.usd, 100_000], ['LBP', m.lbp, 10_000_000_000]] as const) {
+    if (typeof v !== 'number' || !Number.isFinite(v) || v < 0) return `The ${label} amount must be zero or more.`
+    if (v > max) return `That ${label} amount is too large to be right.`
+  }
+  if (Math.abs(m.usd * 100 - Math.round(m.usd * 100)) > 1e-6) return 'Dollars go to the cent, no further.'
+  if (!Number.isInteger(m.lbp)) return 'Lira are whole numbers.'
+  if (m.usd === 0 && m.lbp === 0) return 'Type how much, in dollars, lira or both.'
+  if (!MOVEMENT_REASONS[m.kind].includes(m.reason)) return 'Choose a reason from the list.'
+  if (m.reason === 'Other' && !m.note.trim()) return 'Say what it was for.'
+  if (m.note.length > 200) return 'Keep the note under 200 characters.'
+  return null
+}
+
 export interface DrawerTotals {
   float: Money2
   /** Handed over in cash. */
@@ -85,6 +140,10 @@ export interface DrawerTotals {
   refunds: Money2
   /** Charged to cards. Never in the drawer; shown so the Z report is the whole shift. */
   card: Money2
+  /** Cash that is not a sale (T3.1). Absent on totals stored before it existed: read with ?? zero. */
+  paidOuts?: Money2
+  payIns?: Money2
+  safeDrops?: Money2
   /** What should be in the drawer now. */
   expected: Money2
   payments: number
@@ -93,17 +152,26 @@ export interface DrawerTotals {
 /**
  * What a shift should have in its drawer.
  *
- * float + cash in − change − cash refunded. Card payments are totalled for the
- * report and change nothing here: a card slip is not a note in a drawer.
+ * float + cash in − change − cash refunded − paid out − dropped in the safe
+ * + paid in. Card payments are totalled for the report and change nothing
+ * here: a card slip is not a note in a drawer.
  */
 export function drawerTotals(
   float: Money2,
   payments: readonly DrawerPayment[],
   refunds: readonly Refund[] = [],
+  movements: readonly Pick<DrawerMovement, 'kind' | 'usd' | 'lbp'>[] = [],
 ): DrawerTotals {
   const t = {
     cashIn: { usd: 0, lbp: 0 }, change: { usd: 0, lbp: 0 },
     card: { usd: 0, lbp: 0 }, refunds: { usd: 0, lbp: 0 },
+    paidOuts: { usd: 0, lbp: 0 }, payIns: { usd: 0, lbp: 0 }, safeDrops: { usd: 0, lbp: 0 },
+  }
+  for (const m of movements) {
+    const side = m.kind === 'paidOut' ? t.paidOuts : m.kind === 'payIn' ? t.payIns : m.kind === 'safeDrop' ? t.safeDrops : null
+    if (!side) continue
+    side.usd += m.usd
+    side.lbp += m.lbp
   }
   for (const p of payments) {
     const side = p.tender === 'cash' ? t.cashIn : t.card
@@ -123,9 +191,12 @@ export function drawerTotals(
     change: round(t.change),
     refunds: round(t.refunds),
     card: round(t.card),
+    paidOuts: round(t.paidOuts),
+    payIns: round(t.payIns),
+    safeDrops: round(t.safeDrops),
     expected: round({
-      usd: float.usd + t.cashIn.usd - t.change.usd - t.refunds.usd,
-      lbp: float.lbp + t.cashIn.lbp - t.change.lbp - t.refunds.lbp,
+      usd: float.usd + t.cashIn.usd - t.change.usd - t.refunds.usd - t.paidOuts.usd - t.safeDrops.usd + t.payIns.usd,
+      lbp: float.lbp + t.cashIn.lbp - t.change.lbp - t.refunds.lbp - t.paidOuts.lbp - t.safeDrops.lbp + t.payIns.lbp,
     }),
     payments: payments.length,
   }

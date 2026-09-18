@@ -30,7 +30,7 @@ import { backend } from './backend'
 import type { LocalDoc } from './backend/queries'
 import type { Check, Station } from '@big-cms/shared/checks'
 import type { PaymentRequest } from '@big-cms/shared/payments'
-import type { DenomCount, DrawerTotals, Money2 } from '@big-cms/shared/drawer'
+import type { DenomCount, DrawerMovement, DrawerTotals, Money2 } from '@big-cms/shared/drawer'
 import { ACTIVE_TICKET_STATUSES, type Ticket } from '@big-cms/shared/tickets'
 import { effectivePrice, saleIsActive } from '@big-cms/shared/productPricing'
 import { timestampMs } from '@big-cms/shared/timestamps'
@@ -694,11 +694,23 @@ export async function openDrawer(branch: string, float: Money2): Promise<{ id: s
   return data as unknown as { id: string }
 }
 
-/** An X reading: where the drawer stands. Changes nothing. */
-export async function readDrawer(shiftId: string): Promise<{ totals: DrawerTotals }> {
+/** An X reading: where the drawer stands, and the cash that was not a sale. Changes nothing. */
+export async function readDrawer(shiftId: string): Promise<{ totals: DrawerTotals; movements?: DrawerMovement[] }> {
   const data = await call(
     `/api/pos/drawer?shiftId=${encodeURIComponent(shiftId)}`, 'GET', undefined, { timeoutMs: POS_TIMEOUT_MS })
-  return data as unknown as { totals: DrawerTotals }
+  return data as unknown as { totals: DrawerTotals; movements?: DrawerMovement[] }
+}
+
+/**
+ * A paid-out, pay-in or safe drop on the open shift (UPGRADE.md T3.1). The
+ * caller makes `id` once per movement and sends the same one again on a retry,
+ * so an answer lost on the wifi never records it twice.
+ */
+export async function recordDrawerMovement(
+  shiftId: string, m: Pick<DrawerMovement, 'id' | 'kind' | 'usd' | 'lbp' | 'reason' | 'note'>,
+): Promise<{ movement: DrawerMovement; alreadyRecorded: boolean }> {
+  const data = await call('/api/pos/drawer', 'POST', { action: 'movement', shiftId, ...m }, { timeoutMs: POS_TIMEOUT_MS })
+  return data as unknown as { movement: DrawerMovement; alreadyRecorded: boolean }
 }
 
 export interface ZResult { totals: DrawerTotals; counted: Money2; difference: Money2 }

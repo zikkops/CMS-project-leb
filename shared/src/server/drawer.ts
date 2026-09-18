@@ -25,8 +25,8 @@ import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
 import {
-  LBP_DENOMS, USD_DENOMS, countedCash, daySystem, drawerDifference, drawerTotals, floatProblem, refundOf,
-  type DaySystem, type DenomCount, type DrawerTotals, type Money2, type Refund, type DrawerPayment,
+  LBP_DENOMS, USD_DENOMS, countedCash, daySystem, drawerDifference, drawerTotals, floatProblem, movementProblem, refundOf,
+  type DaySystem, type DenomCount, type DrawerMovement, type DrawerTotals, type Money2, type MovementKind, type Refund, type DrawerPayment,
 } from '../drawer'
 import type { Check } from '../checks'
 import { BRAND } from '../brand'
@@ -43,6 +43,13 @@ interface StoredShift {
   float: Money2
   openedBy: string
   openedByEmail: string
+  /** Paid-outs, pay-ins and safe drops (UPGRADE.md T3.1), on the shift so a hub sends them up with it. */
+  movements?: DrawerMovement[]
+}
+
+/** The movements a stored shift carries, whatever an older document holds. */
+function movementsOf(s: { movements?: unknown }): DrawerMovement[] {
+  return Array.isArray(s.movements) ? (s.movements as DrawerMovement[]) : []
 }
 
 function assertBranch(branch: string): void {
@@ -129,7 +136,7 @@ async function readShift(shiftId: string): Promise<StoredShift & { id: string }>
  * sees at four o'clock and the one the close is judged against cannot be two
  * different sums.
  */
-export async function shiftTotals(shiftId: string, float: Money2): Promise<DrawerTotals> {
+export async function shiftTotals(shiftId: string, float: Money2, movements: readonly DrawerMovement[] = []): Promise<DrawerTotals> {
   const db = adminDb()
   const [paid, refunded] = await Promise.all([
     db.collection('checks').where('shiftIds', 'array-contains', shiftId).get(),
@@ -144,7 +151,56 @@ export async function shiftTotals(shiftId: string, float: Money2): Promise<Drawe
     }
   }
   const refunds: Refund[] = refunded.docs.map(d => refundOf((d.data() as Check).payments ?? []))
-  return drawerTotals(float, payments, refunds)
+  return drawerTotals(float, payments, refunds, movements)
+}
+
+const MOVEMENT_ID = /^[A-Za-z0-9_-]{8,64}$/
+
+/**
+ * Records cash that is not a sale on the open shift (UPGRADE.md T3.1): a
+ * paid-out, a pay-in or a safe drop.
+ *
+ * Only while the shift is open, checked inside the transaction, so nothing
+ * lands in a shift being counted (closeShift() marks it closing first). The
+ * till makes the id, and one already recorded is answered, not added again:
+ * a paid-out sent twice from a phone at the edge of the wifi would otherwise
+ * make the drawer read short by exactly that amount.
+ */
+export async function recordMovement(
+  caller: Caller,
+  shiftId: string,
+  input: Record<string, unknown>,
+): Promise<{ branch: string; movement: DrawerMovement; alreadyRecorded: boolean }> {
+  const id = typeof input.id === 'string' ? input.id : ''
+  if (!MOVEMENT_ID.test(id)) throw new HttpError(400, 'Missing movement id.')
+  const movement: DrawerMovement = {
+    id,
+    kind: String(input.kind ?? '') as MovementKind,
+    usd: Number(input.usd ?? 0),
+    lbp: Number(input.lbp ?? 0),
+    reason: typeof input.reason === 'string' ? input.reason : '',
+    note: typeof input.note === 'string' ? input.note.trim() : '',
+    by: caller.uid,
+    byEmail: caller.email ?? '',
+    at: Date.now(),
+  }
+  const problem = movementProblem(movement)
+  if (problem) throw new HttpError(400, problem)
+
+  const db = adminDb()
+  const ref = db.doc(`${SHIFTS}/${shiftId}`)
+  return db.runTransaction(async tx => {
+    const snap = await tx.get(ref)
+    if (!snap.exists) throw new HttpError(404, 'That shift does not exist.')
+    const s = snap.data() as StoredShift
+    const existing = movementsOf(s)
+    const before = existing.find(m => m.id === id)
+    if (before) return { branch: s.branch, movement: before, alreadyRecorded: true }
+    if (s.status !== 'open') throw new HttpError(409, 'That shift is being closed or is closed. Open a new one first.')
+    if (existing.length >= 500) throw new HttpError(409, 'That shift has too many entries. Close it and open a new one.')
+    tx.update(ref, { movements: [...existing, movement] })
+    return { branch: s.branch, movement, alreadyRecorded: false }
+  })
 }
 
 /**
@@ -161,15 +217,16 @@ export async function daySystemFor(branch: string, day: string, rate: number): P
   const rows = await Promise.all(snap.docs.map(async d => {
     const s = d.data() as StoredShift & { totals?: DrawerTotals }
     if (s.status === 'closed' && s.totals) return { expected: s.totals.expected, open: false }
-    return { expected: (await shiftTotals(d.id, s.float)).expected, open: true }
+    return { expected: (await shiftTotals(d.id, s.float, movementsOf(s))).expected, open: true }
   }))
   return daySystem(rows, rate)
 }
 
 /** An X reading: where the drawer stands now. Changes nothing. */
-export async function xReading(shiftId: string): Promise<{ branch: string; status: ShiftStatus; totals: DrawerTotals }> {
+export async function xReading(shiftId: string): Promise<{ branch: string; status: ShiftStatus; totals: DrawerTotals; movements: DrawerMovement[] }> {
   const shift = await readShift(shiftId)
-  return { branch: shift.branch, status: shift.status, totals: await shiftTotals(shiftId, shift.float) }
+  const movements = movementsOf(shift)
+  return { branch: shift.branch, status: shift.status, totals: await shiftTotals(shiftId, shift.float, movements), movements }
 }
 
 export interface ZResult {
@@ -211,7 +268,7 @@ export async function closeShift(
     return s
   })
 
-  const totals = await shiftTotals(shiftId, shift.float)
+  const totals = await shiftTotals(shiftId, shift.float, movementsOf(shift))
   const counted = countedCash(countLbp, countUsd)
   const difference = drawerDifference(totals.expected, counted)
 

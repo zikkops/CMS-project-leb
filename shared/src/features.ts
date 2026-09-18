@@ -74,6 +74,12 @@ export const FEATURES = {
     label: 'Take Payment', group: 'Operations', requires: ['pos'], defaultEnabled: false,
     collections: ['drawerShifts', 'branchDrawers'],
   },
+  // Paid-outs, pay-ins and safe drops on the drawer (UPGRADE.md T3.1): cash
+  // that is not a sale, recorded on the open shift so the count still
+  // reconciles. Needs the drawer, which comes with Take Payment.
+  drawerMovements: {
+    label: 'Paid-outs and Safe Drops', group: 'Operations', requires: ['payments'], defaultEnabled: false,
+  },
   // Recipes (Sep 2026). This switch governs DEPLETION only — whether sending
   // an order takes its ingredients off the shelf. Entering recipes and seeing
   // what a dish costs never depends on it, so a café can cost its whole menu

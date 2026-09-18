@@ -343,11 +343,12 @@ is the owner's choice per café. The order is what a restaurant misses first.
 All money arithmetic goes in a pure `shared/src/*.ts` with its own verifier
 cases, as the rest of the till does.
 
-- [ ] **T3.1 Paid-outs, pay-ins and safe drops on the drawer** (owner):
+- [x] **T3.1 Paid-outs, pay-ins and safe drops on the drawer** (owner):
   who may, which reasons. Today the drawer knows only sales and refunds
   (`shared/src/drawer.ts`), which matters for Lebanese cash handling. The
   expected cash follows, per currency, and appears on the X/Z readings and End
   of Day.
+  *Done: Behind a new drawerMovements switch (requires payments, off). shared/src/drawer.ts: MovementKind paidOut/payIn/safeDrop, MOVEMENT_REASONS, movementProblem(), and drawerTotals() takes movements: expected = float + cash − change − refunds − paid out − safe drops + paid in, per currency, never converted; totals gain paidOuts/payIns/safeDrops (optional, so older stored totals read as zero). shared/src/server/drawer.ts recordMovement(): on the open shift's own document (so a hub sends it up with the shift), inside a transaction, only while open, and a movement id sent twice is recorded once; X, Z and End of Day's system figure all include them. POST /api/pos/drawer { action: 'movement' }: the switch, hub lock, logged. The drawer screen: Cash in or out (a sheet: kind, reason, dollars, lira, note) and the X reading lists each one. OWNER TO CONFIRM (safe defaults used): managers and admins only; reasons Supplier paid in cash / Café supplies bought / Staff advance / Other (note needed) for paid-outs, Float topped up / Change brought from the safe or bank / Other for pay-ins. verify:payments 154 (+12), verify:hub 114 (+4: sent twice, X reading, bad reason, closed shift). Seen on the offline dev hub: a barista's pulled record was refused with the message, a manager's 2.50 paid-out made the X reading 7.50 and listed it.*
 - [ ] **T3.2 Void and discount report**: by day, staff and reason, from the
   lines and the activity log. It pairs with T5.1.
 - [ ] **T3.3 Product mix report**: best sellers by count and revenue, and by
