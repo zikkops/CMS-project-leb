@@ -365,7 +365,7 @@ export default function FloorPage() {
     <>
       <NavTile icon={faStore} label="Counter" sub="The till, even offline" colour="#06B6D4" isMobile={isMobile} onClick={() => router.push('/pos/counter')} />
       <NavTile icon={faReceipt} label="Closed" sub="Checks closed today" colour="#A855F7" isMobile={isMobile} onClick={() => router.push('/pos/closed')} />
-      <NavTile icon={faFire} label="Kitchen display" sub="The pass" colour="#F97316" isMobile={isMobile} onClick={() => router.push('/pos/kds')} />
+      {kdsOn && <NavTile icon={faFire} label="Kitchen display" sub="The pass" colour="#F97316" isMobile={isMobile} onClick={() => router.push('/pos/kds')} />}
       {takesPayment && <NavTile icon={faCashRegister} label="Drawer" sub="Float, X and Z" colour="#EAB308" isMobile={isMobile} onClick={() => router.push('/pos/drawer')} />}
       {allergensOn && <NavTile icon={faWheatAwnCircleExclamation} label="Allergens" sub="What is in each dish" colour="#EC4899" isMobile={isMobile} onClick={() => router.push('/pos/allergens')} />}
     </>
@@ -390,7 +390,7 @@ export default function FloorPage() {
         <div style={{ marginBottom: '1.25rem' }}>
           <p style={{
             fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'var(--teal)', marginBottom: '0.3rem', fontWeight: 700,
+            color: 'rgba(var(--offwhite-rgb),0.55)', marginBottom: '0.3rem', fontWeight: 700,
           }}>{branch}</p>
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.4rem', color: 'var(--offwhite)', lineHeight: 1 }}>
             Open tables
@@ -418,12 +418,12 @@ export default function FloorPage() {
               width: '150px', height: '150px', flex: '0 0 auto',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
               borderRadius: '14px', cursor: 'pointer',
-              background: 'rgba(var(--teal-rgb),0.12)', border: '2px solid var(--teal)',
+              background: 'rgba(255,255,255,0.06)', border: '2px solid rgba(255,255,255,0.22)',
               color: 'var(--offwhite)', fontFamily: 'var(--font-inter)',
               WebkitTapHighlightColor: 'transparent',
             }}
           >
-            <FontAwesomeIcon icon={faChartColumn} style={{ fontSize: '2.2rem', color: 'var(--teal)' }} />
+            <FontAwesomeIcon icon={faChartColumn} style={{ fontSize: '2.2rem', color: 'rgba(var(--offwhite-rgb),0.85)' }} />
             <span style={{ fontSize: '1rem', fontWeight: 700 }}>Readings</span>
             <span style={{ fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.6)' }}>{shownReadings.length} shown · change</span>
           </button>

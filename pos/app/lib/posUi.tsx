@@ -26,6 +26,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTriangleExclamation, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 
 export type Tone = 'primary' | 'neutral' | 'danger' | 'warn' | 'quiet'
+
+/**
+ * All is well: online, paid, change handed back, food ready. Green, never
+ * teal, which is kept for the one main action on a screen (UPGRADE.md T1.9).
+ */
+export const GOOD = '#22C55E'
+export const GOOD_RGB = '34,197,94'
 export type Size = 'sm' | 'md' | 'lg'
 
 /** Touch heights. `sm` still clears the 44px floor; `md` is the default for a touch screen. */

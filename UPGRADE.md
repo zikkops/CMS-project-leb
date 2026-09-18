@@ -120,17 +120,20 @@ The owner's goals it answers:
   Server strings (`err.message`, the hub's `pushError`/`lastError`) are shown
   raw. Use one sentence, with a "Details" toggle for the rest.
   *Done: ErrorNote and splitMessage in posUi.tsx: the first sentence, the rest under Details. The Send errors lead with what to do. The hub page shows each sync problem once (the pull and push errors were the same sentence twice).*
-- [ ] **T1.8 Plainer counter labels.** "Record — the kitchen is here" becomes
+- [x] **T1.8 Plainer counter labels.** "Record — the kitchen is here" becomes
   "Save order (offline)". "not rung up" becomes "Not sent".
-- [ ] **T1.9 Teal is only for the main action.** It is currently used for:
+  *Done: "Save order (offline)" and "Not sent" on the counter.*
+- [x] **T1.9 Teal is only for the main action.** It is currently used for:
   - the Readings border;
   - the branch name;
   - the counter's Online pill and "counter device" box;
   - the change boxes (counter, PaySheet).
 
   Use neutral, or green for status.
-- [ ] **T1.10 Kitchen display tile follows the KDS switch.** It shows even
+  *Done: GOOD (#22C55E) in posUi.tsx for online, paid, change and the counter-device box; the branch names and the Readings button are neutral; teal is left to main actions and selection.*
+- [x] **T1.10 Kitchen display tile follows the KDS switch.** It shows even
   with KDS off (`pos/app/pos/page.tsx`, the `NavTile` for `/pos/kds`).
+  *Done: the floor's Kitchen display tile shows only with KDS on.*
 - [ ] **T1.11 Hub page has a way back and a timeout.** "Looking…" forever when
   the hub never answers. The only link is "Back to sign in"; add "Go to the
   till". Put **Sign out** on the floor; the till has none today.

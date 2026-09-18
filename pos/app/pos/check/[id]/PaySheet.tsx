@@ -22,6 +22,7 @@ import {
 import { splitEvenly, sharesByPerson, MAX_SPLIT_PEOPLE } from '@big-cms/shared/splits'
 import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import { payCheck } from '../../../lib/usePos'
+import { GOOD, GOOD_RGB } from '../../../lib/posUi'
 
 const usd = (n: number) => `$${n.toFixed(2)}`
 const lbp = (n: number) => `${Math.round(n).toLocaleString('en-US')} LBP`
@@ -356,7 +357,7 @@ export default function PaySheet({
         {change && (change.usd > 0 || change.lbp > 0) && (
           <div style={{
             marginTop: '1rem', padding: '0.9rem', borderRadius: '6px',
-            backgroundColor: 'rgba(var(--teal-rgb),0.15)', border: '1px solid var(--teal)',
+            backgroundColor: `rgba(${GOOD_RGB},0.15)`, border: `1px solid ${GOOD}`,
           }}>
             <div style={{ fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.6)', marginBottom: '0.2rem' }}>
               Give back

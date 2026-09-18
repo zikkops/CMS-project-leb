@@ -59,7 +59,7 @@ import {
   checkDue, draftsUsd, queuedUsd, replayApplied, takeBlocked,
 } from '../../lib/counterTotals'
 import type { OutboxAction } from '../../lib/outbox'
-import { PosButton, Chip, StatusBadge, SectionLabel, kindColour, Stepper } from '../../lib/posUi'
+import { PosButton, Chip, StatusBadge, SectionLabel, kindColour, Stepper, GOOD, GOOD_RGB } from '../../lib/posUi'
 import { ReadyPanel } from '../../lib/ReadyPanel'
 import { useHubOnly, HubOnlyBanner } from '../../lib/useHubOnly'
 
@@ -457,9 +457,9 @@ export default function CounterPage() {
       <span style={{
         display: 'inline-flex', alignItems: 'center', gap: '0.55rem', minHeight: '44px',
         padding: '0 1rem', borderRadius: '999px', fontWeight: 700, fontSize: '1rem',
-        background: outbox.stuck ? 'rgba(var(--red-rgb),0.16)' : outbox.online ? 'rgba(var(--teal-rgb),0.16)' : 'rgba(var(--brand-secondary-rgb),0.16)',
-        border: `2px solid ${outbox.stuck ? 'var(--red)' : outbox.online ? 'var(--teal)' : 'var(--brand-secondary)'}`,
-        color: outbox.stuck ? 'var(--red)' : outbox.online ? 'var(--teal)' : 'var(--brand-secondary)',
+        background: outbox.stuck ? 'rgba(var(--red-rgb),0.16)' : outbox.online ? `rgba(${GOOD_RGB},0.16)` : 'rgba(var(--brand-secondary-rgb),0.16)',
+        border: `2px solid ${outbox.stuck ? 'var(--red)' : outbox.online ? GOOD : 'var(--brand-secondary)'}`,
+        color: outbox.stuck ? 'var(--red)' : outbox.online ? GOOD : 'var(--brand-secondary)',
       }}>
         <FontAwesomeIcon icon={outbox.stuck ? faTriangleExclamation : outbox.online ? faWifi : faPlugCircleXmark} />
         {outbox.stuck ? 'Stopped' : outbox.online ? 'Online' : 'Offline'}
@@ -557,7 +557,7 @@ export default function CounterPage() {
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <strong style={{ minWidth: '2rem' }}>{l.quantity}×</strong> {l.name}
             {l.where === 'queued' && <StatusBadge icon={faHourglassHalf} tone="warn" label="waiting" />}
-            {l.where === 'draft' && <StatusBadge icon={faPen} label="not rung up" />}
+            {l.where === 'draft' && <StatusBadge icon={faPen} label="Not sent" />}
           </span>
           <span style={{ fontWeight: 600 }}>{usd(l.unitPrice * l.quantity)}</span>
         </div>
@@ -580,7 +580,7 @@ export default function CounterPage() {
         </div>
       )}
       {applied.length > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.98rem', marginTop: '0.35rem', color: bill.settled ? 'var(--teal)' : 'var(--offwhite)', fontWeight: 600 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.98rem', marginTop: '0.35rem', color: bill.settled ? GOOD : 'var(--offwhite)', fontWeight: 600 }}>
           <span>{bill.settled ? 'Paid in full' : 'Still owed'}</span>
           <span>{bill.settled ? '—' : `${usd(bill.remainingUsd)} · ${lbpFmt(bill.remainingLbp)}`}</span>
         </div>
@@ -590,7 +590,7 @@ export default function CounterPage() {
         <div style={{ marginTop: '1rem' }}>
           <PosButton
             icon={outbox.online ? faPaperPlane : faClipboardCheck}
-            label={busy === 'Recording…' ? 'Recording…' : outbox.online ? 'Send to the kitchen' : 'Record — the kitchen is here'}
+            label={busy === 'Recording…' ? 'Recording…' : outbox.online ? 'Send to the kitchen' : 'Save order (offline)'}
             tone="primary" size="lg" full disabled={Boolean(busy)} onClick={handleRecord}
             badge={drafts.reduce((n, d) => n + d.quantity, 0)}
           />
@@ -646,9 +646,9 @@ export default function CounterPage() {
       {change && (
         <div style={{
           marginTop: '0.9rem', padding: '0.85rem 1rem', borderRadius: '10px',
-          background: 'rgba(var(--teal-rgb),0.12)', border: '2px solid var(--teal)',
+          background: `rgba(${GOOD_RGB},0.12)`, border: `2px solid ${GOOD}`,
         }}>
-          <p style={{ fontSize: '0.85rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--teal)' }}>Change to hand back</p>
+          <p style={{ fontSize: '0.85rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, color: GOOD }}>Change to hand back</p>
           <p style={{ fontSize: '1.7rem', fontWeight: 800, color: 'var(--offwhite)' }}>{usd(change.usd)} + {lbpFmt(change.lbp)}</p>
           {change.queued && (
             <p style={{ color: 'var(--brand-secondary)', fontSize: '0.92rem', marginTop: '0.25rem', lineHeight: 1.5 }}>
@@ -724,7 +724,7 @@ export default function CounterPage() {
           flexWrap: 'wrap', gap: '0.8rem', marginBottom: '1rem',
         }}>
           <div>
-            <p style={{ fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: '0.3rem', fontWeight: 700 }}>{branch}</p>
+            <p style={{ fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.55)', marginBottom: '0.3rem', fontWeight: 700 }}>{branch}</p>
             <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.3rem', lineHeight: 1 }}>Counter</h1>
           </div>
           {status}
@@ -810,14 +810,14 @@ export default function CounterPage() {
             <label style={{
               display: 'flex', gap: '0.8rem', alignItems: 'flex-start', fontSize: '0.95rem', lineHeight: 1.6, cursor: 'pointer',
               padding: '0.8rem 1rem', borderRadius: '12px',
-              background: device.isCounter ? 'rgba(var(--teal-rgb),0.1)' : 'rgba(255,255,255,0.03)',
-              border: `2px solid ${device.isCounter ? 'var(--teal)' : 'rgba(255,255,255,0.14)'}`,
+              background: device.isCounter ? `rgba(${GOOD_RGB},0.1)` : 'rgba(255,255,255,0.03)',
+              border: `2px solid ${device.isCounter ? GOOD : 'rgba(255,255,255,0.14)'}`,
             }}>
               <input
                 type="checkbox"
                 checked={device.isCounter}
                 onChange={e => device.setCounter(e.target.checked)}
-                style={{ marginTop: '0.2rem', width: '24px', height: '24px', accentColor: 'var(--teal)', flexShrink: 0 }}
+                style={{ marginTop: '0.2rem', width: '24px', height: '24px', accentColor: GOOD, flexShrink: 0 }}
               />
               <span style={{ color: 'rgba(var(--offwhite-rgb),0.7)' }}>
                 <strong style={{ color: 'var(--offwhite)' }}>This is the counter device.</strong>{' '}
