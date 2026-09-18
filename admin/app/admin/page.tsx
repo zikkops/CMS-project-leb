@@ -17,6 +17,7 @@ import { usePendingRedemptions } from '@big-cms/shared/redemptions'
 import { usePendingEventReservations } from '@big-cms/shared/eventReservations'
 import { usePendingTableReservations } from '@big-cms/shared/tableReservations'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { TodayStrip } from '../components/admin/TodayStrip'
 import { faThumbtack, faGear, faXmark, faBolt, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 
 // Events can be set to the literal branch "All Branches" in Manage Events —
@@ -158,6 +159,9 @@ export default function AdminPage() {
             each section says what it is for, and its <FontAwesomeIcon icon={faGear} style={{ fontSize: '0.8em' }} /> Setup pages are kept apart from daily use.
           </p>
         </div>
+
+        {/* Today: sales, cash-up, held hub sales, food safety, errors (UPGRADE.md T2.17). */}
+        <TodayStrip viewer={{ role, branchIds, sectionGrants, sectionRevocations }} flags={flags} flagsLoading={featuresLoading} isMobile={isMobile} />
 
         {/* Needs Attention */}
         {attention.length > 0 && (

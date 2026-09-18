@@ -297,7 +297,7 @@ The owner's goals it answers:
   "Section › Page" and the page's actions, from `sectionForPath()`. The guide
   strip folds into it as a small "?" rather than a big box.
   *Done: above every admin page, folded by default: a breadcrumb "Section › Page" (aria-current) and a small "?" that opens the section guide, which is remembered per browser as before; the kit's PageHeader takes its section from sectionForPath() when a page gives none. Lint- and type-clean; the shell was not looked at signed in.*
-- [ ] **T2.17 A "Today" strip on the dashboard.** Four to six tiles:
+- [x] **T2.17 A "Today" strip on the dashboard.** Four to six tiles:
   - sales so far;
   - end of day submitted or not;
   - held hub sales waiting;
@@ -307,6 +307,7 @@ The owner's goals it answers:
 
   Every tile comes from an existing route. Today the dashboard is a second
   copy of the sidebar.
+  *Done: TodayStrip (admin/app/components/admin/TodayStrip.tsx) above Needs attention: sales so far (exports/sales for today), end of day per branch for the cash-up day, held hub sales (only when some wait), food safety days unsigned this past week (history's missed), and new error reports (first seen in 24 h, admins). A tile the person cannot open or whose module is off is not drawn; one that cannot be read says so, never a zero. Low stock waits for T3.10. Checked on a preview page signed out (every tile's failure path, 4 across at 1280px, 1 column at 375px, no sideways scroll); not seen signed in.*
 
 ### Counter PC and phones
 
