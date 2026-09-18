@@ -274,9 +274,10 @@ The owner's goals it answers:
   price and ignore priced options until Send (`check/[id]/page.tsx`,
   `addDraft`/`draftTotal`).
   *Done: the options sheet hands addDraft() the base price plus the options' prices, so an unsent line and the running total show it (display only; the server prices from the ids). Checked: Americano + Large read $4.50 before Send.*
-- [ ] **T2.12 Ready panel doesn't cover the floor.** Cap it at about 40% of
+- [x] **T2.12 Ready panel doesn't cover the floor.** Cap it at about 40% of
   the screen, with scrolling. "Picked up" becomes a neutral button, with a
   5-second Undo.
+  *Done: the ready list scrolls inside 40% of the screen, Picked up is neutral, and a tap waits 5 s with "Picked up · Undo" before it is recorded (leaving the screen records what is waiting). Checked on the test hub with 11 ready plates: the cap was 316px of 790, Undo put the card back, and a tap left alone was recorded after 5 s (11 → 10).*
 - [ ] **T2.13 Split the order screen file.** `check/[id]/page.tsx` is 1,319
   lines. Move `MenuPicker`, `CategoryTile`, `ItemTile` and `ModifierSheet`
   into their own file. It is a pure move, so it goes before T2.6.

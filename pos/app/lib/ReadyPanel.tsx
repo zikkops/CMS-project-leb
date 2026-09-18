@@ -12,10 +12,10 @@
 // (verify:counter); the chime is useReadyAlerts.ts. Controls from posUi.tsx.
 // Module-scope component (CONTRIBUTING.md gotcha #2).
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faBellConcierge, faVolumeHigh, faVolumeXmark, faHandHolding, faTriangleExclamation, faClock,
+  faBellConcierge, faVolumeHigh, faVolumeXmark, faHandHolding, faTriangleExclamation, faClock, faRotateLeft,
 } from '@fortawesome/free-solid-svg-icons'
 import { ticketSentAtMs } from '@big-cms/shared/tickets'
 import { timestampMs } from '@big-cms/shared/timestamps'
@@ -55,6 +55,35 @@ export function ReadyPanel({ branch, isMobile }: { branch: string; isMobile: boo
     readyAtMs: timestampMs(t.readyAt, 0) || null,
     sentAtMs: ticketSentAtMs(t, now),
   })), now)
+
+  // A tap on Picked up waits five seconds before it is recorded, with Undo
+  // (UPGRADE.md T2.12): the card it clears is a plate the kitchen has sent,
+  // and a mis-tap used to take it off the kitchen display for good. Leaving the
+  // screen records whatever is waiting rather than losing it.
+  const UNDO_MS = 5000
+  const [waiting, setWaiting] = useState<Record<string, number>>({})
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
+  function pickUpSoon(id: string) {
+    setWaiting(w => ({ ...w, [id]: Date.now() + UNDO_MS }))
+    timers.current.set(id, setTimeout(() => {
+      timers.current.delete(id)
+      setWaiting(w => { const next = { ...w }; delete next[id]; return next })
+      void pickUp(id)
+    }, UNDO_MS))
+  }
+  function undo(id: string) {
+    const t = timers.current.get(id)
+    if (t) clearTimeout(t)
+    timers.current.delete(id)
+    setWaiting(w => { const next = { ...w }; delete next[id]; return next })
+  }
+  useEffect(() => {
+    const pending = timers.current
+    return () => {
+      for (const [id, t] of pending) { clearTimeout(t); void pickUpTicket(id).catch(() => { /* said again on the next screen */ }) }
+      pending.clear()
+    }
+  }, [])
 
   async function pickUp(id: string) {
     setBusy(id)
@@ -104,7 +133,11 @@ export function ReadyPanel({ branch, isMobile }: { branch: string; isMobile: boo
           </p>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '220px' : '250px'}, 1fr))`, gap: '0.6rem' }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '220px' : '250px'}, 1fr))`, gap: '0.6rem',
+          // At most 40% of the screen: a busy pass scrolls here instead of pushing the floor off it.
+          maxHeight: '40vh', overflowY: 'auto',
+        }}>
           {cards.map(c => {
             const level = pickupUrgency(c.waitingMinutes)
             const stationColour = STATION_COLOUR[c.station] ?? '#64748B'
@@ -130,8 +163,13 @@ export function ReadyPanel({ branch, isMobile }: { branch: string; isMobile: boo
                   {c.round > 1 && <span style={{ fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.6)' }}>round {c.round}</span>}
                 </div>
                 <p style={{ fontSize: '0.95rem', color: 'rgba(var(--offwhite-rgb),0.85)', lineHeight: 1.4 }}>{c.summary}</p>
-                <PosButton icon={faHandHolding} label={busy === c.id ? 'Recording…' : 'Picked up'} tone="primary" full
-                  disabled={busy === c.id} onClick={() => pickUp(c.id)} />
+                {waiting[c.id] ? (
+                  <PosButton icon={faRotateLeft} label="Picked up · Undo" tone="warn" full onClick={() => undo(c.id)} />
+                ) : (
+                  // Neutral, not teal: the floor has its own main action (T2.12).
+                  <PosButton icon={faHandHolding} label={busy === c.id ? 'Recording…' : 'Picked up'} tone="neutral" full
+                    disabled={busy === c.id} onClick={() => pickUpSoon(c.id)} />
+                )}
               </div>
             )
           })}
