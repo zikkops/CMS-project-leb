@@ -138,9 +138,10 @@ The owner's goals it answers:
   the hub never answers. The only link is "Back to sign in"; add "Go to the
   till". Put **Sign out** on the floor; the till has none today.
   *Done: the hub page says the hub is not answering after 20 s instead of "Looking…" forever, and links "Go to the till" and "Sign in". The floor has Sign out (PosBackend.signOut(), cloud and hub); checked on the test hub: it lands on sign-in with the session gone.*
-- [ ] **T1.12 Login page, two clear cards.** "With your phone" and "With
+- [x] **T1.12 Login page, two clear cards.** "With your phone" and "With
   email", with visible labels on the inputs. Show "Loading staff…" or "No
   staff on this hub yet" instead of an empty grid.
+  *Done: the sign-in page is two titled cards, "With your phone" and "With your email", with visible labels, PosButtons, ErrorNote, and "Loading staff…" / "No staff on this hub yet…" instead of an empty grid. On the hub, the email card says it needs the internet.*
 - [ ] **T1.13 Labels and aria.** Add `htmlFor` on labels, and aria-labels on
   table tiles saying their state (open, free) and on icon-only buttons.
 

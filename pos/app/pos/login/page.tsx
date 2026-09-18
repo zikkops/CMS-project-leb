@@ -26,6 +26,9 @@ import { isCounterHost } from '@big-cms/shared/counterSignIn'
 import { startLoad } from '@big-cms/shared/startLoad'
 import { useClientValue } from '@big-cms/shared/useClientValue'
 import { isNetworkFailure } from '@big-cms/shared/netErrors'
+import { PosButton, ErrorNote } from '../../lib/posUi'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faMobileScreen, faEnvelope, faUser, faXmark, faRightToBracket } from '@fortawesome/free-solid-svg-icons'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -78,11 +81,17 @@ function HubNotice() {
   )
 }
 
-const bigButton: React.CSSProperties = {
-  minHeight: '56px', padding: '0 1rem', borderRadius: '6px',
-  border: '2px solid rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.05)',
-  color: 'var(--offwhite)', fontFamily: 'var(--font-inter)', fontSize: '1rem', cursor: 'pointer',
+/** Each way of signing in is its own card, titled, so the two never read as one form (UPGRADE.md T1.12). */
+const card: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.12)',
+  borderRadius: '12px', padding: '1.1rem 1rem 1.2rem',
 }
+const cardTitle: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: '0.55rem', fontSize: '1.05rem', fontWeight: 700,
+  color: 'var(--offwhite)', marginBottom: '0.3rem',
+}
+const cardNote: React.CSSProperties = { fontSize: '0.85rem', lineHeight: 1.5, color: 'rgba(var(--offwhite-rgb),0.6)', marginBottom: '0.9rem' }
+const label: React.CSSProperties = { fontSize: '0.85rem', fontWeight: 600, color: 'rgba(var(--offwhite-rgb),0.75)', marginBottom: '0.3rem', display: 'block' }
 
 /**
  * On the counter PC of a café hub, sign in with your own phone (S24): tap your
@@ -99,11 +108,12 @@ function CounterSignIn({ onSignedIn }: { onSignedIn: (session: HubSession) => vo
   const [problem, setProblem] = useState('')
   const [asking, setAsking] = useState(false)
 
+  const [peopleLoaded, setPeopleLoaded] = useState(false)
   useEffect(() => {
     if (!shown) return
     counterPeople()
-      .then(setPeople)
-      .catch(err => setProblem(err instanceof Error ? err.message : 'The hub did not answer.'))
+      .then(list => { setPeople(list); setPeopleLoaded(true) })
+      .catch(err => { setProblem(err instanceof Error ? err.message : 'The hub did not answer.'); setPeopleLoaded(true) })
   }, [shown])
 
   // Waits for the person's phone, asking every two seconds, until the request runs out.
@@ -150,10 +160,9 @@ function CounterSignIn({ onSignedIn }: { onSignedIn: (session: HubSession) => vo
 
   if (!shown) return null
   return (
-    <section style={{ marginBottom: '1.8rem' }}>
-      <p style={{ fontSize: '0.7rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)', marginBottom: '0.7rem', textAlign: 'center' }}>
-        Sign in with your phone
-      </p>
+    <section aria-labelledby="with-phone" style={{ ...card, marginBottom: '1rem' }}>
+      <h2 id="with-phone" style={cardTitle}><FontAwesomeIcon icon={faMobileScreen} />With your phone</h2>
+      <p style={cardNote}>Tap your name, then confirm on your phone. Works without the internet.</p>
       {request ? (
         <div style={{ textAlign: 'center' }}>
           <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.9rem', lineHeight: 1.6 }}>
@@ -164,20 +173,25 @@ function CounterSignIn({ onSignedIn }: { onSignedIn: (session: HubSession) => vo
             fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: '3rem', letterSpacing: '0.3em',
             color: 'var(--offwhite)', margin: '0.6rem 0 0.8rem',
           }}>{request.code}</p>
-          <button type="button" onClick={() => setRequest(null)} style={{ ...bigButton, width: '100%' }}>Cancel</button>
+          <PosButton icon={faXmark} label="Cancel" tone="quiet" full onClick={() => setRequest(null)} />
         </div>
+      ) : !peopleLoaded ? (
+        <p role="status" style={{ ...cardNote, marginBottom: 0 }}>Loading staff…</p>
+      ) : people.length === 0 && !problem ? (
+        <p style={{ ...cardNote, marginBottom: 0 }}>
+          No staff on this hub yet. Pair it, and give each staff account a first name in the admin panel.
+        </p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.6rem' }}>
           {people.map(person => (
-            <button key={person.uid} type="button" disabled={asking} onClick={() => { void ask(person.uid) }} style={bigButton}>
-              {person.label.charAt(0).toUpperCase() + person.label.slice(1)}
-            </button>
+            <PosButton key={person.uid} icon={faUser} disabled={asking} onClick={() => { void ask(person.uid) }}
+              label={person.label.charAt(0).toUpperCase() + person.label.slice(1)} />
           ))}
         </div>
       )}
-      {problem && <p style={{ color: 'var(--red)', fontSize: '0.82rem', lineHeight: 1.6, marginTop: '0.7rem' }}>{problem}</p>}
-      <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginTop: '1.2rem' }}>
-        Signs out after 15 minutes without a tap. Or sign in with your email:
+      {problem && <div style={{ marginTop: '0.7rem' }}><ErrorNote message={problem} /></div>}
+      <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.9rem' }}>
+        Signs out after 15 minutes without a tap.
       </p>
     </section>
   )
@@ -190,6 +204,8 @@ export default function PosLoginPage() {
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // Read after hydrating: the server renders without knowing it is a hub page.
+  const onHubHere = useClientValue(() => backend().kind === 'hub', false)
 
   const counterSignedIn = useCallback((session: HubSession) => {
     setAdminSessionCookie()
@@ -272,8 +288,8 @@ export default function PosLoginPage() {
     }}>
       <div style={{ width: '100%', maxWidth: '360px' }}>
         <p style={{
-          fontSize: '0.6rem', letterSpacing: '0.25em', textTransform: 'uppercase',
-          color: 'var(--teal)', marginBottom: '0.4rem', textAlign: 'center',
+          fontSize: '0.8rem', letterSpacing: '0.2em', textTransform: 'uppercase',
+          color: 'rgba(var(--offwhite-rgb),0.6)', marginBottom: '0.4rem', textAlign: 'center',
         }}>{BRAND.name}</p>
         <h1 style={{
           fontFamily: 'var(--font-cinzel)', fontSize: '1.7rem', color: 'var(--offwhite)',
@@ -282,35 +298,37 @@ export default function PosLoginPage() {
 
         <CounterSignIn onSignedIn={counterSignedIn} />
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+        <form onSubmit={handleSubmit} aria-labelledby="with-email" style={{ ...card, display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+          <div>
+            <h2 id="with-email" style={cardTitle}><FontAwesomeIcon icon={faEnvelope} />With your email</h2>
+            {onHubHere && <p style={{ ...cardNote, marginBottom: 0 }}>Needs the internet.</p>}
+          </div>
+          <div>
+          <label htmlFor="pos-email" style={label}>Email</label>
           <input
+            id="pos-email"
             type="email" value={email} onChange={e => setEmail(e.target.value)}
-            placeholder="Email" autoComplete="username" required
+            autoComplete="username" required
             // inputMode and autoCapitalize matter here: this is a phone
             // keyboard, and an auto-capitalised email fails to match silently.
             inputMode="email" autoCapitalize="none" autoCorrect="off"
             style={field}
           />
+          </div>
+          <div>
+          <label htmlFor="pos-password" style={label}>Password</label>
           <input
+            id="pos-password"
             type="password" value={password} onChange={e => setPassword(e.target.value)}
-            placeholder="Password" autoComplete="current-password" required
+            autoComplete="current-password" required
             style={field}
           />
+          </div>
 
-          {error && (
-            <p style={{ color: 'var(--red)', fontSize: '0.82rem', lineHeight: 1.6 }}>{error}</p>
-          )}
+          {error && <ErrorNote message={error} />}
 
-          <button
-            type="submit" disabled={busy}
-            style={{
-              marginTop: '0.4rem', minHeight: '52px',
-              backgroundColor: busy ? 'rgba(var(--teal-rgb),0.35)' : 'var(--teal)',
-              color: '#fff', border: 'none', borderRadius: '4px',
-              fontSize: '0.85rem', letterSpacing: '0.14em', textTransform: 'uppercase',
-              fontFamily: 'var(--font-inter)', cursor: busy ? 'default' : 'pointer',
-            }}
-          >{busy ? 'Signing in…' : 'Sign in'}</button>
+          <PosButton type="submit" icon={faRightToBracket} label={busy ? 'Signing in…' : 'Sign in'}
+            tone="primary" size="lg" full disabled={busy} />
         </form>
 
         <HubNotice />
