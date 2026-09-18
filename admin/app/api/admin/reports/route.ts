@@ -1,6 +1,7 @@
 // Reports over closed checks (UPGRADE.md T3.2–T3.4).
 //
 // GET ?report=voids|mix&from=YYYY-MM-DD&to=YYYY-MM-DD&branch=
+// GET ?report=hourly&from=DAY&to=DAY&branch=      one day, beside the same day a week before
 //
 // Gated on `endOfDay`, as the accountant's export is: the same people, reading
 // the same money, and deliberately not a new SECTION_ACCESS key. The checks
@@ -11,7 +12,7 @@
 
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import { parseExportRange, readClosedChecks } from '@big-cms/shared/server/salesExport'
-import { productMix, voidDiscountReport } from '@big-cms/shared/salesReports'
+import { dayBefore, hourlySales, productMix, voidDiscountReport } from '@big-cms/shared/salesReports'
 import { adminDb } from '@big-cms/shared/server/firebaseAdmin'
 import { BRAND } from '@big-cms/shared/brand'
 
@@ -61,6 +62,16 @@ export async function GET(request: Request): Promise<Response> {
       ])
       return Response.json(
         { ok: true, from: range.from, to: range.to, branches, ...productMix(checks, { categoryOf }) },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+    if (report === 'hourly') {
+      if (range.from !== range.to) throw new HttpError(400, 'The hourly report is for one day.')
+      // The day and the same weekday before it: one read of the eight days between.
+      const week = { ...range, from: dayBefore(range.to, 7) }
+      const { checks, branches } = await readClosedChecks(week, { timeZone, branches: own })
+      return Response.json(
+        { ok: true, branches, ...hourlySales(checks, { timeZone, day: range.to }) },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }

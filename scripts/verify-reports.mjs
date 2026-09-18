@@ -155,6 +155,33 @@ console.log('\nproduct mix — what sold, by item and by category (T3.3)')
   eq('nothing sold: nothing to share, and no division by zero', R.productMix([], { categoryOf }).totals, { checks: 0, quantity: 0, revenue: 0, checkDiscounts: 0 })
 }
 
+console.log('\nhourly sales, beside the same day last week (T3.4)')
+{
+  // Beirut is UTC+3 in September: 09:15 UTC is 12:15 at the café.
+  const at = (day, utc) => `${day}T${utc}:00.000Z`
+  const h = R.hourlySales([
+    check({ id: 'a', closedAt: at('2026-09-12', '09:15'), lines: [line({ unitPrice: 4 })] }),
+    check({ id: 'b', closedAt: at('2026-09-12', '09:50'), lines: [line({ unitPrice: 6 })] }),
+    check({ id: 'c', closedAt: at('2026-09-12', '17:05'), lines: [line({ unitPrice: 20 })] }),
+    check({ id: 'd', closedAt: at('2026-09-05', '09:30'), lines: [line({ unitPrice: 8 })] }),
+    // 22:30 UTC on the 11th is 01:30 on the 12th in Beirut.
+    check({ id: 'e', closedAt: at('2026-09-11', '22:30'), lines: [line({ unitPrice: 3 })] }),
+    check({ id: 'f', closedAt: at('2026-09-12', '10:00'), status: 'refunded', lines: [line({ unitPrice: 5 })] }),
+    check({ id: 'g', closedAt: at('2026-09-12', '10:00'), status: 'cancelled', receiptNumber: null, lines: [line({ unitPrice: 50 })] }),
+  ], { timeZone: BEIRUT, day: '2026-09-12' })
+  eq('the same day last week is seven days before', h.compareDay, '2026-09-05')
+  eq('THE TRAP: 09:15 and 09:50 UTC are the café\'s 12:00 hour', [h.hours[12].checks, h.hours[12].net], [2, 10])
+  eq('...and 17:05 UTC is its 20:00 hour', h.hours[20].net, 20)
+  eq('THE TRAP: 22:30 UTC the night before is 01:30 on this café day', [h.hours[1].checks, h.hours[1].net], [1, 3])
+  eq('last week sits beside it in the same hour', [h.hours[12].compareChecks, h.hours[12].compareNet], [1, 8])
+  eq('a refunded check was still a sale that day; a cancelled one never was', h.hours[13].net, 5)
+  eq('totals for both days', h.totals, { checks: 5, net: 38, compareChecks: 1, compareNet: 8 })
+  eq('the busiest hour is by takings', h.peakHour, 20)
+  eq('24 hours, always, so the chart has a place for each', h.hours.length, 24)
+  eq('a day with nothing has no busiest hour', R.hourlySales([], { timeZone: BEIRUT, day: '2026-09-12' }).peakHour, null)
+  eq('THE TRAP: across a month end, a week before 3 Mar is 24 Feb, not a guess', R.dayBefore('2026-03-03', 7), '2026-02-24')
+}
+
 rmSync(out, { recursive: true, force: true })
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

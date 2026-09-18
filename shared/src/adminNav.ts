@@ -33,7 +33,7 @@ import {
   faTriangleExclamation, faShieldHalved, faGear, faUserShield, faBug, faImage, faToggleOn, faPrint,
   faChampagneGlasses, faStar, faWarehouse, faMoon, faScrewdriverWrench, faTableCells,
   type IconDefinition,
-  faBan,
+  faBan, faChartColumn,
 } from '@fortawesome/free-solid-svg-icons'
 import { SECTION_ACCESS, ALL_ROLES, hasSectionAccess, type Role, type SectionKey } from './roles'
 import { featureForSection, isFeatureOn, type FeatureFlags } from './features'
@@ -181,6 +181,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
       { label: 'End of Day Log', href: '/admin/end-of-day/log', access: SECTION_ACCESS.endOfDay, icon: faScroll, kind: 'use', desc: 'Who submitted or changed which end-of-day report, and when.' },
       { label: 'Sales Export', href: '/admin/exports', access: SECTION_ACCESS.endOfDay, icon: faFileExport, kind: 'use', desc: 'Closed checks for a date range, with VAT and both currencies, for the accountant.' },
       { label: 'Product Mix', href: '/admin/reports/mix', access: SECTION_ACCESS.endOfDay, icon: faChartPie, kind: 'use', desc: 'Best sellers by count and by revenue, and each category’s share.' },
+      { label: 'Hourly Sales', href: '/admin/reports/hourly', access: SECTION_ACCESS.endOfDay, icon: faChartColumn, kind: 'use', desc: 'Takings hour by hour, beside the same day a week before.' },
       { label: 'Voids & Discounts', href: '/admin/reports/voids', access: SECTION_ACCESS.endOfDay, icon: faBan, kind: 'use', desc: 'What was struck off and what was given away, by reason and by person.' },
       // endOfDay, as the export: deciding a held sale is deciding what the branch took.
       { label: 'Held Hub Sales', href: '/admin/settings/hubs/held', access: SECTION_ACCESS.endOfDay, icon: faStore, kind: 'use', desc: 'What a counter PC sent up while its branch traded online: apply or dismiss each one.' },

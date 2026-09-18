@@ -13,6 +13,7 @@ import {
 } from './checks'
 import { lineUnitPrice } from './modifiers'
 import { closedAtParts } from './salesExport'
+import { timestampMs } from './timestamps'
 
 const r2 = (n: number) => Math.round(n * 100) / 100
 
@@ -309,4 +310,63 @@ export function productMix(
     categories,
     totals: { checks: checkCount, quantity: outItems.reduce((s, i) => s + i.quantity, 0), revenue, checkDiscounts: r2(checkDiscounts) },
   }
+}
+
+// ── T3.4 Hourly sales, beside the same day last week ──────────────────────
+
+export interface HourRow {
+  /** 0–23, the café's own clock. */
+  hour: number
+  checks: number
+  net: number
+  compareChecks: number
+  compareNet: number
+}
+
+export interface HourlySales {
+  day: string
+  compareDay: string
+  hours: HourRow[]
+  totals: { checks: number; net: number; compareChecks: number; compareNet: number }
+  /** The busiest hour of the day asked about, by takings; null on a day with none. */
+  peakHour: number | null
+}
+
+/** A café day n days before another, both YYYY-MM-DD, by calendar arithmetic (no zone can move it). */
+export function dayBefore(ymd: string, n: number): string {
+  return new Date(Date.parse(`${ymd}T12:00:00Z`) - n * 86_400_000).toISOString().slice(0, 10)
+}
+
+/**
+ * What the till took in each hour of one café day, beside the same weekday a
+ * week before. The day and the hour are the café's (closedAtParts() and the
+ * zone's own clock), never the host's: a sale at 01:30 is 01:00 on the day it
+ * fell on in Beirut, which is the export's rule too. A check counts at the
+ * hour it closed, for its net, as the export counts it: a refunded check was
+ * still a sale that day, and its refund is the export's own column.
+ */
+export function hourlySales(checks: readonly Check[], opts: { timeZone: string; day: string }): HourlySales {
+  const compareDay = dayBefore(opts.day, 7)
+  const hours: HourRow[] = Array.from({ length: 24 }, (_, hour) => ({ hour, checks: 0, net: 0, compareChecks: 0, compareNet: 0 }))
+  const hourOf = new Intl.DateTimeFormat('en-US', { timeZone: opts.timeZone, hour: 'numeric', hourCycle: 'h23' })
+
+  for (const check of checks) {
+    if (!check.receiptNumber || (check.status !== 'closed' && check.status !== 'refunded')) continue
+    const { day } = closedAtParts(check.closedAt, opts.timeZone)
+    if (day !== opts.day && day !== compareDay) continue
+    const ms = timestampMs(check.closedAt, 0)
+    const hour = Number(hourOf.formatToParts(new Date(ms)).find(p => p.type === 'hour')?.value ?? NaN) % 24
+    if (!Number.isInteger(hour)) continue
+    const net = checkTotals(check).net
+    const row = hours[hour]
+    if (day === opts.day) { row.checks++; row.net = r2(row.net + net) }
+    else { row.compareChecks++; row.compareNet = r2(row.compareNet + net) }
+  }
+
+  const totals = hours.reduce((t, h) => ({
+    checks: t.checks + h.checks, net: r2(t.net + h.net),
+    compareChecks: t.compareChecks + h.compareChecks, compareNet: r2(t.compareNet + h.compareNet),
+  }), { checks: 0, net: 0, compareChecks: 0, compareNet: 0 })
+  const peak = hours.reduce<HourRow | null>((best, h) => (h.net > 0 && (!best || h.net > best.net) ? h : best), null)
+  return { day: opts.day, compareDay, hours, totals, peakHour: peak ? peak.hour : null }
 }
