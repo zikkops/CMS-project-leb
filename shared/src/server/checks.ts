@@ -730,6 +730,11 @@ export async function voidLine(
               // Copied, not looked up later: changing the reason list must not
               // re-classify a void that already happened.
               voidWasWaste: reason.isWaste,
+              // Who and when, for the void report (UPGRADE.md T3.2). A string,
+              // not a server timestamp: Firestore takes no sentinel in an array.
+              voidedBy: caller.uid,
+              voidedByEmail: caller.email ?? '',
+              voidedAt: new Date().toISOString(),
               ...(plan.outcome === 'waste' ? { voidWasteUsd: plan.wasteUsd } : {}),
             }
           : l),

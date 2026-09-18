@@ -219,6 +219,14 @@ export interface CheckLine {
    */
   voidReason: string | null
   voidReasonKey: string | null
+  /**
+   * Who struck it off, and when (ISO), for the void report (UPGRADE.md T3.2).
+   * Absent on voids from before 18 Sep 2026: the report says "not recorded"
+   * rather than guessing from the activity log.
+   */
+  voidedBy?: string
+  voidedByEmail?: string
+  voidedAt?: string
   /** Copied from the reason, so a later change to the list cannot re-classify
    *  a void that already happened. */
   voidWasWaste: boolean | null

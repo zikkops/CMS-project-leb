@@ -64,6 +64,24 @@ export async function readSalesExport(
   range: ExportRequest,
   opts: { timeZone: string; fallbackRate: number; branches: string[] },
 ): Promise<SalesExport & { from: string; to: string; branches: string[] }> {
+  const { checks, branches } = await readClosedChecks(range, opts)
+  return {
+    ...buildExport(checks, { timeZone: opts.timeZone, fallbackRate: opts.fallbackRate }),
+    from: range.from,
+    to: range.to,
+    branches,
+  }
+}
+
+/**
+ * The checks that closed on the café days asked for, at the branches asked
+ * for: the export's read, shared by the reports (UPGRADE.md T3.2–T3.4) so a
+ * report and the export cannot disagree about which day a check was.
+ */
+export async function readClosedChecks(
+  range: ExportRequest,
+  opts: { timeZone: string; branches: string[] },
+): Promise<{ checks: Check[]; branches: string[] }> {
   const { start, end } = paddedWindow(range.from, range.to)
 
   // Ranged on closedAt alone: a single-field range needs no composite index,
@@ -88,11 +106,5 @@ export async function readSalesExport(
     if (!day || day < range.from || day > range.to) continue
     checks.push(check)
   }
-
-  return {
-    ...buildExport(checks, { timeZone: opts.timeZone, fallbackRate: opts.fallbackRate }),
-    from: range.from,
-    to: range.to,
-    branches: [...wanted],
-  }
+  return { checks, branches: [...wanted] }
 }
