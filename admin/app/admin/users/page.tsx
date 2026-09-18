@@ -264,7 +264,7 @@ export default function AdminUsersPage() {
                 gap: '0.6rem',
               }}>
                 <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)', wordBreak: 'break-word' }}>
-                  {account.firstName ? `${account.firstName} · ` : ''}{account.email}
+                  {account.firstName ? `${account.firstName} · ` : <span title="Managers see the first name at a café hub" style={{ color: 'var(--brand-secondary)' }}>No first name · </span>}{account.email}
                   {account.id === user?.uid && (
                     <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)', marginLeft: '0.5rem' }}>(you)</span>
                   )}
@@ -357,7 +357,7 @@ export default function AdminUsersPage() {
                 {accounts.map(account => (
                   <tr key={account.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>
-                      {account.firstName ? `${account.firstName} · ` : ''}{account.email}
+                      {account.firstName ? `${account.firstName} · ` : <span title="Managers see the first name at a café hub" style={{ color: 'var(--brand-secondary)' }}>No first name · </span>}{account.email}
                       {account.id === user?.uid && (
                         <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)', marginLeft: '0.5rem' }}>(you)</span>
                       )}
@@ -498,8 +498,8 @@ export default function AdminUsersPage() {
               </div>
 
               <div>
-                <label style={labelStyle}>First name</label>
-                <input type="text" value={form.firstName} maxLength={40}
+                <label htmlFor="account-first-name" style={labelStyle}>First name{editing ? '' : ' *'}</label>
+                <input id="account-first-name" type="text" value={form.firstName} maxLength={40} required={!editing}
                   onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))}
                   style={inputStyle} />
                 <p style={{ fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', marginTop: '0.5rem', lineHeight: 1.5 }}>

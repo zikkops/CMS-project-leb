@@ -118,5 +118,5 @@ export function downloadDaysCsv(data: SalesExport, from: string, to: string): vo
     SHEETS.days.map(([, header]) => cell(header)).join(','),
     ...data.days.map(day => SHEETS.days.map(([key]) => cell((day as unknown as Row)[key])).join(',')),
   ].join('\r\n')
-  download(new Blob(['﻿' + rows], { type: 'text/csv;charset=utf-8;' }), `sales-by-day-${from}-to-${to}.csv`)
+  download(new Blob(['\uFEFF' + rows], { type: 'text/csv;charset=utf-8;' }), `sales-by-day-${from}-to-${to}.csv`)
 }

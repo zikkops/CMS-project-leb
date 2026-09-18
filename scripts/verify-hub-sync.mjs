@@ -1239,8 +1239,8 @@ console.log('\nstaff phones register a key, and sign in at the hub with it (S12â
 
   const SP = await import(url('staffProfiles.js'))
   eq('a first name is one short line, and until an admin sets one a manager sees the role (S18)',
-    [SP.readFirstName('  Sara\n'), SP.readFirstName('x'.repeat(60)).length, SP.readFirstName(42), SP.staffLabel('', 'Barista'), SP.staffLabel(' Sara ', 'Barista')],
-    ['Sara', 40, '', 'a barista', 'Sara'])
+    [SP.readFirstName('  Sara\n'), SP.readFirstName('x'.repeat(60)).length, SP.readFirstName(42), SP.staffLabel('', 'Barista'), SP.staffLabel(' Sara ', 'Barista'), SP.staffLabel('', 'Admin')],
+    ['Sara', 40, '', 'a barista', 'Sara', 'an admin'])
 
   eq('a phone\'s name is short and one line, and never empty',
     [SK.deviceName('  Pixel\n8  '), SK.deviceName(''), SK.deviceName('x'.repeat(80)).length], ['Pixel 8', 'Phone', 60])
@@ -1279,7 +1279,7 @@ console.log('\na manager approves a sign-in for a phone with no fingerprint (S6,
 
   const people = await A.listPeople({ db })
   eq('who can ask is the staff the hub pulled, by first name, or by role for someone with no name yet',
-    ['Sam', 'Rana', 'a barista'].every(label => people.some(p => p.label === label)), true)
+    ['Sam', 'Rana', 'a barista (no first name yet)'].every(label => people.some(p => p.label === label)), true)
   eq('...and nothing else about them', Object.keys(people[0]).sort(), ['label', 'uid'])
 
   const asked = await A.askApproval({ uid: 'u-sam', deviceName: 'Samsung A12' }, { db })

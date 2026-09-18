@@ -19,7 +19,7 @@ import { HttpError } from './auth'
 import { startHubSession, type HubCaller } from './hubSession'
 import { consumeChallenge, hubFingerprintHex, pulledStaff, refused, sessionForStaff, verifiedKey } from './hubKeySignIn'
 import { deviceName, isKeyId, isNonce } from '../staffKeys'
-import { staffLabel } from '../staffProfiles'
+import { readFirstName, staffLabel } from '../staffProfiles'
 import { timestampMs } from '../timestamps'
 import {
   APPROVALS, APPROVAL_MS, SCREEN_ROLE, SCREEN_SCOPE, SCREEN_UID_PREFIX, approvalProblem, approvalState, approveMessage,
@@ -49,7 +49,12 @@ export interface Person {
 export async function listPeople({ db = adminDb() }: { db?: Firestore } = {}): Promise<Person[]> {
   const snap = await db.collection('users').where('isStaff', '==', true).get()
   return snap.docs
-    .map(doc => ({ uid: doc.id, label: labelFor(doc.data() ?? {}) }))
+    // Somebody with no first name yet is listed by role, and says so, so the
+    // counter's list tells whoever set the café up what is missing (UPGRADE.md T1.17).
+    .map(doc => {
+      const data = doc.data() ?? {}
+      return { uid: doc.id, label: readFirstName(data.firstName) ? labelFor(data) : `${labelFor(data)} (no first name yet)` }
+    })
     .sort((a, b) => a.label.localeCompare(b.label))
 }
 

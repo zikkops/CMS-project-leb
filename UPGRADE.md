@@ -155,10 +155,11 @@ The owner's goals it answers:
   Out" are duplicated from the sidebar.
 - [ ] **T1.16 Group the permission grid.** `/admin/users` shows 22 grant boxes
   in `Object.keys` order. Group them under their nav sections.
-- [ ] **T1.17 First name required for staff accounts.** The counter's sign-in
+- [x] **T1.17 First name required for staff accounts.** The counter's sign-in
   list and manager approvals showed "barista", "admin". Make the field
   required for new staff, and show "(no name — set in Users)" where it is
   missing.
+  *Done: creating a staff account now needs a first name (form and route); Manage Users marks accounts with none in amber; the counter's list says "An admin (no first name yet)" (a/an fixed). Also found and escaped raw control characters in staffProfiles.ts and staffKeys.ts, and raw byte-order marks in two CSV exports.*
 
 ### Phone app and counter PC
 

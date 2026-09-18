@@ -179,6 +179,9 @@ export async function POST(request: Request): Promise<Response> {
 
     const input = parseAccountInput(body, { requireRole: true })
     const firstName = readFirstName(body.firstName)
+    // A staff member with no first name shows at a café hub as "a barista",
+    // and a manager cannot tell which one is asking (UPGRADE.md T1.17).
+    if (!firstName) throw new HttpError(400, 'Give the account a first name. Managers see it when this person signs in at the café hub.')
 
     let uid: string
     try {
