@@ -79,6 +79,11 @@ export const FEATURES = {
   soldOut: {
     label: 'Sold Out from the Till', group: 'Operations', requires: ['pos'], defaultEnabled: false,
   },
+  // A receipt emailed from the till (UPGRADE.md T3.7). Needs RESEND_API_KEY on
+  // the server; the address is never kept.
+  emailReceipts: {
+    label: 'Email Receipts', group: 'Operations', requires: ['pos'], defaultEnabled: false,
+  },
   // Paid-outs, pay-ins and safe drops on the drawer (UPGRADE.md T3.1): cash
   // that is not a sale, recorded on the open shift so the count still
   // reconciles. Needs the drawer, which comes with Take Payment.

@@ -233,6 +233,12 @@ export function useReadyTickets(branch: string): {
 }
 
 /** The front took a ready plate out. Clears it from the kitchen display too. */
+/** Emails a closed check's receipt to an address typed at the till, never kept (UPGRADE.md T3.7). */
+export async function emailReceipt(checkId: string, email: string): Promise<{ sent: boolean; reason: string | null }> {
+  const data = await call('/api/pos/receipt-email', 'POST', { checkId, email }, { timeoutMs: POS_TIMEOUT_MS })
+  return data as unknown as { sent: boolean; reason: string | null }
+}
+
 /** Prints a check's kitchen tickets again, marked as a reprint (UPGRADE.md T3.6). */
 export async function reprintKitchenTickets(checkId: string): Promise<{ count: number; stations: string[] }> {
   const data = await call('/api/pos/tickets', 'PATCH', { action: 'reprint', checkId }, { timeoutMs: POS_TIMEOUT_MS })

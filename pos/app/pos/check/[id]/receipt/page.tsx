@@ -29,9 +29,11 @@ import { useBusinessSettings } from '../../../../lib/useTillSettings'
 import {
   buildReceipt, receiptToText, receiptBlockedReason, RECEIPT_WIDTHS,
 } from '@big-cms/shared/receipt'
-import { useCheck } from '../../../../lib/usePos'
+import { useCheck, emailReceipt } from '../../../../lib/usePos'
 import { PosLoading, PosButton, Chip } from '../../../../lib/posUi'
-import { faPrint } from '@fortawesome/free-solid-svg-icons'
+import { faPrint, faEnvelope, faPaperPlane } from '@fortawesome/free-solid-svg-icons'
+import { useFeature } from '../../../../lib/useTillSettings'
+import { readReceiptEmail } from '@big-cms/shared/receiptEmail'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -61,6 +63,27 @@ export default function ReceiptPage() {
   const { settings } = useBusinessSettings()
 
   const [width, setWidth] = useState<number>(RECEIPT_WIDTHS.narrow)
+
+  // Email it (UPGRADE.md T3.7): an address typed for this receipt only, never kept.
+  const { on: emailOn } = useFeature('emailReceipts')
+  const [emailing, setEmailing] = useState(false)
+  const [email, setEmail] = useState('')
+  const [sending, setSending] = useState(false)
+  const [emailNote, setEmailNote] = useState<{ text: string; good: boolean } | null>(null)
+  async function send() {
+    const to = readReceiptEmail(email)
+    if (!to) { setEmailNote({ text: 'That is not an email address.', good: false }); return }
+    setSending(true); setEmailNote(null)
+    try {
+      const r = await emailReceipt(checkId, to)
+      setEmailNote(r.sent ? { text: `Sent to ${to}.`, good: true } : { text: r.reason ?? 'The email did not go.', good: false })
+      if (r.sent) { setEmail(''); setEmailing(false) }
+    } catch (err) {
+      setEmailNote({ text: err instanceof Error ? err.message : 'The email did not go.', good: false })
+    } finally {
+      setSending(false)
+    }
+  }
 
   const blocked = check ? receiptBlockedReason(check) : null
 
@@ -139,12 +162,37 @@ export default function ReceiptPage() {
             alignItems: 'center', marginBottom: '1.25rem',
           }}>
             <PosButton icon={faPrint} label="Print" tone="primary" onClick={() => window.print()} />
+            {emailOn && (
+              <PosButton icon={faEnvelope} label="Email it" tone="neutral" onClick={() => { setEmailing(e => !e); setEmailNote(null) }} />
+            )}
 
             {([RECEIPT_WIDTHS.narrow, RECEIPT_WIDTHS.wide] as number[]).map(w => (
               <Chip key={w} size="sm" active={width === w} onClick={() => setWidth(w)}
                 label={w === RECEIPT_WIDTHS.narrow ? '58mm · 32 col' : '80mm · 42 col'} />
             ))}
           </div>
+
+          {emailOn && emailing && (
+            <form onSubmit={e => { e.preventDefault(); void send() }}
+              style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1rem' }}>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoFocus
+                inputMode="email" autoComplete="off" placeholder="customer@example.com" aria-label="The customer's email"
+                style={{
+                  flex: '1 1 16rem', minWidth: 0, minHeight: '56px', padding: '0 0.9rem', borderRadius: '10px',
+                  background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.16)',
+                  color: 'var(--offwhite)', fontSize: '1.05rem', fontFamily: 'var(--font-inter)', outline: 'none',
+                }} />
+              <PosButton icon={faPaperPlane} type="submit" label={sending ? 'Sending…' : 'Send'} tone="primary" disabled={sending} />
+              <p style={{ flexBasis: '100%', margin: 0, fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>
+                Used for this receipt only. It is not kept.
+              </p>
+            </form>
+          )}
+          {emailNote && (
+            <p role="status" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.92rem', marginBottom: '1rem', color: emailNote.good ? 'var(--teal)' : 'var(--red)' }}>
+              {emailNote.text}
+            </p>
+          )}
 
           {/* The paper. White on black is the wrong way round for a receipt,
               so this one panel inverts — it is a preview of something printed

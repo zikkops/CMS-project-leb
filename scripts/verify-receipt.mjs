@@ -23,7 +23,7 @@ import { join } from 'node:path'
 const out = mkdtempSync(join(tmpdir(), 'receipt-verify-'))
 execSync(
   `npx tsc shared/src/receipt.ts shared/src/ticketDoc.ts shared/src/tickets.ts ` +
-  `shared/src/checks.ts shared/src/money.ts shared/src/modifiers.ts ` +
+  `shared/src/checks.ts shared/src/money.ts shared/src/modifiers.ts shared/src/receiptEmail.ts ` +
   `--outDir ${out} --module esnext --target es2022 --skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' }
 )
@@ -334,6 +334,18 @@ eq('an indented line keeps its indent when it wraps',
 eq('the wide roll is respected too',
    ttext(ticket({ lines: [tline({ name: 'Halloumi & Zaatar Manoushe' })] }), 42)
      .split('\n').every(l => l.length <= 42), true)
+
+console.log('\nemailing a receipt (UPGRADE.md T3.7)')
+{
+  const E = await import(`file://${join(out, 'receiptEmail.js')}`)
+  eq('an address as typed, spaces round it taken off', E.readReceiptEmail('  rana@cafe.example  '), 'rana@cafe.example')
+  eq('THE TRAP: a phone number, a name, two addresses or one with a space is not an address, never sent',
+    ['70123456', 'Rana', 'a@b.com, c@d.com', 'ra na@cafe.example', 'rana@cafe', '@cafe.example', 'rana@', null, 42].map(E.readReceiptEmail),
+    [null, null, null, null, null, null, null, null, null])
+  eq('...nor one longer than an address can be', E.readReceiptEmail(`${'a'.repeat(250)}@b.co`), null)
+  eq('the subject names the café and the receipt', E.receiptEmailSubject('Placeholder Café', 'R-0042'), 'Your receipt from Placeholder Café (R-0042)')
+  eq('a mistyped address, the right one, and one spare', E.RECEIPT_EMAILS_PER_CHECK, 3)
+}
 
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

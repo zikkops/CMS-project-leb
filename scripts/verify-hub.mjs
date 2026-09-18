@@ -33,7 +33,7 @@ rmSync(out, { recursive: true, force: true })
 try {
   execSync(
     'npx tsc shared/src/server/hubStore.ts shared/src/server/checks.ts shared/src/server/tickets.ts ' +
-    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts shared/src/server/soldOut.ts ' +
+    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts shared/src/server/soldOut.ts shared/src/server/receiptEmail.ts ' +
     `shared/src/server/drawer.ts --outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -288,6 +288,7 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
   const T = await import(url('server/tickets.js'))
   const D = await import(url('server/drawer.js'))
   const SO = await import(url('server/soldOut.js'))
+  const ER = await import(url('server/receiptEmail.js'))
   const { BRAND } = await import(url('brand.js'))
   const db = FA.adminDb()
   eq('adminDb() is the hub\'s store when BIG_CMS_HUB_DB is set', db instanceof H.HubStore, true)
@@ -381,6 +382,15 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
     [closed.receiptNumber.endsWith('-0501'), (await db.doc('hubMeta/receipts').get()).data().blocks[0].next], [true, 502])
   eq('...and never keeps a counter of its own', (await db.doc('appSettings/invoiceCounter').get()).exists, false)
   await rejects('a closed check does not close twice', () => C.closeCheck(staff, checkId), e => e.status === 409)
+
+  // Emailing the receipt (UPGRADE.md T3.7). No mail key here, ever: a test
+  // must not be able to send a real email.
+  delete process.env.RESEND_API_KEY
+  await rejects('THE TRAP: a phone number is not an address, and nothing is sent', () => ER.emailReceipt(checkId, '70123456'), e => e.status === 400)
+  const mailed = await ER.emailReceipt(checkId, 'someone@example.com')
+  eq('a hub with no mail key says why, in words, and counts nothing',
+    [mailed.sent, /not set up/.test(mailed.reason ?? ''), (await db.doc(`checks/${checkId}`).get()).data().receiptEmails], [false, true, undefined])
+  eq('...and the address is kept nowhere on the check', JSON.stringify((await db.doc(`checks/${checkId}`).get()).data()).includes('someone@example.com'), false)
 
   // Cash that is not a sale (UPGRADE.md T3.1), on the shift itself.
   const drop = { id: 'move-000001', kind: 'safeDrop', usd: 20, lbp: 0, reason: 'Taken to the safe', note: '' }
