@@ -11,7 +11,8 @@
 // the front no say over what the kitchen is still cooking.
 
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
-import { parseTicketStatus, advanceTicket, pickUpTicket } from '@big-cms/shared/server/tickets'
+import { parseTicketStatus, advanceTicket, pickUpTicket, reprintTickets } from '@big-cms/shared/server/tickets'
+import { logActivity } from '@big-cms/shared/server/activityLog'
 import { refuseWhileHubbed } from '@big-cms/shared/server/hubLock'
 
 export const runtime = 'nodejs'
@@ -23,6 +24,20 @@ export async function PATCH(request: Request): Promise<Response> {
       body = await request.json() as Record<string, unknown>
     } catch {
       throw new HttpError(400, 'Invalid request body.')
+    }
+
+    // Print the kitchen tickets again (UPGRADE.md T3.6): one ticket, or every
+    // ticket of a check. Anyone on the till; logged, because paper is paper.
+    if (body.action === 'reprint') {
+      const caller: Caller = await requireSection(request, 'pos')
+      const byTicket = typeof body.ticketId === 'string' ? body.ticketId : ''
+      const byCheck = typeof body.checkId === 'string' ? body.checkId : ''
+      if ((!byTicket && !byCheck) || byTicket.includes('/') || byCheck.includes('/')) throw new HttpError(400, 'Say which ticket or check.')
+      await refuseWhileHubbed(byTicket ? { ticketId: byTicket } : { checkId: byCheck })
+      const done = await reprintTickets(caller, byTicket ? { ticketId: byTicket } : { checkId: byCheck })
+      await logActivity(caller, 'update', 'POS',
+        `Printed ${done.count === 1 ? 'a kitchen ticket' : `${done.count} kitchen tickets`} again${done.tableNumber !== null ? ` for table ${done.tableNumber}` : ''} at ${done.branch} (${done.stations.join(', ')})`)
+      return Response.json({ ok: true, ...done })
     }
 
     const ticketId = typeof body.ticketId === 'string' ? body.ticketId : ''

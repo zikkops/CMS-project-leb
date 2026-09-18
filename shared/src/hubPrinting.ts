@@ -31,7 +31,7 @@ export const PRINT_WINDOW_MS = 10 * 60_000
 export const PRINT_ATTEMPTS = 3
 const RETRY_DELAYS_MS = [10_000, 30_000]
 
-export type PrintJobKind = 'ticket' | 'receipt'
+export type PrintJobKind = 'ticket' | 'reprint' | 'receipt'
 
 export interface PrintJobPlan {
   id: string
@@ -55,6 +55,28 @@ export function ticketJob(
   const station = d.station as Station
   if (!printsFromHub(printerFor(settings, hubBranch, station))) return null
   return { id: `ticket_${ticket.id}`, kind: 'ticket', refId: ticket.id, station }
+}
+
+/**
+ * The job a reprint makes (UPGRADE.md T3.6), or null: the ticket's reprint
+ * count rose, just now, at this hub's branch, for a station the hub prints.
+ * One job per count (`ticket_<id>_r<n>`), so the same reprint never prints
+ * twice. Any status but cancelled: a ticket already picked up can still be
+ * asked for again.
+ */
+export function ticketReprintJob(
+  ticket: { id: string; data: Record<string, unknown> },
+  settings: PrintingSettings,
+  hubBranch: string,
+  now: number,
+): PrintJobPlan | null {
+  const d = ticket.data
+  const n = Number(d.reprints ?? 0)
+  if (!hubBranch || d.branch !== hubBranch || d.status === 'cancelled' || !Number.isInteger(n) || n < 1) return null
+  if (typeof d.station !== 'string' || !recent(timestampMs(d.reprintRequestedAt, NaN), now)) return null
+  const station = d.station as Station
+  if (!printsFromHub(printerFor(settings, hubBranch, station))) return null
+  return { id: `ticket_${ticket.id}_r${n}`, kind: 'reprint', refId: ticket.id, station }
 }
 
 /** The job a check makes, or null: just closed with its receipt number, receipts on close switched on, printed from the hub. */

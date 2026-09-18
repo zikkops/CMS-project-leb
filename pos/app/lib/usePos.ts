@@ -233,6 +233,12 @@ export function useReadyTickets(branch: string): {
 }
 
 /** The front took a ready plate out. Clears it from the kitchen display too. */
+/** Prints a check's kitchen tickets again, marked as a reprint (UPGRADE.md T3.6). */
+export async function reprintKitchenTickets(checkId: string): Promise<{ count: number; stations: string[] }> {
+  const data = await call('/api/pos/tickets', 'PATCH', { action: 'reprint', checkId }, { timeoutMs: POS_TIMEOUT_MS })
+  return data as unknown as { count: number; stations: string[] }
+}
+
 export async function pickUpTicket(ticketId: string): Promise<{ already: boolean }> {
   const data = await call('/api/pos/tickets', 'PATCH',
     { ticketId, action: 'pickup' }, { timeoutMs: POS_TIMEOUT_MS })

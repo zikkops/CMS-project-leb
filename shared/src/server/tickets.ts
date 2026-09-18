@@ -93,3 +93,39 @@ export async function pickUpTicket(
     return { already: outcome.kind === 'already', tableNumber: ticket.tableNumber, station: ticket.station }
   })
 }
+
+/**
+ * Asks for the kitchen tickets again (UPGRADE.md T3.6): one ticket, or every
+ * ticket of a check. Each one's reprint count goes up by one, and whichever
+ * printer prints its station prints that count once: the café hub makes a job
+ * for it (ticketReprintJob()), and a "Print here" screen sees a new print id
+ * (printIdsOf()). A cancelled ticket has nothing to cook, so it is left out.
+ */
+export async function reprintTickets(
+  by: { uid: string; email: string | null },
+  target: { ticketId?: string; checkId?: string },
+): Promise<{ count: number; branch: string; stations: string[]; tableNumber: number | null }> {
+  const db = adminDb()
+  return db.runTransaction(async tx => {
+    const docs = target.ticketId
+      ? [await tx.get(db.doc(`${TICKETS}/${target.ticketId}`))].filter(s => s.exists)
+      : (await tx.get(db.collection(TICKETS).where('checkId', '==', target.checkId ?? ''))).docs
+    const live = docs.filter(s => (s.data() as Ticket).status !== 'cancelled')
+    if (live.length === 0) throw new HttpError(404, 'There is no kitchen ticket to print again.')
+    for (const s of live) {
+      tx.update(s.ref, {
+        reprints: FieldValue.increment(1),
+        reprintRequestedAt: FieldValue.serverTimestamp(),
+        reprintedBy: by.uid,
+        reprintedByEmail: by.email ?? '',
+      })
+    }
+    const first = live[0].data() as Ticket
+    return {
+      count: live.length,
+      branch: first.branch,
+      stations: [...new Set(live.map(s => (s.data() as Ticket).station))],
+      tableNumber: typeof first.tableNumber === 'number' ? first.tableNumber : null,
+    }
+  })
+}

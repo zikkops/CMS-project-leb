@@ -38,7 +38,7 @@
 // and was not.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ticketSentAtMs, type Ticket } from '@big-cms/shared/tickets'
+import { printIdsOf, readPrintId, ticketSentAtMs, type Ticket } from '@big-cms/shared/tickets'
 import type { Station } from '@big-cms/shared/checks'
 import { ticketToText } from '@big-cms/shared/ticketDoc'
 import { buildReceipt, receiptToText } from '@big-cms/shared/receipt'
@@ -117,7 +117,8 @@ export function useAutoPrintTickets(input: AutoPrintInput): PaperState {
   useEffect(() => {
     const { state, print } = nextPrintBatch(batch.current, {
       scope,
-      ids: tickets.map(t => t.id),
+      // A reprint (UPGRADE.md T3.6) is one more id on its ticket, so it prints once.
+      ids: tickets.flatMap(printIdsOf),
       ticketsLoading,
       settingsLoading,
       on,
@@ -130,7 +131,8 @@ export function useAutoPrintTickets(input: AutoPrintInput): PaperState {
 
     void (async () => {
       for (const id of print) {
-        const ticket = byId.get(id)
+        const { ticketId, reprint } = readPrintId(id)
+        const ticket = byId.get(ticketId)
         if (!ticket) continue
         const printer = printerFor(settings, branch, ticket.station)
         // A network printer is printed to by the café hub itself (S28).
@@ -145,6 +147,7 @@ export function useAutoPrintTickets(input: AutoPrintInput): PaperState {
           sentBy: ticket.sentByEmail.split('@')[0] || ticket.sentBy,
           timeZone: BRAND.locale.timezone,
           locale: BRAND.locale.locale,
+          reprint,
         }, printer.width)
 
         const result = await printText(text, printer)

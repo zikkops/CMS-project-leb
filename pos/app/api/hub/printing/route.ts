@@ -2,15 +2,18 @@
 //
 // GET                      the network printers at this hub, what printed today, recent failures
 // POST { station }         a test page on that station's printer, now
+// POST { action: 'reprint', ticketId }   that kitchen ticket again (UPGRADE.md T3.6)
 //
 // Only on a hub, and only from the counter PC itself (a localhost Host): this
 // is for whoever is setting printers up at the counter, and a test page from a
 // phone on the wifi is paper nobody asked for.
 
-import { toResponse, HttpError } from '@big-cms/shared/server/auth'
+import { toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import { adminDb, hubDbPath } from '@big-cms/shared/server/firebaseAdmin'
 import type { HubStore } from '@big-cms/shared/server/hubStore'
 import { printTestPage, printingStatus } from '@big-cms/shared/server/hubPrinting'
+import { reprintTickets } from '@big-cms/shared/server/tickets'
+import { logActivity } from '@big-cms/shared/server/activityLog'
 import { isCounterHost } from '@big-cms/shared/counterSignIn'
 
 export const runtime = 'nodejs'
@@ -39,6 +42,16 @@ export async function POST(request: Request): Promise<Response> {
       body = await request.json() as Record<string, unknown>
     } catch {
       throw new HttpError(400, 'Invalid request body.')
+    }
+    if (body.action === 'reprint') {
+      const ticketId = typeof body.ticketId === 'string' ? body.ticketId : ''
+      if (!ticketId || ticketId.includes('/')) throw new HttpError(400, 'Missing ticket id.')
+      // The counter PC's own page, with nobody signed in to it: recorded as the counter.
+      const counter: Caller = { uid: 'counter-pc', email: null, role: null, branchIds: [], superadmin: false, isStaff: true }
+      const done = await reprintTickets(counter, { ticketId })
+      await logActivity(counter, 'update', 'POS',
+        `Printed the ${done.stations.join(', ')} ticket for table ${done.tableNumber ?? '?'} again, from the counter PC's hub page`)
+      return Response.json({ ok: true, ...done }, { headers: noStore })
     }
     const result = await printTestPage(store, body.station)
     return Response.json({ ok: true, ...result }, { headers: noStore })

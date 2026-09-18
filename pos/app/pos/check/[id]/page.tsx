@@ -48,7 +48,7 @@ import { MenuPicker, ModifierSheet } from './MenuPicker'
 import { lineUnitPrice, describeSelections } from '@big-cms/shared/modifiers'
 import {
   useCheck, usePosMenu, useRetailProducts,
-  addLines, sendCheck, voidLine, moveCheck, closeCheck, setStaffMeal, markSoldOut,
+  addLines, sendCheck, voidLine, moveCheck, closeCheck, setStaffMeal, markSoldOut, reprintKitchenTickets,
   type DraftLine, type PosMenuItem, type PosProduct,
 } from '../../../lib/usePos'
 import { isSoldOut, soldOutDay } from '@big-cms/shared/soldOut'
@@ -384,6 +384,7 @@ export default function CheckPage() {
   const [modifierFor, setModifierFor] = useState<PosMenuItem | null>(null)
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
+  const [printedAgain, setPrintedAgain] = useState('')
   const [moving, setMoving] = useState(false)
   const [actions, setActions] = useState(false)
   const [lineMenu, setLineMenu] = useState<CheckLine | null>(null)
@@ -684,6 +685,11 @@ export default function CheckPage() {
       {liveError && <ErrorNote message={liveError} tone="warn" />}
 
       {error && <ErrorNote message={error} />}
+      {printedAgain && !error && (
+        <p role="status" style={{ color: 'rgba(var(--offwhite-rgb),0.8)', fontSize: '0.95rem', margin: '0 0 1rem' }}>
+          <FontAwesomeIcon icon={faReceipt} style={{ marginRight: '0.5rem' }} />{printedAgain}
+        </p>
+      )}
       {busy && (
         <p style={{
           color: 'var(--teal)', fontSize: '0.95rem', marginBottom: '1rem', fontWeight: 600,
@@ -949,6 +955,23 @@ export default function CheckPage() {
             }}
             label={check.staffDiscount ? 'Staff meal — tap to remove' : 'Mark as a staff meal'}
           />
+
+          {/* A ticket lost, spilled on or printed badly (UPGRADE.md T3.6): marked REPRINT on the paper. */}
+          {check.lines.some(l => l.status === 'sent' && !l.madeOffline) && (
+            <div style={{ marginTop: '0.6rem' }}>
+              <PosButton icon={faReceipt} full tone="neutral"
+                label="Print the kitchen tickets again"
+                onClick={async () => {
+                  setActions(false)
+                  setError('')
+                  try {
+                    const done = await reprintKitchenTickets(checkId)
+                    setPrintedAgain(`${done.count === 1 ? 'The ticket is' : `${done.count} tickets are`} printing again (${done.stations.join(', ')}), marked as a reprint.`)
+                  } catch (err) { setError(err instanceof Error ? err.message : 'Could not print them again.') }
+                }}
+              />
+            </div>
+          )}
 
           <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '1.1rem 0' }} />
 

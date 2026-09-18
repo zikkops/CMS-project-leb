@@ -39,6 +39,8 @@ export interface TicketDocOptions {
   /** Defaults to Asia/Beirut via the caller; the doc only formats what it gets. */
   timeZone?: string
   locale?: string
+  /** A copy asked for again (UPGRADE.md T3.6): says so at the top, so nobody cooks it twice. */
+  reprint?: boolean
 }
 
 function clockTime(at: string | number, locale: string, timeZone?: string): string {
@@ -95,6 +97,7 @@ export function buildTicketDoc(ticket: Ticket, opts: TicketDocOptions): ReceiptR
 
   rows.push({ kind: 'center', text: ticket.station.toUpperCase(), strong: true })
   rows.push({ kind: 'center', text: `TABLE ${ticket.tableNumber}`, strong: true })
+  if (opts.reprint) rows.push({ kind: 'center', text: '** REPRINT, NOT A NEW ORDER **', strong: true })
 
   // Round 1 is the first send and needs no label. Anything after it does: a
   // second ticket for the same table is an ADDITION, and a cook who reads it

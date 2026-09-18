@@ -355,6 +355,14 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
     bumps.map(b => (b.status === 'fulfilled' ? 'ok' : b.reason.status)).sort(), [409, 'ok'])
   eq('the front picking it up afterwards is told it has gone', (await T.pickUpTicket(staff, ticketId)).already, true)
 
+  // Printing the kitchen tickets again (UPGRADE.md T3.6), even once picked up.
+  const again1 = await T.reprintTickets(staff, { checkId })
+  const again2 = await T.reprintTickets(staff, { ticketId })
+  const reprinted = (await db.doc(`kitchenTickets/${ticketId}`).get()).data()
+  eq('a check\'s tickets print again, each count once more, even after the plate went out',
+    [again1.count, again1.stations, again2.count, reprinted.reprints, reprinted.reprintRequestedAt instanceof Timestamp], [1, ['Kitchen'], 1, 2, true])
+  await rejects('a check with no kitchen ticket has nothing to print again', () => T.reprintTickets(staff, { checkId: 'no-such-check' }), e => e.status === 404)
+
   const pay = C.parsePaymentRequest({ tender: 'cash', currency: 'USD', amount: 21 })
   const paid = await C.addPayment(staff, checkId, pay, 'pay-00000001')
   const repaid = await C.addPayment(staff, checkId, pay, 'pay-00000001')

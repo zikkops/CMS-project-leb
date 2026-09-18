@@ -78,6 +78,31 @@ export interface Ticket {
   readyAt?: unknown
   /** True when the front took it out ("Picked up") rather than the kitchen clearing it. */
   pickedUp?: boolean
+  /**
+   * How many times a reprint was asked for (UPGRADE.md T3.6), and when the
+   * last one was. Each new count is one more copy, on whichever printer prints
+   * this station: see printIdsOf().
+   */
+  reprints?: number
+  reprintRequestedAt?: unknown
+}
+
+/**
+ * What a printer has to print for a ticket: the ticket itself, and one more
+ * id for each reprint asked for (`<id>#r2` is the second). A device that prints
+ * by "ids it has not seen yet" (nextPrintBatch()) therefore prints a reprint
+ * exactly once, and never prints an old one when it starts: its first look
+ * absorbs every id already there.
+ */
+export function printIdsOf(ticket: Pick<Ticket, 'id' | 'reprints'>): string[] {
+  const n = Number(ticket.reprints ?? 0)
+  return Number.isInteger(n) && n > 0 ? [ticket.id, `${ticket.id}#r${n}`] : [ticket.id]
+}
+
+/** The ticket a print id is for, and whether it is a reprint. */
+export function readPrintId(printId: string): { ticketId: string; reprint: boolean } {
+  const at = printId.lastIndexOf('#r')
+  return at > 0 ? { ticketId: printId.slice(0, at), reprint: true } : { ticketId: printId, reprint: false }
 }
 
 /** Statuses still on a pass. What the KDS asks for. */

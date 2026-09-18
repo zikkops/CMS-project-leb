@@ -18,7 +18,7 @@ import type { Station } from '../checks'
 import { BRAND } from '../brand'
 import { parseSettings, SETTINGS_DOC } from '../businessSettings'
 import { escposJob } from '../escpos'
-import { PRINT_ATTEMPTS, PRINT_JOBS, PRINT_WINDOW_MS, receiptJob, retryDelay, ticketJob, type PrintJobPlan } from '../hubPrinting'
+import { PRINT_ATTEMPTS, PRINT_JOBS, PRINT_WINDOW_MS, receiptJob, retryDelay, ticketJob, ticketReprintJob, type PrintJobPlan } from '../hubPrinting'
 import { PRINTING_DOC, parsePrintingSettings, printerFor, printsFromHub, readPrinterAddress, type PrintingSettings } from '../printing'
 import type { PrintResult } from '../printClient'
 import { buildReceipt, receiptToText } from '../receipt'
@@ -70,10 +70,10 @@ export async function planPrintJobs(store: HubStore, changes: readonly HubChange
     seen.add(change.path)
     const data = (await store.doc(change.path).get()).data()
     if (!data) continue
-    const plan = change.collection === 'kitchenTickets'
-      ? ticketJob({ id: change.id, data }, settings, branch, now)
-      : receiptJob({ id: change.id, data }, settings, branch, now)
-    if (plan) plans.push(plan)
+    const made = change.collection === 'kitchenTickets'
+      ? [ticketJob({ id: change.id, data }, settings, branch, now), ticketReprintJob({ id: change.id, data }, settings, branch, now)]
+      : [receiptJob({ id: change.id, data }, settings, branch, now)]
+    for (const plan of made) if (plan) plans.push(plan)
   }
   return plans
 }
@@ -94,7 +94,7 @@ export async function enqueuePrintJob(store: HubStore, plan: PrintJobPlan, now =
 
 /** The text a job prints, laid out for the printer's roll, or a reason it cannot be built. */
 async function jobText(store: HubStore, kind: string, refId: string, width: number): Promise<{ text: string } | { reason: string }> {
-  if (kind === 'ticket') {
+  if (kind === 'ticket' || kind === 'reprint') {
     const data = (await store.doc(`kitchenTickets/${refId}`).get()).data()
     if (!data) return { reason: 'The ticket is no longer there.' }
     const ticket = { id: refId, ...data } as Ticket
@@ -105,6 +105,7 @@ async function jobText(store: HubStore, kind: string, refId: string, width: numb
         sentBy: String(ticket.sentByEmail ?? '').split('@')[0] || String(ticket.sentBy ?? ''),
         timeZone: BRAND.locale.timezone,
         locale: BRAND.locale.locale,
+        reprint: kind === 'reprint',
       }, width),
     }
   }
@@ -154,6 +155,8 @@ export async function runPrintJob(store: HubStore, jobId: string, { send = sendT
 export interface PrintingStatus {
   /** Network printers at this hub's branch, by station. */
   printers: { station: Station; address: string; ready: boolean }[]
+  /** The latest kitchen tickets for a network printer, to print one again (UPGRADE.md T3.6). */
+  recentTickets: { id: string; station: string; tableNumber: number; round: number; status: string; sentAt: number; reprints: number }[]
   printedToday: number
   waiting: number
   /** The latest failures in the last day, newest first. */
@@ -171,8 +174,20 @@ export async function printingStatus(store: HubStore, now = Date.now()): Promise
     : []
   const jobs = (await store.collection(PRINT_JOBS).get()).docs.map(d => d.data() ?? {})
   const dayAgo = now - 24 * 3600_000
+  const networkStations = new Set(printers.map(p => p.station as string))
+  const recentTickets = branch && networkStations.size > 0
+    ? (await store.collection('kitchenTickets').where('branch', '==', branch).orderBy('sentAt', 'desc').limit(30).get()).docs
+      .map(d => ({ id: d.id, t: d.data() ?? {} }))
+      .filter(({ t }) => networkStations.has(String(t.station)) && t.status !== 'cancelled' && timestampMs(t.sentAt, 0) > now - 12 * 3600_000)
+      .slice(0, 10)
+      .map(({ id, t }) => ({
+        id, station: String(t.station), tableNumber: Number(t.tableNumber ?? 0), round: Number(t.round ?? 1),
+        status: String(t.status ?? ''), sentAt: timestampMs(t.sentAt, 0), reprints: Number(t.reprints ?? 0),
+      }))
+    : []
   return {
     printers,
+    recentTickets,
     printedToday: jobs.filter(j => j.status === 'printed' && Number(j.printedAt) > dayAgo).length,
     waiting: jobs.filter(j => j.status === 'waiting').length,
     failures: jobs

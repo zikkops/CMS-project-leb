@@ -72,6 +72,8 @@ function when(ms: number | null): string {
 
 interface PrintingStatus {
   printers: { station: string; address: string; ready: boolean }[]
+  /** The latest tickets for a network printer, to print one again (UPGRADE.md T3.6). Absent from an older hub. */
+  recentTickets?: { id: string; station: string; tableNumber: number; round: number; status: string; sentAt: number; reprints: number }[]
   printedToday: number
   waiting: number
   failures: { kind: string; station: string; reason: string; at: number }[]
@@ -99,6 +101,21 @@ function HubPrinters() {
     const poll = setInterval(() => { void load() }, 15_000)
     return () => clearInterval(poll)
   }, [])
+
+  async function reprint(ticketId: string, label: string) {
+    setTesting(ticketId)
+    setNote('')
+    try {
+      const res = await fetch('/api/hub/printing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reprint', ticketId }) })
+      const data = await res.json().catch(() => ({})) as { error?: string }
+      setNote(res.ok ? `${label} is printing again, marked as a reprint.` : (data.error ?? 'It did not print again.'))
+      void load()
+    } catch {
+      setNote('It did not print again.')
+    } finally {
+      setTesting(null)
+    }
+  }
 
   async function test(station: string) {
     setTesting(station)
@@ -130,6 +147,24 @@ function HubPrinters() {
           )}
         </div>
       ))}
+      {(printing.recentTickets ?? []).length > 0 && (
+        <>
+          <span style={{ opacity: 0.55, marginTop: '0.4rem' }}>Recent tickets · print one again</span>
+          {(printing.recentTickets ?? []).map(t => {
+            const label = `Table ${t.tableNumber}${t.round > 1 ? `, round ${t.round}` : ''}, ${t.station}`
+            return (
+              <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.8rem' }}>
+                <span style={{ fontSize: '0.85rem' }}>
+                  {label}
+                  <span style={{ opacity: 0.5, fontSize: '0.75rem' }}> · {when(t.sentAt)}{t.reprints > 0 ? ` · printed again ${t.reprints}×` : ''}</span>
+                </span>
+                <PosButton icon={faPrint} label={testing === t.id ? 'Printing…' : 'Print again'} tone="neutral" size="sm"
+                  disabled={testing !== null} onClick={() => { void reprint(t.id, label) }} />
+              </div>
+            )
+          })}
+        </>
+      )}
       {note && <span style={{ fontSize: '0.8rem', opacity: 0.8, lineHeight: 1.6 }}>{note}</span>}
       {printing.failures.map((f, i) => (
         <span key={i} style={{ color: 'var(--red)', fontSize: '0.78rem', lineHeight: 1.6 }}>

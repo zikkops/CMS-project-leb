@@ -25,7 +25,7 @@ import { join } from 'node:path'
 const out = mkdtempSync(join(tmpdir(), 'printing-verify-'))
 execSync(
   `npx tsc shared/src/printing.ts shared/src/checks.ts shared/src/receipt.ts shared/src/escpos.ts ` +
-  `shared/src/money.ts shared/src/modifiers.ts ` +
+  `shared/src/money.ts shared/src/modifiers.ts shared/src/tickets.ts shared/src/ticketDoc.ts ` +
   `--outDir ${out} --module esnext --target es2022 --skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' },
 )
@@ -285,6 +285,28 @@ console.log('\nnetwork printers, printed by the café hub itself (S28)')
   eq('a job initialises the printer, picks PC437, prints the text, feeds and cuts',
     job, [0x1b, 0x40, 0x1b, 0x74, 0x00, 0x41, 0x0a, 0x42, 0x0a, 0x1b, 0x64, 0x04, 0x1d, 0x56, 0x42, 0x00])
   eq('copies are whole jobs one after the other, never more than five', [E.escposJob('A', 2).length, E.escposJob('A', 9).length, E.escposJob('A', 0).length], [28, 70, 14])
+}
+
+console.log('\nprinting a ticket again (UPGRADE.md T3.6)')
+{
+  const TK = await import(`file://${join(out, 'tickets.js')}`)
+  const TD = await import(`file://${join(out, 'ticketDoc.js')}`)
+  eq('a ticket never reprinted is one print id; after two reprints it carries the second',
+    [TK.printIdsOf({ id: 'k1' }), TK.printIdsOf({ id: 'k1', reprints: 2 }), TK.printIdsOf({ id: 'k1', reprints: 0 })], [['k1'], ['k1', 'k1#r2'], ['k1']])
+  eq('...and the id reads back as that ticket, as a reprint', [TK.readPrintId('k1#r2'), TK.readPrintId('k1')],
+    [{ ticketId: 'k1', reprint: true }, { ticketId: 'k1', reprint: false }])
+  let st = B.EMPTY_PRINT_STATE
+  let rr = step(st, { scope: 'Main|Kitchen', ids: ['k1', 'k1#r1'] })
+  eq('THE TRAP: a screen opening does not print reprints asked for before it looked', rr.print, [])
+  st = rr.state
+  rr = step(st, { scope: 'Main|Kitchen', ids: ['k1', 'k1#r2'] })
+  eq('a new reprint prints once', rr.print, ['k1#r2'])
+  rr = step(rr.state, { scope: 'Main|Kitchen', ids: ['k1', 'k1#r2'] })
+  eq('...and not again when the list arrives again', rr.print, [])
+  const text = TD.ticketToText({ id: 'k1', checkId: 'c', branch: 'Main', tableNumber: 7, station: 'Kitchen', status: 'new', round: 1,
+    lines: [{ lineId: 'l', name: 'Fries', quantity: 1, modifiers: '', seat: null, course: null, note: '', voided: false }],
+    sentBy: 'u', sentByEmail: 'u', bumpedAt: null, bumpedBy: null }, { sentAt: 0, sentBy: 'u', reprint: true }, 32)
+  eq('the paper says it is a reprint, near the top, so nobody cooks it twice', text.split('\n').slice(0, 4).some(l => l.includes('REPRINT, NOT A NEW ORDER')), true)
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

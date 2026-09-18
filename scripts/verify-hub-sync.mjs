@@ -1591,6 +1591,25 @@ try {
   eq('a printer switched off before its job ran does not print, and says so', [switched.outcome, sent.length === sentSoFar, /switched off/.test(switched.reason ?? '')], ['failed', true, true])
   await db.doc('appSettings/printing').set(settingsDoc)
 
+  // Printing a ticket again (UPGRADE.md T3.6).
+  const again = (over = {}) => ticket({ status: 'bumped', reprints: 2, reprintRequestedAt: ts(now - 1000), sentAt: ts(now - 3 * 3600_000), ...over })
+  eq('a reprint asked for just now is one job per count, whatever the ticket\'s status, even picked up',
+    HP.ticketReprintJob(again(), settings, branch, now), { id: 'ticket_t1_r2', kind: 'reprint', refId: 't1', station: 'Kitchen' })
+  eq('THE TRAP: no reprint from a count of none, an old request, a cancelled ticket, another branch, or a station a screen prints',
+    [HP.ticketReprintJob(again({ reprints: 0 }), settings, branch, now), HP.ticketReprintJob(again({ reprintRequestedAt: ts(now - HP.PRINT_WINDOW_MS - 1000) }), settings, branch, now),
+      HP.ticketReprintJob(again({ status: 'cancelled' }), settings, branch, now), HP.ticketReprintJob(again({ branch: otherBranch }), settings, branch, now),
+      HP.ticketReprintJob(again({ station: 'Bar' }), settings, branch, now)],
+    [null, null, null, null, null])
+  const seqReprint = db.lastSeq()
+  await db.doc('kitchenTickets/print-t1').update({ reprints: 1, reprintRequestedAt: ts(Date.now() - 500) })
+  const reprintPlans = await SPR.planPrintJobs(db, db.changesSince(seqReprint, 50))
+  const newJobs = []
+  for (const plan of reprintPlans) if (await SPR.enqueuePrintJob(db, plan)) newJobs.push(plan.id)
+  eq('THE TRAP: a reprint on a ticket already printed makes only the reprint: the ticket itself is not printed a second time', newJobs, ['ticket_print-t1_r1'])
+  const reprinted = await SPR.runPrintJob(db, 'ticket_print-t1_r1', { send })
+  eq('...and the paper says it is a reprint, not a new order', [reprinted.outcome, /REPRINT, NOT A NEW ORDER/.test(sent.at(-1)?.text ?? ''), /2  Fries/.test(sent.at(-1)?.text ?? '')], ['printed', true, true])
+  eq('the hub page lists the recent tickets to print again', (await SPR.printingStatus(db)).recentTickets.map(t => [t.id, t.tableNumber, t.reprints]), [['print-t1', 12, 1]])
+
   await db.doc('checks/print-c1').set({ branch, status: 'closed', receiptNumber: 'R-0042', tableNumber: 12, guestCount: 2, openedByEmail: 'till', lines: [], closedAt: ts(Date.now() - 1000) })
   await SPR.enqueuePrintJob(db, { id: 'receipt_print-c1', kind: 'receipt', refId: 'print-c1', station: 'Kitchen' })
   const receipt = await SPR.runPrintJob(db, 'receipt_print-c1', { send })
