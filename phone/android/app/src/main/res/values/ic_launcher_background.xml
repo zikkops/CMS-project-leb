@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- The café's colour (BRAND.colors.primary's default), behind the icon and the launch screen. -->
+    <color name="brand_primary">#4A8DB7</color>
+    <color name="ic_launcher_background">@color/brand_primary</color>
 </resources>

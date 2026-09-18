@@ -212,8 +212,9 @@ The owner's goals it answers:
 - [x] **T1.25 Show the app version** in the footer of `setup.html`,
   `offline.html` and `/pos/hub`.
   *Done: setup.html and offline.html show "BIG CMS POS x.y.z"; the hub page shows it too, from BIG_CMS_APP_VERSION, which hubServerEnv() passes only as a plain x.y.z (verify:desktop). The setup smoke run reports version 0.1.0.*
-- [ ] **T1.26 Phone app icon and splash.** They are still Capacitor's
+- [x] **T1.26 Phone app icon and splash.** They are still Capacitor's
   defaults. Generate them with `@capacitor/assets`.
+  *Done: a vector cup on the café's colour (#4A8DB7) as the adaptive icon and the launch screen, replacing Capacitor's default PNGs; scaled into the centre after the Android 12+ launch screen cut the saucer off. Checked on the emulator's home screen and launch screen. Drawn by hand, not with @capacitor/assets: a vector needs no PNG per density, and minSdk 26 draws every icon as adaptive.*
 
 ---
 

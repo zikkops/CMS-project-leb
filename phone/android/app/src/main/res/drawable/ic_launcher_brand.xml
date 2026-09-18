@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The staff app's icon: a cup on the café's colour (UPGRADE.md T1.26). A vector,
+  so it is sharp at every size without a PNG per density; minSdk 26 means every
+  phone draws it as an adaptive icon. Drawn inside the 72dp safe zone of the
+  108dp canvas, so no launcher's mask cuts it.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Scaled into the centre: Android 12+ launch screens crop the icon to a smaller circle. -->
+    <group android:scaleX="0.78" android:scaleY="0.78" android:pivotX="54" android:pivotY="56">
+    <!-- the cup -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,46 H66 V60 A14,14 0 0 1 52,74 H48 A14,14 0 0 1 34,60 Z" />
+    <!-- its handle -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:fillColor="#00000000"
+        android:pathData="M66,50 H69 A6,6 0 0 1 69,62 H65" />
+    <!-- the saucer -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M30,80 H70" />
+    <!-- steam -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M43,40 C40,36 46,33 43,29 M51,40 C48,36 54,33 51,29 M59,40 C56,36 62,33 59,29" />
+    </group>
+</vector>
