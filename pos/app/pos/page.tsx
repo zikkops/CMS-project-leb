@@ -327,8 +327,8 @@ export default function FloorPage() {
           </h1>
           <p style={{ fontSize: '1rem', color: 'rgba(var(--offwhite-rgb),0.6)', lineHeight: 1.7 }}>
             {blocked === 'feature'
-              ? 'A superadmin can switch it on in the admin panel under Settings → Features. It needs the Menu module on as well.'
-              : 'Ask a manager to grant you the Point of Sale section in the admin panel under Staff Accounts.'}
+              ? 'A superadmin can switch it on in the admin panel under Settings → Modules. It needs the Menu module on as well.'
+              : 'Ask an admin to give you the Point of Sale section in the admin panel under Manage Users.'}
           </p>
         </div>
       </main>

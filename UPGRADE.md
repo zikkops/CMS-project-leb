@@ -80,11 +80,12 @@ The owner's goals it answers:
   Fold in what the 16 Sep setup taught (`desktop/README.md`,
   `phone/README.md`).
   *Done: desktop/README.md "Setting it up at a café" and phone/README.md "At a café".*
-- [ ] **T0.5 Retire old instructions.** POS pages say "Settings → Features" and
+- [x] **T0.5 Retire old instructions.** POS pages say "Settings → Features" and
   "Staff Accounts". The nav calls them "Modules" and "Manage Users"
   (`pos/app/pos/page.tsx`, `kds/page.tsx`, `allergens/page.tsx`). They also say
   "ask a manager to grant you…", but only an admin can grant. Correct the
   words only.
+  *Done: the floor, KDS and allergens messages now name Settings → Modules and Manage Users, and say an admin gives access (only an admin can).*
 
 ---
 

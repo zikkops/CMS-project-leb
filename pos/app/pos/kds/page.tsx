@@ -352,8 +352,8 @@ export default function KdsPage() {
           </h1>
           <p style={{ fontSize: '1rem', color: 'rgba(var(--offwhite-rgb),0.6)', lineHeight: 1.7 }}>
             {blocked === 'feature'
-              ? 'A superadmin can switch it on under Settings → Features. It needs Point of Sale on as well.'
-              : 'Ask a manager to grant you the Kitchen Display section under Staff Accounts.'}
+              ? 'A superadmin can switch it on in the admin panel under Settings → Modules. It needs Point of Sale on as well.'
+              : 'Ask an admin to give you the Kitchen Display section in the admin panel under Manage Users.'}
           </p>
         </div>
       </main>

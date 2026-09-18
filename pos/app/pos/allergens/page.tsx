@@ -140,7 +140,7 @@ export default function PosAllergensPage() {
     return (
       <main style={{ minHeight: '100vh', backgroundColor: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', fontFamily: 'var(--font-inter)' }}>
         <p style={{ fontSize: '1.05rem', color: muted, textAlign: 'center', maxWidth: '32rem', lineHeight: 1.7 }}>
-          {blocked === 'feature' ? 'Point of Sale is switched off.' : 'You do not have till access. Ask a manager to grant you the Point of Sale section.'}
+          {blocked === 'feature' ? 'Point of Sale is switched off.' : 'You do not have till access. Ask an admin to give you the Point of Sale section under Manage Users.'}
         </p>
       </main>
     )
@@ -173,7 +173,7 @@ export default function PosAllergensPage() {
 
         {!moduleOn ? (
           <p style={{ fontSize: '1.05rem', color: muted, lineHeight: 1.7 }}>
-            Food safety is switched off, so there is no allergen chart. An admin can switch it on under Settings → Features.
+            Food safety is switched off, so there is no allergen chart. A superadmin can switch it on in the admin panel under Settings → Modules.
           </p>
         ) : (
           <>
