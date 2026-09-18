@@ -59,6 +59,7 @@ import { PosButton, Chip, StatusBadge, SectionLabel, kindColour, type Tone, PosL
 import { useHubOnly, HubOnlyBanner } from '../../../lib/useHubOnly'
 import { useAllergenChart, readDishAllergens, type ChartDish, type DishAnswer } from '../../../lib/useAllergens'
 import { AllergenAnswer } from '../../../lib/allergenView'
+import { startLoad } from '@big-cms/shared/startLoad'
 
 /** Whether this device shows allergens on the menu. Per device, like the floor's readings. */
 const ALLERGENS_KEY = 'pos-show-allergens'
@@ -749,6 +750,34 @@ export default function CheckPage() {
   }, [check, pendingKey])
   const draftsLocked = pendingKey !== null && drafts.length > 0
 
+  // ── Unsent items survive leaving the screen (UPGRADE.md T2.8) ─────────────
+  // They lived only in this page's memory: Floor, a reload or the phone
+  // putting the tab to sleep threw them away without a word. Now they are kept
+  // on this device per check, with the key of a send in progress, so coming
+  // back to the table finds them, and a retry still cannot send twice.
+  const draftStore = `pos-drafts-${checkId}`
+  const [restored, setRestored] = useState(false)
+  useEffect(() => {
+    startLoad(() => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(draftStore) ?? 'null') as { drafts?: unknown; pendingKey?: unknown } | null
+        if (saved && Array.isArray(saved.drafts) && saved.drafts.length > 0) {
+          setDrafts(saved.drafts as DraftLine[])
+          setPendingKey(typeof saved.pendingKey === 'string' ? saved.pendingKey : null)
+        }
+      } catch { /* unreadable or private mode: nothing kept */ }
+      setRestored(true)
+    })
+  }, [draftStore])
+  useEffect(() => {
+    if (!restored) return
+    try {
+      if (drafts.length > 0) localStorage.setItem(draftStore, JSON.stringify({ drafts, pendingKey }))
+      else localStorage.removeItem(draftStore)
+    } catch { /* private mode: kept for this visit only */ }
+  }, [restored, drafts, pendingKey, draftStore])
+  const [leaving, setLeaving] = useState(false)
+
   const categories = useMemo(
     () => menu.categories.filter(c => menu.items.some(i => i.categoryId === c.id)),
     [menu.categories, menu.items],
@@ -946,7 +975,7 @@ export default function CheckPage() {
   const header = (
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.8rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        <PosButton icon={faArrowLeft} label="Floor" tone="quiet" size="sm" onClick={() => router.push('/pos')} />
+        <PosButton icon={faArrowLeft} label="Floor" tone="quiet" size="sm" onClick={() => { if (drafts.length > 0) setLeaving(true); else router.push('/pos') }} />
         <StatusBadge icon={faUserGroup} label={`${check.guestCount} ${check.guestCount === 1 ? 'guest' : 'guests'}`} />
       </div>
 
@@ -1324,6 +1353,21 @@ export default function CheckPage() {
           onDismiss={() => setPaying(false)}
           onPaid={() => { setPaying(false); handleClose() }}
         />
+      )}
+
+      {leaving && (
+        <Sheet label="Items not sent" onClose={() => setLeaving(false)}>
+          <h2 style={{ ...sheetTitle, marginBottom: '0.5rem' }}>
+            {drafts.length === 1 ? 'One item is' : `${drafts.length} items are`} not sent yet
+          </h2>
+          <p style={{ fontSize: '1rem', lineHeight: 1.6, color: 'rgba(var(--offwhite-rgb),0.7)', marginBottom: '1.1rem' }}>
+            The kitchen has not seen {drafts.length === 1 ? 'it' : 'them'}. {drafts.length === 1 ? 'It stays' : 'They stay'} on this device, waiting on table {check.tableNumber} until you send.
+          </p>
+          <div style={{ display: 'flex', gap: '0.6rem' }}>
+            <PosButton icon={faArrowLeft} label="Leave for the floor" tone="quiet" grow={1} onClick={() => router.push('/pos')} />
+            <PosButton icon={faPaperPlane} label="Stay and send" tone="primary" size="lg" grow={2} onClick={() => setLeaving(false)} />
+          </div>
+        </Sheet>
       )}
 
       {noteFor !== null && drafts[noteFor] && (
