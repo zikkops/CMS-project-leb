@@ -5,91 +5,190 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
   <title>BIG CMS Staff</title>
+  <!--
+    One card per state (UPGRADE.md T2.20): Pair, then Register, then Sign in,
+    with the step you are on marked above it. Everything else is under More,
+    and the hub's address and fingerprint under Hub details. It used to be nine
+    buttons of equal weight and a 95-character fingerprint.
+
+    The brand's own fonts, bundled (fonts/, SIL Open Font License), because
+    the page must look right with no internet. Every id app.ts looks up is
+    asserted to exist here by verify:phone.
+  -->
   <style>
-    :root { color-scheme: dark; }
-    body { margin: 0; min-height: 100vh; background: #0b0b0b; color: #f4f1ea; font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; }
-    main { width: 100%; max-width: 420px; padding: 2rem 1.25rem; box-sizing: border-box; }
-    h1 { font-size: 1.6rem; margin: 0 0 0.4rem; }
-    h2 { font-size: 1.05rem; margin: 1.6rem 0 0.4rem; }
-    p { line-height: 1.6; color: rgba(244, 241, 234, 0.72); margin: 0 0 1rem; }
-    button { width: 100%; min-height: 56px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.07); color: inherit; font-size: 1rem; margin-top: 0.7rem; }
-    button.primary { background: #2a9d8f; border-color: #2a9d8f; color: #fff; font-weight: 600; }
-    button.danger { border-color: rgba(230, 57, 70, 0.6); color: #e63946; background: transparent; }
+    @font-face { font-family: 'Inter'; font-style: normal; font-weight: 100 900; font-display: swap; src: url('fonts/inter-latin.woff2') format('woff2'); }
+    @font-face { font-family: 'Bree Serif'; font-style: normal; font-weight: 400; font-display: swap; src: url('fonts/bree-serif-latin.woff2') format('woff2'); }
+    :root {
+      color-scheme: dark;
+      --primary: #4A8DB7; --attention: #B79A4A; --danger: #e63946;
+      --text: #f4f1ea; --soft: rgba(244, 241, 234, 0.72); --faint: rgba(244, 241, 234, 0.45);
+      --line: rgba(255, 255, 255, 0.12); --card: rgba(255, 255, 255, 0.04);
+    }
+    body { margin: 0; min-height: 100vh; background: #0b0b0b; color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
+    main { width: 100%; max-width: 440px; margin: 0 auto; padding: calc(1.25rem + env(safe-area-inset-top)) 1rem 2.5rem; box-sizing: border-box; }
+    header { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1.2rem; }
+    header svg { width: 48px; height: 48px; flex-shrink: 0; }
+    h1 { font-family: 'Bree Serif', Georgia, serif; font-weight: 400; font-size: 1.5rem; margin: 0; line-height: 1.2; }
+    .sub { margin: 0.1rem 0 0; font-size: 0.85rem; color: var(--faint); }
+    h2 { font-family: 'Bree Serif', Georgia, serif; font-weight: 400; font-size: 1.3rem; margin: 0 0 0.4rem; }
+    p { line-height: 1.55; color: var(--soft); margin: 0 0 0.9rem; }
+
+    .steps { display: flex; gap: 0.4rem; list-style: none; padding: 0; margin: 0 0 1rem; counter-reset: step; }
+    .steps li { flex: 1; counter-increment: step; font-size: 0.78rem; color: var(--faint); padding-top: 0.45rem; border-top: 3px solid var(--line); }
+    .steps li::before { content: counter(step) '  '; font-weight: 700; }
+    .steps li.done { color: var(--soft); border-top-color: rgba(74, 141, 183, 0.5); }
+    .steps li.done::before { content: '✓  '; }
+    .steps li[aria-current="step"] { color: var(--text); font-weight: 600; border-top-color: var(--primary); }
+
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.2rem 1.1rem; margin-bottom: 1rem; }
+    button { width: 100%; min-height: 56px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); color: inherit; font: inherit; font-size: 1rem; margin-top: 0.7rem; padding: 0.5rem 0.9rem; }
+    button.primary { min-height: 64px; background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; font-size: 1.05rem; }
+    button.danger { border-color: rgba(230, 57, 70, 0.6); color: var(--danger); background: transparent; }
+    button.quiet { min-height: 48px; border-color: transparent; background: transparent; color: var(--soft); text-decoration: underline; text-underline-offset: 3px; }
     button:disabled { opacity: 0.5; border-style: dashed; }
-    textarea, input, select { width: 100%; box-sizing: border-box; border-radius: 10px; border: 2px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.05); color: inherit; padding: 0.7rem; font-size: 1rem; margin-top: 0.5rem; }
+    textarea, input, select { width: 100%; box-sizing: border-box; border-radius: 10px; border: 2px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.05); color: inherit; padding: 0.7rem; font: inherit; font-size: 1rem; margin-top: 0.4rem; }
     select option { background: #1b1b1b; }
     textarea { min-height: 88px; font: 0.85rem ui-monospace, Consolas, monospace; }
-    label { display: block; margin-top: 0.8rem; font-size: 0.85rem; color: rgba(244, 241, 234, 0.6); }
-    .problem { color: #e63946; }
-    .note { color: #e9c46a; }
-    .mono { font: 0.72rem ui-monospace, Consolas, monospace; word-break: break-all; color: rgba(244, 241, 234, 0.45); }
-    .request { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.8rem; margin-top: 0.8rem; }
+    label { display: block; margin-top: 0.8rem; font-size: 0.85rem; color: var(--faint); }
+    form { margin-top: 0.4rem; }
+
+    details { border: 1px solid var(--line); border-radius: 14px; margin-bottom: 0.8rem; }
+    details > summary { cursor: pointer; list-style: none; min-height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 1.1rem; font-weight: 600; color: var(--soft); }
+    details > summary::-webkit-details-marker { display: none; }
+    details > summary::after { content: '▸'; color: var(--faint); }
+    details[open] > summary::after { content: '▾'; }
+    details > .inside { padding: 0 1.1rem 1.1rem; }
+    .card details { border: none; margin: 0.4rem 0 0; }
+    .card details > summary { padding: 0; min-height: 44px; font-weight: 400; }
+    .card details > .inside { padding: 0; }
+
+    #problem { border-radius: 10px; padding: 0.75rem 0.9rem; margin: 0 0 1rem; }
+    .problem { color: var(--danger); background: rgba(230, 57, 70, 0.1); border: 1px solid rgba(230, 57, 70, 0.35); }
+    .note { color: #e2c77f; background: rgba(183, 154, 74, 0.12); border: 1px solid rgba(183, 154, 74, 0.35); }
+    .mono { font: 0.72rem ui-monospace, Consolas, monospace; word-break: break-all; color: var(--faint); }
+    .request { border-top: 1px solid var(--line); padding-top: 0.8rem; margin-top: 0.8rem; }
+    .group { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); margin: 1.1rem 0 0; }
     [hidden] { display: none !important; }
   </style>
 </head>
 <body>
   <main>
-    <h1>BIG CMS Staff</h1>
+    <header>
+      <!-- The app's icon (res/drawable/ic_launcher_brand.xml), drawn again here. -->
+      <svg viewBox="24 24 60 60" aria-hidden="true">
+        <rect x="24" y="24" width="60" height="60" rx="14" fill="#4A8DB7"/>
+        <g transform="translate(54 56) scale(0.78) translate(-54 -56)" fill="none" stroke="#fff" stroke-linecap="round">
+          <path d="M34,46 H66 V60 A14,14 0 0 1 52,74 H48 A14,14 0 0 1 34,60 Z" fill="#fff" stroke="none"/>
+          <path d="M66,50 H69 A6,6 0 0 1 69,62 H65" stroke-width="4"/>
+          <path d="M30,80 H70" stroke-width="4"/>
+          <path d="M43,40 C40,36 46,33 43,29 M51,40 C48,36 54,33 51,29 M59,40 C56,36 62,33 59,29" stroke-width="3"/>
+        </g>
+      </svg>
+      <div>
+        <h1>BIG CMS Staff</h1>
+        <p class="sub" id="hubLine">Not paired with a hub yet</p>
+      </div>
+    </header>
 
-    <section id="unpaired" hidden>
-      <p>Pair this phone with your café's hub. On the counter PC, open <strong>Café hub</strong> and scan the code under <strong>Phones on the café wifi</strong>.</p>
+    <ol class="steps" id="steps" aria-label="Setting up this phone">
+      <li data-step="pair">Pair</li>
+      <li data-step="register">Register</li>
+      <li data-step="signin">Sign in</li>
+    </ol>
+
+    <p id="problem" class="problem" role="status" aria-live="polite" hidden></p>
+
+    <!-- Step 1 -->
+    <section id="unpaired" class="card" hidden>
+      <h2>Pair with your café's hub</h2>
+      <p>On the counter PC, open the café hub page and scan the code under <strong>Phones on the café wifi</strong>.</p>
       <button id="scan" class="primary" type="button">Scan the hub's code</button>
-      <p style="margin-top:1.2rem">Or paste the link shown under it:</p>
-      <textarea id="link" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="bigcms-hub:https://192.168.1.20:3443#sha256=…"></textarea>
-      <button id="usePasted" type="button">Pair with this link</button>
+      <details>
+        <summary>Paste a link instead</summary>
+        <div class="inside">
+          <label for="link">The link shown under the code</label>
+          <textarea id="link" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="bigcms-hub:https://192.168.1.20:3443#sha256=…"></textarea>
+          <button id="usePasted" type="button">Pair with this link</button>
+        </div>
+      </details>
     </section>
 
     <section id="paired" hidden>
-      <p>This phone trusts one hub: <strong id="address"></strong>, and only its certificate.</p>
-      <p class="mono" id="fingerprint"></p>
-      <p id="whoIsRegistered"></p>
-      <button id="signIn" class="primary" type="button" hidden>Sign in with your fingerprint</button>
-      <button id="counterSignIn" type="button" hidden>Sign in the counter PC</button>
-      <form id="counterForm" hidden>
-        <p style="margin-top:1rem">On the counter PC, tap your name. Type the code it shows, then confirm with your fingerprint. The counter signs out after 15 minutes without a tap.</p>
-        <label for="counterCode">Code on the counter</label>
-        <input id="counterCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4" pattern="[0-9]{4}" required>
-        <button id="counterSubmit" class="primary" type="submit">Sign the counter in with my fingerprint</button>
-      </form>
-
-      <form id="registerForm" hidden>
-        <p style="margin-top:1rem">Be on the café Wi-Fi with the internet working. You only do this once. Your password goes to your café's sign-in and is never kept on the phone. Then confirm with your fingerprint.</p>
-        <label for="email">Email</label>
-        <input id="email" type="email" autocomplete="username" required>
-        <label for="password">Password</label>
-        <input id="password" type="password" autocomplete="current-password" required>
-        <label for="deviceName">This phone's name</label>
-        <input id="deviceName" type="text" maxlength="60">
-        <button id="registerSubmit" class="primary" type="submit">Register with my fingerprint</button>
-      </form>
-
-      <button id="register" type="button">Register this phone</button>
-
-      <button id="askManager" type="button">No fingerprint on this phone? Ask a manager</button>
-      <form id="askForm" hidden>
-        <p style="margin-top:1rem">A manager approves you from their own phone, with their fingerprint. Choose who you are:</p>
-        <label for="person">Your name</label>
-        <select id="person" required></select>
-        <button id="askSubmit" class="primary" type="submit">Ask a manager</button>
-      </form>
-      <button id="kitchenScreen" type="button">Use this device as a kitchen screen</button>
-      <section id="waitingForManager" hidden>
-        <p class="note" id="waitingText">Waiting for a manager to approve you…</p>
+      <!-- Waiting for a manager, whichever way it was asked -->
+      <section id="waitingForManager" class="card" hidden>
+        <h2>Waiting for a manager</h2>
+        <p class="note" id="waitingText" style="padding:0.75rem 0.9rem;border-radius:10px">Waiting for a manager to approve you…</p>
         <button id="stopWaiting" type="button">Stop waiting</button>
       </section>
 
-      <section id="managerTools" hidden>
-        <h2>For managers</h2>
-        <button id="managerRequests" type="button">Approve a sign-in</button>
-        <div id="requestList"></div>
+      <!-- Step 2: shown until this phone is registered -->
+      <section id="registerCard" class="card">
+        <h2>Register this phone</h2>
+        <p>Once, on the café Wi‑Fi with the internet working. You sign in with your café email and password, then your fingerprint. After that your fingerprint alone signs you in, even with no internet.</p>
+        <div id="registerSlot">
+          <button id="register" class="primary" type="button">Register this phone</button>
+          <form id="registerForm" hidden>
+            <p>Your password goes to your café's sign-in and is never kept on the phone.</p>
+            <label for="email">Email</label>
+            <input id="email" type="email" autocomplete="username" required>
+            <label for="password">Password</label>
+            <input id="password" type="password" autocomplete="current-password" required>
+            <label for="deviceName">This phone's name</label>
+            <input id="deviceName" type="text" maxlength="60">
+            <button id="registerSubmit" class="primary" type="submit">Register with my fingerprint</button>
+          </form>
+        </div>
+        <div id="askSlot">
+          <button id="askManager" class="quiet" type="button">No fingerprint on this phone? Ask a manager</button>
+          <form id="askForm" hidden>
+            <p>A manager approves you from their own phone, with their fingerprint. Choose who you are:</p>
+            <label for="person">Your name</label>
+            <select id="person" required></select>
+            <button id="askSubmit" class="primary" type="submit">Ask a manager</button>
+          </form>
+        </div>
       </section>
 
-      <button id="open" type="button">Open the till's sign-in page</button>
-      <button id="rescan" type="button">Scan the hub's code again</button>
-      <button id="forget" class="danger" type="button">Forget this hub</button>
-    </section>
+      <!-- Step 3: once registered -->
+      <section id="signInCard" class="card" hidden>
+        <h2>Sign in</h2>
+        <p id="whoIsRegistered"></p>
+        <button id="signIn" class="primary" type="button" hidden>Sign in with your fingerprint</button>
+        <button id="counterSignIn" type="button" hidden>Sign in the counter PC</button>
+        <form id="counterForm" hidden>
+          <p>On the counter PC, tap your name. Type the code it shows, then confirm with your fingerprint. The counter signs out after 15 minutes without a tap.</p>
+          <label for="counterCode">Code on the counter</label>
+          <input id="counterCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4" pattern="[0-9]{4}" required>
+          <button id="counterSubmit" class="primary" type="submit">Sign the counter in with my fingerprint</button>
+        </form>
+      </section>
 
-    <p id="problem" class="problem" hidden></p>
+      <details id="more">
+        <summary>More</summary>
+        <div class="inside">
+          <section id="managerTools" hidden>
+            <p class="group">For managers</p>
+            <button id="managerRequests" type="button">Approve a sign-in</button>
+            <div id="requestList"></div>
+          </section>
+          <p class="group">This device</p>
+          <button id="kitchenScreen" type="button">Use this device as a kitchen screen</button>
+          <button id="open" type="button">Open the till's sign-in page</button>
+          <!-- Registered, "Register this phone again" and "Ask a manager" move here from step 2 -->
+          <div id="moreSlot"></div>
+        </div>
+      </details>
+
+      <details id="hubDetails">
+        <summary>Hub details</summary>
+        <div class="inside">
+          <p>This phone trusts one hub: <strong id="address"></strong>, and only its certificate:</p>
+          <p class="mono" id="fingerprint"></p>
+          <button id="rescan" type="button">Scan the hub's code again</button>
+          <button id="forget" class="danger" type="button">Forget this hub</button>
+        </div>
+      </details>
+    </section>
   </main>
   <script type="module" src="app.js"></script>
 </body>

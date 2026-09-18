@@ -10,7 +10,7 @@
 // timeout for what was a phone on mobile data (UPGRADE.md T1.18).
 
 import { execSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 
 const cache = join(process.cwd(), 'node_modules', '.cache')
@@ -56,6 +56,22 @@ console.log('\nthe app uses it')
   const app = readFileSync(join('phone', 'src', 'app.ts'), 'utf8')
   eq('no screen shows a raw error message any more', (app.match(/err instanceof Error \? err\.message/g) ?? []).length, 0)
   eq('every catch goes through phoneMessage', (app.match(/say\(phoneMessage\(err,/g) ?? []).length >= 10, true)
+
+  // The screen is laid out in index.html and driven by id from app.ts; a card
+  // moved or renamed in one and not the other is a button that does nothing,
+  // with no error anywhere but a null in the console (UPGRADE.md T2.20).
+  const page = readFileSync(join('phone', 'www', 'index.html'), 'utf8')
+  const ids = new Set([...page.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]))
+  const used = [...new Set([...app.matchAll(/\$(?:<[^>]+>)?\('([^']+)'\)/g)].map(m => m[1]))]
+  eq('THE TRAP: every element app.ts looks up is on the page', used.filter(id => !ids.has(id)), [])
+  eq('...and it looks up enough of them for that to mean something', used.length >= 40, true)
+  eq('no id is on the page twice', [...page.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]).filter((id, i, all) => all.indexOf(id) !== i), [])
+  eq('one step card each: pair, register, sign in', ['unpaired', 'registerCard', 'signInCard', 'more', 'hubDetails'].filter(id => !ids.has(id)), [])
+
+  const fonts = [...page.matchAll(/url\('([^']+)'\)/g)].map(m => m[1])
+  eq('the brand fonts come with the app, so it looks right with no internet',
+    [fonts.length, fonts.filter(f => /^https?:/.test(f) || !existsSync(join('phone', 'www', f))).length], [2, 0])
+  eq('nothing on the page is fetched from the internet', /(src|href)="https?:/.test(page), false)
 }
 
 rmSync(out, { recursive: true, force: true })

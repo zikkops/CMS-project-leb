@@ -51,6 +51,19 @@ function say(problem: string | null, note = false) {
   el.textContent = problem ?? ''
   el.className = note ? 'note' : 'problem'
   el.hidden = !problem
+  // It sits under the steps, above the cards: bring it into view from More.
+  if (problem) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+}
+
+/** Pair, Register, Sign in: the step this phone is on, marked above the card (UPGRADE.md T2.20). */
+function markStep(step: 'pair' | 'register' | 'signin') {
+  const order = ['pair', 'register', 'signin']
+  for (const li of Array.from($('steps').children) as HTMLElement[]) {
+    const at = order.indexOf(li.dataset.step ?? '')
+    li.classList.toggle('done', at < order.indexOf(step))
+    if (li.dataset.step === step) li.setAttribute('aria-current', 'step')
+    else li.removeAttribute('aria-current')
+  }
 }
 
 /** `AB:CD:…`, easier to compare by eye with the counter screen. */
@@ -87,11 +100,34 @@ async function show() {
   $('paired').hidden = !paired
   $('registerForm').hidden = true
   $('askForm').hidden = true
-  if (!paired) return
+  if (!paired) {
+    markStep('pair')
+    $('hubLine').textContent = 'Not paired with a hub yet'
+    return
+  }
   $('address').textContent = hub.address ?? ''
   $('fingerprint').textContent = grouped(hub.fingerprint ?? '')
+  $('hubLine').textContent = `Paired with the hub at ${(hub.address ?? '').replace(/^https:\/\//, '').replace(/:\d+$/, '')}`
   const status = await HubPin.keyStatus()
   const reg = status.hasKey ? registered() : null
+
+  // One card: Register until this phone is registered, then Sign in. Registering
+  // again and asking a manager move under More once they are not the next step.
+  markStep(reg ? 'signin' : 'register')
+  $('registerCard').hidden = Boolean(reg)
+  $('signInCard').hidden = !reg
+  const registerButton = $('register')
+  const askButton = $('askManager')
+  if (reg) {
+    $('moreSlot').append(registerButton, $('registerForm'), askButton, $('askForm'))
+    registerButton.className = ''
+    askButton.className = ''
+  } else {
+    $('registerSlot').append(registerButton, $('registerForm'))
+    $('askSlot').append(askButton, $('askForm'))
+    registerButton.className = 'primary'
+    askButton.className = 'quiet'
+  }
   $('signIn').hidden = !reg
   $('counterSignIn').hidden = !reg
   $('counterForm').hidden = true
