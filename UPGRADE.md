@@ -156,8 +156,9 @@ The owner's goals it answers:
 - [x] **T1.15 Remove the dashboard's second top bar.** "View Site" and "Sign
   Out" are duplicated from the sidebar.
   *Done: the dashboard's own View Site / Sign Out bar is gone (the sidebar has both); the date moved under the greeting.*
-- [ ] **T1.16 Group the permission grid.** `/admin/users` shows 22 grant boxes
+- [x] **T1.16 Group the permission grid.** `/admin/users` shows 22 grant boxes
   in `Object.keys` order. Group them under their nav sections.
+  *Done: sectionGroups() in adminNav.ts groups the 22 grants under the sidebar's sections, in its order, the till's own under Other; Manage Users shows them grouped; verify:admin-nav asserts each is offered once.*
 - [x] **T1.17 First name required for staff accounts.** The counter's sign-in
   list and manager approvals showed "barista", "admin". Make the field
   required for new staff, and show "(no name — set in Users)" where it is

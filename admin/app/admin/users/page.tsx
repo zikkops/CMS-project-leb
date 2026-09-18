@@ -11,6 +11,7 @@ import {
 } from '@big-cms/shared/adminAuth'
 import { BRANCHES, resolveBranchName } from '@big-cms/shared/branches'
 import { startLoad } from '@big-cms/shared/startLoad'
+import { sectionGroups } from '@big-cms/shared/adminNav'
 
 interface Account {
   id: string
@@ -605,15 +606,20 @@ export default function AdminUsersPage() {
 
               {/* Per-user section access — only shown when editing, not on create */}
               {editing && (() => {
-                const sectionKeys = Object.keys(SECTION_ACCESS) as (keyof typeof SECTION_ACCESS)[]
+                // Grouped under the nav sections they open (sectionGroups() in adminNav.ts).
+                const grantGroups = sectionGroups()
                 return (
                   <div>
                     <label style={{ ...labelStyle, marginBottom: '0.4rem' }}>Section Access</label>
                     <p style={{ fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', marginBottom: '0.8rem', lineHeight: 1.5 }}>
                       Click any section to cycle its access state. Sections the role normally has can be revoked; sections it doesn&apos;t have can be explicitly granted.
                     </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                      {sectionKeys.map(key => {
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                      {grantGroups.map(group => (
+                      <div key={group.title}>
+                      <p style={{ fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.45)', fontFamily: 'var(--font-inter)', marginBottom: '0.35rem' }}>{group.title}</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      {group.keys.map(key => {
                         const viaRole = SECTION_ACCESS[key].includes(form.role)
                         const revoked  = form.sectionRevocations.includes(key)
                         const granted  = form.sectionGrants.includes(key)
@@ -678,6 +684,9 @@ export default function AdminUsersPage() {
                           </button>
                         )
                       })}
+                      </div>
+                      </div>
+                      ))}
                     </div>
                   </div>
                 )

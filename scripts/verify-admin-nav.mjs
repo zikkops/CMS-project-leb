@@ -100,5 +100,16 @@ console.log('\nwho sees which item (visibleNav, the sidebar and the dashboard al
   eq('an admin-only page is for admins only', [sees({ role: 'admin' }, null, '/admin/errors'), sees(manager, null, '/admin/errors')], [true, false])
 }
 
+console.log('\nhow Manage Users groups the per-person grants (sectionGroups)')
+{
+  const R = await import(`file://${join(out, 'roles.js')}`)
+  const groups = N.sectionGroups()
+  const listed = groups.flatMap(g => g.keys)
+  eq('every section is offered exactly once', [listed.length, new Set(listed).size, Object.keys(R.SECTION_ACCESS).length], [Object.keys(R.SECTION_ACCESS).length, Object.keys(R.SECTION_ACCESS).length, Object.keys(R.SECTION_ACCESS).length])
+  eq('the groups follow the sidebar\'s order, and none is empty',
+    groups.filter(g => g.title !== 'Other').map(g => g.title), N.ADMIN_NAV.map(s => s.title).filter(t => groups.some(g => g.title === t)))
+  eq('a section sits under the nav section whose page it opens', groups.find(g => g.keys.includes('endOfDay'))?.title, N.ADMIN_NAV.find(s => s.items.some(i => i.href === '/admin/end-of-day'))?.title)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

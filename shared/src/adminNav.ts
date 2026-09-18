@@ -34,7 +34,7 @@ import {
   faChampagneGlasses, faStar, faWarehouse, faMoon, faScrewdriverWrench, faTableCells,
   type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
-import { SECTION_ACCESS, ALL_ROLES, hasSectionAccess, type Role } from './roles'
+import { SECTION_ACCESS, ALL_ROLES, hasSectionAccess, type Role, type SectionKey } from './roles'
 import { featureForSection, isFeatureOn, type FeatureFlags } from './features'
 
 export type NavKind = 'use' | 'setup'
@@ -289,4 +289,28 @@ export function visibleNav(viewer: NavViewer, flags: FeatureFlags | null): Admin
   return ADMIN_NAV
     .map(section => ({ ...section, items: section.items.filter(item => navItemVisible(item.access, viewer, flags)) }))
     .filter(section => section.items.length > 0)
+}
+
+/**
+ * Every grantable section, grouped under the nav section whose pages it opens,
+ * in nav order: how Manage Users lists the per-person grants, which used to be
+ * 22 checkboxes in the order the keys were written (UPGRADE.md T1.16). A key no
+ * nav item uses (the till's own sections, say) is grouped as "Other"; every key
+ * appears exactly once.
+ */
+export function sectionGroups(): { title: string; keys: SectionKey[] }[] {
+  const keys = Object.keys(SECTION_ACCESS) as SectionKey[]
+  const placed = new Set<SectionKey>()
+  const groups: { title: string; keys: SectionKey[] }[] = []
+  for (const section of ADMIN_NAV) {
+    const here: SectionKey[] = []
+    for (const item of section.items) {
+      const key = keys.find(k => SECTION_ACCESS[k] === item.access)
+      if (key && !placed.has(key)) { placed.add(key); here.push(key) }
+    }
+    if (here.length) groups.push({ title: section.title, keys: here })
+  }
+  const rest = keys.filter(k => !placed.has(k))
+  if (rest.length) groups.push({ title: 'Other', keys: rest })
+  return groups
 }
