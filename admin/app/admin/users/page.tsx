@@ -12,6 +12,7 @@ import {
 import { BRANCHES, resolveBranchName } from '@big-cms/shared/branches'
 import { startLoad } from '@big-cms/shared/startLoad'
 import { sectionGroups } from '@big-cms/shared/adminNav'
+import { useConfirm, useToast } from '../../components/ui'
 
 interface Account {
   id: string
@@ -50,6 +51,9 @@ function useIsMobile(breakpoint = 768) {
 
 export default function AdminUsersPage() {
   const { checking, user } = useRequireRole(['admin'])
+  // The page's own confirmation and messages, not the browser's (UPGRADE.md T2.2).
+  const { confirm, dialog } = useConfirm()
+  const { toast, toasts } = useToast()
   const isMobile = useIsMobile()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading]   = useState(true)
@@ -138,7 +142,13 @@ export default function AdminUsersPage() {
   }
 
   async function handleRevoke(account: Account) {
-    if (!confirm(`Revoke admin panel access for ${account.email}? This removes their staff tag — any customer data (points) stays intact.`)) return
+    const sure = await confirm({
+      title: `Revoke admin panel access for ${account.email}?`,
+      body: 'This removes their staff tag and signs them out. Any customer data (points) stays intact.',
+      confirmLabel: 'Revoke access',
+      tone: 'danger',
+    })
+    if (!sure) return
     // Goes through the server route, not a client updateDoc. Clearing the
     // document alone would leave this account's custom claims asserting
     // `staff: true` indefinitely — claims only change when something calls
@@ -148,9 +158,10 @@ export default function AdminUsersPage() {
     try {
       await revokeAccountAccess(account.id)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Could not revoke access.')
+      toast(err instanceof Error ? err.message : 'Could not revoke access.', 'error')
       return
     }
+    toast(`${account.email} no longer has admin panel access.`)
     loadAccounts()
   }
 
@@ -195,6 +206,8 @@ export default function AdminUsersPage() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--black)', padding: isMobile ? '1.25rem' : '3rem' }}>
+      {dialog}
+      {toasts}
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
         {/* Header */}

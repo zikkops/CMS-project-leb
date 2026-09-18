@@ -231,9 +231,10 @@ The owner's goals it answers:
     page widths.
   - Convert **one** page as the example.
   *Done: admin/app/components/ui/index.tsx: Page (three widths), PageHeader, Panel, Button (primary/danger/neutral/quiet, dashed when disabled), Field + inputStyle, Loading, EmptyState, ErrorLine. Staff Phones converted as the example. Looked at on a temporary unsigned preview page (removed), since admin pages need a sign-in.*
-- [ ] **T2.2 Admin UI kit, part 2**: `DataTable` (sortable header, empty
+- [x] **T2.2 Admin UI kit, part 2**: `DataTable` (sortable header, empty
   state, search box) and `ConfirmDialog` + `useToast`. This replaces 30 native
   `confirm()`/`alert()` calls, one page at a time.
+  *Done: DataTable (search box, sortable columns with aria-sort, empty and no-match states), useConfirm() (a dialog in the page's style; Escape and the backdrop say no) and useToast() in the kit. Manage Users' revoke uses them instead of confirm() and alert(). Checked on a temporary preview page: sorting, search, the dialog, Escape, the toast. The other 28 confirm/alert calls move as their pages are touched.*
 - [ ] **T2.3 POS `Sheet` wrapper** in `posUi.tsx`: `role="dialog"`,
   `aria-modal`, Escape, focus handling. It keeps the modifier sheet's choices
   when the backdrop is tapped (today a stray tap throws them away).

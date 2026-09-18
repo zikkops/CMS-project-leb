@@ -226,3 +226,177 @@ export function ErrorLine({ children }: { children: ReactNode }) {
     }}>{children}</p>
   )
 }
+
+// ── Tables (UPGRADE.md T2.2) ───────────────────────────────────────────────
+
+export interface Column<T> {
+  key: string
+  label: string
+  /** What the cell shows; the row's `key` field as text when omitted. */
+  render?: (row: T) => ReactNode
+  /** Makes the column sortable: compare two rows. */
+  sort?: (a: T, b: T) => number
+  align?: 'left' | 'right' | 'center'
+  width?: string
+}
+
+/**
+ * A table with a search box, sortable columns and an empty state: the three
+ * things most list pages each wrote for themselves, or went without (only ten
+ * of 57 admin pages had a search box).
+ */
+export function DataTable<T>({ columns, rows, rowKey, empty, search, searchLabel = 'Search' }: {
+  columns: Column<T>[]
+  rows: T[]
+  rowKey: (row: T) => string
+  /** Shown when there are no rows at all (not when a search finds none). */
+  empty: ReactNode
+  /** Whether a row matches the search text (lower case); no search box without it. */
+  search?: (row: T, query: string) => boolean
+  searchLabel?: string
+}) {
+  const [query, setQuery] = useState('')
+  const [sortBy, setSortBy] = useState<{ key: string; dir: 1 | -1 } | null>(null)
+  const q = query.trim().toLowerCase()
+  const shown = rows.filter(r => !search || !q || search(r, q))
+  const column = sortBy ? columns.find(c => c.key === sortBy.key) : undefined
+  const sorted = column?.sort && sortBy ? [...shown].sort((a, b) => column.sort!(a, b) * sortBy.dir) : shown
+
+  if (rows.length === 0) return <>{empty}</>
+  return (
+    <div>
+      {search && (
+        <input
+          type="search" value={query} onChange={e => setQuery(e.target.value)}
+          aria-label={searchLabel} placeholder={`${searchLabel}…`}
+          style={{ ...inputStyle, marginBottom: '0.9rem', maxWidth: '360px' }}
+        />
+      )}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-inter)', fontSize: '0.88rem' }}>
+          <thead>
+            <tr>
+              {columns.map(c => {
+                const active = sortBy?.key === c.key
+                return (
+                  <th key={c.key} scope="col" aria-sort={active && sortBy ? (sortBy.dir === 1 ? 'ascending' : 'descending') : undefined}
+                    style={{
+                      textAlign: c.align ?? 'left', width: c.width, padding: '0.6rem 0.7rem',
+                      fontSize: '0.72rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600,
+                      color: 'rgba(var(--offwhite-rgb),0.5)', borderBottom: '1px solid rgba(var(--offwhite-rgb),0.12)',
+                    }}>
+                    {c.sort ? (
+                      <button type="button"
+                        onClick={() => setSortBy(active && sortBy ? { key: c.key, dir: sortBy.dir === 1 ? -1 : 1 } : { key: c.key, dir: 1 })}
+                        style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit', cursor: 'pointer' }}>
+                        {c.label}{active && sortBy ? (sortBy.dir === 1 ? ' ↑' : ' ↓') : ''}
+                      </button>
+                    ) : c.label}
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map(row => (
+              <tr key={rowKey(row)} style={{ borderBottom: '1px solid rgba(var(--offwhite-rgb),0.06)' }}>
+                {columns.map(c => (
+                  <td key={c.key} style={{ textAlign: c.align ?? 'left', padding: '0.7rem', color: 'var(--offwhite)', verticalAlign: 'top' }}>
+                    {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? '')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {sorted.length === 0 && <EmptyState title={`Nothing matches "${query.trim()}".`} />}
+    </div>
+  )
+}
+
+// ── Confirming and telling (UPGRADE.md T2.2) ───────────────────────────────
+
+export interface ConfirmOptions {
+  title: string
+  body?: ReactNode
+  confirmLabel?: string
+  /** 'danger' when confirming removes or ends something. */
+  tone?: 'danger' | 'primary'
+}
+
+/**
+ * A confirmation in the page's own style, instead of the browser's confirm(),
+ * which a kiosk may block and which reads like an error.
+ *
+ *   const { confirm, dialog } = useConfirm()
+ *   if (!(await confirm({ title: 'Delete this?', tone: 'danger' }))) return
+ *   … and render {dialog} once in the page.
+ */
+export function useConfirm(): { confirm: (options: ConfirmOptions) => Promise<boolean>; dialog: ReactNode } {
+  const [asking, setAsking] = useState<(ConfirmOptions & { resolve: (yes: boolean) => void }) | null>(null)
+  const confirm = (options: ConfirmOptions) => new Promise<boolean>(resolve => setAsking({ ...options, resolve }))
+  const answer = (yes: boolean) => { asking?.resolve(yes); setAsking(null) }
+  const dialog = asking ? <ConfirmDialog options={asking} onAnswer={answer} /> : null
+  return { confirm, dialog }
+}
+
+function ConfirmDialog({ options, onAnswer }: { options: ConfirmOptions; onAnswer: (yes: boolean) => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onAnswer(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onAnswer])
+  return (
+    <div onClick={() => onAnswer(false)} style={{
+      position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.7)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.25rem',
+    }}>
+      <div role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" onClick={e => e.stopPropagation()} style={{
+        width: '100%', maxWidth: '440px', background: '#141414', border: '1px solid rgba(var(--offwhite-rgb),0.14)',
+        borderRadius: '10px', padding: '1.4rem 1.3rem', fontFamily: 'var(--font-inter)',
+      }}>
+        <h2 id="confirm-title" style={{ fontSize: '1.05rem', color: 'var(--offwhite)', marginBottom: options.body ? '0.5rem' : '1.2rem' }}>{options.title}</h2>
+        {options.body && <p style={{ fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.65)', lineHeight: 1.6, marginBottom: '1.2rem' }}>{options.body}</p>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem' }}>
+          <Button onClick={() => onAnswer(false)}>Cancel</Button>
+          <Button tone={options.tone ?? 'primary'} onClick={() => onAnswer(true)}>{options.confirmLabel ?? 'Confirm'}</Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Short messages that come and go, instead of alert(): "Saved", or what went
+ * wrong. Errors stay until closed; anything else goes after four seconds.
+ *
+ *   const { toast, toasts } = useToast()
+ *   toast('Saved.')  ·  toast('Could not save.', 'error')
+ *   … and render {toasts} once in the page.
+ */
+export function useToast(): { toast: (text: string, kind?: 'info' | 'error') => void; toasts: ReactNode } {
+  const [items, setItems] = useState<{ id: number; text: string; kind: 'info' | 'error' }[]>([])
+  const toast = (text: string, kind: 'info' | 'error' = 'info') => {
+    const id = Date.now() + Math.random()
+    setItems(list => [...list, { id, text, kind }])
+    if (kind === 'info') setTimeout(() => setItems(list => list.filter(i => i.id !== id)), 4000)
+  }
+  const toasts = items.length === 0 ? null : (
+    <div aria-live="polite" style={{ position: 'fixed', right: '1rem', bottom: '1rem', zIndex: 310, display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 'calc(100vw - 2rem)' }}>
+      {items.map(i => (
+        <div key={i.id} role={i.kind === 'error' ? 'alert' : 'status'} style={{
+          display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '0.75rem 0.9rem', borderRadius: '8px',
+          fontFamily: 'var(--font-inter)', fontSize: '0.88rem', maxWidth: '420px',
+          background: i.kind === 'error' ? 'rgba(var(--red-rgb),0.95)' : '#1d1d1d',
+          border: `1px solid ${i.kind === 'error' ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.18)'}`, color: '#fff',
+        }}>
+          <span style={{ flex: 1 }}>{i.text}</span>
+          <button type="button" aria-label="Close" onClick={() => setItems(list => list.filter(x => x.id !== i.id))}
+            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '1rem', padding: '0 0.2rem' }}>×</button>
+        </div>
+      ))}
+    </div>
+  )
+  return { toast, toasts }
+}
