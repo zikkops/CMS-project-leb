@@ -94,11 +94,11 @@ export default function ReceiptPage() {
       <div style={{ maxWidth: '560px', margin: '0 auto' }}>
 
         <div style={{ marginBottom: '1.25rem' }}>
-          <a href={`/pos/check/${checkId}`} style={{
-            fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
-            display: 'block', marginBottom: '0.5rem', fontFamily: 'var(--font-inter)',
-          }}>← Back to the check</a>
+          <div style={{ display: 'flex', gap: '1.2rem', marginBottom: '0.6rem', fontFamily: 'var(--font-inter)' }}>
+            {/* Closing a check lands here now (UPGRADE.md T2.7), so the floor is one tap away. */}
+            <a href="/pos" style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--offwhite)', textDecoration: 'none' }}>← Floor</a>
+            <a href={`/pos/check/${checkId}`} style={{ fontSize: '0.95rem', color: 'rgba(var(--offwhite-rgb),0.6)', textDecoration: 'none' }}>The check</a>
+          </div>
           <h1 style={{
             fontFamily: 'var(--font-cinzel)', fontSize: '1.5rem',
             color: 'var(--offwhite)', marginBottom: '0.2rem',

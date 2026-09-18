@@ -251,12 +251,14 @@ The owner's goals it answers:
 
 ### Till flows
 
-- [ ] **T2.6 Pay is one tap, and teal.** Today it is Check options → "Take
+- [x] **T2.6 Pay is one tap, and teal.** Today it is Check options → "Take
   payment and close", painted red, about ten taps from table to closed. When
   nothing is waiting to send, the teal Send slot becomes **Pay** and opens
   PaySheet.
-- [ ] **T2.7 After closing, show the receipt**, not the floor. The "Close &
+  *Done: with lines on the check, all sent and nothing in progress, the teal Send slot becomes Pay (payments on) or Close (off) and opens the sheet directly; Check options' own button is teal, no longer red. Checked on the test hub: table 68 showed Close, and closing took two taps.*
+- [x] **T2.7 After closing, show the receipt**, not the floor. The "Close &
   issue receipt" button turns teal.
+  *Done: closing goes to the receipt, which now links "← Floor" and "The check"; PaySheet's Close & issue receipt is teal (T2.4). Checked: after Close, /pos/check/…/receipt.*
 - [ ] **T2.8 Unsent items survive leaving the screen.** Drafts live only in
   `useState`, although the header comment says otherwise. Keep them in
   localStorage per check, and confirm "Floor" while drafts exist.

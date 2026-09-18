@@ -29,7 +29,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faArrowLeft, faPaperPlane, faPlus, faMinus, faEllipsisVertical, faTrashCan, faNoteSticky,
   faChair, faLayerGroup, faSliders, faBan, faRotateLeft, faPercent, faUserTag, faArrowRightArrowLeft,
-  faCashRegister, faXmark, faUtensils, faBagShopping, faCheck, faPen, faHourglassHalf, faUserGroup,
+  faCashRegister, faReceipt, faXmark, faUtensils, faBagShopping, faCheck, faPen, faHourglassHalf, faUserGroup,
   faCircleCheck, faTriangleExclamation, faWheatAwnCircleExclamation,
   type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
@@ -873,7 +873,8 @@ export default function CheckPage() {
 
   async function handleClose() {
     setError('')
-    try { await closeCheck(checkId); router.push('/pos') }
+    // The receipt next, to print or hand over (UPGRADE.md T2.7); it links back to the floor.
+    try { await closeCheck(checkId); router.push(`/pos/check/${checkId}/receipt`) }
     catch (err) { setError(err instanceof Error ? err.message : 'Could not close.') }
   }
 
@@ -901,6 +902,8 @@ export default function CheckPage() {
   const unsentLines = check.lines.filter(l => l.status === 'draft')
   const unsentOnServer = unsentLines.length
   const canSend = drafts.length > 0 || unsentOnServer > 0
+  // Something on the check, all of it sent, nothing in progress: time to pay.
+  const readyToSettle = !canSend && !busy && check.status === 'open' && check.lines.some(l => l.status !== 'void')
   const sendCount = drafts.length + unsentOnServer
 
   const picker = (columns: number) => (
@@ -1047,9 +1050,17 @@ export default function CheckPage() {
       {isMobile && (
         <PosButton icon={faPlus} label="Add items" tone="neutral" grow={1} style={compact} disabled={draftsLocked} onClick={() => setPicking(true)} />
       )}
-      <PosButton icon={faPaperPlane} label="Send" tone="primary" size="lg" grow={2}
-        badge={sendCount > 0 ? sendCount : null}
-        disabled={!canSend || Boolean(busy)} onClick={handleSend} />
+      {readyToSettle ? (
+        // Nothing waiting to send: the main slot is the next thing a table
+        // needs, taking the money (UPGRADE.md T2.6). It was Check options →
+        // "Take payment and close", in red, about ten taps from table to closed.
+        <PosButton icon={takesPayment ? faCashRegister : faReceipt} label={takesPayment ? 'Pay' : 'Close'} tone="primary" size="lg" grow={2}
+          onClick={() => { if (takesPayment) setPaying(true); else setClosing(true) }} />
+      ) : (
+        <PosButton icon={faPaperPlane} label="Send" tone="primary" size="lg" grow={2}
+          badge={sendCount > 0 ? sendCount : null}
+          disabled={!canSend || Boolean(busy)} onClick={handleSend} />
+      )}
     </div>
   )
 
@@ -1257,7 +1268,7 @@ export default function CheckPage() {
               onClick={() => { setActions(false); setMoving(true) }} />
 
             <PosButton
-              icon={takesPayment ? faCashRegister : faXmark} full tone="danger" size="lg"
+              icon={takesPayment ? faCashRegister : faReceipt} full tone="primary" size="lg"
               onClick={() => { setActions(false); if (takesPayment) setPaying(true); else setClosing(true) }}
               label={takesPayment ? 'Take payment and close' : 'Close this check'}
             />
