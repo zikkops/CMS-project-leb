@@ -39,7 +39,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faWifi, faPlugCircleXmark, faTriangleExclamation, faArrowLeft, faRotateRight, faTrashCan, faCheck,
+  faWifi, faPlugCircleXmark, faTriangleExclamation, faArrowLeft, faRotateRight, faTrashCan, faCheck, faMinus,
   faPlus, faXmark, faHourglassHalf, faPen, faPaperPlane, faClipboardCheck, faMoneyBillWave, faCoins,
   faCreditCard, faEquals, faHandHoldingDollar, faReceipt, faUserGroup, faUtensils, faStore,
 } from '@fortawesome/free-solid-svg-icons'
@@ -51,7 +51,7 @@ import {
 import { useBusinessSettings, useFeature } from '../../lib/useTillSettings'
 import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import {
-  useAuthReady, useOpenChecks, usePosMenu, openCheck, addLines, sendCheck, payCheck,
+  useAuthReady, useOpenChecks, usePosMenu, openCheck, addLines, sendCheck, payCheck, closeCheck,
   type DraftLine, type PosMenuItem,
 } from '../../lib/usePos'
 import { useOutbox, useCounterDevice, newKey } from '../../lib/useOutbox'
@@ -59,7 +59,7 @@ import {
   checkDue, draftsUsd, queuedUsd, replayApplied, takeBlocked,
 } from '../../lib/counterTotals'
 import type { OutboxAction } from '../../lib/outbox'
-import { PosButton, Chip, StatusBadge, SectionLabel, kindColour, Stepper, GOOD, GOOD_RGB } from '../../lib/posUi'
+import { PosButton, Chip, StatusBadge, SectionLabel, kindColour, Stepper, GOOD, GOOD_RGB, Sheet } from '../../lib/posUi'
 import { ReadyPanel } from '../../lib/ReadyPanel'
 import { useHubOnly, HubOnlyBanner } from '../../lib/useHubOnly'
 
@@ -200,6 +200,20 @@ export default function CounterPage() {
 
   // What is on the check, in the order it happened: what the server has, then
   // what is queued for it, then what has not been rung up yet.
+  function changeDraft(refId: string, by: number) {
+    setDrafts(list => list
+      .map(d => (d.refId === refId ? { ...d, quantity: Math.min(99, d.quantity + by) } : d))
+      .filter(d => d.quantity >= 1))
+  }
+
+  // Switching tables with items not sent asks first, instead of dropping them
+  // silently (UPGRADE.md T2.9).
+  const [switchTo, setSwitchTo] = useState<string | null>(null)
+  function selectTable(checkId: string) {
+    if (drafts.length > 0 && checkId !== selected) { setSwitchTo(checkId); return }
+    setSelected(checkId); setDrafts([]); setChange(null); setError('')
+  }
+
   const lines = useMemo<CounterLine[]>(() => {
     if (!table) return []
     const out: CounterLine[] = []
@@ -482,7 +496,7 @@ export default function CounterPage() {
             <button
               key={t.checkId}
               type="button"
-              onClick={() => { setSelected(t.checkId); setDrafts([]); setChange(null); setError('') }}
+              onClick={() => selectTable(t.checkId)}
               aria-pressed={on}
               aria-label={`Table ${t.tableNumber}${t.check ? '' : ', not on the server yet'}${t.waiting > 0 ? `, ${t.waiting} waiting to send` : ''}`}
               style={{
@@ -561,7 +575,17 @@ export default function CounterPage() {
             {l.where === 'queued' && <StatusBadge icon={faHourglassHalf} tone="warn" label="waiting" />}
             {l.where === 'draft' && <StatusBadge icon={faPen} label="Not sent" />}
           </span>
-          <span style={{ fontWeight: 600 }}>{usd(l.unitPrice * l.quantity)}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            {/* A mis-tap can be taken back before it is sent (UPGRADE.md T2.9). */}
+            {l.where === 'draft' && (
+              <>
+                <PosButton icon={faMinus} label={`One fewer ${l.name}`} iconOnly size="sm" onClick={() => changeDraft(l.key.slice('draft-'.length), -1)} />
+                <PosButton icon={faPlus} label={`One more ${l.name}`} iconOnly size="sm" onClick={() => changeDraft(l.key.slice('draft-'.length), 1)} />
+                <PosButton icon={faTrashCan} label={`Remove ${l.name}`} iconOnly size="sm" tone="danger" onClick={() => changeDraft(l.key.slice('draft-'.length), -Infinity)} />
+              </>
+            )}
+            <span style={{ fontWeight: 600, minWidth: '4.5rem', textAlign: 'right' }}>{usd(l.unitPrice * l.quantity)}</span>
+          </span>
         </div>
       ))}
 
@@ -664,8 +688,21 @@ export default function CounterPage() {
           give (owner's decision: close when the connection is back). */}
       <div style={{ marginTop: '1rem' }}>
         {bill.settled && outbox.online && table.check ? (
-          <PosButton icon={faReceipt} label="Paid in full — close it and print the receipt" tone="neutral" full
-            onClick={() => { window.location.href = `/pos/check/${table.checkId}` }} />
+          // Closed here, then the receipt (UPGRADE.md T2.10). It used to jump to
+          // the full check screen and close from there, a second screen for
+          // one tap. A plain page load, as every link from here is.
+          <PosButton icon={faReceipt} label={busy === 'Closing…' ? 'Closing…' : 'Paid in full — close and show the receipt'} tone="primary" size="lg" full
+            disabled={Boolean(busy)}
+            onClick={async () => {
+              setBusy('Closing…'); setError('')
+              try {
+                await closeCheck(table.checkId)
+                window.location.href = `/pos/check/${table.checkId}/receipt`
+              } catch (err) {
+                say(err, 'Could not close.')
+                setBusy('')
+              }
+            }} />
         ) : (
           <p style={{ fontSize: '0.9rem', color: 'rgba(var(--offwhite-rgb),0.55)', lineHeight: 1.6 }}>
             A check is closed — and its receipt numbered — on the full check screen, once the connection is back.
@@ -718,6 +755,21 @@ export default function CounterPage() {
       padding: isMobile ? '1rem 0.9rem 2rem' : '1.25rem 1.5rem 3rem',
       fontFamily: 'var(--font-inter)', color: 'var(--offwhite)',
     }}>
+      {switchTo && (
+        <Sheet label="Items not sent" onClose={() => setSwitchTo(null)}>
+          <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.35rem', color: 'var(--offwhite)', marginBottom: '0.5rem' }}>
+            {drafts.length === 1 ? 'One item is' : `${drafts.length} items are`} not sent yet
+          </h2>
+          <p style={{ fontSize: '1rem', lineHeight: 1.6, color: 'rgba(var(--offwhite-rgb),0.7)', marginBottom: '1.1rem' }}>
+            Switching tables drops {drafts.length === 1 ? 'it' : 'them'}. Send first to keep {drafts.length === 1 ? 'it' : 'them'} on this table.
+          </p>
+          <div style={{ display: 'flex', gap: '0.6rem' }}>
+            <PosButton icon={faTrashCan} label="Drop and switch" tone="danger" grow={1}
+              onClick={() => { const to = switchTo; setSwitchTo(null); setSelected(to); setDrafts([]); setChange(null); setError('') }} />
+            <PosButton icon={faArrowLeft} label="Stay here" tone="primary" size="lg" grow={2} onClick={() => setSwitchTo(null)} />
+          </div>
+        </Sheet>
+      )}
       <div style={{ maxWidth: '1500px', margin: '0 auto' }}>
 
         {/* ── Where this device stands ─────────────────────────────────── */}

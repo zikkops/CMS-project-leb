@@ -263,11 +263,13 @@ The owner's goals it answers:
   `useState`, although the header comment says otherwise. Keep them in
   localStorage per check, and confirm "Floor" while drafts exist.
   *Done: drafts and the key of a send in progress are kept in localStorage per check (pos-drafts-<checkId>) and restored on return; Floor with unsent items asks "Leave for the floor" / "Stay and send". Checked: a Brownie added to table 25, Floor, leave, a full reload of the check: it was back, "On this device — not sent".*
-- [ ] **T2.9 Counter can fix a mis-tap.** Lines need −/+/Remove (reuse
+- [x] **T2.9 Counter can fix a mis-tap.** Lines need −/+/Remove (reuse
   `DraftRow`). Confirm before switching tables with unsent items; today they
   are wiped silently.
-- [ ] **T2.10 Counter closes in place.** "Paid in full — close it…" jumps to
+  *Done: unsent counter lines have −, + and Remove (icon buttons with names), and choosing another table with unsent items asks "Drop and switch" / "Stay here". Checked on the test hub: an Iced Latte went 2× → 1× and switching tables asked.*
+- [x] **T2.10 Counter closes in place.** "Paid in full — close it…" jumps to
   the full check screen. Close there when online.
+  *Done: paid in full and online, the counter closes the check itself (closeCheck) and opens the receipt; a refusal is said in place. Type-checked; not exercised, because the scratch hub has payments switched off, and "paid in full" needs payments.*
 - [ ] **T2.11 Draft lines show option prices.** Unsent lines use the base
   price and ignore priced options until Send (`check/[id]/page.tsx`,
   `addDraft`/`draftTotal`).
