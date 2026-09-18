@@ -240,6 +240,17 @@ console.log('\nonline till or café hub, chosen on the PC (S29–S30)')
   eq('...and only to a value it takes: on or off, not "yes"', [refusedSetting('hubLan', 'yes'), refusedSetting('hubLan', 1)],
     ['That is not a value for "hubLan".', 'That is not a value for "hubLan".'])
 
+  // Which networks Windows calls Public (UPGRADE.md T2.19). The first case is
+  // what this development PC's Windows answered, 18 Sep 2026.
+  eq('one network comes back as an object: Public is category 0',
+    P.publicNetworkAliases('{"InterfaceAlias":"Wi-Fi","NetworkCategory":0}'), ['Wi-Fi'])
+  eq('...several as a list, and only the Public ones are named, by number or by name',
+    P.publicNetworkAliases('[{"InterfaceAlias":"Ethernet","NetworkCategory":1},{"InterfaceAlias":"Wi-Fi","NetworkCategory":"Public"},{"InterfaceAlias":"Office","NetworkCategory":2}]'), ['Wi-Fi'])
+  eq('no network at all is none Public', [P.publicNetworkAliases(''), P.publicNetworkAliases('  \r\n')], [[], []])
+  eq('THE TRAP: an answer that cannot be read is "not known", never "none are Public"',
+    [P.publicNetworkAliases('Get-NetConnectionProfile : Access denied'), P.publicNetworkAliases('{"NetworkCategory":0}'), P.publicNetworkAliases('[1,2]'), P.publicNetworkAliases(undefined)],
+    [null, null, null, []])
+
   // Every handler the setup page can call checks, first thing, that the
   // caller IS the setup page. preload.js only exposes the bridge there, but
   // that is the renderer's promise; this is the main process's own check.

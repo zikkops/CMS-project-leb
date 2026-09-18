@@ -47,7 +47,7 @@ interface HubStatus {
   lastPushAt: number | null
   pushError: string | null
   movesWaiting: number
-  lan: { port: number; fingerprint: string; addresses: string[]; links: string[] } | null
+  lan: { port: number; fingerprint: string; addresses: string[]; links: string[]; publicNetwork?: string[] | null } | null
 }
 
 const field: React.CSSProperties = {
@@ -306,6 +306,13 @@ export default function HubPage() {
                           <Chip key={address} size="sm" label={address.slice('https://'.length)} active={i === Math.min(linkIndex, links.length - 1)} onClick={() => setLinkIndex(i)} />
                         ))}
                       </div>
+                    )}
+                    {(status.lan.publicNetwork ?? []).length > 0 && (
+                      // Windows' firewall blocks phones on a network it calls
+                      // Public, even after "Allow" (UPGRADE.md T2.19).
+                      <ErrorNote tone="warn"
+                        message={`Windows treats the network at ${(status.lan.publicNetwork ?? []).map(a => a.slice('https://'.length).replace(/:\d+$/, '')).join(' and ')} as Public, so it blocks phones.`}
+                        details={'On this PC: Settings → Network & internet → Wi‑Fi (or Ethernet) → this network’s properties → Network profile type → Private network. Phones can connect a minute later; nothing needs restarting. Only do this on the café’s own network.'} />
                     )}
                     {qr && <img src={qr} alt="Pairing code for the phone app" width={240} height={240} style={{ alignSelf: 'center', borderRadius: '6px', background: '#fff' }} />}
                     <span style={{ fontSize: '0.82rem', lineHeight: 1.6, opacity: 0.8 }}>

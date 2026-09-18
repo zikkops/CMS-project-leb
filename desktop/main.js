@@ -23,14 +23,14 @@
 'use strict'
 
 const { app, BrowserWindow, Menu, ipcMain, powerMonitor, powerSaveBlocker, session, shell, utilityProcess } = require('electron')
-const { spawn } = require('node:child_process')
+const { spawn, execFile } = require('node:child_process')
 const fs = require('node:fs')
 const http = require('node:http')
 const path = require('node:path')
 const {
   readConfig, isAllowedNavigation, isAllowedPermission,
   hubAddress, hubServerEnv, classifyHubProbe, hubRestartDelay,
-  configWithMode, configWithSetting, isSetupShortcut, isSetupPage, hubBackupName,
+  configWithMode, configWithSetting, isSetupShortcut, isSetupPage, hubBackupName, publicNetworkAliases,
 } = require('./policy')
 
 // A development check of the setup screen, and nothing else: the app's data in
@@ -337,9 +337,12 @@ function startHub(config, { onReady, onStopped, onFailed }) {
   let front = null
   let opening = false
 
+  let networkTimer = null
+
   const stop = () => {
     stopping = true
     clearTimeout(restartTimer)
+    clearInterval(networkTimer)
     if (child) child.kill()
     if (front) front.close()
   }
@@ -357,6 +360,28 @@ function startHub(config, { onReady, onStopped, onFailed }) {
     } catch (err) {
       log(`no certificate, so phones on the café wifi cannot reach the hub: ${err?.message ?? err}`)
     }
+  }
+
+  // Which networks Windows treats as Public, where its firewall blocks phones
+  // even after "Allow" (UPGRADE.md T2.19). Asked every minute, because a
+  // laptop moves between networks, and written beside the database for the
+  // hub page (readPublicNetworkAliases() in shared/src/server/hubSync.ts). A
+  // question Windows does not answer writes nothing: the page then says
+  // nothing either way, rather than "all clear".
+  const networkFile = path.join(dataDir, 'network.json')
+  const checkNetwork = () => {
+    execFile('powershell.exe', [
+      '-NoProfile', '-NonInteractive', '-Command',
+      'Get-NetConnectionProfile | Select-Object InterfaceAlias,NetworkCategory | ConvertTo-Json -Compress',
+    ], { timeout: 15_000, windowsHide: true }, (err, stdout) => {
+      const publicAliases = err ? null : publicNetworkAliases(stdout)
+      if (!publicAliases) return
+      try { fs.writeFileSync(networkFile, JSON.stringify({ publicAliases, checkedAt: Date.now() })) } catch { /* the page says nothing */ }
+    })
+  }
+  if (config.hubLan && process.platform === 'win32') {
+    checkNetwork()
+    networkTimer = setInterval(checkNetwork, 60_000)
   }
 
   const openLan = () => {

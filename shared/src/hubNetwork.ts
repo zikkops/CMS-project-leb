@@ -61,6 +61,29 @@ export function lanAddresses(interfaces: Record<string, NetInterface[] | undefin
     .map(f => f.url)
 }
 
+/**
+ * The addresses in lanAddresses() whose adapter Windows treats as a Public
+ * network (UPGRADE.md T2.19). Windows' firewall blocks phones on a Public
+ * network even after "Allow" was answered, because that answer covers private
+ * networks only, and nothing on the counter screen said so. The Windows app
+ * asks Windows (Get-NetConnectionProfile) and writes the Public adapters'
+ * names beside the hub's database; os.networkInterfaces() names adapters the
+ * same way.
+ */
+export function addressesOnPublicNetwork(
+  interfaces: Record<string, NetInterface[] | undefined>, port: number, publicAliases: readonly string[],
+): string[] {
+  const shown = new Set(lanAddresses(interfaces, port))
+  const found: string[] = []
+  for (const alias of publicAliases) {
+    for (const i of interfaces[alias] ?? []) {
+      const url = `https://${i.address}:${port}`
+      if (shown.has(url) && !found.includes(url)) found.push(url)
+    }
+  }
+  return found
+}
+
 /** A fingerprint as 64 lower-case hex digits, from `AB:CD:…` or plain hex; null when it is not one. */
 export function normalizeFingerprint(raw: unknown): string | null {
   if (typeof raw !== 'string') return null

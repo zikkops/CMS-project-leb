@@ -19,7 +19,9 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { adminDb, hubDbPath } from './firebaseAdmin'
 import { networkInterfaces } from 'node:os'
-import { hubLink, lanAddresses, normalizeFingerprint, type NetInterface } from '../hubNetwork'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { addressesOnPublicNetwork, hubLink, lanAddresses, normalizeFingerprint, type NetInterface } from '../hubNetwork'
 import { HttpError } from './auth'
 import { encodeHubValue, type HubStore } from './hubStore'
 import { stable } from '../backupCodec'
@@ -94,6 +96,38 @@ export interface HubLan {
   addresses: string[]
   /** What the counter screen's QR says, one per address. */
   links: string[]
+  /**
+   * The addresses on a network Windows treats as Public, where its firewall
+   * blocks phones (UPGRADE.md T2.19); null when that is not known: not on the
+   * Windows app, or its last look is out of date.
+   */
+  publicNetwork: string[] | null
+}
+
+/** How old the Windows app's look at the network may be and still be believed. */
+const NETWORK_CHECK_FRESH_MS = 5 * 60_000
+
+/**
+ * The Windows app's last look at which adapters are on a Public network
+ * (desktop/main.js writes network.json beside the database every minute while
+ * phones are on). Null when there is none, it is unreadable, or it is stale.
+ */
+export function readPublicNetworkAliases(raw: unknown, now: number = Date.now()): string[] | null {
+  if (!raw || typeof raw !== 'object') return null
+  const { publicAliases, checkedAt } = raw as { publicAliases?: unknown; checkedAt?: unknown }
+  if (typeof checkedAt !== 'number' || !(now - checkedAt <= NETWORK_CHECK_FRESH_MS) || checkedAt > now + 60_000) return null
+  if (!Array.isArray(publicAliases) || !publicAliases.every(a => typeof a === 'string' && a.length <= 256)) return null
+  return publicAliases as string[]
+}
+
+function publicAliasesBesideDb(): string[] | null {
+  const db = hubDbPath()
+  if (!db) return null
+  try {
+    return readPublicNetworkAliases(JSON.parse(readFileSync(join(dirname(db), 'network.json'), 'utf8')))
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -104,13 +138,17 @@ export interface HubLan {
 export function hubLanStatus(
   env: Record<string, string | undefined> = process.env,
   interfaces: Record<string, NetInterface[] | undefined> = networkInterfaces(),
+  publicAliases: string[] | null = publicAliasesBesideDb(),
 ): HubLan | null {
   const port = Number(env.BIG_CMS_HUB_LAN_PORT)
   const fingerprint = env.BIG_CMS_HUB_CERT_SHA256 ?? ''
   if (!Number.isInteger(port) || port < 1024 || port > 65535 || !normalizeFingerprint(fingerprint)) return null
   const addresses = lanAddresses(interfaces, port)
   const links = addresses.map(a => hubLink(a, fingerprint)).filter((l): l is string => l !== null)
-  return { port, fingerprint, addresses, links }
+  return {
+    port, fingerprint, addresses, links,
+    publicNetwork: publicAliases === null ? null : addressesOnPublicNetwork(interfaces, port, publicAliases),
+  }
 }
 
 interface SyncState {

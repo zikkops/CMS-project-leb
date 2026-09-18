@@ -65,6 +65,16 @@ walks through the whole visit; these are the traps.
   then "Staff phones on the café Wi‑Fi: On". The app starts again. (It writes
   `"hubLan": true` into `config.json`, which still works by hand.) Until then
   the hub page shows no QR code and says how to switch them on.
+- **The café network must be Private in Windows.** On a network Windows calls
+  Public, its firewall blocks phones even after "Allow" was answered, because
+  that answer covers private networks. While phones are on, the app asks
+  Windows every minute (`Get-NetConnectionProfile`) and writes the Public
+  adapters to `network.json` beside the hub database; the hub page then warns,
+  naming the address, with the fix (Settings → Network & internet → the
+  network's properties → Private). The installer adds no firewall rule of its
+  own: it installs per user without admin rights, which is what lets updates
+  install silently, and a firewall rule needs admin rights (UPGRADE.md T2.19,
+  an owner's decision).
 - **Reserve the counter PC's address in the router** (a DHCP reservation).
   Phones are paired to the address in the QR; if the router hands the PC a new
   one, every phone has to scan again.

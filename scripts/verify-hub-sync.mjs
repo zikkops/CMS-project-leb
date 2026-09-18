@@ -1687,6 +1687,29 @@ console.log('\nwhere phones find the hub on the café wifi, and what its QR says
   eq('THE TRAP: with no door, or a malformed one, the hub is on this PC only and says nothing about the wifi',
     [S.hubLanStatus({}, interfaces), S.hubLanStatus({ BIG_CMS_HUB_LAN_PORT: '3443', BIG_CMS_HUB_CERT_SHA256: 'AB:CD' }, interfaces), S.hubLanStatus({ BIG_CMS_HUB_LAN_PORT: '80', BIG_CMS_HUB_CERT_SHA256: FP }, interfaces)],
     [null, null, null])
+
+  // Windows' Public network, where its firewall blocks phones (UPGRADE.md T2.19).
+  const two = {
+    'Wi-Fi': [{ address: '192.168.68.148', family: 'IPv4', internal: false }],
+    'Ethernet': [{ address: '192.168.1.30', family: 'IPv4', internal: false }],
+    'vEthernet (WSL)': [{ address: '172.20.0.1', family: 'IPv4', internal: false }],
+  }
+  eq('the addresses on a Public network are named, the others not',
+    N.addressesOnPublicNetwork(two, 3443, ['Wi-Fi']), ['https://192.168.68.148:3443'])
+  eq('...an adapter the phones never see (a virtual one, or one not there) warns about nothing',
+    [N.addressesOnPublicNetwork(two, 3443, ['vEthernet (WSL)']), N.addressesOnPublicNetwork(two, 3443, ['Bluetooth']), N.addressesOnPublicNetwork(two, 3443, [])], [[], [], []])
+  const now = 1_800_000_000_000
+  eq('the Windows app\'s look is believed while it is fresh',
+    [S.readPublicNetworkAliases({ publicAliases: ['Wi-Fi'], checkedAt: now - 60_000 }, now), S.readPublicNetworkAliases({ publicAliases: [], checkedAt: now }, now)], [['Wi-Fi'], []])
+  eq('THE TRAP: a stale, future, missing or malformed look is "not known", never "none are Public"',
+    [S.readPublicNetworkAliases({ publicAliases: [], checkedAt: now - 6 * 60_000 }, now), S.readPublicNetworkAliases({ publicAliases: [], checkedAt: now + 10 * 60_000 }, now),
+      S.readPublicNetworkAliases(null, now), S.readPublicNetworkAliases({ publicAliases: 'Wi-Fi', checkedAt: now }, now), S.readPublicNetworkAliases({ publicAliases: [7], checkedAt: now }, now),
+      S.readPublicNetworkAliases({ publicAliases: [], checkedAt: '1800000000000' }, now)],
+    [null, null, null, null, null, null])
+  const lanPublic = S.hubLanStatus({ BIG_CMS_HUB_LAN_PORT: '3443', BIG_CMS_HUB_CERT_SHA256: FP }, two, ['Wi-Fi'])
+  eq('the hub page is told which door addresses Windows blocks; not known stays null',
+    [lanPublic.publicNetwork, S.hubLanStatus({ BIG_CMS_HUB_LAN_PORT: '3443', BIG_CMS_HUB_CERT_SHA256: FP }, two, null).publicNetwork],
+    [['https://192.168.68.148:3443'], null])
 }
 
 } catch (err) {

@@ -261,6 +261,25 @@ function configWithSetting(raw, key, value) {
   return `${JSON.stringify({ ...parseConfigFile(raw), [key]: value }, null, 2)}\n`
 }
 
+/**
+ * The adapters Windows treats as a Public network, from
+ * `Get-NetConnectionProfile | Select-Object InterfaceAlias,NetworkCategory |
+ * ConvertTo-Json` (UPGRADE.md T2.19). One network comes back as an object,
+ * several as a list; the category as a number (0 Public, 1 Private,
+ * 2 Domain) or, on newer PowerShell, as its name. Anything unreadable is null:
+ * not known, never "none are Public".
+ */
+function publicNetworkAliases(stdout) {
+  let parsed
+  try { parsed = JSON.parse(String(stdout ?? '').trim() || 'null') } catch { return null }
+  if (parsed === null) return []
+  const list = Array.isArray(parsed) ? parsed : [parsed]
+  if (!list.every(p => p && typeof p === 'object' && typeof p.InterfaceAlias === 'string')) return null
+  return list
+    .filter(p => p.NetworkCategory === 0 || p.NetworkCategory === 'Public')
+    .map(p => p.InterfaceAlias)
+}
+
 /** The manager's key combination for the setup screen: Ctrl+Shift+Alt+M. */
 function isSetupShortcut(input) {
   return Boolean(input && input.type === 'keyDown' && input.control && input.shift && input.alt && String(input.key).toLowerCase() === 'm')
@@ -295,5 +314,5 @@ function hubRestartDelay(attempt) {
 module.exports = {
   DEFAULT_CONFIG, readPosUrl, readCloudUrl, readUpdatesUrl, readConfig, isAllowedNavigation, isAllowedPermission,
   hubAddress, hubServerEnv, classifyHubProbe, hubRestartDelay,
-  configWithMode, configWithSetting, isSetupShortcut, isSetupPage, hubBackupName,
+  configWithMode, configWithSetting, isSetupShortcut, isSetupPage, hubBackupName, publicNetworkAliases,
 }
