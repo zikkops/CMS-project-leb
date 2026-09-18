@@ -29,19 +29,36 @@ export function isPrivateIPv4(ip: string): boolean {
 }
 
 /**
+ * Adapters that are not a network a phone can be on: Windows' Hyper-V and WSL
+ * switches, VirtualBox, VMware, Docker and VPN tunnels. Each has a private
+ * address, and one sorted ahead of the café's Wi-Fi put ITS address in the QR
+ * (UPGRADE.md T1.23).
+ */
+const VIRTUAL_ADAPTER = /vethernet|wsl|hyper-?v|virtualbox|vboxnet|vmware|vmnet|docker|\bveth|\bbr-|tailscale|zerotier|utun|\btun\d|\btap\d|loopback/i
+/** Adapters that are the real network: listed first, Wi-Fi and Ethernet by name. */
+const REAL_ADAPTER = /wi-?fi|wlan|wireless|ethernet|\beth\d|\ben[ops]\d|\bwl[ops]\d/i
+
+/**
  * The addresses phones on the café wifi can use: this PC's private IPv4
- * addresses, on the encrypted port. Loopback, link-local and public addresses
- * are left out. A PC on two networks lists both.
+ * addresses, on the encrypted port, the real network first. Loopback,
+ * link-local, public addresses and virtual adapters are left out. A PC on two
+ * real networks lists both.
  */
 export function lanAddresses(interfaces: Record<string, NetInterface[] | undefined>, port: number): string[] {
-  const found = new Set<string>()
-  for (const list of Object.values(interfaces)) {
+  const found: { url: string; real: boolean }[] = []
+  for (const [name, list] of Object.entries(interfaces)) {
+    if (VIRTUAL_ADAPTER.test(name)) continue
     for (const i of list ?? []) {
       const v4 = i.family === 'IPv4' || i.family === 4
-      if (v4 && !i.internal && isPrivateIPv4(i.address)) found.add(`https://${i.address}:${port}`)
+      const url = `https://${i.address}:${port}`
+      if (v4 && !i.internal && isPrivateIPv4(i.address) && !found.some(f => f.url === url)) {
+        found.push({ url, real: REAL_ADAPTER.test(name) })
+      }
     }
   }
-  return [...found].sort()
+  return found
+    .sort((a, b) => Number(b.real) - Number(a.real) || a.url.localeCompare(b.url))
+    .map(f => f.url)
 }
 
 /** A fingerprint as 64 lower-case hex digits, from `AB:CD:…` or plain hex; null when it is not one. */

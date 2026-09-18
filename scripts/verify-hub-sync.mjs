@@ -1657,7 +1657,19 @@ console.log('\nwhere phones find the hub on the café wifi, and what its QR says
     'Modem': [{ address: '81.2.69.160', family: 'IPv4', internal: false }],
   }
   eq('the addresses phones can use: private IPv4, on the encrypted port, never a public one',
-    N.lanAddresses(interfaces, 3443), ['https://172.20.0.1:3443', 'https://192.168.1.20:3443'])
+    N.lanAddresses(interfaces, 3443), ['https://192.168.1.20:3443'])
+  eq('THE TRAP: a virtual adapter (Hyper-V, WSL, VirtualBox) is not a network a phone is on, however its address sorts',
+    N.lanAddresses({
+      'vEthernet (WSL)': [{ address: '172.20.0.1', family: 'IPv4', internal: false }],
+      'VirtualBox Host-Only Network': [{ address: '192.168.56.1', family: 'IPv4', internal: false }],
+      'Wi-Fi': [{ address: '192.168.68.148', family: 'IPv4', internal: false }],
+    }, 3443), ['https://192.168.68.148:3443'])
+  eq('...and the real network comes first, so the first QR is the right one',
+    N.lanAddresses({
+      'Local Area Connection* 2': [{ address: '10.0.0.5', family: 'IPv4', internal: false }],
+      'Ethernet': [{ address: '192.168.1.30', family: 'IPv4', internal: false }],
+      'Wi-Fi': [{ address: '192.168.68.148', family: 'IPv4', internal: false }],
+    }, 3443), ['https://192.168.1.30:3443', 'https://192.168.68.148:3443', 'https://10.0.0.5:3443'])
 
   const FP = Array(32).fill('AB').join(':')
   const link = N.hubLink('https://192.168.1.20:3443', FP)
@@ -1671,7 +1683,7 @@ console.log('\nwhere phones find the hub on the café wifi, and what its QR says
   eq('no link is made from a bad address or fingerprint', [N.hubLink('http://192.168.1.20:3443', FP), N.hubLink('https://192.168.1.20:3443', 'nope')], [null, null])
 
   const lan = S.hubLanStatus({ BIG_CMS_HUB_LAN_PORT: '3443', BIG_CMS_HUB_CERT_SHA256: FP }, interfaces)
-  eq('the hub page is told the door\'s addresses and a QR for each', [lan.port, lan.addresses, lan.links.length, lan.fingerprint], [3443, ['https://172.20.0.1:3443', 'https://192.168.1.20:3443'], 2, FP])
+  eq('the hub page is told the door\'s addresses and a QR for each', [lan.port, lan.addresses, lan.links.length, lan.fingerprint], [3443, ['https://192.168.1.20:3443'], 1, FP])
   eq('THE TRAP: with no door, or a malformed one, the hub is on this PC only and says nothing about the wifi',
     [S.hubLanStatus({}, interfaces), S.hubLanStatus({ BIG_CMS_HUB_LAN_PORT: '3443', BIG_CMS_HUB_CERT_SHA256: 'AB:CD' }, interfaces), S.hubLanStatus({ BIG_CMS_HUB_LAN_PORT: '80', BIG_CMS_HUB_CERT_SHA256: FP }, interfaces)],
     [null, null, null])

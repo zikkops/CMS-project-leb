@@ -5,6 +5,8 @@ import android.net.http.SslError;
 import android.os.Build;
 import android.os.Bundle;
 import android.webkit.SslErrorHandler;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import com.getcapacitor.Bridge;
 import com.getcapacitor.BridgeWebViewClient;
@@ -17,8 +19,34 @@ import java.security.cert.X509Certificate;
  */
 public class HubWebViewClient extends BridgeWebViewClient {
 
+    private final Bridge bridge;
+
     public HubWebViewClient(Bridge bridge) {
         super(bridge);
+        this.bridge = bridge;
+    }
+
+    /**
+     * A hub page that cannot load goes back to the app's own page, which says
+     * why in words (shared/src/phoneMessages.ts), instead of leaving Chromium's
+     * error page in the app (UPGRADE.md T1.19). Only the page itself: a picture
+     * that fails to load is not a reason to leave the till.
+     */
+    @Override
+    public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+        super.onReceivedError(view, request, error);
+        if (request != null && request.isForMainFrame() && isHubPage(view, request.getUrl().toString())) {
+            backToApp(view, "unreachable");
+        }
+    }
+
+    private boolean isHubPage(WebView view, String url) {
+        String origin = HubPin.hubOrigin(HubPinPlugin.prefs(view.getContext()).getString(HubPinPlugin.ADDRESS, null));
+        return origin != null && url != null && (url.equals(origin) || url.startsWith(origin + "/"));
+    }
+
+    private void backToApp(WebView view, String why) {
+        view.post(() -> view.loadUrl(bridge.getLocalUrl() + "/?error=" + why));
     }
 
     @Override
@@ -29,6 +57,8 @@ public class HubWebViewClient extends BridgeWebViewClient {
             handler.proceed();
         } else {
             handler.cancel();
+            // The hub's address answered with another certificate: not this phone's hub.
+            if (isHubPage(view, error.getUrl())) backToApp(view, "wrong_hub");
         }
     }
 

@@ -22,7 +22,7 @@ import { parseHubLink } from '../../shared/src/hubNetwork'
 import { enrolMessage, handoffHash, signInMessage } from '../../shared/src/staffKeys'
 import { approveMessage, denyMessage } from '../../shared/src/staffApprovals'
 import { counterSignInMessage, isCounterCode, readCounterCode } from '../../shared/src/counterSignIn'
-import { phoneMessage, scanWasCancelled, SCAN_FAILED } from '../../shared/src/phoneMessages'
+import { PHONE_MESSAGES, phoneMessage, scanWasCancelled, SCAN_FAILED } from '../../shared/src/phoneMessages'
 
 interface Reply { status: number; body: string }
 
@@ -134,6 +134,36 @@ $('scan').addEventListener('click', async () => {
 
 $('usePasted').addEventListener('click', () => { void pairWith($<HTMLTextAreaElement>('link').value) })
 
+// The counter PC got a new address from the router: scan its code again. The
+// same certificate means the same hub, so only the address moves and nothing
+// else changes; a different certificate is a different hub, and is asked about.
+$('rescan').addEventListener('click', async () => {
+  say(null)
+  let scanned: string
+  try {
+    const result = await CapacitorBarcodeScanner.scanBarcode({
+      hint: CapacitorBarcodeScannerTypeHint.QR_CODE,
+      scanInstructions: 'Point the camera at the code on the counter PC',
+    })
+    scanned = result.ScanResult ?? ''
+  } catch (err) {
+    if (!scanWasCancelled(err)) say(SCAN_FAILED)
+    return
+  }
+  const next = parseHubLink(scanned.trim())
+  if (!next) { say('That is not a café hub\'s code. Use the one under "Phones on the café wifi" on the counter PC.'); return }
+  const current = await HubPin.get()
+  const sameHub = (current.fingerprint ?? '').toLowerCase().replace(/:/g, '') === next.fingerprint.toLowerCase().replace(/:/g, '')
+  if (!sameHub && !window.confirm('That is a different hub from the one this phone knows. Use it instead? Your fingerprint registration is kept.')) return
+  try {
+    await HubPin.pair(next)
+    await show()
+    say(sameHub ? `Updated: the hub is now at ${next.address}.` : 'Paired with the new hub.', true)
+  } catch (err) {
+    say(phoneMessage(err, 'This phone could not be paired.'))
+  }
+})
+
 // ── Registering the phone, once, online (S13) ─────────────────────────────
 
 $('register').addEventListener('click', () => {
@@ -194,7 +224,7 @@ $('registerForm').addEventListener('submit', async e => {
 
     localStorage.setItem(REGISTERED, JSON.stringify({ uid: account.localId, keyId, email }))
     await show()
-    say('Registered. The hub picks this phone up at its next sync, within two minutes; then sign in with your fingerprint.', true)
+    void waitForHub(keyId)
   } catch (err) {
     say(phoneMessage(err, 'This phone could not be registered.'))
   } finally {
@@ -202,6 +232,33 @@ $('registerForm').addEventListener('submit', async e => {
     button.disabled = false
   }
 })
+
+/**
+ * After registering, the hub learns about this phone at its next sync, within
+ * two minutes. Signing in before then is refused, which read as "it did not
+ * work" (UPGRADE.md T1.21). So the sign-in button waits, asking the hub every
+ * 15 seconds whether it knows the key yet, for up to three minutes.
+ */
+async function waitForHub(keyId: string) {
+  const button = $<HTMLButtonElement>('signIn')
+  const label = button.textContent
+  button.disabled = true
+  button.textContent = 'Getting the hub ready for this phone… (up to 2 min)'
+  say('Registered. The hub picks this phone up at its next sync.', true)
+  try {
+    for (let i = 0; i < 12; i++) {
+      try {
+        const reply = await HubPin.hubRequest({ method: 'POST', path: '/api/hub/key-signin', body: { action: 'challenge', keyId } })
+        if (reply.status === 200) { say('The hub knows this phone now. Sign in with your fingerprint.', true); return }
+      } catch { /* not reachable this time: asked again */ }
+      await new Promise(r => setTimeout(r, 15_000))
+    }
+    say('The hub has not picked this phone up yet. Check the counter PC is online, then try signing in.', true)
+  } finally {
+    button.disabled = false
+    button.textContent = label
+  }
+}
 
 // ── Signing in with a fingerprint, at the hub, with or without internet (S12, S14) ──
 
@@ -429,10 +486,20 @@ $('open').addEventListener('click', async () => {
 })
 
 $('forget').addEventListener('click', async () => {
-  if (!window.confirm('Forget this hub? To use the till again, this phone has to scan the counter PC\'s code again.')) return
+  if (!window.confirm('Forget this hub? You will scan the counter PC\'s code again. Your fingerprint registration is kept.')) return
   stopWaiting(null)
   await HubPin.forget()
   await show()
 })
 
-void show().catch(err => say(phoneMessage(err, 'The app could not start.')))
+// Sent back here because a hub page could not load (HubWebViewClient): say why,
+// and take the reason out of the address so a reload does not say it again.
+const cameBackBecause = new URLSearchParams(window.location.search).get('error')
+if (cameBackBecause) window.history.replaceState(null, '', window.location.pathname)
+
+void show()
+  .then(() => {
+    if (cameBackBecause === 'unreachable') say(PHONE_MESSAGES.UNREACHABLE)
+    if (cameBackBecause === 'wrong_hub') say(PHONE_MESSAGES.WRONG_HUB)
+  })
+  .catch(err => say(phoneMessage(err, 'The app could not start.')))

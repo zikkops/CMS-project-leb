@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { BRAND } from '@big-cms/shared/brand'
 import { startLoad } from '@big-cms/shared/startLoad'
-import { ErrorNote } from '../../lib/posUi'
+import { ErrorNote, Chip } from '../../lib/posUi'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -173,7 +173,11 @@ export default function HubPage() {
 
   // The QR a phone scans to pair with this hub: where it is on the wifi, and
   // the one certificate to trust there (S11).
-  const link = status?.lan?.links[0] ?? null
+  // The real network is listed first (lanAddresses()); a PC on two real
+  // networks lets the manager pick which one's QR to show (UPGRADE.md T1.23).
+  const [linkIndex, setLinkIndex] = useState(0)
+  const links = status?.lan?.links ?? []
+  const link = links[Math.min(linkIndex, links.length - 1)] ?? null
   // Drawn for one link; a QR drawn for another link is never shown.
   const [drawn, setDrawn] = useState<{ link: string; img: string | null } | null>(null)
   const qr = link && drawn?.link === link ? drawn.img : null
@@ -296,6 +300,13 @@ export default function HubPage() {
                   </span>
                 ) : (
                   <>
+                    {status.lan.addresses.length > 1 && (
+                      <div role="group" aria-label="Which network the phones are on" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                        {status.lan.addresses.map((address, i) => (
+                          <Chip key={address} size="sm" label={address.slice('https://'.length)} active={i === Math.min(linkIndex, links.length - 1)} onClick={() => setLinkIndex(i)} />
+                        ))}
+                      </div>
+                    )}
                     {qr && <img src={qr} alt="Pairing code for the phone app" width={240} height={240} style={{ alignSelf: 'center', borderRadius: '6px', background: '#fff' }} />}
                     <span style={{ fontSize: '0.82rem', lineHeight: 1.6, opacity: 0.8 }}>
                       For the phone app: it reaches this hub at {status.lan.addresses.join(' or ')}, encrypted, and trusts only this certificate.

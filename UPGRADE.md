@@ -184,22 +184,27 @@ The owner's goals it answers:
       paste the link."
     - "Sign-in cancelled."
   *Done: HubHttp.classify() in Java gives UNREACHABLE / WRONG_HUB / OFFLINE (JVM-tested, HubHttpTest), a closed fingerprint prompt is CANCELLED, the connect timeout is 5 s; shared/src/phoneMessages.ts turns codes into the words above and every catch in phone/src/app.ts uses it; npm run verify:phone (13 checks; it caught 'toString' being read as a code).*
-- [ ] **T1.19 Hub pages that fail show the app's page**, not Chromium's error
+- [x] **T1.19 Hub pages that fail show the app's page**, not Chromium's error
   (`HubWebViewClient.onReceivedError` → the app page with `?error=unreachable`).
-- [ ] **T1.20 Honest Forget wording, and re-scan without forgetting.**
+  *Done: HubWebViewClient sends a hub page that fails to load (or answers with another certificate) back to the app's page with ?error=unreachable / wrong_hub, which says why. On the Android 37 emulator: an address with nothing listening and a stand-in server with another certificate each came back to the app with the right sentence.*
+- [x] **T1.20 Honest Forget wording, and re-scan without forgetting.**
   - Say "Your fingerprint registration is kept."
   - Add "Scan the hub's code again" to the paired screen. When the
     fingerprint matches, only the address is updated. That survives the
     counter PC getting a new address from the router.
-- [ ] **T1.21 Wait for the hub after registering.** Poll every 15 s and show
+  *Done: Forget now says the registration is kept (checked on the emulator); "Scan the hub's code again" on the paired screen updates only the address when the certificate matches, and asks before switching to a different hub.*
+- [x] **T1.21 Wait for the hub after registering.** Poll every 15 s and show
   "Getting the hub ready for this phone… (up to 2 min)", instead of letting
   the first fingerprint sign-in fail.
-- [ ] **T1.22 Registration wording.** "Be on the café Wi‑Fi with internet
+  *Done: after registering, the sign-in button waits ("Getting the hub ready…"), asking the hub every 15 s for up to 3 minutes whether it knows the key. Not run end to end: an emulator cannot register (S20); needs a real phone.*
+- [x] **T1.22 Registration wording.** "Be on the café Wi‑Fi with internet
   working. You only do this once."
-- [ ] **T1.23 QR on the right network adapter.** `lanAddresses()`
+  *Done: the registration form says to be on the café Wi-Fi with the internet working, once.*
+- [x] **T1.23 QR on the right network adapter.** `lanAddresses()`
   (`shared/src/hubNetwork.ts`) sorts every private address. A WSL, Hyper‑V or
   VirtualBox adapter can win. Skip virtual adapters, prefer Wi‑Fi/Ethernet,
   and label a QR per address.
+  *Done: lanAddresses() skips Hyper-V/WSL/VirtualBox/VMware/Docker/VPN adapters and lists Wi-Fi/Ethernet first (verify:hub-sync: the old fixture had vEthernet's 172.20.0.1 as the first QR); the hub page offers a chip per network when there are several.*
 - [ ] **T1.24 Explain the first-start wait.** `desktop/offline.html` in hub
   mode says "This usually takes 20–30 seconds. The till opens by itself."
   `setup.html` gets an "Open café hub page (phones, printers)" button.
