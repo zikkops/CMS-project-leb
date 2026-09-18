@@ -270,9 +270,10 @@ The owner's goals it answers:
 - [x] **T2.10 Counter closes in place.** "Paid in full — close it…" jumps to
   the full check screen. Close there when online.
   *Done: paid in full and online, the counter closes the check itself (closeCheck) and opens the receipt; a refusal is said in place. Type-checked; not exercised, because the scratch hub has payments switched off, and "paid in full" needs payments.*
-- [ ] **T2.11 Draft lines show option prices.** Unsent lines use the base
+- [x] **T2.11 Draft lines show option prices.** Unsent lines use the base
   price and ignore priced options until Send (`check/[id]/page.tsx`,
   `addDraft`/`draftTotal`).
+  *Done: the options sheet hands addDraft() the base price plus the options' prices, so an unsent line and the running total show it (display only; the server prices from the ids). Checked: Americano + Large read $4.50 before Send.*
 - [ ] **T2.12 Ready panel doesn't cover the floor.** Cap it at about 40% of
   the screen, with scrolling. "Picked up" becomes a neutral button, with a
   5-second Undo.

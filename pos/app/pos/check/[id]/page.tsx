@@ -318,7 +318,8 @@ function ModifierSheet({
   item: PosMenuItem
   groups: ModifierGroup[]
   onCancel: () => void
-  onAdd: (optionIds: string[], label: string) => void
+  /** With the unit price the options come to, so an unsent line shows it (UPGRADE.md T2.11). */
+  onAdd: (optionIds: string[], label: string, unitPrice: number) => void
   /** Show what the dish contains as chosen — asked of the server on every change. */
   allergens: boolean
 }) {
@@ -442,7 +443,7 @@ function ModifierSheet({
       <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.2rem' }}>
         <PosButton icon={faXmark} label="Cancel" tone="quiet" grow={1} onClick={onCancel} />
         <PosButton icon={faPlus} label={`Add ${money(item.price + extra)}`} tone="primary" size="lg" grow={2}
-          disabled={Boolean(problem)} onClick={() => onAdd(allIds, label)} />
+          disabled={Boolean(problem)} onClick={() => onAdd(allIds, label, item.price + extra)} />
       </div>
     </Sheet>
   )
@@ -797,10 +798,12 @@ export default function CheckPage() {
     return m
   }, [menu.items])
 
-  function addDraft(item: PosMenuItem, optionIds: string[], label: string) {
+  // unitPrice is display only, the base price plus the options chosen; the
+  // server prices the line itself from the ids (usePos.ts, DraftLine).
+  function addDraft(item: PosMenuItem, optionIds: string[], label: string, unitPrice = item.price) {
     if (draftsLocked) return
     setDrafts(d => withDraft(d, {
-      source: 'menu', refId: item.id, name: item.name, unitPrice: item.price,
+      source: 'menu', refId: item.id, name: item.name, unitPrice,
       quantity: 1, modifierOptionIds: optionIds, modifierLabel: label,
       // Seats and courses are no longer taken (owner's request, 14 Sep 2026):
       // every line is for the table.
@@ -1160,7 +1163,7 @@ export default function CheckPage() {
           groups={groupsOf(modifierFor)}
           allergens={allergensShown}
           onCancel={() => setModifierFor(null)}
-          onAdd={(ids, label) => addDraft(modifierFor, ids, label)}
+          onAdd={(ids, label, unitPrice) => addDraft(modifierFor, ids, label, unitPrice)}
         />
       )}
 
