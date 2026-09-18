@@ -293,9 +293,10 @@ The owner's goals it answers:
   built from the already-filtered `ADMIN_NAV` (label, desc). This is the single
   biggest "modern" win, and it scales to any number of sections.
   *Done: CommandPalette.tsx, opened with Ctrl+K / ⌘K from any admin page: it searches the pages this person can open (visibleNav) through filterNav(), with arrow keys, Enter and Escape, and listbox roles. Checked on a temporary preview page with the full list: "hub" gave Held Hub Sales and Café Hubs, ↓ then Enter went to /admin/settings/hubs.*
-- [ ] **T2.16 Standard page header with breadcrumbs.** `PageHeader` shows
+- [x] **T2.16 Standard page header with breadcrumbs.** `PageHeader` shows
   "Section › Page" and the page's actions, from `sectionForPath()`. The guide
   strip folds into it as a small "?" rather than a big box.
+  *Done: above every admin page, folded by default: a breadcrumb "Section › Page" (aria-current) and a small "?" that opens the section guide, which is remembered per browser as before; the kit's PageHeader takes its section from sectionForPath() when a page gives none. Lint- and type-clean; the shell was not looked at signed in.*
 - [ ] **T2.17 A "Today" strip on the dashboard.** Four to six tiles:
   - sales so far;
   - end of day submitted or not;

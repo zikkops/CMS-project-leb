@@ -14,6 +14,8 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import type { IconDefinition } from '@fortawesome/free-solid-svg-icons'
+import { usePathname } from 'next/navigation'
+import { sectionForPath } from '@big-cms/shared/adminNav'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -47,14 +49,18 @@ export function Page({ width = 'normal', children }: { width?: keyof typeof PAGE
 /**
  * A page's heading: which section it belongs to, its title, one or two
  * sentences on what it is for, and the page's own actions on the right.
+ * Without a `section`, it is the nav section this address belongs to
+ * (sectionForPath), so it cannot disagree with the sidebar (UPGRADE.md T2.16).
  */
-export function PageHeader({ section, title, lead, actions }: {
+export function PageHeader({ section: given, title, lead, actions }: {
   section?: string
   title: string
   lead?: ReactNode
   actions?: ReactNode
 }) {
   const isMobile = useIsMobile()
+  const pathname = usePathname()
+  const section = given ?? (pathname ? sectionForPath(pathname)?.section.title : undefined)
   return (
     <header style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '1rem', flexWrap: 'wrap' }}>
       <div style={{ minWidth: 0 }}>

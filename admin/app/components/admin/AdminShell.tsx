@@ -18,8 +18,8 @@ import { ADMIN_NAV, sectionForPath, visibleNav, filterNav, type AdminNavSection,
 import { useFeatureFlags } from '@big-cms/shared/useFeatures'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faBars, faChevronLeft, faChevronRight, faXmark, faRightFromBracket, faGear, faHouse,
-  faGlobe, faCircleQuestion, faChevronDown, faChevronUp,
+  faBars, faChevronLeft, faChevronRight, faXmark, faRightFromBracket, faGear, faHouse, faGlobe,
+  faCircleQuestion, faChevronUp,
 } from '@fortawesome/free-solid-svg-icons'
 import { BRAND } from '@big-cms/shared/brand'
 import { useClientValue } from '@big-cms/shared/useClientValue'
@@ -88,18 +88,24 @@ function GuideStrip({ section, item, setupItems, hidden, onToggle, isMobile }: {
   const others = setupItems.filter(s => s.href !== item.href)
   if (hidden) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: isMobile ? '0.4rem 1rem 0' : '0.5rem 2rem 0' }}>
-        <button type="button" onClick={onToggle} style={{
-          display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer',
-          background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '999px',
-          color: 'rgba(var(--offwhite-rgb),0.55)', fontFamily: 'var(--font-inter)', fontSize: '0.75rem',
-          padding: '0.3rem 0.75rem',
+      <nav aria-label="Breadcrumb" style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.8rem',
+        padding: isMobile ? '0.55rem 1rem 0' : '0.7rem 2rem 0', fontFamily: 'var(--font-inter)',
+      }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.55)', minWidth: 0 }}>
+          <FontAwesomeIcon icon={section.icon} style={{ color: section.color }} />
+          <span>{section.title}</span>
+          <span aria-hidden style={{ opacity: 0.5 }}>›</span>
+          <span aria-current="page" style={{ color: 'var(--offwhite)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
+        </span>
+        <button type="button" onClick={onToggle} aria-expanded={false} aria-label={`About ${section.title} and this page`} title={`About ${section.title}`} style={{
+          flexShrink: 0, width: '30px', height: '30px', borderRadius: '50%', cursor: 'pointer',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          background: 'transparent', border: '1px solid rgba(255,255,255,0.14)', color: section.color,
         }}>
-          <FontAwesomeIcon icon={faCircleQuestion} style={{ color: section.color }} />
-          About {section.title}
-          <FontAwesomeIcon icon={faChevronDown} />
+          <FontAwesomeIcon icon={faCircleQuestion} />
         </button>
-      </div>
+      </nav>
     )
   }
   return (
@@ -178,7 +184,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   // click this session overrides what was remembered.
   const hydrated = useClientValue(() => true, false)
   const storedCollapsed = useClientValue(() => remembered(COLLAPSE_KEY), false)
-  const storedGuideHidden = useClientValue(() => remembered(GUIDE_KEY), false)
+  // Folded unless this browser opened it (a "0" stored); the breadcrumb and a "?" show meanwhile (T2.16).
+  const storedGuideHidden = useClientValue(() => { try { return window.localStorage.getItem(GUIDE_KEY) !== '0' } catch { return true } }, true)
   const [collapsedChoice, setCollapsedChoice] = useState<boolean | null>(null)
   const [guideChoice, setGuideChoice] = useState<boolean | null>(null)
   const collapsed = collapsedChoice ?? storedCollapsed
