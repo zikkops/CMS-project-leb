@@ -120,6 +120,13 @@ export default function LabourReportPage() {
               <DataTable columns={flaggedColumns} rows={flagged} rowKey={s => `${s.uid}:${s.inAt}`} empty={null} />
             </Panel>
           )}
+          {report.unsharedTips.length > 0 && (
+            <Panel title="Tips with nobody to share them">
+              <p style={{ fontFamily: 'var(--font-inter)', color: 'var(--offwhite)', fontSize: '0.92rem' }}>
+                {report.unsharedTips.map(t => `${usd(t.tipsUsd)} at ${t.branch}`).join(' · ')}: the End of Day reports in this period list nobody with a shift, so the split has no one to pay. Fix the attendance on those days.
+              </p>
+            </Panel>
+          )}
           {report.unmatchedTips.length > 0 && (
             <Panel title="Tips for names that match no staff account">
               <DataTable

@@ -81,6 +81,8 @@ export interface LabourReport {
   shifts: LabourShift[]
   /** Tips for attendance names that match no staff account. */
   unmatchedTips: { branch: string; name: string; tipsUsd: number }[]
+  /** Tips in a branch's pot with no shift to share them: attendance with no shifts recorded. */
+  unsharedTips: { branch: string; tipsUsd: number }[]
   byBranch: { branch: string; totals: LabourTotals }[]
   total: LabourTotals
   /** The business rate the percentage converted lira cost at. */
@@ -89,8 +91,9 @@ export interface LabourReport {
 
 const r2 = (n: number) => Math.round(n * 100) / 100
 
-function percent(costUsd: number, costLbp: number, netSales: number, lbpRate: number): number | null {
-  if (!(netSales > 0)) return null
+function percent(costUsd: number, costLbp: number, netSales: number, lbpRate: number, minutes: number): number | null {
+  // No hours recorded is no figure, never 0%: that would read as free labour.
+  if (!(netSales > 0) || minutes <= 0) return null
   if (costLbp > 0 && !(lbpRate > 0)) return null
   const cost = costUsd + (costLbp > 0 ? costLbp / lbpRate : 0)
   return Math.round((cost / netSales) * 10_000) / 10_000
@@ -145,6 +148,7 @@ export function labourReport(input: {
 
   // The tips split, per branch, as the tips page works it out.
   const unmatchedTips: LabourReport['unmatchedTips'] = []
+  const unsharedTips: LabourReport['unsharedTips'] = []
   const tipsByBranch = new Map<string, number>()
   const matchList = input.staff.map(s => ({ uid: s.uid, email: s.email, firstName: s.firstName }))
   for (const branch of input.branches) {
@@ -158,6 +162,8 @@ export function labourReport(input: {
       })),
     )
     tipsByBranch.set(branch, d.netTipsUsd)
+    const shared = d.staff.reduce((n, t) => n + Math.round(t.earned * 100), 0) / 100
+    if (d.netTipsUsd - shared > 0.004) unsharedTips.push({ branch, tipsUsd: r2(d.netTipsUsd - shared) })
     for (const t of d.staff) {
       const uid = matchStaffName(t.name, matchList)
       if (uid) { const p = person(uid, t.name); p.tipsUsd = r2(p.tipsUsd + t.earned) }
@@ -190,20 +196,21 @@ export function labourReport(input: {
     d.netSales = r2(d.netSales + s.netSales)
   }
   const days = [...dayMap.values()]
-    .map(d => ({ ...d, labourPercent: percent(d.costUsd, d.costLbp, d.netSales, input.lbpRate) }))
+    .map(d => ({ ...d, labourPercent: percent(d.costUsd, d.costLbp, d.netSales, input.lbpRate, d.minutes) }))
     .sort((a, b) => (a.day === b.day ? a.branch.localeCompare(b.branch) : a.day.localeCompare(b.day)))
 
   const totalsOf = (list: readonly LabourDay[], shiftList: readonly LabourShift[], tipsUsd: number): LabourTotals => {
     const costUsd = r2(list.reduce((n, d) => n + d.costUsd, 0))
     const costLbp = list.reduce((n, d) => n + d.costLbp, 0)
     const netSales = r2(list.reduce((n, d) => n + d.netSales, 0))
+    const minutes = list.reduce((n, d) => n + d.minutes, 0)
     return {
       shifts: shiftList.length,
       openShifts: shiftList.filter(s => s.flagged).length,
-      minutes: list.reduce((n, d) => n + d.minutes, 0),
+      minutes,
       unpricedMinutes: list.reduce((n, d) => n + d.unpricedMinutes, 0),
       costUsd, costLbp, tipsUsd: r2(tipsUsd), netSales,
-      labourPercent: percent(costUsd, costLbp, netSales, input.lbpRate),
+      labourPercent: percent(costUsd, costLbp, netSales, input.lbpRate, minutes),
     }
   }
   const byBranch = input.branches.map(branch => ({
@@ -215,6 +222,7 @@ export function labourReport(input: {
     days,
     shifts,
     unmatchedTips,
+    unsharedTips,
     byBranch,
     total: totalsOf(days, shifts, [...tipsByBranch.values()].reduce((n, t) => n + t, 0)),
     lbpRate: input.lbpRate,
