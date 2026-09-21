@@ -103,6 +103,16 @@ export function timesheet(entries: readonly TimeEntry[], opts: { timeZone: strin
     if (open) close(open, null)
   }
   shifts.sort((a, b) => a.inAt - b.inAt)
+  return { shifts, people: peopleOf(shifts), unmatched }
+}
+
+/**
+ * Hours per person over the shifts given. The report pairs clock-ins over a
+ * padded window and then keeps the shifts in its range; the people must be
+ * added up from THOSE, or hours from outside the range creep in (UPGRADE.md
+ * T7.11, reporting gap 17).
+ */
+export function peopleOf(shifts: readonly Shift[]): PersonHours[] {
   const people = new Map<string, PersonHours>()
   for (const s of shifts) {
     const p = people.get(s.uid) ?? { uid: s.uid, name: s.name, shifts: 0, minutes: 0, open: false }
@@ -112,5 +122,5 @@ export function timesheet(entries: readonly TimeEntry[], opts: { timeZone: strin
     p.name = s.name || p.name
     people.set(s.uid, p)
   }
-  return { shifts, people: [...people.values()].sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name)), unmatched }
+  return [...people.values()].sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name))
 }

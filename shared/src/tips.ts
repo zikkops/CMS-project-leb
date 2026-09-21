@@ -84,9 +84,28 @@ export function distributeTips(
   deductionRate: number,
   attendance: readonly Attendee[],
 ): TipDistribution {
-  const total = Number.isFinite(totalTipsUsd) && totalTipsUsd > 0 ? r2(totalTipsUsd) : 0
-  const rate = safeRate(deductionRate)
-  const net = r2(total * (1 - rate))
+  return distributeTipDays([{ tipsUsd: totalTipsUsd, deductionRate }], attendance)
+}
+
+/**
+ * The pot of several days, each day's deduction at the rate THAT day was saved
+ * with (UPGRADE.md T7.11, reporting gap 16), then split as one pot. So a
+ * month worked out again after the setting changed comes out as it did: the
+ * VAT rule again. `deductionRate` on the answer is what came off overall,
+ * deducted ÷ pot, for display.
+ */
+export function distributeTipDays(
+  days: readonly { tipsUsd: number; deductionRate: number }[],
+  attendance: readonly Attendee[],
+): TipDistribution {
+  let total = 0
+  let net = 0
+  for (const d of days) {
+    const tips = Number.isFinite(d.tipsUsd) && d.tipsUsd > 0 ? r2(d.tipsUsd) : 0
+    total = r2(total + tips)
+    net = r2(net + r2(tips * (1 - safeRate(d.deductionRate))))
+  }
+  const rate = total > 0 ? Math.round(((total - net) / total) * 1_000_000) / 1_000_000 : days.length === 1 ? safeRate(days[0].deductionRate) : 0
 
   // Points accumulate per person across the whole period: somebody who worked
   // six doubles is one row worth twelve, not six rows.

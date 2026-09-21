@@ -21,8 +21,10 @@ import { cashUpReport } from '@big-cms/shared/cashUpReport'
 import { readCashUp } from '@big-cms/shared/server/cashUp'
 import { readReceiptSequence } from '@big-cms/shared/server/receiptSequence'
 import { receiptSequence } from '@big-cms/shared/receiptSequence'
+import { readLabour } from '@big-cms/shared/server/labour'
+import { labourReport } from '@big-cms/shared/labourReport'
 import { readReceivedDeliveries } from '@big-cms/shared/server/receivedDeliveries'
-import { TIME_ENTRIES, timesheet, type TimeEntry } from '@big-cms/shared/timeClock'
+import { TIME_ENTRIES, peopleOf, timesheet, type TimeEntry } from '@big-cms/shared/timeClock'
 import { timestampMs } from '@big-cms/shared/timestamps'
 import { dayBefore, hourlySales, productMix, voidDiscountReport } from '@big-cms/shared/salesReports'
 import { adminDb } from '@big-cms/shared/server/firebaseAdmin'
@@ -109,6 +111,17 @@ export async function GET(request: Request): Promise<Response> {
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }
+    if (report === 'labour') {
+      // The labour report (T7.11): hours, cost at each day's rate, tips and
+      // what payroll owes. Admin only on top of endOfDay: it carries rates,
+      // which is why Staff Pay is admin only.
+      if (caller.role !== 'admin' && !caller.superadmin) throw new HttpError(403, 'The labour report is for admins: it shows pay rates.')
+      const read = await readLabour(range, { timeZone, branches: own })
+      return Response.json(
+        { ok: true, from: range.from, to: range.to, branches: read.branches, cutShort: read.cutShort, ...labourReport(read) },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
     if (report === 'receipts') {
       // The receipt sequence (T7.10): one counter across every branch, so it
       // is read whole and judged whole; only the caller's branches are shown.
@@ -169,7 +182,8 @@ export async function GET(request: Request): Promise<Response> {
           })
         : []
       return Response.json(
-        { ok: true, from: range.from, to: range.to, branches: [...wanted], ...sheet, shifts, byBranch, cutShort: read.cutShort },
+        // People from the shifts in the range only (gap 17), not the padded window.
+        { ok: true, from: range.from, to: range.to, branches: [...wanted], ...sheet, shifts, people: peopleOf(shifts), byBranch, cutShort: read.cutShort },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }

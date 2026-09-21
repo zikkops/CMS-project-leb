@@ -199,9 +199,18 @@ hour, **refunded checks included**.
 `timesheet()` in `shared/src/timeClock.ts`, from `timeEntries`. Each shift is
 filed by the café day of its clock-in; an open shift counts as 0 minutes.
 
-The route filters the shifts to the range, but returns `people` from the
-whole padded window. "Hours by person" can therefore include days outside the
-range (gap 17).
+The route pairs clock-ins over the padded window, keeps the shifts that started
+in the range, and adds `people` up from those (`peopleOf()`, T7.11).
+
+### 3.6b Labour, `/admin/reports/labour` (T7.11, admin only)
+
+`labourReport()` in `shared/src/labourReport.ts`. Each shift is costed at the
+person's rate on the day it started (Staff Pay), in its own currency. No rate
+is "not priced", never $0. Open or over-16-hour shifts are flagged and
+not costed. Tips are the tips split per branch (each day's deduction, each
+shift's weight). Names that match no account are listed apart. Owed = pay + tips,
+per currency. Labour % = cost ÷ the sales summary's net sales, with lira
+converted at the business rate for that figure only.
 
 ### 3.7 Food Cost Report, `/admin/supplies/receiving/report`
 
@@ -393,11 +402,11 @@ in USD at the cost stored with the count (`countVariance()` in
     - Data: the demo project's 7 reports were scanned read-only and none was
       affected. Reports in any other project saved since 29 Aug 2026 should be
       checked.
-16. **The tips deduction uses today's rate**, so reopening last month after a
+16. **FIXED 21 Sep 2026 (T7.11). The tips deduction used today's rate.** Now each End of Day report stores `tipsDeductionRate` when it is first saved, and a later edit keeps it. `distributeTipDays()` takes each day's own rate, and the tips page and the labour report both use it. A report from before this takes today's setting. Was: the tips deduction used today's rate, so reopening last month after a
     settings change splits it again. T7.18 made each person's weight dated,
     but the deduction is still read live.
     - Fix: a dated deduction, alongside **T7.11**.
-17. **Timesheet hours include days outside the range** (section 3.6).
+17. **FIXED 21 Sep 2026 (T7.11). Timesheet hours included days outside the range** (section 3.6). Now `peopleOf()` adds hours up from the shifts kept in the range, in the timesheet route and the labour report.
     - Fix: **T7.11**.
 18. **FIXED, 21 Sep 2026 (T7.8). Combos distorted the product mix and theoretical food cost.**
     - Now: `foldComboParts()` in `recipes.ts` puts each part's per-serving snapshot on the combo line, and drops the $0 parts. It is used by both the Food Cost Report and the Product Mix. A combo with a part nobody costed is incomplete, never costed on the parts that were. The mix counts parts as "made in combos", not as sold. Food cost and the mix's net sales now leave out the service charge too (`goodsShareForLines()` in `splits.ts`).

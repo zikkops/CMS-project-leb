@@ -189,6 +189,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
       { label: 'Receipt Sequence', href: '/admin/reports/receipts', access: SECTION_ACCESS.endOfDay, icon: faListOl, kind: 'use', desc: 'Every receipt number in order: gaps, duplicates, and numbers issued with nothing to show for them.' },
       { label: 'Product Mix', href: '/admin/reports/mix', access: SECTION_ACCESS.endOfDay, icon: faChartPie, kind: 'use', desc: 'Best sellers by count and revenue, with recipe cost and margin, by item and category.' },
       { label: 'Hourly Sales', href: '/admin/reports/hourly', access: SECTION_ACCESS.endOfDay, icon: faChartColumn, kind: 'use', desc: 'Takings hour by hour, beside the same day a week before.' },
+      { label: 'Labour', href: '/admin/reports/labour', access: ADMIN_ONLY, icon: faHandHoldingDollar, kind: 'use', desc: 'Hours, labour cost at each day’s rate, tips and what payroll owes, and labour as a share of sales.' },
       { label: 'Timesheet', href: '/admin/reports/timesheet', access: SECTION_ACCESS.endOfDay, icon: faUserClock, kind: 'use', desc: 'Who clocked in and out with the staff app, and their hours.' },
       { label: 'Voids & Discounts', href: '/admin/reports/voids', access: SECTION_ACCESS.endOfDay, icon: faBan, kind: 'use', desc: 'What was struck off and what was given away, by reason and by person.' },
       // endOfDay, as the export: deciding a held sale is deciding what the branch took.

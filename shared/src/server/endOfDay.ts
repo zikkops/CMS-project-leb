@@ -28,6 +28,7 @@ import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
 import { serverFeatureOn } from './features'
 import { daySystemFor } from './drawer'
+import { readSettings } from './settings'
 
 export function reportDocId(branch: string, date: string): string {
   return `${branch}_${date}`
@@ -168,9 +169,16 @@ export async function saveEndOfDay(caller: Caller, input: EodInput): Promise<Eod
     ? (await daySystemFor(input.branch, input.date, input.exchangeRate || 1)).cardTipsUsd
     : 0
 
+  // The tips deduction in force when the day was first saved (T7.11, gap 16):
+  // kept on the report, so the tips split for this day never moves because the
+  // setting changed later. A re-save keeps the rate it was first saved with.
+  const kept = Number(existing.data()?.tipsDeductionRate)
+  const tipsDeductionRate = existing.exists && Number.isFinite(kept) ? kept : (await readSettings()).tipsDeductionRate
+
   await ref.set({
     ...input,
     ...(cardTipsUsd > 0 ? { cardTipsUsd } : {}),
+    tipsDeductionRate,
     id,
     // submittedBy is set once, on creation, and never overwritten by a later
     // edit. Who cashed up is not the same fact as who last corrected a typo,

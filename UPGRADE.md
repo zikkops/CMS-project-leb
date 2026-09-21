@@ -829,7 +829,7 @@ Principles for every task here:
 
   The audit trail that proves no sale went missing.
   *Done: /admin/reports/receipts: every number in the period, per café year, across all branches (other branches counted, not shown): on a check or retail sale, wholesale, issued with no record, skipped in a hub block (named), before the log, missing; duplicates listed. issueInvoiceNumber() (cloud and hub) and createPurchaseOrder() now write receiptLog/{year}-{seq} in the same transaction, with what it was for. verify:export 155, verify:hub 221; mutations caught by name.*
-- [ ] **T7.11 Labour report.** From the timesheet (T3.12, T6.6), per branch
+- [x] **T7.11 Labour report.** From the timesheet (T3.12, T6.6), per branch
   and period:
   - hours per person and in total
   - shifts with no clock-out, flagged
@@ -839,6 +839,7 @@ Principles for every task here:
 
   Tips per person from the tips split, and hours × rate + tips = what each
   person is owed for the period, for payroll.
+  *Done: /admin/reports/labour (admin only): hours per person and total, open or over-16h shifts flagged, pay at each person's rate on the day worked (not priced, never $0; LBP rates in LBP), tips from the per-branch split at each day's weight, owed = pay + tips per currency, labour % of net sales per branch and day. Gap 16: EOD reports keep tipsDeductionRate from first save; distributeTipDays() uses each day's rate (tips page too). Gap 17: peopleOf() from in-range shifts. verify:tips 65, verify:hub 222.*
 - [ ] **T7.12 Inventory valuation and movement report.** Per branch, at a
   date:
   - stock on hand × weighted average cost = inventory value

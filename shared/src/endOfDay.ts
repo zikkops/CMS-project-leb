@@ -61,6 +61,8 @@ export interface EndOfDayReport {
    * to `tipsUsd`, the jar. Absent on reports from before, and without payment.
    */
   cardTipsUsd?:    number
+  /** The tips deduction when the day was first saved (UPGRADE.md T7.11). Absent on reports from before 21 Sep 2026: read the setting. */
+  tipsDeductionRate?: number
   expenses:        LineEntry[]
   income:          LineEntry[]
   attendance:      AttendanceEntry[]

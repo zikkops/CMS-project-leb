@@ -6,7 +6,7 @@ import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { BRANCHES } from '@big-cms/shared/branches'
 import { listEndOfDayReportsBetween, formatUsd, type EndOfDayReport } from '@big-cms/shared/endOfDay'
 import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
-import { distributeTips } from '@big-cms/shared/tips'
+import { distributeTipDays } from '@big-cms/shared/tips'
 import { matchStaffName, readPayHistory, tipWeightOn } from '@big-cms/shared/staffPay'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import { startLoad } from '@big-cms/shared/startLoad'
@@ -65,10 +65,14 @@ function buildPeriod(
   // including that the shares add up to the pot to the cent, which this page's
   // version did not: it multiplied an unrounded per-point figure per person
   // and let the remainder evaporate.
-  const d = distributeTips(
-    // The jar, and what was tipped on cards at the till (UPGRADE.md T3.9).
-    reports.reduce((s, r) => s + (Number(r.tipsUsd) || 0) + (Number(r.cardTipsUsd) || 0), 0),
-    deductionRate,
+  const d = distributeTipDays(
+    // The jar, and what was tipped on cards at the till (UPGRADE.md T3.9),
+    // each day at the deduction it was saved with (T7.11); a day from before
+    // that was recorded takes today's setting.
+    reports.map(r => ({
+      tipsUsd: (Number(r.tipsUsd) || 0) + (Number(r.cardTipsUsd) || 0),
+      deductionRate: typeof r.tipsDeductionRate === 'number' ? r.tipsDeductionRate : deductionRate,
+    })),
     // Each shift at that day's weight (T7.18), so a raise counts from its day.
     reports.flatMap(r => r.attendance.map(a => ({ name: a.name, shift: a.shift, weight: weightOn(a.name, r.date) }))),
   )
@@ -203,7 +207,7 @@ export default function TipsCalculatorPage() {
             Tips Calculator
           </h1>
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
-            Tip distribution by shift — {deductionPct} deducted, remainder split by shift points
+            Tip distribution by shift — {deductionPct} deducted today (each day keeps the rate it was saved with), remainder split by shift points
           </p>
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.45)', marginTop: '0.5rem' }}>
             Pay periods are usually the 1st–15th and the 16th–end of the month: pick This month or Last month, then set the days.

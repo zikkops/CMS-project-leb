@@ -488,6 +488,17 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
     await rejects('a shift that is not am, pm, double or none is refused, never guessed', async () => EOD.parseEodInput({
       branch, date: '2026-09-21', exchangeRate: 89000, attendance: [{ name: 'X', shift: 'triple' }] }), e => e.status === 400)
     eq('an old caller sending label and amount is still read', EOD.parseEodInput({ branch, date: '2026-09-21', exchangeRate: 1, expenses: [{ label: 'Gas', amount: 3 }] }).expenses, [{ name: 'Gas', amountUsd: 3 }])
+
+    // The day keeps the tips deduction it was first saved with (T7.11, gap 16).
+    const business = (await db.doc('appSettings/business').get()).data() ?? null
+    await db.doc('appSettings/business').set({ ...(business ?? {}), tipsDeductionRate: 0.2 })
+    const saved = await EOD.saveEndOfDay(staff, { ...parsed, date: '2026-09-19' })
+    await db.doc('appSettings/business').set({ ...(business ?? {}), tipsDeductionRate: 0.3 })
+    await EOD.saveEndOfDay(staff, { ...parsed, date: '2026-09-19', tipsUsd: 15 })
+    const eodDoc = (await db.doc(`endOfDayReports/${saved.id}`).get()).data()
+    eq('a day keeps the deduction it was first saved with, through a later edit', [eodDoc.tipsDeductionRate, eodDoc.tipsUsd], [0.2, 15])
+    if (business) await db.doc('appSettings/business').set(business); else await db.doc('appSettings/business').delete()
+    await db.doc(`endOfDayReports/${saved.id}`).delete()
   }
 
   // Staff pay (UPGRADE.md T7.18): saved with history, listed with today's values.
