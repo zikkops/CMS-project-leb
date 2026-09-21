@@ -1673,6 +1673,41 @@ try {
   eq('it trims up to where the hub has sent, and no further', P.changeLogTrim(40, 1e12).upToSeq, 40)
   eq('...only what is older than a week', P.changeLogTrim(40, 1e12).before, 1e12 - 7 * 86_400_000)
   eq('a window under a day is read as the default', P.changeLogTrim(40, 1e12, 0).before, 1e12 - 7 * 86_400_000)
+  // Archiving closed trading (UPGRADE.md T5.4).
+  {
+    const NOW = Date.UTC(2026, 8, 21, 12)
+    const old = Timestamp.fromMillis(NOW - 61 * 86_400_000)
+    const recent = Timestamp.fromMillis(NOW - 59 * 86_400_000)
+    eq('a closed check two months old and in the cloud goes', P.archivable('checks', { status: 'closed', closedAt: old }, 10, 40, NOW), true)
+    eq('...not while its last write is unsent', P.archivable('checks', { status: 'closed', closedAt: old }, 41, 40, NOW), false)
+    eq('...not from a hub that has sent nothing', P.archivable('checks', { status: 'closed', closedAt: old }, 10, 0, NOW), false)
+    eq('...not a check closed within the window', P.archivable('checks', { status: 'closed', closedAt: recent }, 10, 40, NOW), false)
+    eq('...not an open check, however old', P.archivable('checks', { status: 'open', closedAt: old }, 10, 40, NOW), false)
+    eq('...not a refund made within the window, on an old check', P.archivable('checks', { status: 'refunded', closedAt: old, refundedAt: recent }, 10, 40, NOW), false)
+    eq('...a refunded check once both are old', P.archivable('checks', { status: 'refunded', closedAt: old, refundedAt: old }, 10, 40, NOW), true)
+    eq('...not a check with no closing time at all', P.archivable('checks', { status: 'closed' }, 10, 40, NOW), false)
+    eq('a bumped ticket two months old goes', P.archivable('kitchenTickets', { status: 'bumped', sentAt: old }, 10, 40, NOW), true)
+    eq('...not one still on the pass, however old', P.archivable('kitchenTickets', { status: 'ready', sentAt: old }, 10, 40, NOW), false)
+    eq('...nor one held for firing', P.archivable('kitchenTickets', { status: 'held', sentAt: old }, 10, 40, NOW), false)
+
+    // The hub's side, on a real store: only the old, sent, finished ones leave.
+    const sql = new DatabaseSync(':memory:')
+    const store = H.openHubStore(sql)
+    await store.doc('checks/old').set({ status: 'closed', closedAt: old })
+    await store.doc('checks/new').set({ status: 'closed', closedAt: recent })
+    await store.doc('checks/open').set({ status: 'open', openedAt: old })
+    await store.doc('kitchenTickets/done').set({ status: 'bumped', sentAt: old })
+    await store.doc('kitchenTickets/live').set({ status: 'preparing', sentAt: old })
+    eq('a hub that has sent nothing archives nothing', await S.archiveTrading(store, NOW), 0)
+    store.writeMeta('pushedSeq', String(store.lastSeq()))
+    await store.doc('checks/late').set({ status: 'closed', closedAt: old })
+    eq('once sent: the old check and the done ticket leave, nothing else', await S.archiveTrading(store, NOW), 2)
+    eq('...what stays', [(await store.collection('checks').get()).docs.map(d => d.id).sort(), (await store.collection('kitchenTickets').get()).docs.map(d => d.id)],
+      [['late', 'new', 'open'], ['live']])
+    eq('...and the removals are nothing to send up', (await S.collectPush(store, Number(store.readMeta('pushedSeq')))).docs.map(d => d.id), ['late'])
+    sql.close()
+  }
+
   eq('nothing unsent and nothing open: it may leave', P.leaveHubReasons({ unsentDocs: 0, unsentMoves: 0, openChecks: 0, openShift: false }), [])
   eq('THE TRAP: not with trading unsent, a stock movement unsent, a table open or the drawer open',
     [P.leaveHubReasons({ unsentDocs: 2, unsentMoves: 0, openChecks: 0, openShift: false }).length, P.leaveHubReasons({ unsentDocs: 0, unsentMoves: 1, openChecks: 0, openShift: false })[0],

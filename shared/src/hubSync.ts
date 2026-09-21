@@ -18,6 +18,8 @@
 // the hub counts what it sells, and every document the spec does not name —
 // above all appSettings/invoiceCounter, the hub's receipt numbers.
 
+import { timestampMs } from './timestamps'
+
 /** No I, O, 0 or 1: read off a screen and typed on a till, they are the same letters. 32 of them, so a random byte picks one fairly. */
 export const PAIRING_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 export const PAIRING_CODE_LENGTH = 10
@@ -104,6 +106,43 @@ export function changeLogTrim(pushedSeq: number, nowMs: number, keepDays = CHANG
   const upToSeq = Number.isFinite(pushedSeq) && pushedSeq > 0 ? Math.floor(pushedSeq) : 0
   const days = Number.isFinite(keepDays) && keepDays >= 1 ? keepDays : CHANGE_LOG_KEEP_DAYS
   return { upToSeq, before: nowMs - days * 86_400_000 }
+}
+
+// ── Archiving closed trading (UPGRADE.md T5.4) ─────────────────────────────
+// A closed check and its bumped tickets are the cloud's once sent up; the hub
+// keeps them only so the closed-checks screen, a reprint and a refund work
+// without the internet. After ARCHIVE_AFTER_DAYS they leave the hub's
+// database. The cloud keeps its copy, so the books, the export and the
+// reports lose nothing. Only a document whose last write the cloud has (its
+// version at or below the hub's place in the change log), and never an open
+// check or a ticket still on a pass. While a branch has a hub the online till
+// is view-only, so a refund older than this is not possible anywhere until
+// the hub is handed back; 60 days covers what a café refunds.
+
+export const ARCHIVE_AFTER_DAYS = 60
+export const ARCHIVED_CHECK_STATUSES = ['closed', 'refunded'] as const
+export const ARCHIVED_TICKET_STATUSES = ['bumped', 'cancelled'] as const
+
+/** Whether a hub may delete this check or ticket now. */
+export function archivable(
+  collection: 'checks' | 'kitchenTickets',
+  data: Record<string, unknown>,
+  version: number,
+  pushedSeq: number,
+  nowMs: number,
+  days = ARCHIVE_AFTER_DAYS,
+): boolean {
+  if (!(version > 0) || !(pushedSeq > 0) || version > pushedSeq) return false
+  const cutoff = nowMs - Math.max(1, days) * 86_400_000
+  if (collection === 'checks') {
+    if (!(ARCHIVED_CHECK_STATUSES as readonly unknown[]).includes(data.status)) return false
+    // The later of closing and refunding: a check refunded yesterday stays.
+    const at = Math.max(timestampMs(data.closedAt, NaN), timestampMs(data.refundedAt, -Infinity))
+    return Number.isFinite(at) && at < cutoff
+  }
+  if (!(ARCHIVED_TICKET_STATUSES as readonly unknown[]).includes(data.status)) return false
+  const at = timestampMs(data.sentAt, NaN)
+  return Number.isFinite(at) && at < cutoff
 }
 
 /**

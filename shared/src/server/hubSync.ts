@@ -28,7 +28,7 @@ import { stable } from '../backupCodec'
 import { BRANCHES } from '../branches'
 import { invoicePeriod } from '../invoiceFormat'
 import { timestampMs } from '../timestamps'
-import { changeLogTrim, deviceAuthHeader, holdLocalFor, leaveHubReasons, normalizePairingCode, planPull, pullSpec, type PulledDoc } from '../hubSync'
+import { ARCHIVED_CHECK_STATUSES, ARCHIVED_TICKET_STATUSES, archivable, changeLogTrim, deviceAuthHeader, holdLocalFor, leaveHubReasons, normalizePairingCode, planPull, pullSpec, type PulledDoc } from '../hubSync'
 import { MOVES_COLLECTION, PUSHED_COLLECTIONS, PUSH_BATCH, type PushedDoc, type StockMove } from '../hubPush'
 import { addBlock, needsReceipts, readBlocks, receiptsLeft } from '../receiptBlocks'
 
@@ -384,6 +384,8 @@ export async function pushToCloud(fetchImpl: Fetch = fetch): Promise<{ docs: num
     // Only what the cloud now has, and only once a week has passed (T5.2).
     const trim = changeLogTrim(Number(store.readMeta(PUSHED_UP_TO) ?? 0), Date.now())
     store.trimChanges(trim.upToSeq, trim.before)
+    // And closed trading the cloud has had for two months (T5.4).
+    await archiveTrading(store, Date.now())
     return { docs: sentDocs, moves: sentMoves }
   } catch (err) {
     state.pushError = err instanceof HttpError ? err.message : 'Sending to the cloud failed. The hub log has the details.'
@@ -393,6 +395,31 @@ export async function pushToCloud(fetchImpl: Fetch = fetch): Promise<{ docs: num
     state.pushing = false
   }
 }
+
+/**
+ * Deletes, from the hub only, closed checks and finished tickets the cloud
+ * already has and that are older than ARCHIVE_AFTER_DAYS (the rule is
+ * archivable() in hubSync.ts). A deletion is never sent up (collectPush()
+ * skips them), so the cloud keeps its copy. At most ARCHIVE_BATCH a run, so a
+ * hub archiving a long backlog does it a sync at a time, not in one commit.
+ */
+export async function archiveTrading(store: HubStore, nowMs: number): Promise<number> {
+  const pushed = Number(store.readMeta(PUSHED_UP_TO) ?? 0)
+  if (!(pushed > 0)) return 0
+  const checks = await store.collection('checks').where('status', 'in', [...ARCHIVED_CHECK_STATUSES]).get()
+  const tickets = await store.collection('kitchenTickets').where('status', 'in', [...ARCHIVED_TICKET_STATUSES]).get()
+  const gone = [
+    ...checks.docs.filter(d => archivable('checks', d.data() ?? {}, d.version, pushed, nowMs)),
+    ...tickets.docs.filter(d => archivable('kitchenTickets', d.data() ?? {}, d.version, pushed, nowMs)),
+  ].slice(0, ARCHIVE_BATCH)
+  if (gone.length === 0) return 0
+  const batch = store.batch()
+  for (const d of gone) batch.delete(d.ref)
+  await batch.commit()
+  return gone.length
+}
+
+const ARCHIVE_BATCH = 400
 
 // ── Pulling what the cloud is master for ───────────────────────────────────
 
