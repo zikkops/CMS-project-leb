@@ -14,7 +14,7 @@ import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/sha
 import {
   parseLineRequests, parseBatchKey, openCheck, addLines, sendCheck, voidLine, moveCheck, closeCheck,
   setStaffMeal, refundCheck, addPayment, parsePaymentRequest, parsePaymentKey, setLoyaltyCustomer,
-  setLineDiscount, setCheckDiscount, parseDiscountInput, parseOpenId, parseMadeOffline,
+  setLineDiscount, setCheckDiscount, removeServiceCharge, parseDiscountInput, parseOpenId, parseMadeOffline,
 } from '@big-cms/shared/server/checks'
 import { logActivity } from '@big-cms/shared/server/activityLog'
 import { refuseWhileHubbed } from '@big-cms/shared/server/hubLock'
@@ -138,6 +138,12 @@ export async function PATCH(request: Request): Promise<Response> {
           : await setCheckDiscount(caller, checkId, input)
         await logActivity(caller, 'update', 'POS',
           `${r.label} — table ${r.tableNumber}` + (input ? ` — ${input.reasonKey}${input.note ? `: ${input.note}` : ''}` : ''))
+        return Response.json({ ok: true, ...r })
+      }
+      case 'removeService': {
+        // Logged: taking money off a bill is somebody's decision (UPGRADE.md T3.8).
+        const r = await removeServiceCharge(caller, checkId)
+        await logActivity(caller, 'update', 'POS', `${r.label} — table ${r.tableNumber}`)
         return Response.json({ ok: true, ...r })
       }
       case 'customer': {

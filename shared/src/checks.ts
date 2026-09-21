@@ -333,6 +333,25 @@ export interface Check {
    * rate rather than somebody's discretion, and keeps its own meaning.
    */
   discount?: CheckDiscount | null
+  /**
+   * The service charge (UPGRADE.md T3.8), copied onto the check when it opens
+   * from Business Settings, like every rate here: a check opened tonight is not
+   * re-priced by a change tomorrow. `rate` is a fraction (0.1 is 10%); a
+   * manager taking it off sets it to 0 and is recorded. Absent: no service.
+   */
+  serviceCharge?: ServiceCharge | null
+}
+
+export interface ServiceCharge {
+  rate: number
+  removedBy?: string
+  removedByEmail?: string
+}
+
+/** The service rate a check carries: a sensible fraction, or 0. Never more than 30%. */
+export function serviceRate(s: ServiceCharge | null | undefined): number {
+  const r = Number(s?.rate ?? 0)
+  return Number.isFinite(r) && r > 0 && r <= 0.3 ? r : 0
 }
 
 // ── Bounds ────────────────────────────────────────────────────────────────
@@ -434,7 +453,9 @@ export interface CheckTotals {
   subtotal: number
   /** What a manager's whole-check discount took off the subtotal (slice 6). */
   checkDiscount: number
-  /** What is owed. VAT is inside it — prices include VAT. */
+  /** The service charge, on what is left after every discount (T3.8). Zero on a check without one. */
+  service: number
+  /** What is owed, service included. VAT is inside it — prices include VAT, and so does the service charge. */
   net: number
 }
 
@@ -481,7 +502,7 @@ export function reconcilePendingBatch(
 }
 
 export function checkTotals(
-  check: Pick<Check, 'lines' | 'staffDiscount'> & Partial<Pick<Check, 'discount'>>,
+  check: Pick<Check, 'lines' | 'staffDiscount'> & Partial<Pick<Check, 'discount' | 'serviceCharge'>>,
 ): CheckTotals {
   const r2 = (n: number) => Math.round(n * 100) / 100
   const gross = r2(check.lines.reduce((s, l) => s + grossLineTotal(l), 0))
@@ -489,7 +510,12 @@ export function checkTotals(
   const subtotal = r2(check.lines.reduce((s, l) => s + lineTotal(l, check.staffDiscount), 0))
   const itemDiscounts = r2(gross - discount - subtotal)
   const checkDiscount = checkDiscountAmount(subtotal, check.discount)
-  return { gross, discount, itemDiscounts, subtotal, checkDiscount, net: r2(subtotal - checkDiscount) }
+  const afterDiscounts = r2(subtotal - checkDiscount)
+  // Last, on what is actually charged for the food: service is never charged
+  // on a discount (UPGRADE.md T3.8). Inside net, so payments, the drawer, VAT
+  // and the export follow without knowing it exists, as they did for discounts.
+  const service = r2(afterDiscounts * serviceRate(check.serviceCharge))
+  return { gross, discount, itemDiscounts, subtotal, checkDiscount, service, net: r2(afterDiscounts + service) }
 }
 
 // ── Reading a check ────────────────────────────────────────────────────────

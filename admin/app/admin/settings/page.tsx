@@ -211,6 +211,7 @@ export default function BusinessSettingsPage() {
   const [staffDrink, setStaffDrink] = useState('')
   const [marginFood, setMarginFood] = useState('')
   const [marginDrink, setMarginDrink] = useState('')
+  const [service, setService] = useState('')
   const [nextVat, setNextVat] = useState('')
   const [nextVatFrom, setNextVatFrom] = useState('')
 
@@ -238,6 +239,7 @@ export default function BusinessSettingsPage() {
     setStaffDrink(String(+(settings.staffDiscountDrink * 100).toFixed(4)))
     setMarginFood(String(+(settings.targetMarginFood * 100).toFixed(4)))
     setMarginDrink(String(+(settings.targetMarginDrink * 100).toFixed(4)))
+    setService(String(+(settings.serviceChargeRate * 100).toFixed(4)))
     setNextVat(settings.vatNext ? String(+(settings.vatNext.rate * 100).toFixed(4)) : '')
     setNextVatFrom(settings.vatNext?.from ?? '')
   }
@@ -267,6 +269,7 @@ export default function BusinessSettingsPage() {
     Number(staffDrink) / 100 !== settings.staffDiscountDrink ||
     Number(marginFood) / 100 !== settings.targetMarginFood ||
     Number(marginDrink) / 100 !== settings.targetMarginDrink ||
+    Number(service) / 100 !== settings.serviceChargeRate ||
     JSON.stringify(nextVatPayload) !== JSON.stringify(settings.vatNext)
 
   async function save() {
@@ -289,6 +292,7 @@ export default function BusinessSettingsPage() {
           staffDiscountDrink: Number(staffDrink) / 100,
           targetMarginFood:  Number(marginFood) / 100,
           targetMarginDrink: Number(marginDrink) / 100,
+          serviceChargeRate: Number(service) / 100,
           vatNext:           nextVatPayload,
         })
       )
@@ -389,6 +393,13 @@ export default function BusinessSettingsPage() {
                 ? `At ${Number(marginDrink)}%, a drink that costs $1.00 to make should sell for ${(1 / (1 - Number(marginDrink) / 100)).toFixed(2)} before VAT. `
                 : ''
             }Coffee and soft drinks commonly run 75–85%.`}
+          />
+          <RateField
+            label="Service charge" suffix="%" step="0.5"
+            value={service} onChange={setService} isMobile={isMobile}
+            hint={`Added to each new check while “Service Charge” is switched on (Settings → Features), after any discount, with VAT inside it like the prices. A check keeps the rate it opened with, and a manager can take it off a check before any payment. ${
+              Number(service) > 0 ? `At ${Number(service)}%, a $20.00 bill becomes ${(20 * (1 + Number(service) / 100)).toFixed(2)}.` : 'Zero means none.'
+            }`}
           />
           <PrefixField
             value={prefix}

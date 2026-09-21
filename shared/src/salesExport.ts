@@ -51,6 +51,8 @@ export interface CheckRow {
   staffMeal: number
   itemDiscounts: number
   checkDiscount: number
+  /** The service charge (T3.8), inside net. */
+  service: number
   net: number
   /** Null when the check predates VAT being recorded — never guessed. */
   vatRate: number | null
@@ -82,6 +84,8 @@ export interface DayRow {
   checks: number
   gross: number
   discounts: number
+  /** Service charges (T3.8), inside net. */
+  service: number
   net: number
   vat: number
   /** Refunded checks, kept apart from sales rather than netted into them. */
@@ -154,6 +158,7 @@ export function checkRow(check: Check, opts: ExportOptions): CheckRow {
     staffMeal: totals.discount,
     itemDiscounts: totals.itemDiscounts,
     checkDiscount: totals.checkDiscount,
+    service: totals.service,
     net: totals.net,
     vatRate,
     // Extracted, never added: the menu price already contains it. A check with
@@ -199,7 +204,7 @@ export function dayRows(rows: readonly CheckRow[]): DayRow[] {
     let d = byKey.get(key)
     if (!d) {
       d = {
-        day: row.day, branch: row.branch, checks: 0, gross: 0, discounts: 0,
+        day: row.day, branch: row.branch, checks: 0, gross: 0, discounts: 0, service: 0,
         net: 0, vat: 0, refunds: 0, refundedChecks: 0, cashUsd: 0, cashLbp: 0, card: 0,
       }
       byKey.set(key, d)
@@ -212,6 +217,7 @@ export function dayRows(rows: readonly CheckRow[]): DayRow[] {
     d.checks += 1
     d.gross = r2(d.gross + row.gross)
     d.discounts = r2(d.discounts + row.staffMeal + row.itemDiscounts + row.checkDiscount)
+    d.service = r2(d.service + row.service)
     d.net = r2(d.net + row.net)
     d.vat = r2(d.vat + row.vat)
     d.cashUsd = r2(d.cashUsd + row.cashUsd)
@@ -247,7 +253,7 @@ export const SHEETS = {
     ['receipt', 'Receipt'], ['day', 'Day'], ['time', 'Time'], ['branch', 'Branch'],
     ['table', 'Table'], ['guests', 'Guests'], ['status', 'Status'],
     ['gross', 'Gross USD'], ['staffMeal', 'Staff meal'], ['itemDiscounts', 'Item discounts'],
-    ['checkDiscount', 'Check discount'], ['net', 'Net USD'],
+    ['checkDiscount', 'Check discount'], ['service', 'Service'], ['net', 'Net USD'],
     ['vatRate', 'VAT rate'], ['vat', 'VAT incl. USD'],
     ['rate', 'Rate'], ['netLbp', 'Net LBP'],
     ['cashUsd', 'Cash USD'], ['cashLbp', 'Cash LBP'], ['card', 'Card USD'],
@@ -261,7 +267,7 @@ export const SHEETS = {
   ],
   days: [
     ['day', 'Day'], ['branch', 'Branch'], ['checks', 'Checks'],
-    ['gross', 'Gross USD'], ['discounts', 'Discounts'], ['net', 'Net USD'], ['vat', 'VAT incl. USD'],
+    ['gross', 'Gross USD'], ['discounts', 'Discounts'], ['service', 'Service'], ['net', 'Net USD'], ['vat', 'VAT incl. USD'],
     ['refundedChecks', 'Refunded checks'], ['refunds', 'Refunded USD'],
     ['cashUsd', 'Cash USD'], ['cashLbp', 'Cash LBP'], ['card', 'Card USD'],
   ],

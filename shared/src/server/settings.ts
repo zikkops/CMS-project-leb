@@ -68,6 +68,8 @@ export function parseSettingsInput(body: Record<string, unknown>): BusinessSetti
     staffDiscountDrink: rate(body.staffDiscountDrink, 'staffDiscountDrink', 'Staff discount on drinks'),
     targetMarginFood:  rate(body.targetMarginFood, 'targetMarginFood', 'Target margin on food'),
     targetMarginDrink: rate(body.targetMarginDrink, 'targetMarginDrink', 'Target margin on drinks'),
+    // Absent from an older form: keep none rather than refuse the save.
+    serviceChargeRate: body.serviceChargeRate === undefined ? 0 : rate(body.serviceChargeRate, 'serviceChargeRate', 'Service charge'),
     invoicePrefix:     rawPrefix,
   }
 }
@@ -85,6 +87,7 @@ export async function readSettings(): Promise<BusinessSettings> {
     staffDiscountDrink: Number(d.staffDiscountDrink ?? SETTINGS_DEFAULTS.staffDiscountDrink),
     targetMarginFood:  Number(d.targetMarginFood ?? SETTINGS_DEFAULTS.targetMarginFood),
     targetMarginDrink: Number(d.targetMarginDrink ?? SETTINGS_DEFAULTS.targetMarginDrink),
+    serviceChargeRate: Number(d.serviceChargeRate ?? SETTINGS_DEFAULTS.serviceChargeRate),
     invoicePrefix:     readInvoicePrefix(d.invoicePrefix),
   }
 }

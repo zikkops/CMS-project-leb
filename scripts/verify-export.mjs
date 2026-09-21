@@ -135,6 +135,15 @@ console.log('\nwhat is in an export at all')
   eq('a closed check with no number is not', X.isExportable({ status: 'closed', receiptNumber: null }), false)
 }
 
+console.log('\nthe service charge (UPGRADE.md T3.8)')
+{
+  const row = X.checkRow(check({ serviceCharge: { rate: 0.1 } }), OPTS)
+  eq('a service charge is its own column, and inside net', [row.service, row.net], [1, 11])
+  eq('THE VAT comes out of the whole bill, service included: prices and service both include it', row.vat, 1)
+  const days = X.dayRows([row, X.checkRow(check({ id: 'c2', receiptNumber: '1042' }), OPTS)])
+  eq('the day adds the service up apart, and it is part of the day\'s net', [days[0].service, days[0].net], [1, 21])
+}
+
 console.log('\nthe day summary')
 {
   // Beirut is UTC+3 in September, so 21:00Z is already midnight on the 13th.

@@ -407,6 +407,22 @@ console.log('\nthe front picking up a ready plate')
     { kind: 'refused', reason: 'That ticket was cancelled — every item on it was voided.' })
 }
 
+console.log('\nthe service charge (UPGRADE.md T3.8)')
+{
+  const L = (over = {}) => ({ id: 'l1', source: 'menu', refId: 'm', name: 'Dish', unitPrice: 10, modifiers: [], quantity: 1, seat: null, course: null,
+    station: 'Kitchen', status: 'sent', note: '', addedBy: 'u', addedByEmail: 'u', sentAt: 'x', voidReason: null, voidReasonKey: null, voidWasWaste: null, ...over })
+  const plain = C.checkTotals({ lines: [L(), L({ id: 'l2', unitPrice: 10 })], staffDiscount: null, serviceCharge: { rate: 0.1 } })
+  eq('10% service on $20 of food: $2.00, and the bill is $22.00', [plain.service, plain.net], [2, 22])
+  const disc = C.checkTotals({ lines: [L(), L({ id: 'l2' })], staffDiscount: null, serviceCharge: { rate: 0.1 },
+    discount: { kind: 'amount', value: 5, reasonKey: 'wait', note: '', by: 'm', byEmail: 'm' } })
+  eq('THE ORDER: service is charged on what is left after every discount, never on the discount', [disc.checkDiscount, disc.service, disc.net], [5, 1.5, 16.5])
+  eq('taken off, or never put on, there is none', [C.checkTotals({ lines: [L()], staffDiscount: null, serviceCharge: { rate: 0, removedBy: 'm' } }).service,
+    C.checkTotals({ lines: [L()], staffDiscount: null }).service], [0, 0])
+  eq('THE TRAP: a rate that is not a sensible fraction charges nothing: 11 (for 11%), negative, over 30%, text',
+    [11, -0.1, 0.5, 'x', Number.NaN].map(rate => C.serviceRate({ rate })), [0, 0, 0, 0, 0])
+  eq('a voided line carries no service', C.checkTotals({ lines: [L(), L({ id: 'l2', status: 'void' })], staffDiscount: null, serviceCharge: { rate: 0.1 } }).service, 1)
+}
+
 console.log('\n86 from the till: sold out for the café day (UPGRADE.md T3.5)')
 {
   // Beirut is UTC+3 in September.

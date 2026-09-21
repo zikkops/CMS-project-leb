@@ -84,6 +84,12 @@ export interface BusinessSettings {
   targetMarginFood: number
   targetMarginDrink: number
   /**
+   * The service charge put on each new check, as a fraction (UPGRADE.md T3.8),
+   * and only while the serviceCharge switch is on. Copied onto a check when it
+   * opens, so changing it re-prices nothing already open. 0: none.
+   */
+  serviceChargeRate: number
+  /**
    * The letters an invoice number starts with, e.g. the AC of
    * AC-Q3-082026-0001.
    *
@@ -106,7 +112,7 @@ export interface BusinessSettings {
 export type RateKey =
   | 'vatRate' | 'exchangeRate' | 'tipsDeductionRate'
   | 'staffDiscountFood' | 'staffDiscountDrink'
-  | 'targetMarginFood' | 'targetMarginDrink'
+  | 'targetMarginFood' | 'targetMarginDrink' | 'serviceChargeRate'
 
 /** What the app used before any of this was editable. */
 export const SETTINGS_DEFAULTS: BusinessSettings = {
@@ -125,6 +131,8 @@ export const SETTINGS_DEFAULTS: BusinessSettings = {
   // every café should set its own.
   targetMarginFood:  0.7,
   targetMarginDrink: 0.8,
+  // None until the owner sets one: a charge nobody chose must never appear on a bill.
+  serviceChargeRate: 0,
 }
 
 // Bounds, shared with the route so the form and the server agree on what is
@@ -142,6 +150,8 @@ export const SETTINGS_LIMITS: Record<RateKey, { min: number; max: number }> = {
   // Short of 100%: no price makes a 100% margin on something that costs money.
   targetMarginFood:  { min: 0, max: 0.95 },
   targetMarginDrink: { min: 0, max: 0.95 },
+  // serviceRate() in checks.ts ignores anything above 30% as well.
+  serviceChargeRate: { min: 0, max: 0.3 },
 }
 
 /**
@@ -219,6 +229,7 @@ export function parseSettings(data: Record<string, unknown> | undefined): Busine
     staffDiscountDrink: readRate(data?.staffDiscountDrink, 'staffDiscountDrink'),
     targetMarginFood:  readRate(data?.targetMarginFood, 'targetMarginFood'),
     targetMarginDrink: readRate(data?.targetMarginDrink, 'targetMarginDrink'),
+    serviceChargeRate: readRate(data?.serviceChargeRate, 'serviceChargeRate'),
     invoicePrefix:     readInvoicePrefix(data?.invoicePrefix),
   }
 }

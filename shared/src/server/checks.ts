@@ -20,7 +20,7 @@ import { HttpError, type Caller } from './auth'
 import { BRANCHES, STOCKED_BRANCHES } from '../branches'
 import {
   CHECK_LIMITS, stationForSection, voidReason, BATCH_KEY_PATTERN, batchAlreadyApplied,
-  checkTotals, closeBlockedReason, discountReason,
+  checkTotals, closeBlockedReason, discountReason, serviceRate,
   type Check, type CheckLine, type LineSource, type LineDiscount, type CheckDiscount,
 } from '../checks'
 import {
@@ -408,6 +408,10 @@ export async function openCheck(
   const guestCount = whole(input.guestCount, 'Guest count', 1, CHECK_LIMITS.maxGuests)
   const number = whole(input.tableNumber, 'Table number', 1, 9999)
   const table = await resolveTable(input.branch, number)
+  // The service charge this check will carry (UPGRADE.md T3.8), read before
+  // the transaction and copied onto the check: a rate changed later re-prices
+  // nothing already open. None unless the switch is on and a rate is set.
+  const serviceNow = (await serverFeatureOn('serviceCharge')) ? serviceRate({ rate: (await readSettings()).serviceChargeRate }) : 0
 
   return db.runTransaction(async tx => {
     // A replay of an open that already happened returns the same check. Read
@@ -442,6 +446,7 @@ export async function openCheck(
       guestCount,
       lines: [],
       staffDiscount: null,
+      ...(serviceNow > 0 ? { serviceCharge: { rate: serviceNow } } : {}),
       receiptNumber: null,
       openedBy: caller.uid,
       openedByEmail: caller.email ?? '',
@@ -1031,6 +1036,28 @@ export async function setCheckDiscount(
   })
 }
 
+/**
+ * Takes the service charge off a check (UPGRADE.md T3.8). A manager's call,
+ * like a discount, and refused once any payment is on the check, for the
+ * reason discounts are: the money already taken was worked out with it. Kept
+ * as a rate of 0 with who took it off, never deleted, so the check says why
+ * it has none.
+ */
+export async function removeServiceCharge(caller: Caller, checkId: string): Promise<{ tableNumber: number; label: string }> {
+  assertCanDiscount(caller)
+  const db = adminDb()
+  return db.runTransaction(async tx => {
+    const check = await readCheck(tx, checkId)
+    assertDiscountable(check)
+    if (serviceRate(check.serviceCharge) === 0) throw new HttpError(409, 'That check has no service charge.')
+    tx.update(db.doc(`${CHECKS}/${checkId}`), {
+      serviceCharge: { rate: 0, removedBy: caller.uid, removedByEmail: caller.email ?? '' },
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+    return { tableNumber: check.tableNumber, label: 'Service charge taken off the check' }
+  })
+}
+
 export interface PaymentResult {
   /** A resend of a payment already on the check; nothing new was taken. */
   duplicate: boolean
@@ -1182,8 +1209,10 @@ export async function closeCheck(
     // (owner's decision, 12 Sep 2026). Written as an approved "check"
     // transaction, so the customer's history shows it like any other.
     // The account is read here, before any write, as a transaction requires.
-    const net = checkTotals(check).net
-    const points = loyaltyOn && check.loyalty ? pointsForCheck(net, !!check.staffDiscount) : 0
+    // Points for what was eaten, not for the service charge (UPGRADE.md T3.8).
+    const closing = checkTotals(check)
+    const net = closing.net
+    const points = loyaltyOn && check.loyalty ? pointsForCheck(net - closing.service, !!check.staffDiscount) : 0
     const memberRef = points > 0 && check.loyalty ? db.doc(`users/${check.loyalty.uid}`) : null
     // A deleted account does not stop the table closing; it just collects nothing.
     const memberExists = memberRef ? (await tx.get(memberRef)).exists : false

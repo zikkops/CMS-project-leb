@@ -140,9 +140,10 @@ export function shareForLines(check: Priced, lineIds: readonly string[]): number
   const cents = check.lines
     .filter(l => chosen.has(l.id) && l.status !== 'void')
     .reduce((c, l) => c + toCents(lineTotal(l, check.staffDiscount)), 0)
-  // The same proportion of any whole-check discount the chosen items carry.
+  // The same proportion of any whole-check discount, and of the service
+  // charge, the chosen items carry (UPGRADE.md T3.8).
   const t = checkTotals(check)
-  return t.subtotal > 0 && t.checkDiscount > 0
+  return t.subtotal > 0 && t.net !== t.subtotal
     ? Math.round(cents * (t.net / t.subtotal)) / 100
     : cents / 100
 }

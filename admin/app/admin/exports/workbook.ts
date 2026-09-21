@@ -27,7 +27,7 @@ function download(blob: Blob, filename: string): void {
 /** Columns wide enough to read without dragging — an accountant opens this once. */
 const WIDTH: Record<string, number> = {
   receipt: 12, day: 12, time: 8, branch: 14, table: 8, guests: 8, status: 11,
-  gross: 12, staffMeal: 12, itemDiscounts: 14, checkDiscount: 14, net: 12,
+  gross: 12, staffMeal: 12, itemDiscounts: 14, checkDiscount: 14, service: 10, net: 12,
   vatRate: 10, vat: 14, rate: 12, netLbp: 16, cashUsd: 12, cashLbp: 16,
   card: 12, server: 26, tender: 10, currency: 10, amount: 14, appliedLbp: 16,
   changeUsd: 13, changeLbp: 14, checks: 10, discounts: 12, refunds: 14,

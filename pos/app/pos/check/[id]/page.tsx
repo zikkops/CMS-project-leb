@@ -35,7 +35,7 @@ import {
 import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useTillAccess } from '../../../lib/useTillAccess'
 import {
-  lineTotal, grossLineTotal, lineDiscount, checkTotals, VOID_REASONS, reconcilePendingBatch,
+  lineTotal, grossLineTotal, lineDiscount, checkTotals, serviceRate, VOID_REASONS, reconcilePendingBatch,
   type CheckLine, type StaffDiscount,
 } from '@big-cms/shared/checks'
 import { minutesWaiting, urgency } from '@big-cms/shared/tickets'
@@ -48,7 +48,7 @@ import { MenuPicker, ModifierSheet } from './MenuPicker'
 import { lineUnitPrice, describeSelections } from '@big-cms/shared/modifiers'
 import {
   useCheck, usePosMenu, useRetailProducts,
-  addLines, sendCheck, voidLine, moveCheck, closeCheck, setStaffMeal, markSoldOut, reprintKitchenTickets,
+  addLines, sendCheck, voidLine, moveCheck, closeCheck, setStaffMeal, markSoldOut, reprintKitchenTickets, removeServiceCharge,
   type DraftLine, type PosMenuItem, type PosProduct,
 } from '../../../lib/usePos'
 import { isSoldOut, soldOutDay } from '@big-cms/shared/soldOut'
@@ -679,6 +679,12 @@ export default function CheckPage() {
               {money(totals.gross)} − {money(totals.discount)} staff
             </p>
           )}
+          {/* Its own figure too (UPGRADE.md T3.8): a charge nobody can see is one nobody can question. */}
+          {serviceRate(check.serviceCharge) > 0 && (
+            <p style={{ fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.55)', marginTop: '0.15rem' }}>
+              incl. {money(totals.service)} service ({+(serviceRate(check.serviceCharge) * 100).toFixed(2)}%)
+            </p>
+          )}
         </div>
       </div>
 
@@ -994,6 +1000,17 @@ export default function CheckPage() {
                 onClick={() => { setActions(false); setAddingCustomer(true) }}
                 label={check.loyalty ? `Loyalty: ${check.loyalty.name}` : 'Add loyalty customer'}
               />
+            )}
+
+            {canDiscount && serviceRate(check.serviceCharge) > 0 && (check.payments ?? []).length === 0 && (
+              <PosButton icon={faPercent} full tone="neutral"
+                label={`Take off the ${+(serviceRate(check.serviceCharge) * 100).toFixed(2)}% service charge`}
+                onClick={async () => {
+                  setActions(false)
+                  setError('')
+                  try { await removeServiceCharge(checkId) }
+                  catch (err) { setError(err instanceof Error ? err.message : 'Could not take it off.') }
+                }} />
             )}
 
             <PosButton icon={faArrowRightArrowLeft} label="Move to another table" full tone="neutral"

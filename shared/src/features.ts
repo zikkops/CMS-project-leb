@@ -79,6 +79,11 @@ export const FEATURES = {
   soldOut: {
     label: 'Sold Out from the Till', group: 'Operations', requires: ['pos'], defaultEnabled: false,
   },
+  // A service charge on each new check, at the rate in Business Settings
+  // (UPGRADE.md T3.8). Inside the total, so payment, VAT and the export follow.
+  serviceCharge: {
+    label: 'Service Charge', group: 'Operations', requires: ['pos'], defaultEnabled: false,
+  },
   // A receipt emailed from the till (UPGRADE.md T3.7). Needs RESEND_API_KEY on
   // the server; the address is never kept.
   emailReceipts: {

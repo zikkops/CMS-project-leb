@@ -33,7 +33,7 @@
 // print view lays them out for a browser, and a future route handler can hand
 // the same rows to a device.
 
-import { checkTotals, grossLineTotal, type Check, type CheckLine } from './checks'
+import { checkTotals, grossLineTotal, serviceRate, type Check, type CheckLine } from './checks'
 import { zonedParts } from './dates'
 import { describeSelections } from './modifiers'
 import { billTotals, vatIncluded } from './money'
@@ -230,6 +230,10 @@ export function buildReceipt(check: Check, opts: ReceiptOptions): ReceiptRow[] {
       left: d?.kind === 'percent' ? `Discount ${+(d.value * 100).toFixed(2)}%` : 'Discount',
       right: `-${money(totals.checkDiscount)}`,
     })
+  }
+  if (totals.service > 0) {
+    // Its own line, like every discount, with its rate (UPGRADE.md T3.8).
+    rows.push({ kind: 'pair', left: `Service ${+(serviceRate(check.serviceCharge) * 100).toFixed(2)}%`, right: money(totals.service) })
   }
 
   rows.push({

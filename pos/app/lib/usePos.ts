@@ -233,6 +233,11 @@ export function useReadyTickets(branch: string): {
 }
 
 /** The front took a ready plate out. Clears it from the kitchen display too. */
+/** Takes the service charge off a check, before any payment. Managers only (UPGRADE.md T3.8). */
+export async function removeServiceCharge(checkId: string): Promise<void> {
+  await call('/api/pos/checks', 'PATCH', { checkId, action: 'removeService' }, { timeoutMs: POS_TIMEOUT_MS })
+}
+
 /** Emails a closed check's receipt to an address typed at the till, never kept (UPGRADE.md T3.7). */
 export async function emailReceipt(checkId: string, email: string): Promise<{ sent: boolean; reason: string | null }> {
   const data = await call('/api/pos/receipt-email', 'POST', { checkId, email }, { timeoutMs: POS_TIMEOUT_MS })

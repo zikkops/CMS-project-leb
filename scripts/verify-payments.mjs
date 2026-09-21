@@ -175,6 +175,13 @@ eq('seat 1: $4, the voided $100 not counted', seats.find(s => s.seat === 1).usd,
 eq('seat 2: two at $6', seats.find(s => s.seat === 2).usd, 12)
 eq('unseated lines are the table\'s, not divided', seats.find(s => s.seat === null).usd, 5)
 eq('THE SUM of the seat shares is the bill', sum(seats.map(s => s.usd)), C.checkTotals(table).net)
+// The service charge (UPGRADE.md T3.8) is inside net, so every way of splitting has to carry it.
+const serviceTable = { ...table, serviceCharge: { rate: 0.1 } }
+eq('THE SUM with a 10% service charge: the seats still add up to the bill, service included',
+   [sum(S.sharesBySeat(serviceTable).map(s => s.usd)), C.checkTotals(serviceTable).net], [C.checkTotals(serviceTable).net, 23.1])
+eq('...and so do three people splitting it by item',
+   sum(S.sharesByPerson(serviceTable, 3, { a: [1], b: [2] }).map(p => p.usd)), 23.1)
+eq('what chosen items come to carries their share of the service', S.shareForLines(serviceTable, ['a']), 4.4)
 const staffTable = { ...table, staffDiscount: { food: 0.7, drink: 0.5, appliedBy: 'm', appliedByEmail: 'm@x' } }
 eq('a staff meal is discounted seat by seat too, and still adds up',
    sum(S.sharesBySeat(staffTable).map(s => s.usd)), C.checkTotals(staffTable).net)

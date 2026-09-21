@@ -335,6 +335,18 @@ eq('the wide roll is respected too',
    ttext(ticket({ lines: [tline({ name: 'Halloumi & Zaatar Manoushe' })] }), 42)
      .split('\n').every(l => l.length <= 42), true)
 
+console.log('\nthe service charge on the receipt (UPGRADE.md T3.8)')
+{
+  const C2 = await import(`file://${join(out, 'checks.js')}`)
+  const sample = C2.checkTotals({ lines: [{ id: 'a', source: 'menu', refId: 'm', name: 'Dish', unitPrice: 20, modifiers: [], quantity: 1, seat: null, course: null,
+    station: 'Kitchen', status: 'sent', note: '', addedBy: 'u', addedByEmail: 'u', sentAt: 'x', voidReason: null, voidReasonKey: null, voidWasWaste: null }], staffDiscount: null, serviceCharge: { rate: 0.1 } })
+  eq('the totals the receipt prints from carry the service charge inside the total', [sample.service, sample.net], [2, 22])
+  const svcRows = R.buildReceipt(check({ serviceCharge: { rate: 0.1 } }), opts)
+  const plainRows = R.buildReceipt(check(), opts)
+  eq('THE RECEIPT: a service line with its rate, above the total, and none on a check without one',
+    [svcRows.some(r => r.kind === 'pair' && r.left === 'Service 10%'), plainRows.some(r => r.kind === 'pair' && String(r.left).startsWith('Service'))], [true, false])
+}
+
 console.log('\nemailing a receipt (UPGRADE.md T3.7)')
 {
   const E = await import(`file://${join(out, 'receiptEmail.js')}`)
