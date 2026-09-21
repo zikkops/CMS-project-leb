@@ -8,23 +8,36 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { faCheck, faRightToBracket } from '@fortawesome/free-solid-svg-icons'
-import { useClientValue } from '@big-cms/shared/useClientValue'
 import { requestFromHash } from '@big-cms/shared/staffSignIn'
 import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import { backend } from '../../lib/backend'
 import { PosButton, ErrorNote, PosLoading } from '../../lib/posUi'
 
 const subscribe = (onChange: () => void) => backend().watchAuth(() => onChange())
+// Followed, not read once: a phone may open a second scanned code in the same
+// tab, which changes only the fragment and reloads nothing.
+const subscribeHash = (onChange: () => void) => {
+  window.addEventListener('hashchange', onChange)
+  return () => window.removeEventListener('hashchange', onChange)
+}
 const words = (err: unknown, fallback: string) =>
   isNetworkFailure(err) ? 'No connection. Try again when the internet is back.' : err instanceof Error ? err.message : fallback
 
 export default function ApproveSignInPage() {
-  const id = useClientValue(() => requestFromHash(window.location.hash), null)
+  const id = useSyncExternalStore(subscribeHash, () => requestFromHash(window.location.hash), () => null)
   const who = useSyncExternalStore(subscribe, () => backend().signedInAs() ?? '', () => '')
   const [code, setCode] = useState<string | null>(null)
   const [problem, setProblem] = useState('')
   const [done, setDone] = useState(false)
   const [busy, setBusy] = useState(false)
+  // A new code starts afresh: never the last code's check number or "done".
+  const [seen, setSeen] = useState(id)
+  if (seen !== id) {
+    setSeen(id)
+    setCode(null)
+    setProblem('')
+    setDone(false)
+  }
 
   useEffect(() => {
     if (!id || !who) return
