@@ -1,6 +1,8 @@
 // Types, constants and shared style objects for the Menu Manager page and
 // its pieces.
 
+import type { PriceRule, TimeWindow } from '@big-cms/shared/timePricing'
+
 export type Section = 'Food' | 'Beverage' | 'Sweets'
 
 export interface Category {
@@ -22,6 +24,9 @@ export interface MenuItem {
   available: boolean
   /** Shown on the till's menu tiles. */
   image?: string
+  /** Serving hours and happy-hour prices (UPGRADE.md T5.12), as stored; read with storedHours()/storedPriceRules(). */
+  hours?: unknown
+  priceRules?: unknown
 }
 
 export const EMPTY_ITEM = {
@@ -33,6 +38,8 @@ export const EMPTY_ITEM = {
   badge: '',
   available: true,
   image: '',
+  hours: null as TimeWindow | null,
+  priceRules: [] as PriceRule[],
 }
 
 export type ItemForm = typeof EMPTY_ITEM

@@ -17,7 +17,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'checks-verify-'))
 execSync(
-  `npx tsc shared/src/checks.ts shared/src/tickets.ts shared/src/money.ts shared/src/netErrors.ts shared/src/requestKey.ts shared/src/soldOut.ts --outDir ${out} --module esnext ` +
+  `npx tsc shared/src/checks.ts shared/src/tickets.ts shared/src/money.ts shared/src/netErrors.ts shared/src/requestKey.ts shared/src/soldOut.ts shared/src/timePricing.ts --outDir ${out} --module esnext ` +
   `--target es2022 --skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' }
 )
@@ -29,6 +29,7 @@ for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
 const C = await import(`file://${join(out, 'checks.js')}`)
 const T = await import(`file://${join(out, 'tickets.js')}`)
 const SO = await import(`file://${join(out, 'soldOut.js')}`)
+const TP = await import(`file://${join(out, 'timePricing.js')}`)
 const M = await import(`file://${join(out, 'money.js')}`)
 
 let pass = 0, fail = 0
@@ -447,6 +448,34 @@ console.log('\n86 from the till: sold out for the café day (UPGRADE.md T3.5)')
     [true, false, false])
   eq('anything that is not branch → day is read as nothing sold out', [SO.readSoldOut(null), SO.readSoldOut(['Main']), SO.readSoldOut({ Main: 7, Second: 'soon', Third: '2026-09-13' })],
     [{}, {}, { Third: '2026-09-13' }])
+}
+
+console.log('\nMenus by time of day and happy hour (UPGRADE.md T5.12)')
+{
+  // 21 Sep 2026 is a Monday.
+  const at = (day, hh, mm = 0) => ({ year: 2026, month: 9, day, hour: hh, minute: mm })
+  const weekdays = { days: [1, 2, 3, 4, 5], from: '17:00', to: '19:00' }
+  eq('in the window on a listed day', TP.inWindow(weekdays, at(21, 17, 30)), true)
+  eq('the start is in, the end is out', [TP.inWindow(weekdays, at(21, 17)), TP.inWindow(weekdays, at(21, 19))], [true, false])
+  eq('not on a day it does not list (Sunday)', TP.inWindow(weekdays, at(20, 18)), false)
+  const late = { days: [5], from: '22:00', to: '02:00' }
+  eq('past midnight: Friday night is in', TP.inWindow(late, at(25, 23)), true)
+  eq('...and so are the small hours of Saturday', TP.inWindow(late, at(26, 1, 30)), true)
+  eq('...but not the small hours of Friday itself', TP.inWindow(late, at(25, 1)), false)
+  const rules = [{ ...weekdays, price: 5, label: 'Happy hour' }]
+  eq('a rule in force sets the price, and names itself', TP.priceAt(8, rules, at(21, 18)), { price: 5, rule: 'Happy hour' })
+  eq('outside it, the item\'s own price', TP.priceAt(8, rules, at(21, 20)), { price: 8, rule: null })
+  eq('the first matching rule wins', TP.priceAt(8, [...rules, { ...weekdays, price: 1, label: 'Later' }], at(21, 18)).price, 5)
+  eq('no hours: always served', TP.servedAt(null, at(21, 3)), true)
+  eq('breakfast is not served at night', TP.servedAt({ days: [0, 1, 2, 3, 4, 5, 6], from: '07:00', to: '11:30' }, at(21, 21)), false)
+  eq('rules are read and cleaned', TP.readPriceRules([{ days: [5, 1, 1], from: '17:00', to: '19:00', price: '4.999', label: '  ' }]), [{ days: [1, 5], from: '17:00', to: '19:00', price: 5, label: 'Happy hour' }])
+  eq('a rule with no days is refused', typeof TP.readPriceRules([{ days: [], from: '17:00', to: '19:00', price: 4 }]), 'string')
+  eq('a time that is not HH:MM is refused', typeof TP.readPriceRules([{ days: [1], from: '5pm', to: '19:00', price: 4 }]), 'string')
+  eq('a negative price is refused', typeof TP.readPriceRules([{ days: [1], from: '17:00', to: '19:00', price: -1 }]), 'string')
+  eq('a window that starts and ends together is refused', typeof TP.readHours({ days: [1], from: '09:00', to: '09:00' }), 'string')
+  eq('stored rules drop what is malformed, never guess', TP.storedPriceRules([{ days: [1], from: 'x', to: '19:00', price: 4 }, rules[0]]).length, 1)
+  eq('stored hours that are malformed read as all day', TP.storedHours({ days: [1] }), null)
+  eq('described for a person', TP.describeWindow({ days: [0, 1, 2, 3, 4, 5, 6], from: '07:00', to: '11:30' }), 'every day 07:00–11:30')
 }
 
 console.log('\nMoving items between checks (UPGRADE.md T5.6)')

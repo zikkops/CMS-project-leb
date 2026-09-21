@@ -4,6 +4,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import { formatUsd } from '@big-cms/shared/money'
 import type { PriceSuggestion } from '../useSuggestedPrices'
 import { sectionColors, smallButton, inputStyle, labelStyle, type ItemForm, type Section } from './menuTypes'
+import TimeRulesEditor from './TimeRulesEditor'
 
 // The Add / Edit Item modal. The page owns the form and the save; this only
 // draws it.
@@ -156,6 +157,8 @@ export default function ItemModal({
               ))}
             </div>
           </div>
+
+          <TimeRulesEditor form={form} setForm={setForm} colour={sectionColors[activeSection]} />
 
           <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
             <button type="button" onClick={onClose} style={{

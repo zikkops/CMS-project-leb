@@ -35,6 +35,9 @@ import { readSoldOut } from '@big-cms/shared/soldOut'
 import { ACTIVE_TICKET_STATUSES, type Ticket } from '@big-cms/shared/tickets'
 import { effectivePrice, saleIsActive } from '@big-cms/shared/productPricing'
 import { timestampMs } from '@big-cms/shared/timestamps'
+import { describeWindow, priceAt, servedAt, storedHours, storedPriceRules, type PriceRule, type TimeWindow } from '@big-cms/shared/timePricing'
+import { zonedParts } from '@big-cms/shared/dates'
+import { BRAND } from '@big-cms/shared/brand'
 import { nextReceiptBatch, EMPTY_RECEIPT_STATE, type ReceiptDoc } from './printBatch'
 
 // ── Listener failures are surfaced, not swallowed ─────────────────────────
@@ -386,7 +389,18 @@ export function watchClosedReceipts(
 export interface PosMenuItem {
   id: string
   name: string
+  /** What it costs NOW: a happy-hour rule in force, else its own price (UPGRADE.md T5.12). */
   price: number
+  /** Its own price, before any rule. */
+  basePrice: number
+  /** The rule setting `price` right now, e.g. "Happy hour"; null when none. */
+  priceRule: string | null
+  /** False outside its serving hours; the server refuses it then. */
+  servedNow: boolean
+  /** "Every day 07:00–11:30", for an item not served now; '' when it has no hours. */
+  hoursLabel: string
+  priceRules: PriceRule[]
+  hours: TimeWindow | null
   categoryId: string
   categoryName: string
   section: string
@@ -419,6 +433,11 @@ export function usePosMenu(): PosMenu {
   const [categories, setCategories] = useState<PosMenu['categories']>([])
   const [groups, setGroups] = useState<PosMenu['groups']>({})
   const [loaded, setLoaded] = useState({ items: false, cats: false, groups: false })
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(t)
+  }, [])
 
   useEffect(() => {
     if (!ready) return
@@ -440,6 +459,12 @@ export function usePosMenu(): PosMenu {
             id: d.id,
             name: String(data.name ?? ''),
             price: Number(data.price ?? 0),
+            basePrice: Number(data.price ?? 0),
+            priceRule: null,
+            servedNow: true,
+            hoursLabel: '',
+            priceRules: storedPriceRules(data.priceRules),
+            hours: storedHours(data.hours),
             categoryId: String(data.categoryId ?? ''),
             categoryName: '',
             section: '',
@@ -467,11 +492,21 @@ export function usePosMenu(): PosMenu {
   // the station, and denormalising it onto every item would mean rewriting
   // every item when a category moves section.
   const byCategory = new Map(categories.map(c => [c.id, c]))
-  const joined = items.map(i => ({
-    ...i,
-    categoryName: byCategory.get(i.categoryId)?.name ?? '',
-    section: byCategory.get(i.categoryId)?.section ?? '',
-  }))
+  // Priced and judged against the café's clock, again each minute, so a
+  // happy hour starts on the screen when it starts on the server (T5.12).
+  const clock = zonedParts(new Date(now), BRAND.locale.timezone)
+  const joined = items.map(i => {
+    const priced = priceAt(i.basePrice, i.priceRules, clock)
+    return {
+      ...i,
+      price: priced.price,
+      priceRule: priced.rule,
+      servedNow: servedAt(i.hours, clock),
+      hoursLabel: i.hours ? describeWindow(i.hours) : '',
+      categoryName: byCategory.get(i.categoryId)?.name ?? '',
+      section: byCategory.get(i.categoryId)?.section ?? '',
+    }
+  })
 
   return {
     items: joined,

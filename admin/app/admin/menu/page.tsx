@@ -18,6 +18,7 @@ import CategoryPanel from './_components/CategoryPanel'
 import ItemList from './_components/ItemList'
 import EditCategoryModal from './_components/EditCategoryModal'
 import ItemModal from './_components/ItemModal'
+import { storedHours, storedPriceRules } from '@big-cms/shared/timePricing'
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false)
@@ -207,6 +208,8 @@ export default function AdminMenuPage() {
       badge:       item.badge ?? '',
       available:   item.available,
       image:       item.image ?? '',
+      hours:       storedHours(item.hours),
+      priceRules:  storedPriceRules(item.priceRules),
     })
     setOpen(true)
   }

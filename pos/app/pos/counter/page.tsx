@@ -735,10 +735,12 @@ export default function CounterPage() {
         {shown.map(i => {
           const colour = kindColour(Math.max(0, categories.findIndex(c => c.id === activeCategory)))
           // Sold out at this branch today, marked by a manager (UPGRADE.md T3.5).
-          const out = isSoldOut(i.soldOut, branch, soldOutDay(BRAND.locale.timezone))
+          const soldOut = isSoldOut(i.soldOut, branch, soldOutDay(BRAND.locale.timezone))
+          // Outside its serving hours (UPGRADE.md T5.12): the server refuses it, so the tile does too.
+          const out = soldOut || !i.servedNow
           return (
             <button key={i.id} type="button" disabled={out} onClick={() => !out && setDrafts(d => withDraft(d, i))}
-              aria-label={out ? `${i.name}, sold out today` : undefined} style={{
+              aria-label={soldOut ? `${i.name}, sold out today` : !i.servedNow ? `${i.name}, served ${i.hoursLabel}` : undefined} style={{
               minHeight: '92px', borderRadius: '12px', cursor: out ? 'not-allowed' : 'pointer', textAlign: 'left',
               padding: '0.75rem 0.9rem 0.75rem 1rem', fontFamily: 'var(--font-inter)',
               backgroundColor: 'rgba(var(--overlay-rgb),0.05)', color: 'var(--offwhite)',
@@ -748,7 +750,11 @@ export default function CounterPage() {
             }}>
               <span style={{ fontSize: '1.02rem', fontWeight: 600, lineHeight: 1.25 }}>{i.name}</span>
               <span style={{ fontSize: '1rem', fontWeight: 700 }}>
-                {out ? <span style={{ color: 'var(--red)', fontSize: '0.88rem' }}><FontAwesomeIcon icon={faBan} /> Sold out today</span> : usd(i.price)}
+                {soldOut
+                  ? <span style={{ color: 'var(--red)', fontSize: '0.88rem' }}><FontAwesomeIcon icon={faBan} /> Sold out today</span>
+                  : !i.servedNow
+                    ? <span style={{ color: 'rgba(var(--offwhite-rgb),0.7)', fontSize: '0.82rem' }}>Served {i.hoursLabel}</span>
+                    : <>{usd(i.price)}{i.priceRule && <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem', color: 'var(--teal)' }}>{i.priceRule}</span>}</>}
               </span>
             </button>
           )

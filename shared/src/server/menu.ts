@@ -7,6 +7,7 @@
 // value it liked into one — the save handler spread the form object straight
 // into Firestore with nothing between.
 
+import { readHours, readPriceRules, type PriceRule, type TimeWindow } from '../timePricing'
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from './firebaseAdmin'
 import { HttpError } from './auth'
@@ -115,6 +116,10 @@ export interface MenuItemInput {
    * not know about pictures leaves the stored one alone rather than wiping it.
    */
   image?: string
+  /** Serving hours, null for all day; absent when not sent, so an older form leaves them alone (UPGRADE.md T5.12). */
+  hours?: TimeWindow | null
+  /** Happy-hour prices; absent when not sent, for the same reason. */
+  priceRules?: PriceRule[]
 }
 
 export function parseMenuItemInput(body: Record<string, unknown>): MenuItemInput {
@@ -133,7 +138,15 @@ export function parseMenuItemInput(body: Record<string, unknown>): MenuItemInput
     available: body.available !== false,
     // Firestore refuses undefined, so the key is left out rather than set to it.
     ...(body.image !== undefined ? { image: text(body.image, 'Image', { maxLen: 2000 }) } : {}),
+    ...(body.hours !== undefined ? { hours: checked(readHours(body.hours)) } : {}),
+    ...(body.priceRules !== undefined ? { priceRules: checked(readPriceRules(body.priceRules)) } : {}),
   }
+}
+
+/** A reader's answer, or its reason as a 400 — refused, never quietly saved as something else. */
+function checked<T>(v: T | string): T {
+  if (typeof v === 'string') throw new HttpError(400, v)
+  return v
 }
 
 export async function createMenuItem(input: MenuItemInput): Promise<{ id: string }> {

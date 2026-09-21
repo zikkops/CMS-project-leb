@@ -33,7 +33,8 @@ import { resolveMemberCode } from './memberCodes'
 import { pointsForCheck } from '../loyaltyTiers'
 import { refundOf } from '../drawer'
 import { vatRateOn } from '../businessSettings'
-import { todayYmd } from '../dates'
+import { todayYmd, zonedParts } from '../dates'
+import { describeWindow, priceAt, servedAt, storedHours, storedPriceRules } from '../timePricing'
 import { BRAND } from '../brand'
 import { isSoldOut, soldOutDay } from '../soldOut'
 import { validateSelection, toSelections, type ModifierGroup } from '../modifiers'
@@ -135,8 +136,17 @@ export function parseBatchKey(body: Record<string, unknown>): string | null {
   return raw
 }
 
-async function buildLines(caller: Caller, requests: LineRequest[]): Promise<{ lines: CheckLine[]; soldOut: Map<string, unknown> }> {
+async function buildLines(
+  caller: Caller,
+  requests: LineRequest[],
+  // When the order was taken, in the café's zone, for serving hours and
+  // happy-hour prices (UPGRADE.md T5.12). An order recorded after an outage is
+  // priced at the time it was taken, not the time it reached the server, and
+  // is never refused for hours: the kitchen already made it.
+  pricing: { at: Date; judgeHours: boolean } = { at: new Date(), judgeHours: true },
+): Promise<{ lines: CheckLine[]; soldOut: Map<string, unknown> }> {
   const db = adminDb()
+  const clock = zonedParts(pricing.at, BRAND.locale.timezone)
 
   const menuIds = [...new Set(requests.filter(r => r.source === 'menu').map(r => r.refId))]
   const productIds = [...new Set(requests.filter(r => r.source === 'product').map(r => r.refId))]
@@ -228,6 +238,11 @@ async function buildLines(caller: Caller, requests: LineRequest[]): Promise<{ li
     if (data.available === false) {
       throw new HttpError(400, `"${data.name ?? where}" is marked unavailable.`)
     }
+    const hours = storedHours(data.hours)
+    if (pricing.judgeHours && !servedAt(hours, clock)) {
+      throw new HttpError(409, `"${data.name ?? where}" is served ${describeWindow(hours!)}, not now.`)
+    }
+    const priced = priceAt(Number(data.price ?? 0), storedPriceRules(data.priceRules), clock)
 
     // Every group the item carries is checked, including ones the caller did
     // not mention — that is how a required choice nobody made is caught.
@@ -258,7 +273,10 @@ async function buildLines(caller: Caller, requests: LineRequest[]): Promise<{ li
 
     return line(caller, req, {
       name: String(data.name ?? ''),
-      unitPrice: Number(data.price ?? 0),
+      unitPrice: priced.price,
+      // Named on the line when a rule set the price, so the check and the
+      // receipt can say why a cocktail was $5.
+      ...(priced.rule ? { priceRule: priced.rule } : {}),
       station: stationForSection(sectionByCategory.get(String(data.categoryId ?? ''))),
       modifiers: selections,
       ...(consumption && consumption.consumes.length > 0 ? { consumesPerServing: consumption.consumes } : {}),
@@ -275,7 +293,7 @@ function line(
   caller: Caller,
   req: LineRequest,
   looked: Pick<CheckLine, 'name' | 'unitPrice' | 'station' | 'modifiers'>
-    & Partial<Pick<CheckLine, 'consumesPerServing' | 'consumesUnknown'>>,
+    & Partial<Pick<CheckLine, 'consumesPerServing' | 'consumesUnknown' | 'priceRule'>>,
 ): CheckLine {
   return {
     id: randomUUID(),
@@ -505,7 +523,8 @@ export async function addLines(
 ): Promise<{ added: number; lines: CheckLine[]; duplicate: boolean }> {
   // Priced BEFORE the transaction: it reads menu items, categories and
   // modifier groups, and a transaction may not read after its first write.
-  const { lines: built, soldOut } = await buildLines(caller, requests)
+  const { lines: built, soldOut } = await buildLines(caller, requests,
+    madeOfflineAt ? { at: new Date(madeOfflineAt), judgeHours: false } : { at: new Date(), judgeHours: true })
 
   let duplicate = false
   await adminDb().runTransaction(async tx => {

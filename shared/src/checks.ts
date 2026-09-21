@@ -377,6 +377,8 @@ export interface CheckLine {
   consumesPerServing?: { supplyId: string; qty: number; unitCostUsd: number | null }[]
   /** Ingredients the recipe uses that could not be measured: no conversion set. */
   consumesUnknown?: string[]
+  /** The price rule that set unitPrice when it was added, e.g. "Happy hour" (UPGRADE.md T5.12). Absent: the item's own price. */
+  priceRule?: string
   /** What a wasted void cost, from the snapshot; null when it could not be costed. */
   voidWasteUsd?: number | null
 }

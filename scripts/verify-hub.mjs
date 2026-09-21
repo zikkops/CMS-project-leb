@@ -481,6 +481,25 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
   // Loyalty on a hub (UPGRADE.md T5.7): refused plainly, whatever the switch says.
   await rejects('a hub collects no loyalty points, and says so', () => C.setLoyaltyCustomer(staff, checkId, 'ABCD2345'), e => e.status === 409 && /café hub/.test(e.message))
 
+  // Serving hours and happy hour, judged on the café's clock (UPGRADE.md T5.12).
+  {
+    const { zonedParts } = await import(url('dates.js'))
+    const h = zonedParts(new Date(), BRAND.locale.timezone).hour
+    const hh = n => String(((n % 24) + 24) % 24).padStart(2, '0') + ':00'
+    const all = [0, 1, 2, 3, 4, 5, 6]
+    await db.doc('menuItems/m-cocktail').set({ name: 'Cocktail', price: 8, categoryId: 'cat-drinks', available: true, modifierGroupIds: [],
+      priceRules: [{ days: all, from: hh(h - 1), to: hh(h + 1), price: 5, label: 'Happy hour' }] })
+    await db.doc('menuItems/m-breakfast').set({ name: 'Breakfast', price: 9, categoryId: 'cat-drinks', available: true, modifierGroupIds: [],
+      hours: { days: all, from: hh(h + 2), to: hh(h + 3) } })
+    const hc = await C.openCheck(staff, { branch, tableNumber: 64, guestCount: 1 })
+    const drink = await C.addLines(staff, hc.id, C.parseLineRequests({ lines: [{ source: 'menu', refId: 'm-cocktail', quantity: 1 }] }), 'batch-happy-1')
+    eq('a happy-hour price in force is what is charged, and named', [drink.lines[0].unitPrice, drink.lines[0].priceRule], [5, 'Happy hour'])
+    await rejects('an item outside its serving hours is refused', () => C.addLines(staff, hc.id, C.parseLineRequests({ lines: [{ source: 'menu', refId: 'm-breakfast', quantity: 1 }] }), 'batch-happy-2'), e => e.status === 409 && /served/.test(e.message))
+    const offline = await C.addLines(staff, hc.id, C.parseLineRequests({ lines: [{ source: 'menu', refId: 'm-breakfast', quantity: 1 }] }), 'batch-happy-3', new Date(Date.now() - 60_000).toISOString())
+    eq('...but an order the kitchen made during an outage is recorded anyway', offline.added, 1)
+    await db.doc(`checks/${hc.id}`).delete()
+  }
+
   // Moving items and merging (UPGRADE.md T5.6).
   {
     const x = await C.openCheck(staff, { branch, tableNumber: 61, guestCount: 2 })
