@@ -159,6 +159,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
       { label: 'End of Week Order', href: '/admin/weekly-orders/submit', access: SECTION_ACCESS.weeklyOrdersSubmit, icon: faPaperPlane, kind: 'use', desc: 'Fill in and submit this week’s stock order.' },
       { label: 'Receive a Delivery', href: '/admin/supplies/receiving', access: SECTION_ACCESS.deliveries, icon: faTruck, kind: 'use', desc: 'Book in what arrived, what was short and what it cost.' },
       { label: 'Inventory Management', href: '/admin/supplies', access: SECTION_ACCESS.supplies, icon: faBoxesStacked, kind: 'use', desc: 'Stock levels per branch, with alerts when something runs low.' },
+      { label: 'Move Stock Between Branches', href: '/admin/supplies/transfer', access: SECTION_ACCESS.supplies, icon: faRightLeft, kind: 'use', desc: 'Send ingredients from one branch to another; every line moves or none does.' },
       { label: 'Daily Inventory History', href: '/admin/supplies/daily/history', access: SECTION_ACCESS.dailyInventoryHistory, icon: faClockRotateLeft, kind: 'use', desc: 'Every count, what was expected and what was found.' },
       { label: 'Order Reports', href: '/admin/weekly-orders', access: SECTION_ACCESS.weeklyOrders, icon: faFile, kind: 'use', desc: 'The weekly orders staff have submitted.' },
       { label: 'Weekly Order Log', href: '/admin/weekly-orders/log', access: SECTION_ACCESS.weeklyOrders, icon: faScroll, kind: 'use', desc: 'Who submitted or changed which weekly order, and when.' },

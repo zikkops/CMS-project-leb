@@ -33,7 +33,7 @@ rmSync(out, { recursive: true, force: true })
 try {
   execSync(
     'npx tsc shared/src/server/hubStore.ts shared/src/server/checks.ts shared/src/server/tickets.ts ' +
-    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts shared/src/server/soldOut.ts shared/src/server/receiptEmail.ts ' +
+    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts shared/src/server/soldOut.ts shared/src/server/receiptEmail.ts shared/src/server/supplyTransfer.ts ' +
     `shared/src/server/drawer.ts --outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -289,6 +289,7 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
   const D = await import(url('server/drawer.js'))
   const SO = await import(url('server/soldOut.js'))
   const ER = await import(url('server/receiptEmail.js'))
+  const ST = await import(url('server/supplyTransfer.js'))
   const { BRAND } = await import(url('brand.js'))
   const db = FA.adminDb()
   eq('adminDb() is the hub\'s store when BIG_CMS_HUB_DB is set', db instanceof H.HubStore, true)
@@ -437,6 +438,23 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
   await rejects('nothing is recorded on a closed shift',
     () => D.recordMovement(staff, shift.id, { ...drop, id: 'move-000004' }), e => e.status === 409)
   eq('the drawer is free again', (await db.doc(`branchDrawers/${branch}`).get()).data().openShiftId, null)
+
+  // Moving ingredients between branches (UPGRADE.md T3.14), over the same store.
+  await db.doc('supplies/s-milk').set({ name: 'Milk', unit: 'L', threshold: 5, quantity: { Main: 10, Second: 2 } })
+  await db.doc('supplies/s-beans').set({ name: 'Beans', unit: 'kg', threshold: 2, quantity: { Main: 1, Second: 0 } })
+  const moved = await ST.transferSupplies({ fromBranch: 'Main', toBranch: 'Second', items: [{ supplyId: 's-milk', quantity: 2.5 }] }, 'move-req-000001')
+  const milkAfter = () => db.doc('supplies/s-milk').get().then(s => s.data().quantity)
+  eq('2.5 L of milk leaves Main and arrives at Second', [moved.lines, await milkAfter()], [[{ name: 'Milk', unit: 'L', quantity: 2.5 }], { Main: 7.5, Second: 4.5 }])
+  const movedAgain = await ST.transferSupplies({ fromBranch: 'Main', toBranch: 'Second', items: [{ supplyId: 's-milk', quantity: 2.5 }] }, 'move-req-000001')
+  eq('THE TRAP: the same Move sent twice moves once', [movedAgain.duplicate, await milkAfter()], [true, { Main: 7.5, Second: 4.5 }])
+  await rejects('moving more than the branch holds is refused, naming it',
+    () => ST.transferSupplies({ fromBranch: 'Main', toBranch: 'Second', items: [{ supplyId: 's-milk', quantity: 1 }, { supplyId: 's-beans', quantity: 3 }] }), e => e.status === 409 && /Beans/.test(e.message))
+  eq('...and then nothing moved at all, the milk included', await milkAfter(), { Main: 7.5, Second: 4.5 })
+  await rejects('an item that no longer exists is refused', () => ST.transferSupplies({ fromBranch: 'Main', toBranch: 'Second', items: [{ supplyId: 's-gone', quantity: 1 }] }), e => e.status === 404)
+  const refusedTransfer = body => { try { ST.parseSupplyTransfer(body); return null } catch (err) { return err.status } }
+  eq('a request is refused before anything is read: the same branch twice, nothing, a repeated line, a fraction past three places',
+    [refusedTransfer({ fromBranch: branch, toBranch: branch, items: [{ supplyId: 'x', quantity: 1 }] }), refusedTransfer({ fromBranch: branch, toBranch: 'Nowhere', items: [{ supplyId: 'x', quantity: 1 }] }),
+      refusedTransfer({ fromBranch: branch, toBranch: 'x', items: [] })].every(s => s === 400), true)
 
   // The service charge (UPGRADE.md T3.8): copied onto a check when it opens.
   const { id: plainCheck } = await C.openCheck(staff, { branch, tableNumber: 29, guestCount: 1 })
