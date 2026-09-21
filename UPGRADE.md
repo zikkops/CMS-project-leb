@@ -726,7 +726,7 @@ Principles for every task here:
   Tips and Daily Inventory History onto it. "Today" and every day boundary is
   the café's day in `BRAND.locale.timezone`.
   *Done: Done 21 Sep 2026 for the reports and the export; the End of Day pages and downloads are split into T7.1b. The picker is now admin/app/components/ui/ReportRange.tsx: quick periods (today, yesterday, this and last week, month and quarter, year to date, last year), one day or a range, and one branch, several (chips) or all. The rules are in shared/src/reportPeriods.ts: quickRange, sameRangeLastYear and dayCount, with ISO weeks starting Monday and the calendar fiscal year, plus readBranchList. The server reads a branch list through requestedBranches(), where one branch that is not the caller's refuses the request with 403; the export, loyalty export, food cost and every report use it. With several branches, each report returns a total per branch, and BranchTotals shows them with an 'All' row that is their sum. That is on Voids & Discounts, Product Mix, Hourly and Timesheet; the Sales Export page uses the picker too. The export page's claim that a 01:30 sale belongs to the night before was wrong (docs/reporting.md, gap 5) and now says the calendar day. Covered by verify:export (14 period and branch cases) and verify:reports (Main + Second = all, for voids and the mix). Not looked at signed in.*
-- [ ] **T7.1b The End of Day pages and downloads onto the picker** (split from
+- [x] **T7.1b The End of Day pages and downloads onto the picker** (split from
   T7.1, 21 Sep 2026).
   - Move EOD History, Daily Summary, Tips and Daily Inventory History onto
     `ReportRange` (`admin/app/components/ui/ReportRange.tsx`), with one
@@ -738,6 +738,7 @@ Principles for every task here:
     day and drawers and End of Day the 10:00 cash-up day. Record the choice
     here, show it on every report, and make the reports that sit side by side
     use the same one.
+  *Done: Done 21 Sep 2026. Downloads (part 1, commit 9b8c58f): Product Mix, Voids & Discounts, Hourly and Timesheet have CSV and Excel downloads. Every file opens with the header block (shared/src/reportFile.ts: business, report, branches, period, currencies, day rule, when, definitions version). CSV cells that look like formulas are defused. The café day is decided and recorded in shared/src/reportDefinitions.ts and docs/reporting.md: sales, VAT and accounting use the calendar day on the receipt, and counting cash uses the cash-up day and is reconciled per shift. Part 2: EOD History, Daily Summary, Tips and Daily Inventory History are on ReportRange, with BranchTotals and downloads: History and Summary for any range, Inventory History with a range table above its calendar, Tips split per branch over the chosen range with each day's tip weight. verify:export has the file cases. The pages were not looked at signed in.*
 - [ ] **T7.2 Longer ranges without a silent cut.** `MAX_RANGE_DAYS` (100) and
   the 20,000-check read cap stop a year's report. Read the range in café-day
   chunks and add them up, so a fiscal year (or last year for comparison) works

@@ -10,6 +10,14 @@ import {
   type DailyInventoryReport,
 } from '@big-cms/shared/dailyInventory'
 import { startLoad } from '@big-cms/shared/startLoad'
+import { ReportRange, BranchTotals, type RangeChoice } from '../../../../components/ui/ReportRange'
+import { ReportDownloads } from '../../../../components/ui/ReportDownloads'
+import { ErrorLine, EmptyState } from '../../../../components/ui'
+import { reportHeader } from '../../../reports/files'
+import {
+  readCountsInRange, countRow, countLines, sortCounts, branchTotals, countSheets,
+  type CountRow, type CountLineRow,
+} from './range'
 
 
 // branchAbbrev() derives these from the configured names and de-duplicates
@@ -20,6 +28,23 @@ const sel: React.CSSProperties = {
   color: 'var(--offwhite)', borderRadius: '4px', padding: '0.5rem 0.7rem',
   fontSize: '0.82rem', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-inter)',
 }
+
+const usd = (v: number) => `${v < 0 ? '-' : ''}$${Math.abs(v).toFixed(2)}`
+
+interface RangeResult {
+  from: string
+  to: string
+  branches: string[]
+  rows: CountRow[]
+  lines: CountLineRow[]
+}
+
+const th: React.CSSProperties = {
+  textAlign: 'left', padding: '0.5rem 0.6rem', fontSize: '0.68rem', letterSpacing: '0.1em',
+  textTransform: 'uppercase', fontWeight: 600, color: 'rgba(var(--offwhite-rgb),0.5)',
+  borderBottom: '1px solid rgba(var(--offwhite-rgb),0.12)',
+}
+const td: React.CSSProperties = { padding: '0.5rem 0.6rem', color: 'var(--offwhite)', verticalAlign: 'top' }
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -59,6 +84,29 @@ export default function DailyInventoryHistoryPage() {
   const [reports, setReports] = useState<DailyInventoryReport[]>([])
   const [loading, setLoading] = useState(true)
   const [hoveredDate, setHoveredDate] = useState<string | null>(null)
+
+  // The range view (UPGRADE.md T7.1b): read only when asked, on the shared picker.
+  const [range, setRange] = useState<RangeResult | null>(null)
+  const [rangeBusy, setRangeBusy] = useState(false)
+  const [rangeError, setRangeError] = useState('')
+
+  async function runRange(choice: RangeChoice) {
+    const branches = choice.branch ? choice.branch.split(',') : [...INVENTORY_BRANCHES]
+    setRangeBusy(true)
+    setRangeError('')
+    try {
+      const sorted = sortCounts(await readCountsInRange(branches, choice.from, choice.to))
+      setRange({
+        from: choice.from, to: choice.to, branches,
+        rows: sorted.map(countRow),
+        lines: sorted.flatMap(countLines),
+      })
+    } catch {
+      setRangeError('The counts for that period could not be read. Try again.')
+    } finally {
+      setRangeBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (checking) return
@@ -113,8 +161,72 @@ export default function DailyInventoryHistoryPage() {
           Daily Inventory History
         </h1>
         <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '1.5rem' }}>
-          Every branch&apos;s Kitchen, Bar, and Cleaning counts, by day. Hover a day for a quick look, click for the full detail.
+          Every branch&apos;s Kitchen, Bar, and Cleaning counts. Pick a period for the counts and their variance, or use the calendar: hover a day for a quick look, click for the full detail.
         </p>
+
+        {/* Range view */}
+        <ReportRange onRun={choice => { void runRange(choice) }} busy={rangeBusy} branches={INVENTORY_BRANCHES} />
+        {rangeError && <ErrorLine>{rangeError}</ErrorLine>}
+        {range && (
+          <div style={{ marginBottom: '2.25rem' }}>
+            <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginBottom: '0.8rem' }}>
+              {range.from === range.to ? range.from : `${range.from} to ${range.to}`} · {range.branches.join(', ')} · {range.rows.length} count{range.rows.length === 1 ? '' : 's'}.
+              {' '}Variance is counted minus expected, valued at the cost stored with the count. Lines saved without those figures are shown as not recorded, never as $0.
+            </p>
+            {range.rows.length === 0 ? (
+              <EmptyState title="No counts in that period." />
+            ) : (
+              <>
+                <ReportDownloads
+                  header={reportHeader('Daily Inventory History', range.from, range.to, range.branches, 'calendar')}
+                  sheets={countSheets(range.rows, range.lines)}
+                />
+                <BranchTotals
+                  rows={branchTotals(range.branches, range.rows)}
+                  columns={[
+                    { key: 'counts', label: 'Counts' },
+                    { key: 'lines', label: 'Lines' },
+                    { key: 'varianceUsd', label: 'Variance (known)', money: true },
+                    { key: 'unknown', label: 'Value not recorded' },
+                  ]}
+                />
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr>
+                        <th style={th}>Date</th>
+                        <th style={th}>Branch</th>
+                        <th style={th}>Department</th>
+                        <th style={{ ...th, textAlign: 'right' }}>Lines counted</th>
+                        <th style={{ ...th, textAlign: 'right' }}>Variance (known)</th>
+                        <th style={{ ...th, textAlign: 'right' }}>Value not recorded</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {range.rows.map(r => (
+                        <tr key={r.id} style={{ borderBottom: '1px solid rgba(var(--offwhite-rgb),0.06)' }}>
+                          <td style={td}>
+                            <a href={`/admin/supplies/daily/history/${r.date}`} style={{ color: 'var(--teal)', textDecoration: 'none' }}>{r.date}</a>
+                          </td>
+                          <td style={td}>{r.branch}</td>
+                          <td style={td}>
+                            <span style={{ color: supplyCategoryColor(r.department) }}>{r.department}</span>
+                            {r.status !== 'submitted' && <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: 'var(--brand-secondary)' }}>Draft</span>}
+                          </td>
+                          <td style={{ ...td, textAlign: 'right' }}>{r.lines}</td>
+                          <td style={{ ...td, textAlign: 'right', color: r.varianceUsd < 0 ? 'var(--red)' : 'var(--offwhite)' }}>
+                            {r.lines > r.unknown ? usd(r.varianceUsd) : '—'}
+                          </td>
+                          <td style={{ ...td, textAlign: 'right', color: r.unknown > 0 ? 'var(--brand-secondary)' : 'rgba(var(--offwhite-rgb),0.4)' }}>{r.unknown}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Filters */}
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>

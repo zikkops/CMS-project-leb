@@ -1,17 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useIsMobile } from '@big-cms/shared/useIsMobile'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { BRANCHES } from '@big-cms/shared/branches'
-import { listEndOfDayReports, formatUsd, type EndOfDayReport } from '@big-cms/shared/endOfDay'
-import { todayYmd } from '@big-cms/shared/dates'
-import { BRAND } from '@big-cms/shared/brand'
+import { listEndOfDayReportsBetween, formatUsd, type EndOfDayReport } from '@big-cms/shared/endOfDay'
 import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
 import { distributeTips } from '@big-cms/shared/tips'
 import { matchStaffName, readPayHistory, tipWeightOn } from '@big-cms/shared/staffPay'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import { startLoad } from '@big-cms/shared/startLoad'
+import type { FileColumn } from '@big-cms/shared/reportFile'
+import { ReportRange, BranchTotals, type RangeChoice } from '../../../components/ui/ReportRange'
+import { ReportDownloads, type ReportSheet } from '../../../components/ui/ReportDownloads'
+import { reportHeader } from '../../reports/files'
 
 /** Tip weights by date, as set on Staff Pay (UPGRADE.md T7.18); no rates come with them. */
 interface WeightRow { uid: string; email: string; firstName: string; weights: { from: string; tipWeight: number }[] }
@@ -30,25 +32,6 @@ function weightLookup(rows: readonly WeightRow[]): (name: string, day: string) =
 // a manager could change it, see it saved, and every payout would still come
 // out at 11%. See the note at the top of shared/src/tips.ts.
 
-const inp: React.CSSProperties = {
-  backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
-  border: '1px solid rgba(var(--overlay-rgb),0.1)',
-  color: 'var(--offwhite)',
-  padding: '0.6rem 0.8rem',
-  borderRadius: '2px',
-  fontSize: '0.88rem',
-  outline: 'none',
-  fontFamily: 'var(--font-inter)',
-}
-
-const selStyle: React.CSSProperties = { ...inp, backgroundColor: '#1a1a1a', cursor: 'pointer' }
-
-const labelStyle: React.CSSProperties = {
-  display: 'block', fontSize: '0.68rem', letterSpacing: '0.12em',
-  textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)',
-  marginBottom: '0.4rem', fontFamily: 'var(--font-inter)',
-}
-
 // ─── computation ─────────────────────────────────────────────────────────────
 
 interface StaffTip { name: string; shiftPoints: number; weightedPoints: number; earned: number }
@@ -60,6 +43,9 @@ interface PeriodResult {
   totalTipsUsd: number
   netTipsUsd: number
   totalShiftPoints: number
+  /** Shift points × weights, summed: what the pot is divided by. */
+  totalWeightedPoints: number
+  deductedUsd: number
   tipsPerPoint: number
   /** The rate this period was actually worked out at — it travels with the
    *  figures rather than being read again where they are displayed, so a card
@@ -94,13 +80,44 @@ function buildPeriod(
     totalTipsUsd: d.totalTipsUsd,
     netTipsUsd: d.netTipsUsd,
     totalShiftPoints: d.totalShiftPoints,
+    totalWeightedPoints: d.totalWeightedPoints,
+    deductedUsd: d.deductedUsd,
     tipsPerPoint: d.perPoint,
     deductionRate: d.deductionRate,
     staff: d.staff,
   }
 }
 
+// ─── download ────────────────────────────────────────────────────────────────
+
+const sheet = <T,>(name: string, columns: FileColumn<T>[], rows: readonly T[]) => ({ name, columns, rows }) as unknown as ReportSheet<never>
+
+/** One sheet per branch's period, and a summary; the figures are the periods' own, nothing added here. */
+function tipSheets(periods: readonly { branch: string; period: PeriodResult }[]): ReportSheet<never>[] {
+  const people = periods.map(({ branch, period }) => sheet<StaffTip>(`Tips ${branch}`, [
+    { label: 'Name', value: s => s.name },
+    { label: 'Shift points', value: s => s.shiftPoints },
+    { label: 'Weighted points', value: s => s.weightedPoints },
+    { label: 'Earned USD', value: s => s.earned },
+  ], period.staff))
+  const summary = sheet<{ branch: string; period: PeriodResult }>('Summary', [
+    { label: 'Branch', value: r => r.branch },
+    { label: 'Days of data', value: r => r.period.reportCount },
+    { label: 'Pot USD', value: r => r.period.totalTipsUsd },
+    { label: 'Deduction rate %', value: r => +(r.period.deductionRate * 100).toFixed(2) },
+    { label: 'Deducted USD', value: r => r.period.deductedUsd },
+    { label: 'Net USD', value: r => r.period.netTipsUsd },
+    { label: 'Shift points', value: r => r.period.totalShiftPoints },
+    { label: 'Weighted points', value: r => r.period.totalWeightedPoints },
+  ], periods)
+  // The CSV is the first sheet: the split itself for one branch, the summary for several.
+  return periods.length === 1 ? [...people, summary] : [summary, ...people]
+}
+
 // ─── page ─────────────────────────────────────────────────────────────────────
+
+/** What was read for one run: the range, and each branch's reports. */
+interface Loaded { from: string; to: string; byBranch: { branch: string; reports: EndOfDayReport[] }[] }
 
 export default function TipsCalculatorPage() {
   const isMobile = useIsMobile()
@@ -114,49 +131,36 @@ export default function TipsCalculatorPage() {
 
   const branchOptions = role === 'admin' ? [...BRANCHES] : branchIds
 
-  // The café's month, not the viewer's. getFullYear()/getMonth() read whoever
-  // is looking — a manager abroad, or anybody at all just after midnight on the
-  // first — and this page divides a month into two pay periods, so landing on
-  // the wrong one is not cosmetic. Same rule as everywhere else in the repo.
-  const defaultMonth = todayYmd(BRAND.locale.timezone).slice(0, 7)
-
-  const [chosenBranch, setChosenBranch] = useState('')
-  const [month,   setMonth]   = useState(defaultMonth)
-  const [reports, setReports] = useState<EndOfDayReport[]>([])
+  const [loaded,  setLoaded]  = useState<Loaded | null>(null)
   const [loading, setLoading] = useState(false)
   const [weights, setWeights] = useState<WeightRow[]>([])
   const [weightsErr, setWeightsErr] = useState('')
   const [err,     setErr]     = useState('')
 
-  // Derived, not seeded by an effect. Setting state during an effect to supply
-  // a default renders once with nothing selected and again with the default —
-  // and React flags it, because that is a cascading render for a value that
-  // was always computable.
-  const branch = chosenBranch || (role !== 'admin' && branchIds.length === 1 ? branchIds[0] : '')
+  // Not ceremony. Running twice quickly can land the first answer after the
+  // second, and the screen would then show one range's reports under another
+  // range's name, with tips computed from them. Only the latest run's answer
+  // is kept.
+  const runId = useRef(0)
 
-  useEffect(() => {
-    if (!branch) return
-    // `alive` is not ceremony. Switching branch twice quickly can land the
-    // first answer after the second, and the screen would then show one
-    // branch's reports under another branch's name — with tips computed from
-    // them. The guard drops any answer that arrives after its question stopped
-    // being the question.
-    let alive = true
-    void (async () => {
-      setLoading(true)
-      setErr('')
-      try {
-        // Up to 400 reports for the branch; the month is filtered below.
-        const data = await listEndOfDayReports(branch, 400)
-        if (alive) setReports(data)
-      } catch {
-        if (alive) setErr('Failed to load reports.')
-      } finally {
-        if (alive) setLoading(false)
-      }
-    })()
-    return () => { alive = false }
-  }, [branch])
+  async function run(range: RangeChoice) {
+    const id = ++runId.current
+    // '' is every branch the person may see; else the ones chosen.
+    const branches = range.branch ? range.branch.split(',') : branchOptions
+    setLoading(true)
+    setErr('')
+    try {
+      // Tips are pooled per branch, so each branch is read (and split) on its own.
+      const byBranch = await Promise.all(branches.map(async branch => ({
+        branch, reports: await listEndOfDayReportsBetween(branch, range.from, range.to),
+      })))
+      if (id === runId.current) setLoaded({ from: range.from, to: range.to, byBranch })
+    } catch {
+      if (id === runId.current) setErr('Failed to load reports.')
+    } finally {
+      if (id === runId.current) setLoading(false)
+    }
+  }
 
   // Tip weights, once. If they cannot be read, everybody counts at 1 and the
   // page says so, rather than splitting by weights it does not have.
@@ -175,23 +179,14 @@ export default function TipsCalculatorPage() {
   if (checking) return null
   const weightOn = weightLookup(weights)
 
-  // Filter to the selected month and split into two periods
-  const monthStr  = month  // 'YYYY-MM'
-  const monthReports = reports.filter(r => r.date.startsWith(monthStr))
-
-  const period1Reports = monthReports.filter(r => parseInt(r.date.split('-')[2]) <= 15)
-  const period2Reports = monthReports.filter(r => parseInt(r.date.split('-')[2]) >= 16)
-
-  const [yearStr, monthNumStr] = month.split('-')
-  const monthLabel = new Date(parseInt(yearStr), parseInt(monthNumStr) - 1, 1)
-    .toLocaleString('en-US', { month: 'long', year: 'numeric' })
-
-  const lastDay = new Date(parseInt(yearStr), parseInt(monthNumStr), 0).getDate()
-
-  const p1 = buildPeriod('Period 1', `1–15 ${monthLabel}`, period1Reports, deductionRate, weightOn)
-  const p2 = buildPeriod('Period 2', `16–${lastDay} ${monthLabel}`, period2Reports, deductionRate, weightOn)
-
-  const hasTipsData = monthReports.some(r => (r.tipsUsd || 0) > 0)
+  // Worked out while rendering, so weights arriving after the run still count.
+  const rangeLabel = loaded ? (loaded.from === loaded.to ? loaded.from : `${loaded.from} to ${loaded.to}`) : ''
+  const periods = (loaded?.byBranch ?? []).map(({ branch, reports }) => ({
+    branch, reports, period: buildPeriod(branch, rangeLabel, reports, deductionRate, weightOn),
+  }))
+  const reportCount = periods.reduce((s, p) => s + p.reports.length, 0)
+  const hasTipsData = periods.some(p => p.period.totalTipsUsd > 0)
+  const branchNames = periods.map(p => p.branch).join(', ')
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--black)', padding: isMobile ? '1.25rem 1rem 3rem' : '2rem 1.5rem 4rem' }}>
@@ -208,33 +203,16 @@ export default function TipsCalculatorPage() {
             Tips Calculator
           </h1>
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
-            Monthly tip distribution by shift — {deductionPct} deducted, remainder split by shift points
+            Tip distribution by shift — {deductionPct} deducted, remainder split by shift points
+          </p>
+          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.45)', marginTop: '0.5rem' }}>
+            Pay periods are usually the 1st–15th and the 16th–end of the month: pick This month or Last month, then set the days.
+            Each branch keeps its own pot.
           </p>
         </div>
 
         {/* Controls */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem', marginBottom: '2.5rem', maxWidth: '480px' }}>
-          <div>
-            <label style={labelStyle}>Branch</label>
-            {branchOptions.length === 1 ? (
-              <div style={{ ...inp, display: 'inline-block' }}>{branch || branchOptions[0]}</div>
-            ) : (
-              <select value={branch} onChange={e => setChosenBranch(e.target.value)} style={selStyle}>
-                <option value="">— Select —</option>
-                {branchOptions.map(b => <option key={b} value={b}>{b}</option>)}
-              </select>
-            )}
-          </div>
-          <div>
-            <label style={labelStyle}>Month</label>
-            <input
-              type="month"
-              value={month}
-              onChange={e => setMonth(e.target.value)}
-              style={inp}
-            />
-          </div>
-        </div>
+        <ReportRange onRun={r => { void run(r) }} busy={loading} branches={branchOptions} />
 
         {loading && (
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
@@ -246,31 +224,50 @@ export default function TipsCalculatorPage() {
           <p style={{ color: 'var(--red)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>{weightsErr}</p>
         )}
 
-        {!loading && branch && monthReports.length === 0 && (
+        {!loading && loaded && reportCount === 0 && (
           <div style={{
             border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
             color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
-            No EOD reports for {monthLabel} — {branch}.
+            No EOD reports for {rangeLabel} — {branchNames || 'no branch'}.
           </div>
         )}
 
-        {!loading && branch && !hasTipsData && monthReports.length > 0 && (
+        {!loading && loaded && !hasTipsData && reportCount > 0 && (
           <div style={{
             background: 'rgba(var(--brand-secondary-rgb),0.08)', border: '1px solid rgba(var(--brand-secondary-rgb),0.2)',
             borderRadius: '4px', padding: '1rem 1.25rem', marginBottom: '2rem',
             fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'var(--brand-secondary)',
           }}>
-            No tips data found for {monthLabel}. Make sure tips are entered on the EOD form for each day.
+            No tips data found for {rangeLabel}. Make sure tips are entered on the EOD form for each day.
           </div>
         )}
 
-        {!loading && branch && monthReports.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-            <PeriodCard period={p1} />
-            <PeriodCard period={p2} />
-          </div>
+        {!loading && loaded && reportCount > 0 && (
+          <>
+            <ReportDownloads
+              header={reportHeader('Tips', loaded.from, loaded.to, periods.map(p => p.branch), 'cashUp')}
+              sheets={tipSheets(periods)}
+            />
+            <BranchTotals
+              rows={periods.map(({ branch, period }) => ({ branch, totals: {
+                pot: period.totalTipsUsd,
+                deducted: period.deductedUsd,
+                net: period.netTipsUsd,
+                points: period.totalWeightedPoints,
+              } }))}
+              columns={[
+                { key: 'pot', label: 'Pot', money: true },
+                { key: 'deducted', label: 'Deducted', money: true },
+                { key: 'net', label: 'Net', money: true },
+                { key: 'points', label: 'Weighted points' },
+              ]}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+              {periods.map(p => <PeriodCard key={p.branch} period={p.period} />)}
+            </div>
+          </>
         )}
 
       </div>
@@ -407,7 +404,7 @@ function PeriodCard({ period }: { period: PeriodResult }) {
               <>
                 <span />
                 <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', fontWeight: 600, color: 'var(--brand-secondary)', textAlign: 'center' }}>
-                  {period.totalShiftPoints}
+                  {period.totalWeightedPoints}
                 </span>
               </>
             )}

@@ -1,45 +1,141 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+// Past end-of-day reports over a period and branches (UPGRADE.md T7.1b), on
+// the shared report picker. Each figure is the report's own, worked out by
+// computeTotals() at that report's own rate; the branch totals and the file
+// only add up those per-report figures, never a new definition.
+
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useIsMobile } from '@big-cms/shared/useIsMobile'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { BRANCHES } from '@big-cms/shared/branches'
+import { BRAND } from '@big-cms/shared/brand'
+import { todayYmd } from '@big-cms/shared/dates'
+import { addDays } from '@big-cms/shared/reportPeriods'
+import { startLoad } from '@big-cms/shared/startLoad'
+import { isNetworkFailure } from '@big-cms/shared/netErrors'
+import type { FileColumn } from '@big-cms/shared/reportFile'
 import {
-  listEndOfDayReports, computeTotals, formatLbp, formatUsd,
-  type EndOfDayReport,
+  listEndOfDayReportsBetween, computeTotals, formatLbp, formatUsd,
+  type EndOfDayReport, type ComputedTotals,
 } from '@big-cms/shared/endOfDay'
-import { useKeyed } from '@big-cms/shared/useKeyed'
+import { ErrorLine } from '../../../components/ui'
+import { ReportRange, BranchTotals, type RangeChoice } from '../../../components/ui/ReportRange'
+import { ReportDownloads, type ReportSheet } from '../../../components/ui/ReportDownloads'
+import { reportHeader } from '../../reports/files'
 
-const NO_REPORTS: EndOfDayReport[] = []
+interface Row { report: EndOfDayReport; totals: ComputedTotals }
+interface Result { from: string; to: string; branches: string[]; rows: Row[] }
+
+// Each report's OWN rate, not today's. These are historical figures and must
+// not move when the rate does.
+const totalsOf = (r: EndOfDayReport): ComputedTotals => computeTotals(
+  r.cashLbp, r.cashUsd,
+  r.systemLbp, r.systemUsd,
+  r.expenses, r.income,
+  r.exchangeRate,
+)
+
+const round2 = (n: number) => Math.round(n * 100) / 100
+
+const fileColumns: FileColumn<Row>[] = [
+  { label: 'Date', value: x => x.report.date },
+  { label: 'Branch', value: x => x.report.branch },
+  { label: 'Rate (LBP per USD)', value: x => x.report.exchangeRate },
+  { label: 'Counted cash USD', value: x => round2(x.totals.totalCashUsd) },
+  { label: 'Counted cash LBP', value: x => Math.round(x.totals.totalCashLbp) },
+  { label: 'System USD', value: x => round2(Number(x.report.systemUsd) || 0) },
+  { label: 'System LBP', value: x => Math.round(Number(x.report.systemLbp) || 0) },
+  { label: 'Expenses USD', value: x => round2(x.totals.totalExpensesUsd) },
+  { label: 'Income USD', value: x => round2(x.totals.totalIncomeUsd) },
+  { label: 'Tips USD', value: x => round2(Number(x.report.tipsUsd) || 0) },
+  { label: 'Diff USD', value: x => round2(x.totals.differenceUsd) },
+  { label: 'Diff LBP', value: x => Math.round(x.totals.differenceLbp) },
+  { label: 'Submitted by', value: x => x.report.submittedByEmail },
+]
+
+type TotalKey = 'reports' | 'cashUsd' | 'cashLbp' | 'expensesUsd' | 'incomeUsd' | 'tipsUsd'
+const totalColumns: { key: TotalKey; label: string; money?: boolean }[] = [
+  { key: 'reports', label: 'Reports' },
+  { key: 'cashUsd', label: 'Counted USD', money: true },
+  { key: 'cashLbp', label: 'Counted LBP' },
+  { key: 'expensesUsd', label: 'Expenses', money: true },
+  { key: 'incomeUsd', label: 'Income', money: true },
+  { key: 'tipsUsd', label: 'Tips', money: true },
+]
+
+function branchTotals(rows: Row[], branches: string[]) {
+  return branches.map(branch => {
+    const mine = rows.filter(x => x.report.branch === branch)
+    const sum = (f: (x: Row) => number) => mine.reduce((s, x) => s + (f(x) || 0), 0)
+    return {
+      branch,
+      totals: {
+        reports: mine.length,
+        cashUsd: round2(sum(x => x.totals.totalCashUsd)),
+        cashLbp: Math.round(sum(x => x.totals.totalCashLbp)),
+        expensesUsd: round2(sum(x => x.totals.totalExpensesUsd)),
+        incomeUsd: round2(sum(x => x.totals.totalIncomeUsd)),
+        tipsUsd: round2(sum(x => Number(x.report.tipsUsd))),
+      } satisfies Record<TotalKey, number>,
+    }
+  })
+}
 
 export default function EndOfDayHistoryPage() {
   const isMobile = useIsMobile()
   const { checking, role, branchIds } = useRequireRole(SECTION_ACCESS.endOfDayHistory)
 
-  const branchOptions = role === 'admin' ? ['all', ...BRANCHES] : branchIds
-  const defaultBranch = role === 'admin' ? 'all' : (branchIds[0] ?? '')
+  const isAdmin = role === 'admin'
+  const branchKey = (isAdmin ? BRANCHES : branchIds).join(',')
+  const branchOptions = branchKey ? branchKey.split(',') : []
 
-  const [branch,  setBranch]  = useState(defaultBranch)
-  // A manager with one branch gets it chosen, once their role is known.
-  const [seeded, setSeeded] = useState(false)
-  if (!checking && !seeded) {
-    setSeeded(true)
-    if (role !== 'admin' && branchIds.length === 1) setBranch(branchIds[0])
-  }
+  const [result, setResult] = useState<Result | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const seq = useRef(0)
 
-  const reportsFor = useKeyed<EndOfDayReport[]>(branch || null, NO_REPORTS)
-  const { put } = reportsFor
-  const reports = reportsFor.value
-  const loading = reportsFor.loading
+  const run = useCallback(async (range: RangeChoice) => {
+    const mine = branchKey ? branchKey.split(',') : []
+    const chosen = range.branch ? range.branch.split(',').filter(b => mine.includes(b)) : mine
+    const id = ++seq.current
+    setBusy(true); setError('')
+    try {
+      // An admin asking for every branch reads them in one query; anybody
+      // else reads only their own, one branch at a time.
+      const lists = isAdmin && !range.branch
+        ? [await listEndOfDayReportsBetween('all', range.from, range.to)]
+        : await Promise.all(chosen.map(b => listEndOfDayReportsBetween(b, range.from, range.to)))
+      const reports = lists.flat()
+        .filter(r => chosen.includes(r.branch) || (isAdmin && !range.branch))
+        .sort((a, b) => b.date.localeCompare(a.date) || a.branch.localeCompare(b.branch))
+      if (id !== seq.current) return
+      const branches = isAdmin && !range.branch
+        ? [...new Set([...chosen, ...reports.map(r => r.branch)])]
+        : chosen
+      setResult({ from: range.from, to: range.to, branches, rows: reports.map(r => ({ report: r, totals: totalsOf(r) })) })
+    } catch (err) {
+      if (id !== seq.current) return
+      setError(isNetworkFailure(err) ? 'No connection. Try again when the internet is back.' : 'The reports could not be read.')
+    } finally {
+      if (id === seq.current) setBusy(false)
+    }
+  }, [branchKey, isAdmin])
 
+  // The picker's own default, the last seven café days over every branch, is
+  // read as soon as the role is known, as the page always listed on opening.
   useEffect(() => {
-    if (!branch) return
-    listEndOfDayReports(branch as string | 'all')
-      .then(data => put(branch, data))
-      .catch(() => put(branch, NO_REPORTS))
-  }, [branch, put])
+    if (checking) return
+    const today = todayYmd(BRAND.locale.timezone)
+    startLoad(() => run({ from: addDays(today, -6), to: today, branch: '' }))
+  }, [checking, run])
 
   if (checking) return null
+
+  const reports = result?.rows ?? []
+  const sheets: ReportSheet<never>[] = result
+    ? [{ name: 'Reports', columns: fileColumns, rows: result.rows } as unknown as ReportSheet<never>]
+    : []
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--black)', padding: isMobile ? '1.25rem 1rem 3rem' : '2rem 1.5rem 4rem' }}>
@@ -55,56 +151,41 @@ export default function EndOfDayHistoryPage() {
             EOD History
           </h1>
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
-            Past end-of-day reports
+            Past end-of-day reports, filed under the cash-up day they were written for
           </p>
         </div>
 
-        {/* Branch filter */}
-        <div style={{ marginBottom: '2rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-          {branchOptions.map(b => (
-            <button
-              key={b}
-              onClick={() => setBranch(b)}
-              style={{
-                padding: '0.45rem 1rem',
-                borderRadius: '2px', border: 'none', cursor: 'pointer',
-                fontSize: '0.75rem', fontFamily: 'var(--font-inter)',
-                backgroundColor: branch === b ? 'var(--brand-secondary)' : 'rgba(var(--overlay-rgb),0.05)',
-                color: branch === b ? '#000' : 'rgba(var(--offwhite-rgb),0.5)',
-                fontWeight: branch === b ? 600 : 400,
-              }}
-            >
-              {b === 'all' ? 'All Branches' : b}
-            </button>
-          ))}
-        </div>
+        <ReportRange onRun={range => { void run(range) }} busy={busy} branches={branchOptions} />
 
-        {loading && (
+        {error && <ErrorLine>{error}</ErrorLine>}
+
+        {busy && !result && (
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         )}
 
-        {!loading && reports.length === 0 && (
+        {result && reports.length > 0 && (
+          <>
+            <ReportDownloads
+              header={{ ...reportHeader('End of Day History', result.from, result.to, result.branches, 'cashUp'), currencies: ['USD', 'LBP'] }}
+              sheets={sheets} />
+            <BranchTotals rows={branchTotals(result.rows, result.branches)} columns={totalColumns} />
+          </>
+        )}
+
+        {result && reports.length === 0 && (
           <div style={{
             border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
             color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
-            No reports yet for this branch.{' '}
-            <a href="/admin/end-of-day" style={{ color: 'var(--brand-secondary)' }}>Submit the first one →</a>
+            No reports for these days.{' '}
+            <a href="/admin/end-of-day" style={{ color: 'var(--brand-secondary)' }}>Submit one →</a>
           </div>
         )}
 
-        {!loading && reports.length > 0 && isMobile && (
+        {reports.length > 0 && isMobile && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-            {reports.map(r => {
-              // Each report's OWN rate, not today's. These are historical
-              // figures and must not move when the rate does.
-              const t = computeTotals(
-                r.cashLbp, r.cashUsd,
-                r.systemLbp, r.systemUsd,
-                r.expenses, r.income,
-                r.exchangeRate,
-              )
+            {reports.map(({ report: r, totals: t }) => {
               const diffLbpColor = t.differenceLbp === 0 ? 'var(--teal)' : t.differenceLbp > 0 ? 'var(--red)' : 'var(--brand-secondary)'
               const diffUsdColor = t.differenceUsd  === 0 ? 'var(--teal)' : t.differenceUsd  > 0 ? 'var(--red)' : 'var(--brand-secondary)'
               return (
@@ -152,7 +233,7 @@ export default function EndOfDayHistoryPage() {
           </div>
         )}
 
-        {!loading && reports.length > 0 && !isMobile && (
+        {reports.length > 0 && !isMobile && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
             {/* Table header */}
             <div style={{
@@ -172,15 +253,7 @@ export default function EndOfDayHistoryPage() {
               <span />
             </div>
 
-            {reports.map(r => {
-              // Each report's OWN rate, not today's. These are historical
-              // figures and must not move when the rate does.
-              const t = computeTotals(
-                r.cashLbp, r.cashUsd,
-                r.systemLbp, r.systemUsd,
-                r.expenses, r.income,
-                r.exchangeRate,
-              )
+            {reports.map(({ report: r, totals: t }) => {
               const diffLbpColor = t.differenceLbp === 0 ? 'var(--teal)' : t.differenceLbp > 0 ? 'var(--red)' : 'var(--brand-secondary)'
               const diffUsdColor = t.differenceUsd  === 0 ? 'var(--teal)' : t.differenceUsd  > 0 ? 'var(--red)' : 'var(--brand-secondary)'
               return (
