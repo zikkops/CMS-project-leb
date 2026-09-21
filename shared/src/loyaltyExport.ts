@@ -96,8 +96,12 @@ export function pointsRow(tx: Record<string, unknown>, opts: LoyaltyOptions): Po
   // THE TRAP: multiplied by the headcount, because that is what the approve
   // path actually did to the balances. And zero unless the status issued
   // anything — a pending submission is a request, not a liability.
-  const issued = status === ISSUING_STATUS ? perPerson * people : 0
-  const reversed = status === REVERSED_STATUS ? perPerson * people : 0
+  // A reversed transaction WAS issued, on its own day: the reversal is a
+  // movement of its own, on the day it happened (reversalRow(), T7.14, gap
+  // 19). Reading the status alone made the issue vanish from its day and the
+  // reversal land on the original day.
+  const issued = status === ISSUING_STATUS || status === REVERSED_STATUS ? perPerson * people : 0
+  const reversed = 0
 
   return {
     id: str(tx.id),
@@ -114,6 +118,28 @@ export function pointsRow(tx: Record<string, unknown>, opts: LoyaltyOptions): Po
     submittedBy: str(tx.submittedBy),
     approvedBy: str(tx.approvedBy),
   }
+}
+
+/** A reversal as its own movement, on the day it happened (`reversedAt`), or null when the transaction was never reversed. */
+export function reversalRow(tx: Record<string, unknown>, opts: LoyaltyOptions): PointsRow | null {
+  if (str(tx.status) !== REVERSED_STATUS) return null
+  const issue = pointsRow(tx, opts)
+  return {
+    ...issue,
+    id: `${issue.id}:reversal`,
+    // A reversal from before reversedAt was recorded is dated with its issue, never a guess.
+    day: dayOf(tx.reversedAt ?? tx.createdAt, opts.timeZone),
+    type: 'reversal',
+    issued: 0,
+    reversed: issue.issued,
+    approvedBy: str(tx.reversedBy),
+  }
+}
+
+/** Every movement a transaction made: its issue, and its reversal when it had one. */
+export function pointRows(tx: Record<string, unknown>, opts: LoyaltyOptions): PointsRow[] {
+  const back = reversalRow(tx, opts)
+  return back ? [pointsRow(tx, opts), back] : [pointsRow(tx, opts)]
 }
 
 export function redemptionRow(r: Record<string, unknown>, opts: LoyaltyOptions): RedemptionRow {
@@ -178,11 +204,73 @@ export interface LoyaltyExport {
 export function buildLoyaltyExport(
   transactions: readonly Record<string, unknown>[],
   redemptions: readonly Record<string, unknown>[],
-  opts: LoyaltyOptions,
+  opts: LoyaltyOptions & { from?: string; to?: string },
 ): LoyaltyExport {
-  const p = transactions.map(t => pointsRow(t, opts)).sort((a, b) => a.day.localeCompare(b.day))
-  const r = redemptions.map(x => redemptionRow(x, opts)).sort((a, b) => a.day.localeCompare(b.day))
+  // Each movement is kept only when ITS day is in the range: an issue last
+  // month reversed this month shows the reversal only.
+  const inRange = (day: string) => (!opts.from || day >= opts.from) && (!opts.to || day <= opts.to)
+  const p = transactions.flatMap(t => pointRows(t, opts)).filter(x => inRange(x.day)).sort((a, b) => a.day.localeCompare(b.day))
+  const r = redemptions.map(x => redemptionRow(x, opts)).filter(x => inRange(x.day)).sort((a, b) => a.day.localeCompare(b.day))
   return { points: p, redemptions: r, days: loyaltyDayRows(p, r) }
+}
+
+export interface LoyaltyMovement { issued: number; reversed: number; spent: number; net: number }
+
+export interface LoyaltyLiability {
+  byBranch: { branch: string; movement: LoyaltyMovement }[]
+  movement: LoyaltyMovement
+  /**
+   * Points owed at the end of the period, for the whole scheme: balances are
+   * a member's, not a branch's. Worked back from today's balances through the
+   * ledger, so a balance changed outside the ledger (a manual correction)
+   * moves both ends equally.
+   */
+  closing: number
+  opening: number
+  /** closing × the point value, or null when no value is set. */
+  closingUsd: number | null
+  openingUsd: number | null
+  pointValueUsd: number | null
+  members: number
+}
+
+const movementOf = (days: readonly LoyaltyDayRow[]): LoyaltyMovement => {
+  const m = { issued: 0, reversed: 0, spent: 0, net: 0 }
+  for (const d of days) { m.issued += d.issued; m.reversed += d.reversed; m.spent += d.spent }
+  m.net = m.issued - m.reversed - m.spent
+  return m
+}
+
+/**
+ * The points liability over a period (UPGRADE.md T7.14): issued, reversed and
+ * spent per branch, and the balance owed at each end. `balanceNow` is every
+ * member's points today; `after` is the ledger from the day after the period
+ * up to today, so closing = today's balance − what moved since.
+ */
+export function loyaltyLiability(input: {
+  period: LoyaltyExport
+  after: LoyaltyExport | null
+  balanceNow: number
+  members: number
+  branches: readonly string[]
+  pointValueUsd: number
+}): LoyaltyLiability {
+  const movement = movementOf(input.period.days.filter(d => input.branches.includes(d.branch)))
+  // The whole scheme, every branch: what moved since the period, and in it.
+  const since = input.after ? movementOf(input.after.days).net : 0
+  const whole = movementOf(input.period.days).net
+  const closing = input.balanceNow - since
+  const opening = closing - whole
+  const value = input.pointValueUsd > 0 && input.pointValueUsd <= 1 ? input.pointValueUsd : null
+  const usd = (points: number) => (value === null ? null : Math.round(points * value * 100) / 100)
+  return {
+    byBranch: input.branches.map(branch => ({ branch, movement: movementOf(input.period.days.filter(d => d.branch === branch)) })),
+    movement,
+    closing, opening,
+    closingUsd: usd(closing), openingUsd: usd(opening),
+    pointValueUsd: value,
+    members: input.members,
+  }
 }
 
 /** Column headings, in the order the sheets are written. Shared with the UI. */

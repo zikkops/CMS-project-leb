@@ -855,10 +855,11 @@ Principles for every task here:
   It reconciles with the weekly orders' fulfilment, and feeds T7.6's input VAT
   and T7.12's purchases.
   *Done: /admin/reports/purchases: every received delivery (the VAT report's own rows) per supplier and branch, invoice number and date, net / VAT / total in own currency plus USD and LBP (USD invoices in lira at the business rate, marked), deliveries with no date or no order counted; weekly orders booked against, arrived in full / in part / not yet across every delivery for the order. Supplier invoice date added to receiving (gap 21). verify:export 164, verify:delivery-math 46, verify:hub 224.*
-- [ ] **T7.14 Loyalty liability.** The points ledger (`loyaltyExport.ts`) as a
+- [x] **T7.14 Loyalty liability.** The points ledger (`loyaltyExport.ts`) as a
   report with the picker: points issued, reversed and redeemed, and the
   outstanding balance at the period's end, valued at the redemption rate if
   the owner sets one (T7.0). Points are a liability, like tips.
+  *Done: /admin/reports/loyalty (gated loyalty): issued, reversed and spent per branch, each movement on its own day; what the whole scheme owes at each end, worked back from today's balances through the ledger; valued at the new Business Settings 'Value of a loyalty point' (pointValueUsd, 0 = not set, OWNER TO CONFIRM a value). Gap 19: a reversal is its own movement on reversedAt, the issue stays on its day. verify:export 173.*
 - [ ] **T7.15 The accountant's journal export** (plain CSV, T7.0). One
   download per period and branch, as double-entry journal lines mapped to the
   chart of accounts:

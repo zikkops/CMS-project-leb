@@ -416,9 +416,9 @@ in USD at the cost stored with the count (`countVariance()` in
     - The combo line carries the sales but has no recipe.
     - So the cost percentage comes out **higher** than the truth.
     - Fix: **T7.8**.
-19. **A loyalty reversal removes its original issue.** The issue disappears
-    from its day, and the reversal shows on the original day. Net movement is
-    understated, and there is no closing balance or value.
+19. **FIXED 21 Sep 2026 (T7.14). A loyalty reversal removed its original issue.** Now a reversed transaction is still issued on its own day, and `reversalRow()` makes the reversal its own movement on `reversedAt`. The ledger reads transactions issued OR reversed in the range, and keeps each movement by its own day. `/admin/reports/loyalty` (gated `loyalty`) shows issued, reversed and spent per branch, and what the whole scheme owes at each end: today's balances worked back through the ledger. It is valued at the new Business Settings point value (`pointValueUsd`, 0 = not set, so points only). Was: the issue disappeared
+    from its day, and the reversal showed on the original day. Net movement was
+    understated, and there was no closing balance or value.
     - Fix: **T7.14**.
 20. **Weighted average cost is one figure across branches**, and there was no
     inventory valuation. **Valuation FIXED 21 Sep 2026 (T7.12):** `/admin/reports/inventory` reconciles each supply between its last submitted count before the period and its last in it (the periodic method). Movements in between are received (on the day stock moved, `stockAppliedAt`), transfers (every one recorded in `stockTransfers` with its unit cost from 21 Sep 2026), used (recipe snapshots of what sold) and waste. Expected closing, the difference nothing explains, and COGS = opening + purchases ± transfers − closing, each at its own snapshot cost; unknown cost is unknown, never $0. **Still open:** the stock value NOW uses the one cross-branch average; a per-branch average is a data-model change.

@@ -408,8 +408,12 @@ console.log('\nonly what actually moved a balance counts')
   eq('a rejected one issues nothing', L.pointsRow(tx({ status: 'rejected' }), OPTS).issued, 0)
   eq('a cancelled one issues nothing', L.pointsRow(tx({ status: 'cancelled' }), OPTS).issued, 0)
 
-  const back = L.pointsRow(tx({ status: 'reversed', userId: ['u1', 'u2'] }), OPTS)
-  eq('a refunded check reverses, in its own column', [back.issued, back.reversed], [0, 20])
+  const reversedTx = tx({ status: 'reversed', userId: ['u1', 'u2'], reversedAt: '2026-09-15T10:00:00.000Z' })
+  const back = L.pointRows(reversedTx, OPTS)
+  eq('THE TRAP (gap 19): a reversed transaction was still issued, on its own day', [back[0].day, back[0].issued, back[0].reversed], ['2026-09-12', 20, 0])
+  eq('...and the reversal is its own movement, on the day it happened', [back[1].day, back[1].type, back[1].issued, back[1].reversed], ['2026-09-15', 'reversal', 0, 20])
+  eq('a reversal from before reversedAt was kept is dated with its issue', L.reversalRow(tx({ status: 'reversed' }), OPTS).day, '2026-09-12')
+  eq('nothing reversed, no reversal', L.reversalRow(tx(), OPTS), null)
 }
 
 console.log('\na redemption counts when it is handed over')
@@ -432,7 +436,7 @@ console.log('\nwhat the liability did, by day and branch')
     [
       tx({ id: 'a', userId: ['u1', 'u2'] }),                                   // +20
       tx({ id: 'b', status: 'pending' }),                                      // nothing
-      tx({ id: 'c', status: 'reversed' }),                                     // −10
+      tx({ id: 'c', status: 'reversed' }),                                     // +10 issued and −10 reversed, both the 12th
       tx({ id: 'd', branchId: 'Second' }),                                     // +10, other branch
       tx({ id: 'e', createdAt: '2026-09-12T21:00:00.000Z' }),                  // next café day
     ],
@@ -444,13 +448,34 @@ console.log('\nwhat the liability did, by day and branch')
     ['2026-09-12 Main', '2026-09-12 Second', '2026-09-13 Main'])
 
   const main = built.days[0]
-  eq('issued on the 12th at Main', main.issued, 20)
+  eq('issued on the 12th at Main', main.issued, 30)
   eq('...reversed', main.reversed, 10)
   eq('...spent', main.spent, 50)
-  eq('net is issued minus reversed minus spent', main.net, -40)
-  eq('every transaction is counted, even the ones that moved nothing', main.transactions, 3)
+  eq('net is issued minus reversed minus spent', main.net, -30)
+  eq('every movement is counted, even the ones that moved nothing', main.transactions, 4)
   eq('and both redemptions are listed', main.redemptions, 2)
   eq('the after-midnight one is its own day', built.days[2].issued, 10)
+}
+
+console.log('\nthe loyalty liability: each movement on its day, and what is owed (UPGRADE.md T7.14)')
+{
+  // Issued in August, reversed on 15 September: September shows the reversal only.
+  const lastMonth = tx({ id: 'old', createdAt: '2026-08-20T10:00:00.000Z', status: 'reversed', reversedAt: '2026-09-15T10:00:00.000Z' })
+  const sept = L.buildLoyaltyExport([lastMonth, tx({ id: 'n' })], [red()], { ...OPTS, from: '2026-09-01', to: '2026-09-30' })
+  eq('a movement is in the period when ITS day is', sept.points.map(p => [p.id, p.issued, p.reversed]), [['n', 10, 0], ['old:reversal', 0, 10]])
+  const liability = L.loyaltyLiability({
+    period: sept,
+    // After the period: 30 issued at Main, 5 spent.
+    after: { points: [], redemptions: [], days: [{ day: '2026-10-02', branch: 'Main', issued: 30, reversed: 0, spent: 5, net: 25, transactions: 1, redemptions: 1 }] },
+    balanceNow: 1000, members: 12, branches: ['Main'], pointValueUsd: 0.01,
+  })
+  eq('owed at the end = today\'s balances − what moved since', liability.closing, 975)
+  eq('owed at the start = the end − the period\'s movement', [liability.movement.net, liability.opening], [-50, 1025])
+  eq('valued at the point value when one is set', [liability.closingUsd, liability.openingUsd], [9.75, 10.25])
+  const unset = L.loyaltyLiability({ period: sept, after: null, balanceNow: 1000, members: 12, branches: ['Main'], pointValueUsd: 0 })
+  eq('THE TRAP: with no value set, points only, never $0', [unset.closingUsd, unset.pointValueUsd, unset.closing], [null, null, 1000])
+  const two = L.loyaltyLiability({ period: L.buildLoyaltyExport([tx(), tx({ id: 's', branchId: 'Second' })], [], OPTS), after: null, balanceNow: 100, members: 2, branches: ['Main'], pointValueUsd: 0 })
+  eq('one branch\'s movements, but the scheme\'s balance', [two.movement.issued, two.opening], [10, 80])
 }
 
 console.log('\nthe loyalty sheets are declared once')

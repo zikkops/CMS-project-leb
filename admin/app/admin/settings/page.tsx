@@ -212,6 +212,7 @@ export default function BusinessSettingsPage() {
   const [marginFood, setMarginFood] = useState('')
   const [marginDrink, setMarginDrink] = useState('')
   const [service, setService] = useState('')
+  const [pointValue, setPointValue] = useState('')
   const [nextVat, setNextVat] = useState('')
   const [nextVatFrom, setNextVatFrom] = useState('')
 
@@ -240,6 +241,7 @@ export default function BusinessSettingsPage() {
     setMarginFood(String(+(settings.targetMarginFood * 100).toFixed(4)))
     setMarginDrink(String(+(settings.targetMarginDrink * 100).toFixed(4)))
     setService(String(+(settings.serviceChargeRate * 100).toFixed(4)))
+    setPointValue(String(settings.pointValueUsd))
     setNextVat(settings.vatNext ? String(+(settings.vatNext.rate * 100).toFixed(4)) : '')
     setNextVatFrom(settings.vatNext?.from ?? '')
   }
@@ -270,6 +272,7 @@ export default function BusinessSettingsPage() {
     Number(marginFood) / 100 !== settings.targetMarginFood ||
     Number(marginDrink) / 100 !== settings.targetMarginDrink ||
     Number(service) / 100 !== settings.serviceChargeRate ||
+    Number(pointValue) !== settings.pointValueUsd ||
     JSON.stringify(nextVatPayload) !== JSON.stringify(settings.vatNext)
 
   async function save() {
@@ -293,6 +296,7 @@ export default function BusinessSettingsPage() {
           targetMarginFood:  Number(marginFood) / 100,
           targetMarginDrink: Number(marginDrink) / 100,
           serviceChargeRate: Number(service) / 100,
+          pointValueUsd:     Number(pointValue),
           vatNext:           nextVatPayload,
         })
       )
@@ -399,6 +403,13 @@ export default function BusinessSettingsPage() {
             value={service} onChange={setService} isMobile={isMobile}
             hint={`Added to each new check while “Service Charge” is switched on (Settings → Features), after any discount, with VAT inside it like the prices. A check keeps the rate it opened with, and a manager can take it off a check before any payment. ${
               Number(service) > 0 ? `At ${Number(service)}%, a $20.00 bill becomes ${(20 * (1 + Number(service) / 100)).toFixed(2)}.` : 'Zero means none.'
+            }`}
+          />
+          <RateField
+            label="Value of a loyalty point" suffix="$" step="0.001"
+            value={pointValue} onChange={setPointValue} isMobile={isMobile}
+            hint={`What one point is worth when it is spent, for valuing the points still owed on the Loyalty Liability report. ${
+              Number(pointValue) > 0 ? `At $${Number(pointValue)}, 1,000 points are owed as $${(1000 * Number(pointValue)).toFixed(2)}.` : 'Zero means not set: the report shows points only.'
             }`}
           />
           <PrefixField

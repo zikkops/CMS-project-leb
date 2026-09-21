@@ -90,6 +90,12 @@ export interface BusinessSettings {
    */
   serviceChargeRate: number
   /**
+   * What one loyalty point is worth in dollars, for valuing the points
+   * liability (UPGRADE.md T7.14). 0 is not set: the report then shows points
+   * only, never a guessed value.
+   */
+  pointValueUsd: number
+  /**
    * The letters an invoice number starts with, e.g. the AC of
    * AC-Q3-082026-0001.
    *
@@ -112,7 +118,7 @@ export interface BusinessSettings {
 export type RateKey =
   | 'vatRate' | 'exchangeRate' | 'tipsDeductionRate'
   | 'staffDiscountFood' | 'staffDiscountDrink'
-  | 'targetMarginFood' | 'targetMarginDrink' | 'serviceChargeRate'
+  | 'targetMarginFood' | 'targetMarginDrink' | 'serviceChargeRate' | 'pointValueUsd'
 
 /** What the app used before any of this was editable. */
 export const SETTINGS_DEFAULTS: BusinessSettings = {
@@ -133,6 +139,8 @@ export const SETTINGS_DEFAULTS: BusinessSettings = {
   targetMarginDrink: 0.8,
   // None until the owner sets one: a charge nobody chose must never appear on a bill.
   serviceChargeRate: 0,
+  // Not set until the owner says what a point is worth.
+  pointValueUsd: 0,
 }
 
 // Bounds, shared with the route so the form and the server agree on what is
@@ -152,6 +160,8 @@ export const SETTINGS_LIMITS: Record<RateKey, { min: number; max: number }> = {
   targetMarginDrink: { min: 0, max: 0.95 },
   // serviceRate() in checks.ts ignores anything above 30% as well.
   serviceChargeRate: { min: 0, max: 0.3 },
+  // A point worth more than a dollar is a typo for a percentage, not a scheme.
+  pointValueUsd:     { min: 0, max: 1 },
 }
 
 /**
@@ -230,6 +240,7 @@ export function parseSettings(data: Record<string, unknown> | undefined): Busine
     targetMarginFood:  readRate(data?.targetMarginFood, 'targetMarginFood'),
     targetMarginDrink: readRate(data?.targetMarginDrink, 'targetMarginDrink'),
     serviceChargeRate: readRate(data?.serviceChargeRate, 'serviceChargeRate'),
+    pointValueUsd:     readRate(data?.pointValueUsd, 'pointValueUsd'),
     invoicePrefix:     readInvoicePrefix(data?.invoicePrefix),
   }
 }
