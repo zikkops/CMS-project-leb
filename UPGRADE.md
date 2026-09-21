@@ -678,7 +678,7 @@ Principles for every task here:
   `verify:accounting`), with mutations caught by name. The run on
   `npm run seed:pos` data is part of the check, not optional.
 
-- [ ] **T7.0 The reporting audit, written down.**
+- [x] **T7.0 The reporting audit, written down.**
   Produce `docs/reporting.md`:
   - every figure the system reports: where it is computed, its definition,
     which reports show it, and whether it reconciles
@@ -711,6 +711,7 @@ Principles for every task here:
     on an admin "Accounting codes" page, stored in `appSettings/accounting`
     behind a route, so the accountant can put their own numbers in without a
     code change.
+  *Done: Done 21 Sep 2026: docs/reporting.md. It lists every reported figure with where it is computed, its definition, how it is dated and which currency and branch it covers. It also sets out 30 gaps against the definitions, each with its evidence and the task that fixes it, and 14 reconciliations marked holds, breaks or cannot be checked. The owner's answers and the defaults are recorded above. The audit found a real bug, now fixed (commit 736da7a): End of Day saves threw away expense and income lines (no name, $0) and every attendee's shift, so an Off day earned a tips share. The demo project's 7 reports were scanned read-only and none was affected; reports in any other project saved since 29 Aug should be checked. Other findings for the tasks: Food Cost 'Till sales' is drawer cash, and a day saved from the form counts twice; card taken in lira drops out of the export; there are two day rules (midnight for sales, 10:00 for drawers and End of Day); and combos push theoretical food cost up.*
 - [ ] **T7.1 One period and branch picker for every report.** Promote
   `ReportRange` (`admin/app/admin/reports/ReportRange.tsx`) to the admin UI
   kit:
