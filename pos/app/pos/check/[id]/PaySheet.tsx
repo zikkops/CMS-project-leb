@@ -16,10 +16,11 @@
 import { useEffect, useState } from 'react'
 import { checkTotals, describeLine, lineTotal, type Check } from '@big-cms/shared/checks'
 import {
-  applyPayment, balance, fillAmount, CASH_LBP_STEP,
+  applyPayment, balance, fillAmount, tipProblem, CASH_LBP_STEP,
   type PayCurrency, type Tender,
 } from '@big-cms/shared/payments'
 import { splitEvenly, sharesByPerson, MAX_SPLIT_PEOPLE } from '@big-cms/shared/splits'
+import { useFeature } from '../../../lib/useTillSettings'
 import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import { payCheck } from '../../../lib/usePos'
 import { GOOD, GOOD_RGB, PosButton, Chip, Sheet } from '../../../lib/posUi'
@@ -206,6 +207,9 @@ export default function PaySheet({
   const [tender, setTender] = useState<Tender>('cash')
   const [currency, setCurrency] = useState<PayCurrency>('USD')
   const [amount, setAmount] = useState('')
+  // A tip on the card (UPGRADE.md T3.9), in dollars, on top of the amount.
+  const { on: cardTipsOn } = useFeature('cardTips')
+  const [tip, setTip] = useState('')
   const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -229,14 +233,19 @@ export default function PaySheet({
     setAmount('')
   }, [check.payments, pendingKey])
 
-  const req = { tender, currency, amount: Number(amount) }
-  const preview = amount === '' ? null : applyPayment(due, payments, rate, req)
+  const tipping = cardTipsOn && tender === 'card' && currency === 'USD'
+  const req = { tender, currency, amount: Number(amount), ...(tipping && Number(tip) > 0 ? { tipUsd: Number(tip) } : {}) }
+  const paid = amount === '' ? null : applyPayment(due, payments, rate, req)
+  const tipIssue = tipProblem(req)
+  // The tip is checked with the payment, so Take stays off until both are right.
+  const preview = paid && paid.ok && tipIssue ? { ...paid, ok: false as const, reason: tipIssue } : paid
 
   function chooseTender(t: Tender, c: PayCurrency) {
     if (locked) return
     setTender(t)
     setCurrency(c)
     setAmount('')
+    setTip('')
     setError('')
   }
 
@@ -272,6 +281,7 @@ export default function PaySheet({
       setPendingKey(null)
       setChange({ usd: r.payment.changeUsd, lbp: r.payment.changeLbp })
       setAmount('')
+      setTip('')
     } catch (err) {
       if (isNetworkFailure(err)) {
         // No answer: it may or may not have been taken. The key is kept, so
@@ -323,6 +333,7 @@ export default function PaySheet({
                 <span>
                   {p.tender === 'cash' ? 'Cash' : 'Card'}{' '}
                   {p.currency === 'USD' ? usd(p.amount) : lbp(p.amount)}
+                  {(p.tipUsd ?? 0) > 0 && <span style={{ color: 'rgba(var(--offwhite-rgb),0.45)' }}> + {usd(p.tipUsd ?? 0)} tip</span>}
                 </span>
                 {(p.changeUsd > 0 || p.changeLbp > 0) && (
                   <span style={{ color: 'rgba(var(--offwhite-rgb),0.45)' }}>
@@ -380,6 +391,19 @@ export default function PaySheet({
               />
               <PosButton icon={faEquals} label="Exact" tone="quiet" disabled={locked} onClick={exact} />
             </div>
+            {tipping && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.6rem', fontSize: '0.9rem', color: 'rgba(var(--offwhite-rgb),0.7)' }}>
+                Tip on the card
+                <input value={tip} disabled={locked} inputMode="decimal" placeholder="$0"
+                  onChange={e => { if (!locked) { setTip(e.target.value.replace(/[^0-9.]/g, '')); setError('') } }}
+                  style={{ ...tap, flex: 1, backgroundColor: '#0a0a0a', color: 'var(--offwhite)', border: '1px solid rgba(255,255,255,0.14)', cursor: 'text', fontSize: '1rem' }} />
+              </label>
+            )}
+            {tipping && Number(tip) > 0 && !tipIssue && Number(amount) > 0 && (
+              <p style={{ fontSize: '0.82rem', marginTop: '0.4rem', color: 'rgba(var(--offwhite-rgb),0.55)' }}>
+                Charge the card {usd(Number(amount) + Number(tip))}: {usd(Number(amount))} for the bill and {usd(Number(tip))} to the tips pool.
+              </p>
+            )}
 
             {preview && (
               <p style={{

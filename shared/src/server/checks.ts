@@ -24,7 +24,7 @@ import {
   type Check, type CheckLine, type LineSource, type LineDiscount, type CheckDiscount,
 } from '../checks'
 import {
-  applyPayment, balance, PAYMENT_KEY_PATTERN,
+  applyPayment, balance, tipProblem, PAYMENT_KEY_PATTERN,
   type Payment, type PaymentRequest, type Tender, type PayCurrency,
 } from '../payments'
 import { serverFeatureOn } from './features'
@@ -315,6 +315,7 @@ export function parsePaymentRequest(body: Record<string, unknown>): PaymentReque
     tender: String(body.tender ?? '') as Tender,
     currency: String(body.currency ?? '') as PayCurrency,
     amount: Number(body.amount),
+    ...(body.tipUsd !== undefined && body.tipUsd !== null && body.tipUsd !== '' ? { tipUsd: Number(body.tipUsd) } : {}),
   }
 }
 
@@ -1089,6 +1090,7 @@ export async function addPayment(
   // Outside the transaction: only the first payment uses it, and it is not
   // part of what this write has to be consistent with.
   const { exchangeRate } = await readSettings()
+  const cardTipsOn = (req.tipUsd ?? 0) > 0 ? await serverFeatureOn('cardTips') : false
 
   return db.runTransaction(async tx => {
     const check = await readCheck(tx, checkId)
@@ -1125,6 +1127,12 @@ export async function addPayment(
 
     const outcome = applyPayment(due, payments, rate, req)
     if (!outcome.ok) throw new HttpError(400, outcome.reason)
+    // A tip on the card (UPGRADE.md T3.9): its own field, never part of the
+    // amount, so the bill, the change and the drawer are exactly as without it.
+    const tip = req.tipUsd ?? 0
+    if (tip > 0 && !cardTipsOn) throw new HttpError(403, 'Tips on card are switched off.')
+    const tipIssue = tipProblem(req)
+    if (tipIssue) throw new HttpError(400, tipIssue)
 
     const payment: Payment = {
       key: key ?? randomUUID(),
@@ -1135,6 +1143,7 @@ export async function addPayment(
       changeUsd: outcome.changeUsd,
       changeLbp: outcome.changeLbp,
       changeRounding: outcome.changeRounding,
+      ...(tip > 0 ? { tipUsd: tip } : {}),
       // Not serverTimestamp(): Firestore refuses one inside an array.
       at: Timestamp.now(),
       by: caller.uid,

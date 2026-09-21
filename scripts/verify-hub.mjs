@@ -364,6 +364,9 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
     [again1.count, again1.stations, again2.count, reprinted.reprints, reprinted.reprintRequestedAt instanceof Timestamp], [1, ['Kitchen'], 1, 2, true])
   await rejects('a check with no kitchen ticket has nothing to print again', () => T.reprintTickets(staff, { checkId: 'no-such-check' }), e => e.status === 404)
 
+  // A tip on the card (UPGRADE.md T3.9) needs its switch; off, nothing is taken.
+  await rejects('a card tip with the switch off is refused, and nothing is taken',
+    () => C.addPayment(staff, checkId, C.parsePaymentRequest({ tender: 'card', currency: 'USD', amount: 5, tipUsd: 1 }), 'pay-tip-0001'), e => e.status === 403)
   const pay = C.parsePaymentRequest({ tender: 'cash', currency: 'USD', amount: 21 })
   const paid = await C.addPayment(staff, checkId, pay, 'pay-00000001')
   const repaid = await C.addPayment(staff, checkId, pay, 'pay-00000001')

@@ -55,6 +55,12 @@ export interface EndOfDayReport {
   systemLbp:       number
   systemUsd:       number
   tipsUsd:         number
+  /**
+   * Tips added on cards at the till that day (UPGRADE.md T3.9), worked out by
+   * the server when the report is saved, never typed. The tips pool adds them
+   * to `tipsUsd`, the jar. Absent on reports from before, and without payment.
+   */
+  cardTipsUsd?:    number
   expenses:        LineEntry[]
   income:          LineEntry[]
   attendance:      AttendanceEntry[]

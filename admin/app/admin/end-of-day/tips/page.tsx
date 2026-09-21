@@ -64,7 +64,8 @@ function buildPeriod(
   // version did not: it multiplied an unrounded per-point figure per person
   // and let the remainder evaporate.
   const d = distributeTips(
-    reports.reduce((s, r) => s + (Number(r.tipsUsd) || 0), 0),
+    // The jar, and what was tipped on cards at the till (UPGRADE.md T3.9).
+    reports.reduce((s, r) => s + (Number(r.tipsUsd) || 0) + (Number(r.cardTipsUsd) || 0), 0),
     deductionRate,
     reports.flatMap(r => r.attendance.map(a => ({ name: a.name, shift: a.shift }))),
   )

@@ -18,7 +18,7 @@
 // rule: a drawer that counts one currency approximately is a drawer nobody
 // trusts.)
 
-import type { Payment } from './payments'
+import { cardTipsOf, type Payment } from './payments'
 
 // Moved here from endOfDay.ts, which re-exports them: that module imports the
 // Firebase client, and these have to be usable where it cannot go.
@@ -42,7 +42,7 @@ export function countedCash(lbp: DenomCount, usd: DenomCount): Money2 {
   return { usd: add(USD_DENOMS, usd), lbp: add(LBP_DENOMS, lbp) }
 }
 
-export type DrawerPayment = Pick<Payment, 'tender' | 'currency' | 'amount' | 'changeUsd' | 'changeLbp'>
+export type DrawerPayment = Pick<Payment, 'tender' | 'currency' | 'amount' | 'changeUsd' | 'changeLbp'> & Partial<Pick<Payment, 'tipUsd'>>
 
 export interface Refund {
   /** Cash that goes back out of the drawer, per currency. Can be negative in one currency — see refundOf(). */
@@ -140,6 +140,8 @@ export interface DrawerTotals {
   refunds: Money2
   /** Charged to cards. Never in the drawer; shown so the Z report is the whole shift. */
   card: Money2
+  /** Tips added on cards (T3.9), in dollars: for the tips pool, never in the drawer. Absent on older totals. */
+  cardTips?: number
   /** Cash that is not a sale (T3.1). Absent on totals stored before it existed: read with ?? zero. */
   paidOuts?: Money2
   payIns?: Money2
@@ -191,6 +193,7 @@ export function drawerTotals(
     change: round(t.change),
     refunds: round(t.refunds),
     card: round(t.card),
+    cardTips: cardTipsOf(payments),
     paidOuts: round(t.paidOuts),
     payIns: round(t.payIns),
     safeDrops: round(t.safeDrops),
@@ -215,6 +218,8 @@ export interface DaySystem {
   expected: Money2
   /** The same, as End of Day's "system" figure: LBP at the report's rate. */
   systemLbp: number
+  /** Tips added on cards in the day's shifts (T3.9): for the tips pool, not the drawer. */
+  cardTipsUsd: number
 }
 
 /**
@@ -231,7 +236,7 @@ export interface DaySystem {
  * always compared in. The per-currency figure is returned alongside so the
  * form can show what the drawers held, not just the conversion.
  */
-export function daySystem(shifts: readonly { expected: Money2; open: boolean }[], rate: number): DaySystem {
+export function daySystem(shifts: readonly { expected: Money2; open: boolean; cardTips?: number }[], rate: number): DaySystem {
   const usd = shifts.reduce((s, x) => s + x.expected.usd, 0)
   const lbp = shifts.reduce((s, x) => s + x.expected.lbp, 0)
   return {
@@ -239,6 +244,7 @@ export function daySystem(shifts: readonly { expected: Money2; open: boolean }[]
     open: shifts.filter(x => x.open).length,
     expected: { usd: cents(usd), lbp: Math.round(lbp) },
     systemLbp: Math.round(usd * rate + lbp),
+    cardTipsUsd: cents(shifts.reduce((s, x) => s + (x.cardTips ?? 0), 0)),
   }
 }
 

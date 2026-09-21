@@ -84,6 +84,11 @@ export const FEATURES = {
   serviceCharge: {
     label: 'Service Charge', group: 'Operations', requires: ['pos'], defaultEnabled: false,
   },
+  // A tip added on a card payment (UPGRADE.md T3.9): to the tips pool, never
+  // the drawer. Needs Take Payment.
+  cardTips: {
+    label: 'Tips on Card', group: 'Operations', requires: ['payments'], defaultEnabled: false,
+  },
   // A receipt emailed from the till (UPGRADE.md T3.7). Needs RESEND_API_KEY on
   // the server; the address is never kept.
   emailReceipts: {

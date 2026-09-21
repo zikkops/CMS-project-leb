@@ -287,6 +287,30 @@ eq('"Other" needs a note saying what it was', [typeof D.movementProblem({ ...ok,
 eq('an unknown kind is refused', typeof D.movementProblem({ ...ok, kind: 'gift' }), 'string')
 eq('a kind\'s name on Object is not a kind', typeof D.movementProblem({ ...ok, kind: 'toString' }), 'string')
 
+console.log('\ntips on card — to the tips pool, never the drawer (T3.9)')
+{
+  const cardUsd = { tender: 'card', currency: 'USD', amount: 20 }
+  eq('a $3 tip on a $20 card: fine', P.tipProblem({ ...cardUsd, tipUsd: 3 }), null)
+  eq('no tip at all is always fine, on any payment', [P.tipProblem({ tender: 'cash', currency: 'LBP', amount: 1 }), P.tipProblem({ ...cardUsd, tipUsd: 0 })], [null, null])
+  eq('THE TRAP: a tip on cash, on a lira card, negative, a fraction of a cent, or absurd is refused',
+    [{ tender: 'cash', currency: 'USD', amount: 20, tipUsd: 2 }, { tender: 'card', currency: 'LBP', amount: 895_000, tipUsd: 2 },
+      { ...cardUsd, tipUsd: -1 }, { ...cardUsd, tipUsd: 1.005 }, { ...cardUsd, tipUsd: 600 }, { ...cardUsd, tipUsd: 45 }].map(r => typeof P.tipProblem(r)),
+    ['string', 'string', 'string', 'string', 'string', 'string'])
+  const withTips = [
+    { tender: 'card', currency: 'USD', amount: 20, changeUsd: 0, changeLbp: 0, tipUsd: 3 },
+    { tender: 'card', currency: 'USD', amount: 10, changeUsd: 0, changeLbp: 0, tipUsd: 1.5 },
+    { tender: 'cash', currency: 'USD', amount: 20, changeUsd: 5, changeLbp: 0 },
+  ]
+  eq('card tips add up; cash payments carry none', P.cardTipsOf(withTips), 4.5)
+  const tipped = D.drawerTotals(float, withTips)
+  eq('THE DRAWER: tips on cards change nothing it should hold', [tipped.expected, tipped.card], [D.drawerTotals(float, withTips.map(({ tipUsd: _t, ...p }) => p)).expected, { usd: 30, lbp: 0 }])
+  eq('...and are reported beside it for the tips pool', tipped.cardTips, 4.5)
+  eq('the day adds up each shift\'s card tips', D.daySystem([{ expected: float, open: false, cardTips: 4.5 }, { expected: float, open: true, cardTips: 2 }], 89_500).cardTipsUsd, 6.5)
+  eq('a shift from before card tips counts as none', D.daySystem([{ expected: float, open: false }], 89_500).cardTipsUsd, 0)
+  eq('a card tip never pays off the bill: $20 card with a $3 tip on a $20 bill settles exactly',
+    P.applyPayment(20, [], 89_500, { tender: 'card', currency: 'USD', amount: 20, tipUsd: 3 }).appliedLbp, 20 * 89_500)
+}
+
 console.log('\nthe count — per currency, never netted')
 eq('2 × $20 + 1 × $10 = $50', D.countedCash({}, { '20': 2, '10': 1 }).usd, 50)
 eq('2 × 100,000 LBP = 200,000', D.countedCash({ '100000': 2 }, {}).lbp, 200_000)
@@ -310,7 +334,7 @@ eq('THE FLOAT is in it (the count includes the float): an empty shift is its flo
    50 * 89_500 + 200_000)
 eq('THE CARD is not in it: a card-only shift adds nothing beyond its float',
    D.daySystem([{ expected: D.drawerTotals({ usd: 0, lbp: 0 }, [shiftPays[1]]).expected, open: false }], 89_500).systemLbp, 0)
-eq('no shifts: nothing from the POS', D.daySystem([], 89_500), { shifts: 0, open: 0, expected: { usd: 0, lbp: 0 }, systemLbp: 0 })
+eq('no shifts: nothing from the POS', D.daySystem([], 89_500), { shifts: 0, open: 0, expected: { usd: 0, lbp: 0 }, systemLbp: 0, cardTipsUsd: 0 })
 
 console.log('\nthe float — refused before any shift opens')
 eq('a normal float: fine', D.floatProblem({ usd: 50, lbp: 200_000 }), null)

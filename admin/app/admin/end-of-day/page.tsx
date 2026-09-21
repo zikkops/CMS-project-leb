@@ -82,7 +82,7 @@ function EndOfDayInner() {
   const { checking, role, branchIds, user } = useRequireRole(SECTION_ACCESS.endOfDay)
   // Live, so changing the rate at /admin/settings reaches a form already open
   // at a till. A report stores the rate it was submitted with regardless.
-  const { settings: { exchangeRate } } = useBusinessSettings()
+  const { settings: { exchangeRate, tipsDeductionRate } } = useBusinessSettings()
   // Phase 04: once the till takes money, the "system" figure is the POS's own
   // — the day's drawer shifts (daySystem() in drawer.ts) — not a number typed
   // from the old till. Off, this form is exactly what it was.
@@ -561,17 +561,24 @@ function EndOfDayInner() {
                 </div>
                 {Number(tipsUsd) > 0 && (
                   <div style={{ paddingBottom: '0.6rem' }}>
+                    {/* The deduction in Business Settings, not a constant: this said 11% whatever the setting was. */}
                     <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.2rem', letterSpacing: '0.05em' }}>
-                      After 11% deduction
+                      After {+(tipsDeductionRate * 100).toFixed(2)}% deduction
                     </p>
                     <p style={{ fontFamily: 'var(--font-inter)', fontSize: '1rem', color: 'var(--brand-secondary)', fontWeight: 600 }}>
-                      {formatUsd(Number(tipsUsd) * 0.89)}
+                      {formatUsd(Number(tipsUsd) * (1 - tipsDeductionRate))}
                     </p>
                   </div>
                 )}
               </div>
+              {/* Card tips from the till (UPGRADE.md T3.9): shown, not typed, and saved with the report by the server. */}
+              {fromPos && (posNow?.data?.cardTipsUsd ?? 0) > 0 && (
+                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.7)', marginTop: '0.7rem' }}>
+                  Plus {formatUsd(posNow?.data?.cardTipsUsd ?? 0)} tipped on cards at the till, added to the pot when you submit.
+                </p>
+              )}
               <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.2)', marginTop: '0.5rem' }}>
-                Used in the tips calculator to distribute among staff by shift
+                The tips in the jar. Used in the tips calculator to distribute among staff by shift
               </p>
             </div>
 

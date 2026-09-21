@@ -43,6 +43,32 @@ export interface PaymentRequest {
   currency: PayCurrency
   /** Handed over (cash) or charged (card), in `currency`. */
   amount: number
+  /**
+   * A tip added on the card (UPGRADE.md T3.9), in dollars, on top of `amount`.
+   * It pays nothing off the bill and never enters the drawer: it goes to the
+   * tips pool. Card in dollars only; absent or 0 means none.
+   */
+  tipUsd?: number
+}
+
+/** The most a card tip may be: a typo guard, not a policy. */
+export const MAX_CARD_TIP_USD = 500
+
+/** Why this tip cannot go on this payment, or null. None at all is always fine. */
+export function tipProblem(req: Pick<PaymentRequest, 'tender' | 'currency' | 'amount' | 'tipUsd'>): string | null {
+  const tip = req.tipUsd ?? 0
+  if (tip === 0) return null
+  if (typeof tip !== 'number' || !Number.isFinite(tip) || tip < 0) return 'A tip must be zero or more.'
+  if (req.tender !== 'card') return 'A tip is added on a card. A cash tip goes in the tip jar.'
+  if (req.currency !== 'USD') return 'A tip on a card is in dollars: take the card in dollars.'
+  if (Math.abs(tip * 100 - Math.round(tip * 100)) > 1e-6) return 'Dollars go to the cent, no further.'
+  if (tip > MAX_CARD_TIP_USD || tip > req.amount * 2) return 'That tip is too large to be right.'
+  return null
+}
+
+/** What was tipped on cards across these payments, in dollars. */
+export function cardTipsOf(payments: readonly Pick<Payment, 'tender' | 'tipUsd'>[]): number {
+  return Math.round(payments.reduce((s, p) => s + (p.tender === 'card' && typeof p.tipUsd === 'number' && p.tipUsd > 0 ? p.tipUsd : 0), 0) * 100) / 100
 }
 
 export interface Payment extends PaymentRequest {

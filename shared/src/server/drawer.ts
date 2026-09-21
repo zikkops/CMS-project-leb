@@ -216,8 +216,9 @@ export async function daySystemFor(branch: string, day: string, rate: number): P
     .where('branch', '==', branch).where('cashUpDay', '==', day).get()
   const rows = await Promise.all(snap.docs.map(async d => {
     const s = d.data() as StoredShift & { totals?: DrawerTotals }
-    if (s.status === 'closed' && s.totals) return { expected: s.totals.expected, open: false }
-    return { expected: (await shiftTotals(d.id, s.float, movementsOf(s))).expected, open: true }
+    if (s.status === 'closed' && s.totals) return { expected: s.totals.expected, open: false, cardTips: s.totals.cardTips ?? 0 }
+    const live = await shiftTotals(d.id, s.float, movementsOf(s))
+    return { expected: live.expected, open: true, cardTips: live.cardTips ?? 0 }
   }))
   return daySystem(rows, rate)
 }

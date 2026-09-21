@@ -26,6 +26,8 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
+import { serverFeatureOn } from './features'
+import { daySystemFor } from './drawer'
 
 export function reportDocId(branch: string, date: string): string {
   return `${branch}_${date}`
@@ -144,9 +146,15 @@ export async function saveEndOfDay(caller: Caller, input: EodInput): Promise<Eod
   const ref = db.doc(`endOfDayReports/${id}`)
 
   const existing = await ref.get()
+  // The till's card tips for the day (UPGRADE.md T3.9), from its own drawer
+  // shifts, never from the browser: the tips pool pays them out to staff.
+  const cardTipsUsd = (await serverFeatureOn('cardTips'))
+    ? (await daySystemFor(input.branch, input.date, input.exchangeRate || 1)).cardTipsUsd
+    : 0
 
   await ref.set({
     ...input,
+    ...(cardTipsUsd > 0 ? { cardTipsUsd } : {}),
     id,
     // submittedBy is set once, on creation, and never overwritten by a later
     // edit. Who cashed up is not the same fact as who last corrected a typo,
