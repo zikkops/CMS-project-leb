@@ -79,6 +79,12 @@ const SCHEMA = `
   );
   CREATE INDEX IF NOT EXISTS docs_collection ON docs(collection);
   CREATE INDEX IF NOT EXISTS docs_branch ON docs(collection, json_extract(data, '$.branch'));
+  -- The till's own shapes (UPGRADE.md T5.3): open checks, a station's tickets
+  -- and the drawer's shift are all branch AND status; a check's tickets are
+  -- by checkId. The expressions match the ones runQuery() writes, character
+  -- for character, which is what lets SQLite use them.
+  CREATE INDEX IF NOT EXISTS docs_branch_status ON docs(collection, json_extract(data, '$.branch'), json_extract(data, '$.status'));
+  CREATE INDEX IF NOT EXISTS docs_check ON docs(collection, json_extract(data, '$.checkId'));
   CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -732,6 +738,8 @@ export interface HubStoreOptions {
 export class HubStore {
   private readonly listeners = new Set<(changes: HubChange[]) => void>()
   private retries = 0
+  /** Rows SQLite handed to runQuery() to decode, for the verifier (T5.3). */
+  private scanned = 0
   private readonly stmt: {
     readDoc: SqlStatement
     upsert: SqlStatement
@@ -820,18 +828,39 @@ export class HubStore {
   }
 
   runQuery(query: LocalQuery): LocalDocumentSnapshot[] {
-    // Equality on a plain string or number narrows in SQLite first; every
-    // filter is then applied here, which is the answer that counts.
+    // SQLite narrows first; every filter is then applied here, which is the
+    // answer that counts. So a narrowing may let through a row that does not
+    // match, never hold back one that does. What narrows (UPGRADE.md T5.3):
+    //   == and in, on plain strings and numbers;
+    //   array-contains, on a plain string or number;
+    //   a range on a Timestamp, by its whole seconds (the stored form is
+    //   {"$fs":"ts","s":…,"n":…}; the nanoseconds are left to the check here).
+    // Order and limit stay here: Firestore orders across types and Timestamps
+    // are objects in the JSON, which SQLite's ORDER BY cannot reproduce.
+    // What bounds a year of closed checks is archiving them (T5.4).
     let text = 'SELECT path, data, version FROM docs WHERE collection = ?'
     const params: SqlValue[] = [query.path]
+    const plain = (v: unknown): v is string | number => typeof v === 'string' || (typeof v === 'number' && Number.isFinite(v))
     for (const f of query.filters) {
-      const narrowable = typeof f.value === 'string' || (typeof f.value === 'number' && Number.isFinite(f.value))
-      if (f.op === '==' && narrowable && SQL_FIELD.test(f.field)) {
-        text += ` AND json_extract(data, '$.${f.field}') = ?`
-        params.push(f.value as string | number)
+      if (!SQL_FIELD.test(f.field)) continue
+      const at = `json_extract(data, '$.${f.field}')`
+      if (f.op === '==' && plain(f.value)) {
+        text += ` AND ${at} = ?`
+        params.push(f.value)
+      } else if (f.op === 'in' && Array.isArray(f.value) && f.value.every(plain)) {
+        text += ` AND ${at} IN (${f.value.map(() => '?').join(', ')})`
+        params.push(...(f.value as (string | number)[]))
+      } else if (f.op === 'array-contains' && plain(f.value)) {
+        text += ` AND EXISTS (SELECT 1 FROM json_each(data, '$.${f.field}') WHERE json_each.value = ?)`
+        params.push(f.value)
+      } else if (INEQUALITY_OPS.has(f.op) && f.op !== '!=' && f.value instanceof Timestamp) {
+        const cmp = f.op === '>' || f.op === '>=' ? '>=' : '<='
+        text += ` AND json_extract(data, '$.${f.field}."$fs"') = 'ts' AND json_extract(data, '$.${f.field}.s') ${cmp} ?`
+        params.push(f.value.seconds)
       }
     }
     const rows = this.sql.prepare(text).all(...params) as DocRow[]
+    this.scanned += rows.length
 
     let found = rows.map(r => ({ row: r, id: docParts(r.path).id, data: this.decodeRow(r.data) }))
       .filter(d => query.filters.every(f => matches(d.data, f)))
@@ -977,8 +1006,8 @@ export class HubStore {
   }
 
   /** How many transactions had to run again. For the verifier and the hub's health line. */
-  stats(): { retries: number } {
-    return { retries: this.retries }
+  stats(): { retries: number; scanned: number } {
+    return { retries: this.retries, scanned: this.scanned }
   }
 }
 

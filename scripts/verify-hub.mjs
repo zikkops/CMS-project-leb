@@ -294,6 +294,86 @@ console.log('\nthe change log, and a file that outlives the process')
   sql2.close()
 }
 
+// ── A year of checks (UPGRADE.md T5.3) ─────────────────────────────────────
+// SQLite narrows before anything is decoded: branch and status by index, a
+// shift's checks by the array, today's closings by the Timestamp's seconds.
+// Each answer is compared with the same question asked of the seed directly,
+// and the rows decoded are counted, because a narrowing that holds back a
+// true match is a wrong answer and one that narrows nothing is no narrowing.
+console.log('\na year of checks: indexed, narrowed, and still the right answer')
+{
+  const { Timestamp: TS } = await import('firebase-admin/firestore')
+  const sql = new DatabaseSync(join(tmp, 'year.db'))
+  const db = H.openHubStore(sql)
+  const DAY = 86_400_000
+  const now = Date.UTC(2026, 8, 21, 12)
+  const seed = []
+  for (let i = 0; i < 6000; i++) {
+    const closedMs = now - Math.floor(i / 16) * DAY - (i % 16) * 600_000
+    seed.push({
+      id: `c${String(i).padStart(5, '0')}`,
+      branch: i % 5 === 0 ? 'Other' : 'Main',
+      status: i % 40 === 0 ? 'refunded' : 'closed',
+      shiftIds: [`s${Math.floor(i / 16)}`],
+      closedAt: TS.fromMillis(closedMs),
+    })
+  }
+  for (let i = 0; i < 7; i++) seed.push({ id: `open${i}`, branch: i < 5 ? 'Main' : 'Other', status: 'open', shiftIds: ['s0'], openedAt: TS.fromMillis(now) })
+  for (let i = 0; i < seed.length; i += 450) {
+    const b = db.batch()
+    for (const c of seed.slice(i, i + 450)) { const { id, ...data } = c; b.set(db.doc(`checks/${id}`), data) }
+    await b.commit()
+  }
+  const ids = snap => snap.docs.map(d => d.id).sort()
+  const want = pred => seed.filter(pred).map(c => c.id).sort()
+  const scanned = async run => { const before = db.stats().scanned; const out = await run(); return [out, db.stats().scanned - before] }
+
+  const [open, openRows] = await scanned(() => db.collection('checks').where('branch', '==', 'Main').where('status', '==', 'open').get())
+  eq('open checks at a branch: the right five', ids(open), want(c => c.branch === 'Main' && c.status === 'open'))
+  eq('...and only those five were decoded, of 6,007', openRows, 5)
+  const plan = sql.prepare("EXPLAIN QUERY PLAN SELECT path FROM docs WHERE collection = ? AND json_extract(data, '$.branch') = ? AND json_extract(data, '$.status') = ?").all('checks', 'Main', 'open')
+  eq('...found through the branch-and-status index', plan.some(r => /docs_branch_status/.test(String(r.detail))), true)
+
+  const [shift, shiftRows] = await scanned(() => db.collection('checks').where('shiftIds', 'array-contains', 's3').get())
+  eq("a shift's checks, for its X or Z reading", ids(shift), want(c => c.shiftIds.includes('s3')))
+  eq('...decoding only those', shiftRows, shift.size)
+
+  const [ended, endedRows] = await scanned(() => db.collection('checks').where('branch', '==', 'Main').where('status', 'in', ['closed', 'refunded']).get())
+  eq('closed and refunded, by in', ended.size, seed.filter(c => c.branch === 'Main' && c.status !== 'open').length)
+  eq('...decoding no open check and no other branch', endedRows, ended.size)
+
+  const since = TS.fromMillis(now - DAY + 1)
+  const [today, todayRows] = await scanned(() => db.collection('checks').where('branch', '==', 'Main').where('status', 'in', ['closed', 'refunded'])
+    .where('closedAt', '>=', since).orderBy('closedAt', 'desc').limit(2000).get())
+  eq("today's closings, newest first", today.docs.map(d => d.id),
+    seed.filter(c => c.branch === 'Main' && c.status !== 'open' && c.closedAt.toMillis() >= since.toMillis())
+      .sort((a, b) => b.closedAt.toMillis() - a.closedAt.toMillis() || (a.id < b.id ? 1 : -1)).map(c => c.id))
+  eq('...decoding a day, not a year', todayRows <= today.size + 16, true)
+  const edge = TS.fromMillis(now - 5 * 600_000 + 1)
+  const [justAfter] = await scanned(() => db.collection('checks').where('closedAt', '>', edge).get())
+  eq('a range on a Timestamp still judges the part of a second SQLite rounds away', ids(justAfter), want(c => c.closedAt && c.closedAt.toMillis() > edge.toMillis()))
+  const [before] = await scanned(() => db.collection('checks').where('closedAt', '<', TS.fromMillis(now - 370 * DAY)).get())
+  eq('...and from the other side', ids(before), want(c => c.closedAt && c.closedAt.toMillis() < now - 370 * DAY))
+
+  // Within one second: SQLite sees the same whole seconds for both, so only
+  // the check here can tell them apart, and the narrowing must let both by.
+  const base = Math.floor(now / 1000) * 1000
+  await db.doc('stamps/early').set({ at: TS.fromMillis(base + 200) })
+  await db.doc('stamps/late').set({ at: TS.fromMillis(base + 700) })
+  const mid = TS.fromMillis(base + 500)
+  eq('within one second: after', ids(await db.collection('stamps').where('at', '>', mid).get()), ['late'])
+  eq('within one second: at or after', ids(await db.collection('stamps').where('at', '>=', mid).get()), ['late'])
+  eq('within one second: before', ids(await db.collection('stamps').where('at', '<', mid).get()), ['early'])
+  eq('within one second: at or before', ids(await db.collection('stamps').where('at', '<=', mid).get()), ['early'])
+
+  const t0 = performance.now()
+  const recent = await db.collection('checks').where('branch', '==', 'Main').where('status', 'in', ['closed', 'refunded']).orderBy('closedAt', 'desc').limit(50).get()
+  const ms = performance.now() - t0
+  eq('the closed-checks screen over a year: the newest fifty', recent.size, 50)
+  eq(`...in well under a second (${Math.round(ms)} ms)`, ms < 1000, true)
+  sql.close()
+}
+
 console.log('\nthe till\'s own server code, unchanged, over the hub')
 {
   const file = join(tmp, 'hub.db')

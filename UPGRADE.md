@@ -450,13 +450,14 @@ Each needs its own plan note in the vault first, and the owner's answers.
   window (e.g. 7 days). Watch that a change feed or `readyToLeaveHub()` never
   reads past the trim.
   *Done: Done 21 Sep 2026. After every successful push, the hub deletes change-log rows up to where it has sent (`pushedSeq`) that are more than 7 days old. It always keeps the newest row, so lastSeq() never goes backwards; the rule is `changeLogTrim()` in shared/src/hubSync.ts and the delete is `HubStore.trimChanges()`. Nothing unsent is ever trimmed, so an unpaired hub, or one offline for a month, keeps everything. Pushing and readyToLeaveHub() both read forwards from pushedSeq, so they never reach a trimmed row. Screens only compare sequence numbers. AUTOINCREMENT means a trimmed number is never reused, and a document's version is its own column, so transactions are unaffected. Covered by verify:hub (8 cases on a real SQLite file: unsent kept, trimmed up to the place, newest kept, next number new, versions kept, recent kept) and verify:hub-sync (5 cases, 418 passed).*
-- [ ] **T5.3 Index and bound the hub's queries.** Only `==` filters and
+- [x] **T5.3 Index and bound the hub's queries.** Only `==` filters and
   `branch` reach SQL today. `array-contains`, ranges, order and limit happen in
   JavaScript over every row. So X/Z readings (`shiftIds array-contains`) and
   "open checks" parse every check ever stored, twice in a transaction. Add JSON
   indexes for the till's 14 query shapes, and push `limit`/order into SQL where
   `runHubPlan()` agrees with `runPlan()`. Tested with `verify:hub` on a hub file
   seeded with a year of checks.
+  *Done: Done 21 Sep 2026. Two expression indexes: (collection, branch, status) and (collection, checkId), matching runQuery()'s expressions exactly. SQLite now narrows `in` and `array-contains` on plain values, and a range on a Timestamp by its whole seconds; before, only `==` was narrowed. Every filter is still checked in JS afterwards, so a narrowing can only let an extra row through, never hold a match back. Order and limit stay in JS, because Firestore orders across types and a Timestamp is an object in the JSON, which SQLite's ORDER BY cannot reproduce. T5.4 (archiving) is what bounds a year of closed checks. Tested in verify:hub on a hub file seeded with 6,007 checks. Open checks decoded 5 rows, found through the new index (EXPLAIN QUERY PLAN). A shift's X/Z query decoded only its 16. Today's closings decoded a day, not a year. The closed-checks screen over the year took 33 ms. Every answer was compared with the seed. Two mutations were caught: the array narrowing, and a strict comparison on seconds, which was caught only after adding a same-second case.*
 - [ ] **T5.4 Archive closed trading off the hub.** Closed checks and tickets
   already in the cloud and older than N days leave the hub database. Follows
   T5.2.
