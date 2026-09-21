@@ -17,6 +17,9 @@ const nextConfig: NextConfig = {
   // if firebase-admin ever gets imported from a client component by mistake,
   // the build fails loudly instead of quietly shipping the Admin SDK — and the
   // credential handling around it — to a browser.
+  // Which app this is, for the server's own error reports (UPGRADE.md T5.9):
+  // an activity log entry that fails to write is filed under this app.
+  env: { BIG_CMS_APP: 'pos' },
   serverExternalPackages: ['firebase-admin'],
   // @big-cms/shared ships TypeScript source with no build step, so Next has to
   // compile it as if it were part of this app. One source of truth, and no

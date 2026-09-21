@@ -480,9 +480,10 @@ Each needs its own plan note in the vault first, and the owner's answers.
   `foodCost.ts` stop at 20,000 checks with no warning. Query per branch, and
   say so when the cap is hit.
   *Done: Done 21 Sep 2026. The sales export, the reports (voids, mix, hourly) and the theoretical food cost all read at most EXPORT_CHECK_CAP (20,000) checks, oldest first. They now return `cutShort: { cap, completeThrough }` when they hit it (exportCutShort() in shared/src/salesExport.ts). The last day read may be cut part-way, so the answer is whole only through the day before. The export page, each report page (CutShortNote in the admin UI kit) and the Food Cost Report say so: complete only through that day, so ask for a shorter range or one branch. NOT done: a query per branch, which needs a composite (branch, closedAt) index, and an index deploy is its own approved step. With the warning, a cut-short range can no longer pass for a complete one. verify:export has 5 new cases (70 passed); reports and recipes still pass.*
-- [ ] **T5.9 Log after a committed sale without failing it.** `logActivity`
+- [x] **T5.9 Log after a committed sale without failing it.** `logActivity`
   runs after the transaction. If it throws, the till shows an error for a sale
   that happened. Catch it, and report it through `reportError()`.
+  *Done: Done 21 Sep 2026. The fix is in the server logger itself (shared/src/server/activityLog.ts), so every caller is covered: writeLog() never throws. Every route logs after its write has committed, so an entry that fails to write no longer turns a closed sale into an error on the till. The failure is filed through recordError(), the server side of reportError(), into /admin/errors as 'Activity log entry not written (<section>)': one report per kind, counted, redacted as always. If that fails too, it goes to the server log. Each app's next.config sets BIG_CMS_APP so the report is filed under the right app. Covered by verify:hub (an entry that cannot be written does not throw, is filed once, and a repeat counts on the same report); verify:errors still passes.*
 - [ ] **T5.10 Generate the rules' role lists from `SECTIONS`.** The role
   arrays in `firestore.rules` are written by hand. Generate the helper block
   between marker comments. **A rules deploy goes out one collection at a time

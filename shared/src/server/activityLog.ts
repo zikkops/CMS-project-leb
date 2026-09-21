@@ -13,6 +13,10 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from './firebaseAdmin'
 import type { Caller } from './auth'
+import { recordError } from './errorReports'
+import { todayYmd } from '../dates'
+import { BRAND } from '../brand'
+import type { AppName } from '../errorReport'
 
 export type LogAction = 'create' | 'update' | 'delete'
 
@@ -49,6 +53,16 @@ export function diffFields(
   return changes
 }
 
+/**
+ * Writes the entry, and never throws (UPGRADE.md T5.9).
+ *
+ * Every caller logs AFTER its write has committed: a sale closed, a payment
+ * taken, a stock move. An entry that fails to write used to throw out of the
+ * route, so the till showed an error for a sale that had happened, and the
+ * waiter tried again. Now the failure goes to the error reports
+ * (/admin/errors, one document per distinct fault) and the request answers as
+ * what it was: done.
+ */
 async function writeLog(actor: Caller, payload: {
   action: LogAction
   section: string
@@ -56,16 +70,44 @@ async function writeLog(actor: Caller, payload: {
   changes?: FieldChange[]
   snapshot?: object
 }) {
-  await adminDb().collection('activityLog').add({
-    action: payload.action,
-    section: payload.section,
-    label: payload.label,
-    changes: payload.changes ? sanitize(payload.changes) : null,
-    snapshot: payload.snapshot ? sanitize(payload.snapshot) : null,
-    userEmail: actor.email,
-    userId: actor.uid,
-    createdAt: FieldValue.serverTimestamp(),
-  })
+  try {
+    await adminDb().collection('activityLog').add({
+      action: payload.action,
+      section: payload.section,
+      label: payload.label,
+      changes: payload.changes ? sanitize(payload.changes) : null,
+      snapshot: payload.snapshot ? sanitize(payload.snapshot) : null,
+      userEmail: actor.email,
+      userId: actor.uid,
+      createdAt: FieldValue.serverTimestamp(),
+    })
+  } catch (err) {
+    console.error('[activityLog] an entry was not written:', err)
+    await reportLogFailure(payload.section, err)
+  }
+}
+
+/** Which app this server is; set per app in next.config's env, admin when unset. */
+function serverApp(): AppName {
+  const app = process.env.BIG_CMS_APP
+  return app === 'web' || app === 'pos' ? app : 'admin'
+}
+
+// The section, not the label: a label can carry a name or an amount, and the
+// fingerprint should fold every failure of one kind into one report.
+async function reportLogFailure(section: string, err: unknown): Promise<void> {
+  try {
+    const e = err instanceof Error ? err : new Error(String(err))
+    await recordError(serverApp(), {
+      message: `Activity log entry not written (${section}): ${e.message}`,
+      stack: e.stack ?? '',
+      path: 'server/activityLog',
+      at: new Date().toISOString(),
+    }, todayYmd(BRAND.locale.timezone))
+  } catch (again) {
+    // Nothing left to tell but the server's own log.
+    console.error('[activityLog] and the error report failed too:', again)
+  }
 }
 
 export async function logActivity(actor: Caller, action: LogAction, section: string, label: string) {
