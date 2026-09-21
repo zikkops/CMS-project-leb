@@ -532,7 +532,7 @@ challenge from `issueChallenge()`, and logged under the person. Each adds its
 cases to `verify:hub-sync` (or a new verifier for the online till), with
 mutations caught by name, and is checked on the emulator against a built hub.
 
-- [ ] **T6.0 The owner's answers first** (owner). Answer and record these
+- [x] **T6.0 The owner's answers first** (owner). Answer and record these
   here before T6.3 onwards.
   *Owner's answers, 21 Sep 2026:*
   - **Signing in clocks you in, and signing out clocks you out.** So T6.6 is
@@ -542,14 +542,17 @@ mutations caught by name, and is checked on the emulator against a built hub.
     the wifi, so there the code's two minutes, single use and the approving
     phone's own sign-in do that job.
 
-  Still to answer:
-  - Which devices are **shared** (the counter PC, a kitchen tablet, a
-    waiter's tablet at the pass) and which are one person's phone?
-  - Should the **online till** (no hub) get scan-to-sign-in too (T6.4), or
-    only hub cafés?
-  - What idle limit should shared online devices have? The counter PC uses
-    15 minutes (S25).
-  - Printed badges: no (the default, T6.8), or yes with a PIN?
+  Defaults taken 21 Sep 2026 under the owner's "do them as you see fit and
+  we fix it", each **OWNER TO CONFIRM**:
+  - **Shared devices:** the counter PC (a hub's own screen), a kitchen screen
+    session, and any online-till browser switched to "This is a shared
+    device" (T6.7). Every other device is one person's phone.
+  - **The online till gets scan-to-sign-in too** (T6.4): a café without a hub
+    is exactly where a password is typed on a shared screen.
+  - **Idle limit on shared online devices: 15 minutes**, the counter PC's
+    (S25), so there is one rule to explain.
+  - **Printed badges: no** (T6.8).
+  *Done: Defaults recorded, OWNER TO CONFIRM: shared = counter PC, kitchen screen, online-till browser marked shared (T6.7); online till gets scan-to-sign-in (T6.4); idle limit 15 min on shared online devices; no printed badges (T6.8).*
 - [ ] **T6.1 Sign out from every till screen, and one sign-out for all.**
   Today only the floor has the button. Put it on the counter, the check
   screen's actions, the kitchen display (for a person, not a kitchen screen
@@ -619,7 +622,7 @@ mutations caught by name, and is checked on the emulator against a built hub.
   the idle rule the counter PC already has (S25, `followIdle()`), at the limit
   from T6.0. Only taps count, never background requests. Personal phones keep
   their sign-in.
-- [ ] **T6.8 Printed staff badges: not built unless the owner asks** (owner).
+- [x] **T6.8 Printed staff badges: not built unless the owner asks** (owner).
   A static QR on a card or lanyard is a password anyone can photograph, and it
   cannot tell who is holding it. If the owner wants badges anyway:
   - a badge only ever narrows the list to one person, and the PIN (or the
@@ -628,6 +631,7 @@ mutations caught by name, and is checked on the emulator against a built hub.
   - it never signs anyone in on a hub on its own
 
   Record the decision here either way.
+  *Done: Decided: no printed badges (T6.0 default, OWNER TO CONFIRM). A static QR is a password anyone can photograph; nothing built.*
 
 ---
 
