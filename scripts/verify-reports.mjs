@@ -21,7 +21,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'reports-verify-'))
 execSync(
-  `npx tsc shared/src/salesReports.ts shared/src/timeClock.ts --outDir ${out} ` +
+  `npx tsc shared/src/salesReports.ts shared/src/timeClock.ts shared/src/waitlist.ts --outDir ${out} ` +
   `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
@@ -202,6 +202,29 @@ console.log('\nthe timesheet (UPGRADE.md T3.12)')
   const long = TC.timesheet([e('x', 'in', '01:00'), e('x', 'out', '20:00')], { timeZone: BEIRUT, now: at('21:00') })
   eq('over 16 hours is flagged to check, not hidden', long.shifts[0].long, true)
   eq('which way the next clock goes', [TC.nextDirection(null), TC.nextDirection({ direction: 'in' }), TC.nextDirection({ direction: 'out' })], ['in', 'out', 'in'])
+}
+
+console.log('\nthe waitlist (UPGRADE.md T3.13)')
+{
+  const W = await import(`file://${join(out, 'waitlist.js')}`)
+  eq('a party as typed', W.readWaitInput({ name: '  Rana   Khoury ', partySize: '4', quotedMinutes: '20', note: 'terrace' }), { name: 'Rana Khoury', partySize: 4, note: 'terrace', quotedMinutes: 20 })
+  eq('nothing quoted is null, not zero', W.readWaitInput({ name: 'Sam', partySize: 2, quotedMinutes: '' }).quotedMinutes, null)
+  eq('THE TRAP: no name, nobody, a crowd, or a quote that is not minutes is refused, in words',
+    [{ name: '', partySize: 2 }, { name: 'A', partySize: 0 }, { name: 'A', partySize: 99 }, { name: 'A', partySize: 2, quotedMinutes: 2.5 }, { name: 'A', partySize: 2, quotedMinutes: 999 }].map(r => typeof W.readWaitInput(r)),
+    ['string', 'string', 'string', 'string', 'string'])
+  const m = 60_000
+  const e = (id, over = {}) => ({ id, branch: 'Main', day: '2026-09-12', name: id, partySize: 2, note: '', quotedMinutes: 15, status: 'waiting', addedAt: 0, doneAt: null, ...over })
+  const view = W.waitView([
+    e('b', { addedAt: 5 * m }), e('a', { addedAt: 0 }),
+    e('seated1', { status: 'seated', addedAt: 0, doneAt: 10 * m }), e('seated2', { status: 'seated', addedAt: 0, doneAt: 20 * m }),
+    e('gone', { status: 'left', doneAt: 30 * m }), e('yesterday', { day: '2026-09-11' }),
+  ], '2026-09-12')
+  eq('waiting in the order they came, with their place', view.waiting.map(w => [w.id, w.place]), [['a', 1], ['b', 2]])
+  eq('yesterday\'s queue is not today\'s', view.waiting.some(w => w.id === 'yesterday'), false)
+  eq('seated or gone, the most recent first', view.done.map(d => d.id), ['gone', 'seated2', 'seated1'])
+  eq('the average wait of those seated today', view.averageWait, 15)
+  eq('past what they were told, only while still waiting', [W.overQuote(e('x'), 16 * m), W.overQuote(e('x'), 10 * m), W.overQuote(e('x', { status: 'seated', doneAt: 30 * m }), 40 * m), W.overQuote(e('x', { quotedMinutes: null }), 99 * m)],
+    [true, false, false, false])
 }
 
 rmSync(out, { recursive: true, force: true })

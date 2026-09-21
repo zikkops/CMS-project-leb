@@ -89,6 +89,10 @@ export const FEATURES = {
   holdAndFire: {
     label: 'Hold and Fire', group: 'Operations', requires: ['kds'], defaultEnabled: false,
   },
+  // Walk-ins waiting for a table (UPGRADE.md T3.13), beside table reservations.
+  waitlist: {
+    label: 'Waitlist', group: 'Front of House', requires: ['tableReservations'], defaultEnabled: false, collections: ['waitlist'],
+  },
   // A tip added on a card payment (UPGRADE.md T3.9): to the tips pool, never
   // the drawer. Needs Take Payment.
   cardTips: {

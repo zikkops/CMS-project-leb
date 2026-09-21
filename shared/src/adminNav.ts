@@ -33,7 +33,7 @@ import {
   faTriangleExclamation, faShieldHalved, faGear, faUserShield, faBug, faImage, faToggleOn, faPrint,
   faChampagneGlasses, faStar, faWarehouse, faMoon, faScrewdriverWrench, faTableCells,
   type IconDefinition,
-  faBan, faChartColumn, faUserClock,
+  faBan, faChartColumn, faUserClock, faListOl,
 } from '@fortawesome/free-solid-svg-icons'
 import { SECTION_ACCESS, ALL_ROLES, hasSectionAccess, type Role, type SectionKey } from './roles'
 import { featureForSection, isFeatureOn, type FeatureFlags } from './features'
@@ -78,6 +78,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
     items: [
       { label: "Today's Schedule", href: '/admin/schedule', access: SECTION_ACCESS.tableReservations, icon: faCalendarDay, kind: 'use', desc: 'Every approved reservation for today — tables and events.' },
       { label: 'Table Reservations', href: '/admin/tables/reservations', access: SECTION_ACCESS.tableReservations, icon: faChair, kind: 'use', badge: 'tableReservations', desc: 'Approve or reject table booking requests.' },
+      { label: 'Waitlist', href: '/admin/tables/waitlist', access: SECTION_ACCESS.tableReservations, icon: faListOl, kind: 'use', desc: 'Walk-ins waiting for a table, first come first, and how long each has waited.' },
       { label: 'Table Map Editor', href: '/admin/branches/tables', access: SECTION_ACCESS.branchTables, icon: faMap, kind: 'setup', desc: 'Each branch’s floor plan and where its tables are, so they can be booked.' },
     ],
   },
