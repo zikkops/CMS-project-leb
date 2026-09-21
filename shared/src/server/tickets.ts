@@ -10,6 +10,8 @@ import { transitionError, pickupOutcome, type Ticket, type TicketStatus } from '
 const TICKETS = 'kitchenTickets'
 
 const STATUSES: TicketStatus[] = ['new', 'preparing', 'ready', 'bumped', 'cancelled']
+// 'held' is not in STATUSES on purpose: the kitchen cannot move a ticket to it,
+// or out of it. Only a Send holds one, and only firing releases it.
 
 export function parseTicketStatus(raw: unknown): TicketStatus {
   const s = String(raw ?? '')
@@ -38,6 +40,8 @@ export async function advanceTicket(
     if (!snap.exists) throw new HttpError(404, 'That ticket no longer exists.')
 
     const ticket = { id: snap.id, ...(snap.data() as Omit<Ticket, 'id'>) }
+    // Held food is the front's to fire (fireHeld() in checks.ts), never the kitchen's (UPGRADE.md T3.11).
+    if (ticket.status === 'held') throw new HttpError(409, 'That ticket is held until the front fires it.')
     const problem = transitionError(ticket.status, to)
     if (problem) throw new HttpError(409, problem)
 

@@ -340,6 +340,8 @@ export interface Check {
    * manager taking it off sets it to 0 and is recorded. Absent: no service.
    */
   serviceCharge?: ServiceCharge | null
+  /** Stations whose tickets are held until the front fires them (UPGRADE.md T3.11). Absent or []: none. */
+  heldStations?: string[]
 }
 
 export interface ServiceCharge {

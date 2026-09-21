@@ -604,10 +604,16 @@ export async function addLines(checkId: string, lines: DraftLine[], batchKey: st
   }, { timeoutMs: POS_TIMEOUT_MS })
 }
 
-export async function sendCheck(checkId: string): Promise<{ station: string; lines: number }[]> {
+export async function sendCheck(checkId: string, hold: string[] = []): Promise<{ station: string; lines: number; held?: boolean }[]> {
   const data = await call('/api/pos/checks', 'PATCH',
-    { checkId, action: 'send' }, { timeoutMs: POS_TIMEOUT_MS })
-  return (data.tickets ?? []) as { station: string; lines: number }[]
+    { checkId, action: 'send', ...(hold.length > 0 ? { hold } : {}) }, { timeoutMs: POS_TIMEOUT_MS })
+  return (data.tickets ?? []) as { station: string; lines: number; held?: boolean }[]
+}
+
+/** Fires what a Send held back: the held tickets go to the pass now (UPGRADE.md T3.11). */
+export async function fireHeld(checkId: string): Promise<{ fired: number; stations: string[] }> {
+  const data = await call('/api/pos/checks', 'PATCH', { checkId, action: 'fire' }, { timeoutMs: POS_TIMEOUT_MS })
+  return data as unknown as { fired: number; stations: string[] }
 }
 
 /**

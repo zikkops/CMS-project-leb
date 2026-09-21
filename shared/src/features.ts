@@ -84,6 +84,11 @@ export const FEATURES = {
   serviceCharge: {
     label: 'Service Charge', group: 'Operations', requires: ['pos'], defaultEnabled: false,
   },
+  // "Send the drinks now, hold the food", then "Fire the food" (UPGRADE.md
+  // T3.11). Held tickets wait on the kitchen screen until the front fires them.
+  holdAndFire: {
+    label: 'Hold and Fire', group: 'Operations', requires: ['kds'], defaultEnabled: false,
+  },
   // A tip added on a card payment (UPGRADE.md T3.9): to the tips pool, never
   // the drawer. Needs Take Payment.
   cardTips: {

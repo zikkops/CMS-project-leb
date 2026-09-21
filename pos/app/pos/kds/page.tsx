@@ -24,7 +24,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faBell, faFire, faCircleCheck, faCheckDouble, faClock, faRotateLeft, faNoteSticky, faBan,
+  faBell, faFire, faCircleCheck, faCheckDouble, faClock, faRotateLeft, faNoteSticky, faBan, faPause,
   faChair, faLayerGroup, faPrint, faArrowRightArrowLeft, faArrowLeft, faMugHot, faCakeCandles,
   faUtensils, faTriangleExclamation, type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
@@ -82,6 +82,8 @@ const URGENCY = {
 
 /** What state it is in: the header. */
 const STATUS_LOOK: Record<string, { label: string; icon: IconDefinition; colour: string }> = {
+  // Sent but held until the front fires it (UPGRADE.md T3.11): grey, no timer pressure, nothing to tap.
+  held: { label: 'Held', icon: faPause, colour: '#64748B' },
   new: { label: 'New', icon: faBell, colour: '#3B82F6' },
   preparing: { label: 'Preparing', icon: faFire, colour: '#F97316' },
   ready: { label: 'Ready', icon: faCircleCheck, colour: '#22C55E' },
@@ -89,6 +91,7 @@ const STATUS_LOOK: Record<string, { label: string; icon: IconDefinition; colour:
 
 /** What tapping the big button does next, and what it should say. */
 const NEXT_ACTION: Record<string, { to: TicketStatus; label: string; icon: IconDefinition } | null> = {
+  held: null,
   new: { to: 'preparing', label: 'Start', icon: faFire },
   preparing: { to: 'ready', label: 'Ready', icon: faCircleCheck },
   // Ready waits for the front: the counter or the floor taps "Picked up", and
@@ -124,15 +127,17 @@ function TicketCard({
   // document was read — ticketSentAtMs handles both. A ticket written moments
   // ago can briefly have none at all while the server timestamp resolves, so
   // the fallback is "just now" rather than 1970.
+  const held = ticket.status === 'held'
   const mins = minutesWaiting(ticketSentAtMs(ticket, now), now)
-  const level = urgency(mins)
+  // A held ticket is not late: nobody has asked for it yet. It turns new, with a fresh time, when fired.
+  const level = held ? 'fresh' : urgency(mins)
   const next = NEXT_ACTION[ticket.status]
   const look = STATUS_LOOK[ticket.status] ?? { label: ticket.status, icon: faBell, colour: '#64748B' }
   const live = ticket.lines.filter(l => !l.voided)
   const voided = ticket.lines.filter(l => l.voided)
   // A way back, because the commonest mistake on a touchscreen in a kitchen is
   // a tap nobody meant. Absent on 'new', which has no earlier state.
-  const canGoBack = canTransition(ticket.status, 'new') || canTransition(ticket.status, 'preparing')
+  const canGoBack = !held && (canTransition(ticket.status, 'new') || canTransition(ticket.status, 'preparing'))
 
   return (
     <div style={{
@@ -228,6 +233,12 @@ function TicketCard({
           </p>
         ))}
       </div>
+
+      {held && (
+        <p style={{ padding: '0 0.95rem 0.9rem', margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#94A3B8', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+          <FontAwesomeIcon icon={faPause} />Held: do not start until the front fires it
+        </p>
+      )}
 
       {ticket.status === 'ready' && (
         <div style={{
@@ -425,6 +436,7 @@ export default function KdsPage() {
               {station === 'All' ? 'All stations' : station}
             </h1>
             <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
+              {byStatus('held') > 0 && <StatusBadge icon={faPause} label={`${byStatus('held')} held`} />}
               <StatusBadge icon={faBell} label={`${byStatus('new')} new`} />
               <StatusBadge icon={faFire} label={`${byStatus('preparing')} preparing`} />
               <StatusBadge icon={faCircleCheck} label={`${byStatus('ready')} ready`} />

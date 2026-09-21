@@ -118,7 +118,8 @@ export function useAutoPrintTickets(input: AutoPrintInput): PaperState {
     const { state, print } = nextPrintBatch(batch.current, {
       scope,
       // A reprint (UPGRADE.md T3.6) is one more id on its ticket, so it prints once.
-      ids: tickets.flatMap(printIdsOf),
+      // A held ticket (T3.11) prints when it is fired: until then it is not in the list at all.
+      ids: tickets.filter(t => t.status !== 'held').flatMap(printIdsOf),
       ticketsLoading,
       settingsLoading,
       on,

@@ -30,12 +30,12 @@ import {
   faArrowLeft, faPaperPlane, faPlus, faMinus, faEllipsisVertical, faTrashCan, faNoteSticky, faChair,
   faLayerGroup, faSliders, faBan, faRotateLeft, faPercent, faUserTag, faArrowRightArrowLeft,
   faCashRegister, faReceipt, faXmark, faUtensils, faCheck, faPen, faHourglassHalf, faUserGroup,
-  faCircleCheck, faTriangleExclamation, faWheatAwnCircleExclamation,
+  faCircleCheck, faTriangleExclamation, faWheatAwnCircleExclamation, faFire, faPause,
 } from '@fortawesome/free-solid-svg-icons'
 import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useTillAccess } from '../../../lib/useTillAccess'
 import {
-  lineTotal, grossLineTotal, lineDiscount, checkTotals, serviceRate, VOID_REASONS, reconcilePendingBatch,
+  lineTotal, grossLineTotal, lineDiscount, checkTotals, serviceRate, stationForSection, VOID_REASONS, reconcilePendingBatch,
   type CheckLine, type StaffDiscount,
 } from '@big-cms/shared/checks'
 import { minutesWaiting, urgency } from '@big-cms/shared/tickets'
@@ -48,7 +48,7 @@ import { MenuPicker, ModifierSheet } from './MenuPicker'
 import { lineUnitPrice, describeSelections } from '@big-cms/shared/modifiers'
 import {
   useCheck, usePosMenu, useRetailProducts,
-  addLines, sendCheck, voidLine, moveCheck, closeCheck, setStaffMeal, markSoldOut, reprintKitchenTickets, removeServiceCharge,
+  addLines, sendCheck, voidLine, moveCheck, closeCheck, setStaffMeal, markSoldOut, reprintKitchenTickets, removeServiceCharge, fireHeld,
   type DraftLine, type PosMenuItem, type PosProduct,
 } from '../../../lib/usePos'
 import { isSoldOut, soldOutDay } from '@big-cms/shared/soldOut'
@@ -492,13 +492,27 @@ export default function CheckPage() {
 
   const groupsOf = (item: PosMenuItem) => item.modifierGroupIds.map(id => menu.groups[id]).filter(Boolean)
 
+  const { on: holdOn } = useFeature('holdAndFire')
+  async function handleFire() {
+    setBusy('Firing…')
+    setError('')
+    try {
+      const r = await fireHeld(checkId)
+      setBusy(`Fired — ${r.stations.join(', ')}`)
+      setTimeout(() => setBusy(''), 2500)
+    } catch (err) {
+      setBusy('')
+      setError(err instanceof Error ? err.message : 'Could not fire it.')
+    }
+  }
+
   function pick(item: PosMenuItem) {
     if (groupsOf(item).length > 0) { setModifierFor(item); return }
     addDraft(item, [], '')
   }
 
-  async function handleSend() {
-    setBusy('Sending…')
+  async function handleSend(hold: string[] = []) {
+    setBusy(hold.length > 0 ? 'Sending the drinks…' : 'Sending…')
     setError('')
     // One key per batch, and the SAME key on every retry of that batch — see
     // the note on pendingKey. A fresh key only for a new batch with no earlier
@@ -521,10 +535,10 @@ export default function CheckPage() {
         setDrafts([])
       }
       landed = true
-      const tickets = await sendCheck(checkId)
+      const tickets = await sendCheck(checkId, hold)
       setPendingKey(null)
       setBusy(tickets.length > 0
-        ? `Sent — ${tickets.map(t => `${t.station} ×${t.lines}`).join(', ')}`
+        ? `Sent — ${tickets.map(t => `${t.station} ×${t.lines}${t.held ? ' (held)' : ''}`).join(', ')}`
         : 'Sent')
       setTimeout(() => setBusy(''), 2500)
     } catch (err) {
@@ -599,6 +613,14 @@ export default function CheckPage() {
   const draftTotal = drafts.reduce((s, d) => s + d.unitPrice * d.quantity, 0)
   const onCheck = check.lines.filter(l => l.status !== 'draft')
   const unsentLines = check.lines.filter(l => l.status === 'draft')
+  // Hold and fire (UPGRADE.md T3.11): offered when what is about to go mixes
+  // drinks and food, so the drinks go now and the food waits for "Fire".
+  const sendingStations = new Set<string>([
+    ...unsentLines.map(l => l.station ?? ''),
+    ...drafts.map(d => d.source === 'menu' ? stationForSection(menu.items.find(i => i.id === d.refId)?.section) ?? '' : ''),
+  ])
+  const canHoldFood = holdOn && sendingStations.has('Bar') && (sendingStations.has('Kitchen') || sendingStations.has('Sweets'))
+  const heldNow = check.heldStations ?? []
   const unsentOnServer = unsentLines.length
   const canSend = drafts.length > 0 || unsentOnServer > 0
   // Something on the check, all of it sent, nothing in progress: time to pay.
@@ -765,6 +787,19 @@ export default function CheckPage() {
     ? { flexDirection: 'column', gap: '0.2rem', padding: '0.35rem 0.4rem', fontSize: '0.9rem' }
     : undefined
   const actionBar = (
+    <>
+    {heldNow.length > 0 && (
+      <div style={{ marginBottom: '0.6rem' }}>
+        <PosButton icon={faFire} label={`Fire the food now (${heldNow.join(', ')})`} tone="warn" size="lg" full
+          disabled={Boolean(busy)} onClick={() => { void handleFire() }} />
+      </div>
+    )}
+    {canHoldFood && !readyToSettle && (
+      <div style={{ marginBottom: '0.6rem' }}>
+        <PosButton icon={faPause} label="Send the drinks, hold the food" tone="neutral" full
+          disabled={!canSend || Boolean(busy)} onClick={() => { void handleSend(['Kitchen', 'Sweets']) }} />
+      </div>
+    )}
     <div style={{ display: 'flex', gap: isMobile ? '0.5rem' : '0.6rem' }}>
       <PosButton icon={faSliders} label="Check options" tone="neutral" grow={1} style={compact}
         badge={check.staffDiscount ? 'staff' : null} onClick={() => setActions(true)} />
@@ -780,9 +815,10 @@ export default function CheckPage() {
       ) : (
         <PosButton icon={faPaperPlane} label="Send" tone="primary" size="lg" grow={2}
           badge={sendCount > 0 ? sendCount : null}
-          disabled={!canSend || Boolean(busy)} onClick={handleSend} />
+          disabled={!canSend || Boolean(busy)} onClick={() => { void handleSend() }} />
       )}
     </div>
+    </>
   )
 
   return (

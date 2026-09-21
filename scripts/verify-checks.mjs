@@ -407,6 +407,18 @@ console.log('\nthe front picking up a ready plate')
     { kind: 'refused', reason: 'That ticket was cancelled — every item on it was voided.' })
 }
 
+console.log('\nhold and fire (UPGRADE.md T3.11)')
+{
+  eq('a held ticket goes only to new (fired) or cancelled (every line voided)',
+    [T.canTransition('held', 'new'), T.canTransition('held', 'cancelled'), T.canTransition('held', 'preparing'), T.canTransition('held', 'ready'), T.canTransition('held', 'bumped')],
+    [true, true, false, false, false])
+  eq('nothing goes back to held once it is on the pass', ['new', 'preparing', 'ready'].map(s => T.canTransition(s, 'held')), [false, false, false])
+  eq('the kitchen screen asks for held tickets, so it can show them waiting', T.ACTIVE_TICKET_STATUSES.includes('held'), true)
+  eq('THE TRAP: only stations this Send has are held, each once; nothing else is invented',
+    T.heldStationsFor(['Kitchen', 'Sweets', 'Kitchen', 7, 'Pizza oven'], ['Bar', 'Kitchen']), ['Kitchen'])
+  eq('holding nothing holds nothing', T.heldStationsFor([], ['Bar', 'Kitchen']), [])
+}
+
 console.log('\nthe service charge (UPGRADE.md T3.8)')
 {
   const L = (over = {}) => ({ id: 'l1', source: 'menu', refId: 'm', name: 'Dish', unitPrice: 10, modifiers: [], quantity: 1, seat: null, course: null,

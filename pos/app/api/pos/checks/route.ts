@@ -14,7 +14,7 @@ import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/sha
 import {
   parseLineRequests, parseBatchKey, openCheck, addLines, sendCheck, voidLine, moveCheck, closeCheck,
   setStaffMeal, refundCheck, addPayment, parsePaymentRequest, parsePaymentKey, setLoyaltyCustomer,
-  setLineDiscount, setCheckDiscount, removeServiceCharge, parseDiscountInput, parseOpenId, parseMadeOffline,
+  setLineDiscount, setCheckDiscount, removeServiceCharge, fireHeld, parseDiscountInput, parseOpenId, parseMadeOffline,
 } from '@big-cms/shared/server/checks'
 import { logActivity } from '@big-cms/shared/server/activityLog'
 import { refuseWhileHubbed } from '@big-cms/shared/server/hubLock'
@@ -90,7 +90,13 @@ export async function PATCH(request: Request): Promise<Response> {
 
     switch (String(body.action ?? '')) {
       case 'send': {
-        const result = await sendCheck(caller, checkId)
+        const result = await sendCheck(caller, checkId, Array.isArray(body.hold) ? body.hold : [])
+        return Response.json({ ok: true, ...result })
+      }
+      case 'fire': {
+        // What a Send held back, to the pass now (UPGRADE.md T3.11). Not
+        // logged, like a Send: the tickets carry who fired them.
+        const result = await fireHeld(caller, checkId)
         return Response.json({ ok: true, ...result })
       }
       case 'void': {

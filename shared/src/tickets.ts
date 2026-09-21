@@ -31,6 +31,7 @@ import { describeSelections } from './modifiers'
 import { timestampMs } from './timestamps'
 
 export type TicketStatus =
+  | 'held'       // sent, but held until the front fires it (UPGRADE.md T3.11)
   | 'new'        // on the pass, nobody has picked it up
   | 'preparing'  // someone is cooking it
   | 'ready'      // waiting to be run to the table
@@ -106,7 +107,17 @@ export function readPrintId(printId: string): { ticketId: string; reprint: boole
 }
 
 /** Statuses still on a pass. What the KDS asks for. */
-export const ACTIVE_TICKET_STATUSES: TicketStatus[] = ['new', 'preparing', 'ready']
+export const ACTIVE_TICKET_STATUSES: TicketStatus[] = ['held', 'new', 'preparing', 'ready']
+
+/**
+ * The stations held back on a Send (UPGRADE.md T3.11): "send the drinks now,
+ * hold the food". Only stations this Send actually has lines for, each once,
+ * so a request cannot hold a station that is not on the ticket.
+ */
+export function heldStationsFor(requested: readonly unknown[], stationsInSend: readonly string[]): string[] {
+  const wanted = new Set(requested.filter((s): s is string => typeof s === 'string'))
+  return stationsInSend.filter((s, i) => wanted.has(s) && stationsInSend.indexOf(s) === i)
+}
 
 /**
  * The only moves a ticket may make.
@@ -118,6 +129,9 @@ export const ACTIVE_TICKET_STATUSES: TicketStatus[] = ['new', 'preparing', 'read
  * fired twice.
  */
 const NEXT: Record<TicketStatus, TicketStatus[]> = {
+  // Only firing moves a held ticket on (fireHeld() on the server), never a tap
+  // on the kitchen screen: the front decides when the food is wanted.
+  held:      ['new', 'cancelled'],
   new:       ['preparing', 'ready', 'cancelled'],
   preparing: ['ready', 'new', 'cancelled'],
   ready:     ['bumped', 'preparing'],

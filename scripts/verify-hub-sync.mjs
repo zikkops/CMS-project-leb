@@ -1547,6 +1547,7 @@ try {
     [HP.ticketJob(ticket({ sentAt: ts(now - HP.PRINT_WINDOW_MS - 1000) }), settings, branch, now), HP.ticketJob(ticket({ branch: otherBranch }), settings, branch, now),
       HP.ticketJob(ticket({ status: 'preparing' }), settings, branch, now), HP.ticketJob(ticket({ station: 'Bar' }), settings, branch, now), HP.ticketJob(ticket({ sentAt: null }), settings, branch, now)],
     [null, null, null, null, null])
+  eq('THE TRAP: a held ticket (T3.11) is not printed until it is fired, when it turns new', HP.ticketJob(ticket({ status: 'held' }), settings, branch, now), null)
   const check = (over = {}) => ({ id: 'c1', data: { branch, status: 'closed', receiptNumber: 'R-0001', closedAt: ts(now - 1000), ...over } })
   eq('a check just closed with its receipt number is a receipt job at the receipt station', HP.receiptJob(check(), settings, branch, now), { id: 'receipt_c1', kind: 'receipt', refId: 'c1', station: 'Kitchen' })
   eq('...but not with receipts on close off, before its receipt number, still open, or closed long ago',

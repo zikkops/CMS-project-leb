@@ -348,6 +348,31 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
     [['products', 'p-mug', branch, -1]])
 
   const ticketId = sent.tickets[0].id
+
+  // Hold and fire (UPGRADE.md T3.11), on a table of its own.
+  await db.doc('menuCategories/cat-drinks').set({ name: 'Drinks', section: 'Beverage' })
+  await db.doc('menuItems/m-tea').set({ name: 'Tea', price: 2, categoryId: 'cat-drinks', available: true, modifierGroupIds: [] })
+  const { id: holdCheck } = await C.openCheck(staff, { branch, tableNumber: 40, guestCount: 2 })
+  const both = C.parseLineRequests({ lines: [{ source: 'menu', refId: 'm-tea', quantity: 1 }, { source: 'menu', refId: 'm-toast', quantity: 1 }] })
+  await C.addLines(staff, holdCheck, both, 'batch-hold-1')
+  await rejects('holding food with the switch off is refused, and nothing is sent', () => C.sendCheck(staff, holdCheck, ['Kitchen']), e => e.status === 403)
+  const features = (await db.doc('appSettings/features').get()).data()
+  await db.doc('appSettings/features').set({ ...features, holdAndFire: { enabled: true } })
+  const heldSend = await C.sendCheck(staff, holdCheck, ['Kitchen'])
+  eq('"send the drinks, hold the food": the bar ticket goes now, the kitchen one is held',
+    heldSend.tickets.map(t => `${t.station}:${t.held}`).sort(), ['Bar:false', 'Kitchen:true'])
+  eq('...and the check knows what is held', (await db.doc(`checks/${holdCheck}`).get()).data().heldStations, ['Kitchen'])
+  const heldId = heldSend.tickets.find(t => t.held).id
+  await rejects('THE TRAP: the kitchen cannot start held food itself, even with "Back"', () => T.advanceTicket(staff, heldId, 'new'), e => e.status === 409)
+  await rejects('...nor move it on', () => T.advanceTicket(staff, heldId, 'preparing'), e => e.status === 409)
+  const heldAt = (await db.doc(`kitchenTickets/${heldId}`).get()).data().sentAt.toMillis()
+  await new Promise(r => setTimeout(r, 20))
+  const fired = await C.fireHeld(staff, holdCheck)
+  const firedTicket = (await db.doc(`kitchenTickets/${heldId}`).get()).data()
+  eq('fire: the held ticket goes to the pass as new, timed from now', [fired.fired, fired.stations, firedTicket.status, firedTicket.sentAt.toMillis() > heldAt], [1, ['Kitchen'], 'new', true])
+  eq('...and nothing is held any more', (await db.doc(`checks/${holdCheck}`).get()).data().heldStations, [])
+  await rejects('firing again, with nothing held, says so', () => C.fireHeld(staff, holdCheck), e => e.status === 409)
+  await db.doc('appSettings/features').set(features)
   await T.advanceTicket(staff, ticketId, 'preparing')
   await T.advanceTicket(staff, ticketId, 'ready')
   eq('ready records when, as a Timestamp', (await db.doc(`kitchenTickets/${ticketId}`).get()).data().readyAt instanceof Timestamp, true)

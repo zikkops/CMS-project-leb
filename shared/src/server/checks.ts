@@ -38,7 +38,7 @@ import { BRAND } from '../brand'
 import { isSoldOut, soldOutDay } from '../soldOut'
 import { validateSelection, toSelections, type ModifierGroup } from '../modifiers'
 import { effectivePrice } from '../productPricing'
-import { toTicketLines } from '../tickets'
+import { heldStationsFor, toTicketLines } from '../tickets'
 import { readSettings } from './settings'
 import { issueInvoiceNumber } from './invoiceNumber'
 import { toRecipeSupply } from './recipes'
@@ -566,8 +566,11 @@ export async function addLines(
 export async function sendCheck(
   caller: Caller,
   checkId: string,
-): Promise<{ tickets: { id: string; station: string; lines: number }[] }> {
+  hold: readonly unknown[] = [],
+): Promise<{ tickets: { id: string; station: string; lines: number; held: boolean }[] }> {
   const db = adminDb()
+  // Holding needs its switch (UPGRADE.md T3.11); asked for without it, refused.
+  if (hold.length > 0 && !(await serverFeatureOn('holdAndFire'))) throw new HttpError(403, 'Holding food to fire later is switched off.')
 
   return db.runTransaction(async tx => {
     const check = await readCheck(tx, checkId)
@@ -605,15 +608,19 @@ export async function sendCheck(
       byStation.set(l.station, list)
     }
 
-    const created: { id: string; station: string; lines: number }[] = []
+    const created: { id: string; station: string; lines: number; held: boolean }[] = []
+    const holding = heldStationsFor(hold, [...byStation.keys()])
     for (const [station, lines] of byStation) {
       const ref = db.collection(TICKETS).doc()
+      const held = holding.includes(station)
       tx.set(ref, {
         checkId,
         branch: check.branch,
         tableNumber: check.tableNumber,
         station,
-        status: 'new',
+        // Held until the front fires it: on the kitchen screen, greyed, and
+        // not printed (the printers print a 'new' ticket).
+        status: held ? 'held' : 'new',
         round: (roundsSoFar.get(station) ?? 0) + 1,
         lines: toTicketLines(lines),
         sentBy: caller.uid,
@@ -622,7 +629,10 @@ export async function sendCheck(
         bumpedAt: null,
         bumpedBy: null,
       })
-      created.push({ id: ref.id, station, lines: lines.length })
+      created.push({ id: ref.id, station, lines: lines.length, held })
+    }
+    if (holding.length > 0) {
+      tx.update(db.doc(`${CHECKS}/${checkId}`), { heldStations: [...new Set([...(check.heldStations ?? []), ...holding])] })
     }
 
     // ── Merchandise leaves the shelf ────────────────────────────────────
@@ -1034,6 +1044,27 @@ export async function setCheckDiscount(
       : discount.kind === 'percent' ? `${Math.round(discount.value * 100)}% off the check`
       : `$${discount.value.toFixed(2)} off the check`
     return { tableNumber: check.tableNumber, label: what }
+  })
+}
+
+/**
+ * Fires what a Send held back (UPGRADE.md T3.11): every held ticket of the
+ * check goes to the pass as new, stamped as sent NOW, so the kitchen's timer
+ * and the printers start from when the food was wanted, not from when it was
+ * ordered. Anyone on the till, like Send.
+ */
+export async function fireHeld(caller: Caller, checkId: string): Promise<{ fired: number; stations: string[]; tableNumber: number }> {
+  const db = adminDb()
+  return db.runTransaction(async tx => {
+    const check = await readCheck(tx, checkId)
+    const held = (await tx.get(db.collection(TICKETS).where('checkId', '==', checkId))).docs
+      .filter(d => d.data().status === 'held')
+    if (held.length === 0) throw new HttpError(409, 'Nothing on this check is held.')
+    for (const d of held) {
+      tx.update(d.ref, { status: 'new', sentAt: FieldValue.serverTimestamp(), firedBy: caller.uid, firedByEmail: caller.email ?? '' })
+    }
+    tx.update(db.doc(`${CHECKS}/${checkId}`), { heldStations: [], updatedAt: FieldValue.serverTimestamp() })
+    return { fired: held.length, stations: [...new Set(held.map(d => String(d.data().station)))], tableNumber: check.tableNumber }
   })
 }
 
