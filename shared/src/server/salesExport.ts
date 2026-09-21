@@ -16,7 +16,7 @@
 
 import { adminDb } from './firebaseAdmin'
 import { HttpError } from './auth'
-import { buildExport, closedAtParts, type SalesExport } from '../salesExport'
+import { buildExport, closedAtParts, exportCutShort, EXPORT_CHECK_CAP, type CutShort, type SalesExport } from '../salesExport'
 import type { Check } from '../checks'
 
 /**
@@ -64,9 +64,10 @@ export async function readSalesExport(
   range: ExportRequest,
   opts: { timeZone: string; fallbackRate: number; branches: string[] },
 ): Promise<SalesExport & { from: string; to: string; branches: string[] }> {
-  const { checks, branches } = await readClosedChecks(range, opts)
+  const { checks, branches, cutShort } = await readClosedChecks(range, opts)
   return {
     ...buildExport(checks, { timeZone: opts.timeZone, fallbackRate: opts.fallbackRate }),
+    cutShort,
     from: range.from,
     to: range.to,
     branches,
@@ -81,7 +82,7 @@ export async function readSalesExport(
 export async function readClosedChecks(
   range: ExportRequest,
   opts: { timeZone: string; branches: string[] },
-): Promise<{ checks: Check[]; branches: string[] }> {
+): Promise<{ checks: Check[]; branches: string[]; cutShort: CutShort | null }> {
   const { start, end } = paddedWindow(range.from, range.to)
 
   // Ranged on closedAt alone: a single-field range needs no composite index,
@@ -92,9 +93,12 @@ export async function readClosedChecks(
     .where('closedAt', '>=', start)
     .where('closedAt', '<=', end)
     .orderBy('closedAt', 'asc')
-    .limit(20_000)
+    .limit(EXPORT_CHECK_CAP)
 
   const snap = await query.get()
+  // Oldest first, so what was cut is the end of the range (T5.8).
+  const last = snap.docs[snap.docs.length - 1]
+  const cutShort = last ? exportCutShort(snap.size, EXPORT_CHECK_CAP, closedAtParts(last.data().closedAt, opts.timeZone).day) : null
 
   const wanted = new Set(range.branch ? [range.branch] : opts.branches)
   const checks: Check[] = []
@@ -106,5 +110,5 @@ export async function readClosedChecks(
     if (!day || day < range.from || day > range.to) continue
     checks.push(check)
   }
-  return { checks, branches: [...wanted] }
+  return { checks, branches: [...wanted], cutShort }
 }

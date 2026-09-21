@@ -35,10 +35,11 @@ import {
 } from '@big-cms/shared/endOfDay'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import type { TheoreticalFoodCost, WasteSummary } from '@big-cms/shared/recipes'
+import { cutShortMessage, type CutShort } from '@big-cms/shared/salesExport'
 import { voidReason } from '@big-cms/shared/checks'
 import { startLoad } from '@big-cms/shared/startLoad'
 
-type Theory = TheoreticalFoodCost & { checks: number; waste: WasteSummary }
+type Theory = TheoreticalFoodCost & { checks: number; waste: WasteSummary; cutShort?: CutShort | null }
 
 const inp: React.CSSProperties = {
   backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
@@ -399,6 +400,7 @@ export default function FoodCostReportPage() {
           </div>
 
           {theoryErr && <Note tone="warn">{theoryErr}</Note>}
+          {theory?.cutShort && <Note tone="warn">{cutShortMessage(theory.cutShort)}</Note>}
           {theory && theory.linesWithoutRecipe > 0 && (
             <Note tone="warn">
               {theory.linesWithoutRecipe} sold {theory.linesWithoutRecipe === 1 ? 'line has' : 'lines have'} no

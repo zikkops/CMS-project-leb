@@ -272,5 +272,12 @@ console.log('\nthe loyalty sheets are declared once')
   eq('every day column names a real field', L.LOYALTY_SHEETS.days.every(([k]) => k in d), true)
 }
 
+console.log('\na read that hit its ceiling says so (UPGRADE.md T5.8)')
+eq('under the cap: whole', X.exportCutShort(19_999, 20_000, '2026-09-10'), null)
+eq('at the cap: cut short, whole only through the day before the last read', X.exportCutShort(20_000, 20_000, '2026-09-10'), { cap: 20_000, completeThrough: '2026-09-09' })
+eq('...across a month end', X.exportCutShort(20_000, 20_000, '2026-03-01').completeThrough, '2026-02-28')
+eq('the export cap is the one every read uses', X.EXPORT_CHECK_CAP, 20_000)
+eq('the message names the day and what to do', /2026-09-09/.test(X.cutShortMessage({ cap: 20_000, completeThrough: '2026-09-09' })) && /shorter range/.test(X.cutShortMessage({ cap: 20_000, completeThrough: '2026-09-09' })), true)
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail > 0 ? 1 : 0)

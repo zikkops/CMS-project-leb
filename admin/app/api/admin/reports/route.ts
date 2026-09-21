@@ -52,19 +52,19 @@ export async function GET(request: Request): Promise<Response> {
     const timeZone = BRAND.locale.timezone
     const report = params.get('report')
     if (report === 'voids') {
-      const { checks, branches } = await readClosedChecks(range, { timeZone, branches: own })
+      const { checks, branches, cutShort } = await readClosedChecks(range, { timeZone, branches: own })
       return Response.json(
-        { ok: true, from: range.from, to: range.to, branches, checks: checks.length, ...voidDiscountReport(checks, { timeZone }) },
+        { ok: true, from: range.from, to: range.to, branches, cutShort, checks: checks.length, ...voidDiscountReport(checks, { timeZone }) },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }
     if (report === 'mix') {
-      const [{ checks, branches }, categoryOf] = await Promise.all([
+      const [{ checks, branches, cutShort }, categoryOf] = await Promise.all([
         readClosedChecks(range, { timeZone, branches: own }),
         menuCategories(),
       ])
       return Response.json(
-        { ok: true, from: range.from, to: range.to, branches, ...productMix(checks, { categoryOf }) },
+        { ok: true, from: range.from, to: range.to, branches, cutShort, ...productMix(checks, { categoryOf }) },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }
@@ -88,9 +88,9 @@ export async function GET(request: Request): Promise<Response> {
       if (range.from !== range.to) throw new HttpError(400, 'The hourly report is for one day.')
       // The day and the same weekday before it: one read of the eight days between.
       const week = { ...range, from: dayBefore(range.to, 7) }
-      const { checks, branches } = await readClosedChecks(week, { timeZone, branches: own })
+      const { checks, branches, cutShort } = await readClosedChecks(week, { timeZone, branches: own })
       return Response.json(
-        { ok: true, branches, ...hourlySales(checks, { timeZone, day: range.to }) },
+        { ok: true, branches, cutShort, ...hourlySales(checks, { timeZone, day: range.to }) },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }

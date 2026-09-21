@@ -10,10 +10,11 @@
 import { useState } from 'react'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { DISCOUNT_KIND_LABELS, type DiscountRow, type Tally, type VoidDiscountReport, type VoidRow } from '@big-cms/shared/salesReports'
-import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, type Column } from '../../../components/ui'
+import type { CutShort } from '@big-cms/shared/salesExport'
+import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
 import { ReportRange, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
 
-type Report = VoidDiscountReport & { from: string; to: string; checks: number }
+type Report = VoidDiscountReport & { from: string; to: string; checks: number; cutShort?: CutShort | null }
 
 const tallyColumns: Column<Tally>[] = [
   { key: 'label', label: '', render: t => t.label, sort: (a, b) => a.label.localeCompare(b.label) },
@@ -61,6 +62,7 @@ export default function VoidsReportPage() {
         lead="Everything struck off a check and every discount given, by reason and by person, over the checks that closed on the days you choose." />
       <ReportRange onRun={run} busy={busy} />
       {error && <ErrorLine>{error}</ErrorLine>}
+      <CutShortNote cut={report?.cutShort} />
       {busy && !report && <Loading label="Reading the checks…" />}
       {report && (
         <>

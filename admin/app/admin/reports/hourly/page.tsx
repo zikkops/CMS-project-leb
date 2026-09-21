@@ -11,7 +11,8 @@
 import { useState } from 'react'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import type { HourRow, HourlySales } from '@big-cms/shared/salesReports'
-import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, type Column } from '../../../components/ui'
+import type { CutShort } from '@big-cms/shared/salesExport'
+import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
 import { ReportRange, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
 import { HourChart, hourLabel } from './HourChart'
 
@@ -27,13 +28,13 @@ const columns: Column<HourRow>[] = [
 
 export default function HourlySalesPage() {
   const { checking } = useRequireRole(SECTION_ACCESS.endOfDay)
-  const [report, setReport] = useState<HourlySales | null>(null)
+  const [report, setReport] = useState<(HourlySales & { cutShort?: CutShort | null }) | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   async function run(range: RangeChoice) {
     setBusy(true); setError('')
-    try { setReport(await fetchReport<HourlySales>('hourly', range)) }
+    try { setReport(await fetchReport<HourlySales & { cutShort?: CutShort | null }>('hourly', range)) }
     catch (err) { setError(reportError(err)) }
     finally { setBusy(false) }
   }
@@ -45,6 +46,7 @@ export default function HourlySalesPage() {
         lead="What the till took in each hour of a day, beside the same day a week before. Hours are the café's own clock." />
       <ReportRange onRun={run} busy={busy} single />
       {error && <ErrorLine>{error}</ErrorLine>}
+      <CutShortNote cut={report?.cutShort} />
       {busy && !report && <Loading label="Reading the checks…" />}
       {report && (
         <>

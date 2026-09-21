@@ -234,6 +234,41 @@ export interface SalesExport {
   checks: CheckRow[]
   payments: PaymentRow[]
   days: DayRow[]
+  /** Set when the read hit its ceiling (UPGRADE.md T5.8): the export is complete only through `completeThrough`. */
+  cutShort?: CutShort | null
+}
+
+// ── A read that hit its ceiling (UPGRADE.md T5.8) ─────────────────────────
+// The export, the reports and the food cost read at most EXPORT_CHECK_CAP
+// checks, oldest first. A range busier than that used to come back quietly
+// short: the last days simply had fewer sales, and an export is believed. Now
+// the answer says where it stops being complete. The last day read may be cut
+// part-way, so it is complete only through the day before.
+//
+// Not a query per branch: that needs a composite index (branch, closedAt),
+// and an index deploy is its own approved step. The cap and the warning are
+// what this change can prove.
+
+export const EXPORT_CHECK_CAP = 20_000
+
+export interface CutShort {
+  cap: number
+  /** The last café day wholly included, 'YYYY-MM-DD'; before the range when even the first day was cut. */
+  completeThrough: string
+}
+
+/** Whether a read of `read` documents with this ceiling was cut short, and through which day it is whole. */
+export function exportCutShort(read: number, cap: number, lastDay: string): CutShort | null {
+  if (!(read >= cap)) return null
+  const ms = Date.parse(`${lastDay}T12:00:00Z`)
+  const completeThrough = Number.isFinite(ms) ? new Date(ms - 86_400_000).toISOString().slice(0, 10) : ''
+  return { cap, completeThrough }
+}
+
+/** The sentence a screen shows for it. */
+export function cutShortMessage(cut: CutShort): string {
+  return `This range has more than ${cut.cap.toLocaleString('en-US')} checks, so it was cut short. ` +
+    `Figures are complete only through ${cut.completeThrough}. Ask for a shorter range, or one branch at a time.`
 }
 
 export function buildExport(checks: readonly Check[], opts: ExportOptions): SalesExport {

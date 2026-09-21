@@ -12,7 +12,7 @@
 
 import { adminDb } from './firebaseAdmin'
 import { paddedWindow, type ExportRequest } from './salesExport'
-import { closedAtParts } from '../salesExport'
+import { closedAtParts, exportCutShort, EXPORT_CHECK_CAP, type CutShort } from '../salesExport'
 import { shareForLines } from '../splits'
 import {
   theoreticalFoodCost, wasteSummary,
@@ -23,15 +23,18 @@ import type { Check } from '../checks'
 export async function readTheoreticalFoodCost(
   range: ExportRequest,
   opts: { timeZone: string; branches: readonly string[] },
-): Promise<TheoreticalFoodCost & { checks: number; waste: WasteSummary; from: string; to: string; branches: string[] }> {
+): Promise<TheoreticalFoodCost & { checks: number; waste: WasteSummary; from: string; to: string; branches: string[]; cutShort: CutShort | null }> {
   const { start, end } = paddedWindow(range.from, range.to)
 
   const snap = await adminDb().collection('checks')
     .where('closedAt', '>=', start)
     .where('closedAt', '<=', end)
     .orderBy('closedAt', 'asc')
-    .limit(20_000)
+    .limit(EXPORT_CHECK_CAP)
     .get()
+  // Said, never silent: a food cost over a cut-short range is a wrong percentage (T5.8).
+  const last = snap.docs[snap.docs.length - 1]
+  const cutShort = last ? exportCutShort(snap.size, EXPORT_CHECK_CAP, closedAtParts(last.data().closedAt, opts.timeZone).day) : null
 
   const wanted = new Set(range.branch ? [range.branch] : opts.branches)
   const sold: SoldLine[] = []
@@ -84,5 +87,6 @@ export async function readTheoreticalFoodCost(
     from: range.from,
     to: range.to,
     branches: [...wanted],
+    cutShort,
   }
 }

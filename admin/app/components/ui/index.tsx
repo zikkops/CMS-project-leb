@@ -16,6 +16,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import type { IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import { usePathname } from 'next/navigation'
 import { sectionForPath } from '@big-cms/shared/adminNav'
+import { cutShortMessage, type CutShort } from '@big-cms/shared/salesExport'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -405,4 +406,13 @@ export function useToast(): { toast: (text: string, kind?: 'info' | 'error') => 
     </div>
   )
   return { toast, toasts }
+}
+
+/**
+ * Said when a read of closed checks hit its ceiling (UPGRADE.md T5.8), so a
+ * report over a range busier than the cap cannot pass for a complete one.
+ */
+export function CutShortNote({ cut }: { cut: CutShort | null | undefined }) {
+  if (!cut) return null
+  return <ErrorLine>{cutShortMessage(cut)}</ErrorLine>
 }

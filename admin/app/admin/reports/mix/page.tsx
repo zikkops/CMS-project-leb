@@ -12,10 +12,11 @@
 import { useState } from 'react'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import type { MixCategory, MixItem, ProductMix } from '@big-cms/shared/salesReports'
-import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, type Column } from '../../../components/ui'
+import type { CutShort } from '@big-cms/shared/salesExport'
+import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
 import { ReportRange, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
 
-type Report = ProductMix & { from: string; to: string }
+type Report = ProductMix & { from: string; to: string; cutShort?: CutShort | null }
 
 const pct = (share: number) => `${(share * 100).toFixed(1)}%`
 
@@ -67,6 +68,7 @@ export default function ProductMixPage() {
         lead="What sold, and how much it brought in, by item and by category, over the checks that closed on the days you choose." />
       <ReportRange onRun={run} busy={busy} />
       {error && <ErrorLine>{error}</ErrorLine>}
+      <CutShortNote cut={report?.cutShort} />
       {busy && !report && <Loading label="Reading the checks…" />}
       {report && (
         <>

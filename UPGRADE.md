@@ -476,9 +476,10 @@ Each needs its own plan note in the vault first, and the owner's answers.
   pushed). Either queue the credit and push it up, or say at the till that
   points are credited when back online. (owner): which.
   *Done: Done 21 Sep 2026, safe default: the till says so. OWNER TO CONFIRM (the alternative is to queue the credit and push it up). A hub holds no customer records, so setLoyaltyCustomer() refuses there with 409: 'Loyalty points are not collected on the café hub. Tell the customer this visit earns no points.' That is checked before the loyalty switch, so a code is never taken and then silently not credited at close. On a hub, the check page shows that sentence in place of 'Add loyalty customer'; hub mode is read through useClientValue(onHub), so there is no hydration mismatch. Covered by verify:hub. Queuing credits for the cloud would need `transactions` pushed and the member code resolved in the cloud, which is a bigger change that waits for the owner.*
-- [ ] **T5.8 Warn when an export is cut short.** `salesExport.ts` and
+- [x] **T5.8 Warn when an export is cut short.** `salesExport.ts` and
   `foodCost.ts` stop at 20,000 checks with no warning. Query per branch, and
   say so when the cap is hit.
+  *Done: Done 21 Sep 2026. The sales export, the reports (voids, mix, hourly) and the theoretical food cost all read at most EXPORT_CHECK_CAP (20,000) checks, oldest first. They now return `cutShort: { cap, completeThrough }` when they hit it (exportCutShort() in shared/src/salesExport.ts). The last day read may be cut part-way, so the answer is whole only through the day before. The export page, each report page (CutShortNote in the admin UI kit) and the Food Cost Report say so: complete only through that day, so ask for a shorter range or one branch. NOT done: a query per branch, which needs a composite (branch, closedAt) index, and an index deploy is its own approved step. With the warning, a cut-short range can no longer pass for a complete one. verify:export has 5 new cases (70 passed); reports and recipes still pass.*
 - [ ] **T5.9 Log after a committed sale without failing it.** `logActivity`
   runs after the transaction. If it throws, the till shows an error for a sale
   that happened. Catch it, and report it through `reportError()`.

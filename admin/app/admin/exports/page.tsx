@@ -19,7 +19,7 @@ import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import { BRAND } from '@big-cms/shared/brand'
 import { todayYmd } from '@big-cms/shared/dates'
-import type { SalesExport } from '@big-cms/shared/salesExport'
+import { cutShortMessage, type SalesExport } from '@big-cms/shared/salesExport'
 import type { LoyaltyExport } from '@big-cms/shared/loyaltyExport'
 import { downloadSalesWorkbook, downloadLoyaltyWorkbook, downloadDaysCsv } from './workbook'
 
@@ -199,6 +199,14 @@ export default function SalesExportPage() {
             style={{ ...button, border: 'none', backgroundColor: 'var(--teal)', color: '#fff' }}
           >{busy || 'Read the range'}</button>
         </div>
+
+        {data?.cutShort && (
+          <p role="alert" style={{
+            color: 'var(--red)', fontSize: '0.85rem', lineHeight: 1.6, marginTop: '1.2rem',
+            background: 'rgba(var(--red-rgb),0.08)', border: '1px solid rgba(var(--red-rgb),0.25)',
+            borderRadius: '4px', padding: '0.8rem 0.9rem',
+          }}>{cutShortMessage(data.cutShort)}</p>
+        )}
 
         {error && (
           <p style={{
