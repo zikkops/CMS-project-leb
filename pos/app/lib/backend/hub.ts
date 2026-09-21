@@ -25,6 +25,7 @@ import type { Role } from '@big-cms/shared/roles'
 import { TOUCH_EVERY_MS } from '@big-cms/shared/counterSignIn'
 import { compareResults, planQuery, planTouches, type LocalDoc, type ResultState } from './queries'
 import type { PosBackend } from './types'
+import { personLabel } from '../signOut'
 
 const SESSION_KEY = 'pos-hub-session'
 const SESSION_EVENT = 'pos-hub-session'
@@ -34,6 +35,8 @@ export interface HubSession {
   expiresAt: number
   uid: string
   email: string | null
+  /** The first name the hub pulled, for a shared screen to say who is signed in (T6.2). */
+  name?: string | null
   role: Role | null
   branchIds: string[]
   superadmin: boolean
@@ -103,6 +106,7 @@ function keepHubSession(token: string, data: Record<string, unknown>): HubSessio
     expiresAt: Number(data.expiresAt),
     uid: String(data.uid ?? ''),
     email: typeof data.email === 'string' ? data.email : null,
+    name: typeof data.name === 'string' && data.name ? data.name : null,
     role: typeof data.role === 'string' ? data.role as Role : null,
     branchIds: Array.isArray(data.branchIds) ? data.branchIds.filter((b): b is string => typeof b === 'string') : [],
     superadmin: data.superadmin === true,
@@ -383,6 +387,7 @@ export const hubBackend: PosBackend = {
   signOut: () => signOutHubSession(),
 
   signedIn: () => Boolean(readHubSession()),
+  signedInAs: () => personLabel(readHubSession()),
 
   watch(q, onData, onError) {
     const plan = planQuery(q)

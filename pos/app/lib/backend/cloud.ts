@@ -14,6 +14,7 @@ import { auth, db } from '@big-cms/shared/firebase'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import { planQuery, type FilterValue, type LocalDoc } from './queries'
 import type { PosBackend } from './types'
+import { personLabel } from '../signOut'
 import { clearAdminSessionCookie } from '@big-cms/shared/adminAuth'
 
 /** A plan's value as Firestore wants it: a timestamp as a Timestamp, a list as a plain array. */
@@ -32,6 +33,7 @@ export const cloudBackend: PosBackend = {
   watchAuth: onChange => onAuthStateChanged(auth, user => onChange(Boolean(user))),
 
   signedIn: () => Boolean(auth.currentUser),
+  signedInAs: () => (auth.currentUser ? personLabel({ name: auth.currentUser.displayName, email: auth.currentUser.email }) : null),
   signOut: async () => {
     clearAdminSessionCookie()
     try { await signOut(auth) } catch { /* signed out here regardless */ }

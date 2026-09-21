@@ -564,11 +564,12 @@ mutations caught by name, and is checked on the emulator against a built hub.
   If the device holds unsent lines or a queued outbox, say so first; that
   must never block signing out. Low risk: no data change.
   *Done: SignOutButton (pos/app/lib/SignOutButton.tsx) on the floor, counter, check screen, kitchen display and drawer; one signOutHere(): warns about unsent lines / queued or stuck outbox (signOutWarning(), never blocks), backend().signOut() (hub DELETE session or Firebase), plain load to /pos/login. Hidden for a kitchen screen session. verify:counter 52. Not looked at signed in.*
-- [ ] **T6.2 "Switch user" on a shared device.** Signing out of a shared
+- [x] **T6.2 "Switch user" on a shared device.** Signing out of a shared
   device goes straight to a sign-in screen that lists the staff (first names,
   as the counter already does), so the next person taps their name and scans
   (T6.3). A screen that says who is signed in, large, on every page of a
   shared device, so nobody takes an order under someone else's name.
+  *Done: SignedInStrip in a new /pos layout: on a shared device (hub counter PC, or an online browser with the new 'Shared device' switch on the floor, sharedDevice.ts) every till page says 'Signed in: <first name>' large with Switch user (= signOutHere, warning first). Hub session routes now return the pulled first name; backend().signedInAs() on both backends; personLabel() names nobody for a kitchen screen. Switch user lands on the counter's name list (hub) or the scan sign-in (online, T6.4); staff names are never listed to a signed-out online browser. verify:counter 55. Not looked at signed in.*
 - [ ] **T6.3 Scan to sign in at the counter PC** (hub). The counter's sign-in
   screen shows a QR beside the four-digit code.
   - The QR encodes the hub's fingerprint, the request id and the code

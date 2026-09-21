@@ -14,6 +14,19 @@ export interface DeviceWork {
   drafts: number
 }
 
+/**
+ * Who a shared device should say is signed in (T6.2): the first name, else
+ * the email, else "someone". A kitchen screen is a device, not a person, and
+ * names nobody.
+ */
+export function personLabel(p: { name?: string | null; email?: string | null; scope?: string | null } | null): string | null {
+  if (!p || p.scope === 'kds') return null
+  const name = (p.name ?? '').trim()
+  if (name) return name
+  const email = (p.email ?? '').trim()
+  return email || 'someone'
+}
+
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
 /** The question to ask before signing out, or null when nothing is waiting. */

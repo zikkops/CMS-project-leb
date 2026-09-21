@@ -27,6 +27,8 @@ export interface PosBackend {
   watchAuth(onChange: (signedIn: boolean) => void): () => void
   /** Whether somebody is signed in at this moment. */
   signedIn(): boolean
+  /** Who, as a shared screen says it (T6.2): first name, else email; null for nobody or a kitchen screen. */
+  signedInAs(): string | null
   /** Signs this device out. Never throws: signed out here even if the other end cannot be told. */
   signOut(): Promise<void>
   /** A live query. Returns an unsubscribe. */

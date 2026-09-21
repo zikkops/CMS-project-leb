@@ -45,6 +45,7 @@ import { floorReadings, readReadingChoice, READINGS, type ReadingKey } from '../
 import { ReadyPanel } from '../lib/ReadyPanel'
 import { useHubOnly, HubOnlyBanner } from '../lib/useHubOnly'
 import { SignOutButton } from '../lib/SignOutButton'
+import { SharedDeviceChip } from '../lib/SignedInStrip'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -434,7 +435,10 @@ export default function FloorPage() {
             </h1>
           </div>
           {/* The till had no way to sign out (UPGRADE.md T1.11); one Sign out on every screen since T6.1. */}
-          <SignOutButton />
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <SharedDeviceChip />
+            <SignOutButton />
+          </div>
         </div>
 
         {isMobile && (

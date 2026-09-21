@@ -216,6 +216,10 @@ console.log('\nsigning out says what is waiting, and never stops you (UPGRADE.md
   eq('a queued outbox is named, one change', S.signOutWarning({ queued: 1, stuck: false, drafts: 0 }).startsWith('1 change is waiting on this device'), true)
   eq('a refused change is named too', S.signOutWarning({ queued: 0, stuck: true, drafts: 0 }).startsWith('a change was refused'), true)
   eq('all of it, in one question', S.signOutWarning({ queued: 3, stuck: true, drafts: 1 }).split('; ').length, 3)
+  // Who a shared device says is signed in (T6.2).
+  eq('the first name first, then the email, then someone', [S.personLabel({ name: 'Rana', email: 'r@x' }), S.personLabel({ name: ' ', email: 'r@x' }), S.personLabel({})], ['Rana', 'r@x', 'someone'])
+  eq('THE TRAP: a kitchen screen is a device, and names nobody', S.personLabel({ name: 'Rana', scope: 'kds' }), null)
+  eq('nobody signed in names nobody', S.personLabel(null), null)
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)
