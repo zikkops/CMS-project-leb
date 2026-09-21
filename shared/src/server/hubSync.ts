@@ -28,7 +28,7 @@ import { stable } from '../backupCodec'
 import { BRANCHES } from '../branches'
 import { invoicePeriod } from '../invoiceFormat'
 import { timestampMs } from '../timestamps'
-import { deviceAuthHeader, holdLocalFor, leaveHubReasons, normalizePairingCode, planPull, pullSpec, type PulledDoc } from '../hubSync'
+import { changeLogTrim, deviceAuthHeader, holdLocalFor, leaveHubReasons, normalizePairingCode, planPull, pullSpec, type PulledDoc } from '../hubSync'
 import { MOVES_COLLECTION, PUSHED_COLLECTIONS, PUSH_BATCH, type PushedDoc, type StockMove } from '../hubPush'
 import { addBlock, needsReceipts, readBlocks, receiptsLeft } from '../receiptBlocks'
 
@@ -381,6 +381,9 @@ export async function pushToCloud(fetchImpl: Fetch = fetch): Promise<{ docs: num
     }
     state.lastPushAt = Date.now()
     state.pushError = null
+    // Only what the cloud now has, and only once a week has passed (T5.2).
+    const trim = changeLogTrim(Number(store.readMeta(PUSHED_UP_TO) ?? 0), Date.now())
+    store.trimChanges(trim.upToSeq, trim.before)
     return { docs: sentDocs, moves: sentMoves }
   } catch (err) {
     state.pushError = err instanceof HttpError ? err.message : 'Sending to the cloud failed. The hub log has the details.'

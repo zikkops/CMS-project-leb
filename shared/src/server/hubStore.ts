@@ -53,7 +53,7 @@ export type SqlValue = string | number | bigint | null
 
 /** The part of a node:sqlite statement used here, so a test can hand in its own. */
 export interface SqlStatement {
-  run(...params: SqlValue[]): { lastInsertRowid: number | bigint }
+  run(...params: SqlValue[]): { lastInsertRowid: number | bigint; changes: number | bigint }
   get(...params: SqlValue[]): unknown
   all(...params: SqlValue[]): unknown[]
 }
@@ -739,6 +739,7 @@ export class HubStore {
     logChange: SqlStatement
     since: SqlStatement
     lastSeq: SqlStatement
+    trim: SqlStatement
     readMeta: SqlStatement
     writeMeta: SqlStatement
   }
@@ -754,6 +755,9 @@ export class HubStore {
       logChange: sql.prepare('INSERT INTO changes (path, collection, id, deleted, at) VALUES (?, ?, ?, ?, ?)'),
       since: sql.prepare('SELECT seq, path, collection, id, deleted, at FROM changes WHERE seq > ? ORDER BY seq LIMIT ?'),
       lastSeq: sql.prepare('SELECT COALESCE(MAX(seq), 0) AS seq FROM changes'),
+      // The newest change always stays, so lastSeq() never goes backwards
+      // (AUTOINCREMENT already means a deleted number is never handed out again).
+      trim: sql.prepare('DELETE FROM changes WHERE seq <= ? AND at < ? AND seq < (SELECT MAX(seq) FROM changes)'),
       readMeta: sql.prepare('SELECT value FROM meta WHERE key = ?'),
       writeMeta: sql.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'),
     }
@@ -942,6 +946,16 @@ export class HubStore {
       seq: Number(r.seq), path: String(r.path), collection: String(r.collection), id: String(r.id),
       deleted: Number(r.deleted) === 1, at: Number(r.at),
     }))
+  }
+
+  /**
+   * Deletes changes up to `upToSeq` written before `before` (ms), keeping the
+   * newest (UPGRADE.md T5.2; the rule is changeLogTrim() in hubSync.ts). A
+   * document's version is its own column, so no transaction notices.
+   */
+  trimChanges(upToSeq: number, before: number): number {
+    if (!(upToSeq > 0)) return 0
+    return Number(this.stmt.trim.run(upToSeq, before).changes)
   }
 
   lastSeq(): number {

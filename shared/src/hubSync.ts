@@ -88,6 +88,24 @@ export interface PullSpec {
 /** The settings documents the till reads. Never the invoice counter, the error budget or anything else in appSettings. */
 export const PULLED_SETTINGS = ['features', 'business', 'printing'] as const
 
+// ── Trimming the change log (UPGRADE.md T5.2) ──────────────────────────────
+// The hub's `changes` table was never deleted from, so it grew for as long
+// as the PC traded. What it is for: sending up (read from the hub's place in
+// it forwards), the leave check (the same), and a screen's watch (which only
+// compares sequence numbers). So a change may go once it is sent up AND a
+// window has passed, the window being for a person reading the log after a
+// problem, not for the code. Nothing unsent is ever trimmed: an unpaired hub
+// or one offline for a month keeps every change it has not sent.
+
+export const CHANGE_LOG_KEEP_DAYS = 7
+
+/** Which changes may be deleted: sequence at most `upToSeq`, written before `before` (ms). */
+export function changeLogTrim(pushedSeq: number, nowMs: number, keepDays = CHANGE_LOG_KEEP_DAYS): { upToSeq: number; before: number } {
+  const upToSeq = Number.isFinite(pushedSeq) && pushedSeq > 0 ? Math.floor(pushedSeq) : 0
+  const days = Number.isFinite(keepDays) && keepDays >= 1 ? keepDays : CHANGE_LOG_KEEP_DAYS
+  return { upToSeq, before: nowMs - days * 86_400_000 }
+}
+
 /**
  * Why a counter PC cannot stop being the café hub yet, or none (owner's decision
  * S30): anything not yet in the cloud, or anything still open, would be left

@@ -421,10 +421,11 @@ Do these after T0.1, which protects them.
   groundwork for a light theme, and for a client's own colours without code
   changes.
   *Done: Done 21 Sep 2026, for all three apps. brandCss.ts gains three theme tokens: `--overlay-rgb` (255, 255, 255; a light theme sets 0, 0, 0), `--surface-deep` and `--on-accent`. A codemod moved every literal white tint and #0a0a0a in web, admin and pos app code onto them: 952 tints across 106 files, plus 15 near-blacks. Text on a chip became on-accent; backgrounds became surface-deep. The manifest and the POS icon are left alone, because they are not CSS. verify:brand now fails on the literal in app code (checked by putting one back). The tokens are in one place but not yet brand-configurable. In the browser on the web app, the tinted declarations computed to the same rgba(255, 255, 255, a) as before. shared/src has one canvas fillStyle, which cannot read a variable and was left alone.*
-- [ ] **T4.5 Split the biggest admin pages** into `_components/` using the UI
+- [x] **T4.5 Split the biggest admin pages** into `_components/` using the UI
   kit: menu (1,034 lines), end-of-day (1,034), supplies/receiving (986),
   products (985), events (940), weekly-orders (872). One page per session,
   with no behaviour change.
+  *Done: Done 21 Sep 2026, one commit per page, no behaviour change. menu went from 1,035 lines to 427, end-of-day from 1,044 to 453, supplies/receiving from 989 to 538, products from 986 to 250, events from 941 to 292 and weekly-orders from 866 to 209. Each page now keeps its state and handlers, and its sections, forms and modals live in its own _components/ folder as props-only components. useIsMobile is still copied per file, as CLAUDE.md asks. Every moved block was checked against the original. Passed: tsc, eslint, verify:admin-nav, verify:sections, verify:brand, and `npm run build:admin` (exit 0). Not looked at signed in: the admin pages need a real sign-in.*
 - [x] **T4.6 `useIsMobile` from one place** (owner). CLAUDE.md
   deliberately keeps a copy per file ("copy it in; don't refactor existing
   files to share it"). There are 62 copies, with breakpoints of 768 and 880.
@@ -444,10 +445,11 @@ Each needs its own plan note in the vault first, and the owner's answers.
   it is a manager's session. Covered by `verify:checks` and `verify:hub-sync`
   cases.
   *Done: Done 21 Sep 2026, safe default. OWNER TO CONFIRM. Voiding a line already sent to the kitchen, and refunding a closed check, now need a manager or an admin (`reversalRefusal()` in shared/src/checks.ts). They do it from their own session, as discounts already work: online that is their sign-in, and on a hub their phone's or the counter's sign-in. voidedBy and refundedBy record who. A line never sent can still be struck off by anyone, so a mis-tap needs no manager. voidLine() judges from the stored line, not the request. The till shows the reason in place of the void reasons and the Refund button. Not built: a barista asking and a manager approving by fingerprint on a hub, which is the natural next step (the approval flow already exists for sign-in). Covered by verify:checks (8 cases) and verify:hub (a barista's void of sent food and refund refused with 403, the line still sent, the check still closed, and an unsent line still voidable).*
-- [ ] **T5.2 Trim the hub's change log.** `changes` is never deleted from
+- [x] **T5.2 Trim the hub's change log.** `changes` is never deleted from
   (`hubStore.ts`), so it grows forever. Keep what has not been sent up plus a
   window (e.g. 7 days). Watch that a change feed or `readyToLeaveHub()` never
   reads past the trim.
+  *Done: Done 21 Sep 2026. After every successful push, the hub deletes change-log rows up to where it has sent (`pushedSeq`) that are more than 7 days old. It always keeps the newest row, so lastSeq() never goes backwards; the rule is `changeLogTrim()` in shared/src/hubSync.ts and the delete is `HubStore.trimChanges()`. Nothing unsent is ever trimmed, so an unpaired hub, or one offline for a month, keeps everything. Pushing and readyToLeaveHub() both read forwards from pushedSeq, so they never reach a trimmed row. Screens only compare sequence numbers. AUTOINCREMENT means a trimmed number is never reused, and a document's version is its own column, so transactions are unaffected. Covered by verify:hub (8 cases on a real SQLite file: unsent kept, trimmed up to the place, newest kept, next number new, versions kept, recent kept) and verify:hub-sync (5 cases, 418 passed).*
 - [ ] **T5.3 Index and bound the hub's queries.** Only `==` filters and
   `branch` reach SQL today. `array-contains`, ranges, order and limit happen in
   JavaScript over every row. So X/Z readings (`shiftIds array-contains`) and

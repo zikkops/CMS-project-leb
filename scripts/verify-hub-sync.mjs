@@ -1667,6 +1667,12 @@ try {
 
 console.log('\na counter PC stops being the café hub only when nothing would be left behind (S30)')
 try {
+  // Trimming the change log (UPGRADE.md T5.2).
+  eq('a hub that has sent nothing trims nothing', P.changeLogTrim(0, 1e12).upToSeq, 0)
+  eq('a nonsense place trims nothing', [P.changeLogTrim(NaN, 1e12).upToSeq, P.changeLogTrim(-5, 1e12).upToSeq], [0, 0])
+  eq('it trims up to where the hub has sent, and no further', P.changeLogTrim(40, 1e12).upToSeq, 40)
+  eq('...only what is older than a week', P.changeLogTrim(40, 1e12).before, 1e12 - 7 * 86_400_000)
+  eq('a window under a day is read as the default', P.changeLogTrim(40, 1e12, 0).before, 1e12 - 7 * 86_400_000)
   eq('nothing unsent and nothing open: it may leave', P.leaveHubReasons({ unsentDocs: 0, unsentMoves: 0, openChecks: 0, openShift: false }), [])
   eq('THE TRAP: not with trading unsent, a stock movement unsent, a table open or the drawer open',
     [P.leaveHubReasons({ unsentDocs: 2, unsentMoves: 0, openChecks: 0, openShift: false }).length, P.leaveHubReasons({ unsentDocs: 0, unsentMoves: 1, openChecks: 0, openShift: false })[0],

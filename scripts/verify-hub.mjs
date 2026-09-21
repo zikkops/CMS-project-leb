@@ -271,6 +271,21 @@ console.log('\nthe change log, and a file that outlives the process')
   eq('the log lists every write in order, deletes marked',
     db.changesSince(start).map(c => `${c.path}${c.deleted ? ' deleted' : ''}`), ['a/1', 'a/2', 'a/1 deleted', 'a/3'])
   eq('a document\'s version is the write that made it', (await db.doc('a/3').get()).version, db.lastSeq())
+
+  // Trimming (UPGRADE.md T5.2): sent and old goes, the rest stays, and the
+  // newest change stays whatever, so lastSeq() never goes backwards.
+  const newest = db.lastSeq()
+  sql.prepare('UPDATE changes SET at = ?').run(Date.now() - 30 * 86_400_000)
+  eq('nothing unsent is trimmed, however old', db.trimChanges(0, Date.now()), 0)
+  eq('sent and old: trimmed up to the place, no further', db.trimChanges(start + 2, Date.now() - 7 * 86_400_000), 2)
+  eq('...the unsent ones are all still there', db.changesSince(start).map(c => c.path), ['a/1', 'a/3'])
+  eq('everything sent and old still keeps the newest change', db.trimChanges(newest, Date.now()), 1)
+  eq('...so lastSeq() has not gone back', db.lastSeq(), newest)
+  await db.doc('a/4').set({ v: 4 })
+  eq('the next change gets a new number, never a trimmed one', db.lastSeq(), newest + 1)
+  eq('a document written before the trim keeps its version', (await db.doc('a/3').get()).version, newest)
+  db.trimChanges(db.lastSeq(), Date.now() - 7 * 86_400_000)
+  eq('a recent change is kept even when sent; the old one before it goes', db.changesSince(0).map(c => c.path), ['a/4'])
   sql.close()
   const sql2 = new DatabaseSync(file)
   const again = H.openHubStore(sql2)
