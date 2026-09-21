@@ -623,11 +623,12 @@ mutations caught by name, and is checked on the emulator against a built hub.
   at 05:00 is flagged on the timesheet as "no clock-out", never clocked out
   silently at a guessed time.
   *Done: Every hub sign-in (startHubSession) clocks its person in unless already in; ending a session (sign-out, ended by id, ended from admin) clocks out only when it was the person's last live session; a kitchen screen never clocks. sessionClockAction() in timeClock.ts is the rule; sessionClock.ts writes the same timeEntries as clockWithKey() (via: sign-in / sign-out), never throwing into a sign-in. 05:00 expiry is not a sign-out: the open shift shows as 'no clock-out' on the timesheet and Labour. Hub only (the online till has no timeEntries). verify:hub-sync 476, 4 mutations caught.*
-- [ ] **T6.7 Idle sign-out on shared online devices.** A per-device "This is a
+- [x] **T6.7 Idle sign-out on shared online devices.** A per-device "This is a
   shared device" switch on the online till (remembered in localStorage), with
   the idle rule the counter PC already has (S25, `followIdle()`), at the limit
   from T6.0. Only taps count, never background requests. Personal phones keep
   their sign-in.
+  *Done: Shared online device (the T6.2 'Shared device' switch on the floor, remembered in localStorage): signs out after 15 minutes without a tap (T6.0 default, the counter PC's limit), no question asked; taps = pointer/key/wheel, shared across tabs; background requests never count. sharedIdleDue() in signOut.ts, the watcher in SignedInStrip on every page; a hub's counter PC keeps its server-side S25 rule; personal phones keep their sign-in. verify:counter 59.*
 - [x] **T6.8 Printed staff badges: not built unless the owner asks** (owner).
   A static QR on a card or lanyard is a password anyone can photograph, and it
   cannot tell who is holding it. If the owner wants badges anyway:

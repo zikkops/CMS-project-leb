@@ -220,6 +220,12 @@ console.log('\nsigning out says what is waiting, and never stops you (UPGRADE.md
   eq('the first name first, then the email, then someone', [S.personLabel({ name: 'Rana', email: 'r@x' }), S.personLabel({ name: ' ', email: 'r@x' }), S.personLabel({})], ['Rana', 'r@x', 'someone'])
   eq('THE TRAP: a kitchen screen is a device, and names nobody', S.personLabel({ name: 'Rana', scope: 'kds' }), null)
   eq('nobody signed in names nobody', S.personLabel(null), null)
+  // Idle sign-out on a shared online device (T6.7).
+  const idle = over => S.sharedIdleDue({ shared: true, online: true, signedIn: true, lastTap: 1_000, now: 1_000 + S.SHARED_IDLE_MS, ...over })
+  eq('fifteen minutes without a tap signs a shared device out, fourteen does not', [idle({}), idle({ now: 1_000 + S.SHARED_IDLE_MS - 60_000 })], [true, false])
+  eq('THE TRAP: a personal phone keeps its sign-in', idle({ shared: false }), false)
+  eq('...and a hub counter PC keeps the server\'s own rule, not this one', idle({ online: false }), false)
+  eq('nobody signed in, nothing to sign out; no tap recorded, nothing judged', [idle({ signedIn: false }), idle({ lastTap: 0 })], [false, false])
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

@@ -10,7 +10,7 @@
 // staff by first name to tap (S24); on the online till it is the scan-to-sign-in
 // screen (T6.4). Staff names are never listed to a signed-out browser online.
 
-import { useSyncExternalStore } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
 import { faUserGroup, faUsers, faList } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -18,6 +18,7 @@ import { backend } from './backend'
 import { setSharedSwitch, useSharedDevice, useSharedSwitch } from './sharedDevice'
 import { useClientValue } from '@big-cms/shared/useClientValue'
 import { signOutHere } from './SignOutButton'
+import { sharedIdleDue } from './signOut'
 import { Chip, PosButton } from './posUi'
 
 const subscribe = (onChange: () => void) => backend().watchAuth(() => onChange())
@@ -40,10 +41,39 @@ export function SessionsButton() {
   return <PosButton icon={faList} label="Sessions" tone="quiet" size="sm" onClick={() => { window.location.href = '/pos/sessions' }} />
 }
 
+const TAP_KEY = 'pos.lastTap'
+
+/**
+ * Idle sign-out on a shared online device (T6.7). Taps (pointer, key, wheel)
+ * are remembered, across tabs, in localStorage; every 30 seconds the rule is
+ * asked. Idle, the device signs out straight away with no question: nobody is
+ * there to answer, and unsent work stays on the device as always.
+ */
+function useSharedIdle(shared: boolean, signedIn: boolean): void {
+  useEffect(() => {
+    const online = backend().kind === 'cloud'
+    if (!shared || !online || !signedIn) return
+    const mark = () => { try { localStorage.setItem(TAP_KEY, String(Date.now())) } catch { /* private mode */ } }
+    const lastTap = () => { try { return Number(localStorage.getItem(TAP_KEY)) || 0 } catch { return 0 } }
+    mark()
+    const events = ['pointerdown', 'keydown', 'wheel'] as const
+    for (const e of events) window.addEventListener(e, mark, { passive: true })
+    const timer = setInterval(() => {
+      if (!sharedIdleDue({ shared: true, online: true, signedIn: backend().signedIn(), lastTap: lastTap(), now: Date.now() })) return
+      void backend().signOut().finally(() => window.location.replace('/pos/login'))
+    }, 30_000)
+    return () => {
+      for (const e of events) window.removeEventListener(e, mark)
+      clearInterval(timer)
+    }
+  }, [shared, signedIn])
+}
+
 export function SignedInStrip() {
   const pathname = usePathname() ?? ''
   const shared = useSharedDevice()
   const who = useSyncExternalStore(subscribe, () => backend().signedInAs() ?? '', () => '')
+  useSharedIdle(shared, Boolean(who))
   if (!shared || !who || pathname.startsWith('/pos/login') || pathname.startsWith('/pos/hub')) return null
   return (
     <div role="status" aria-live="polite" style={{

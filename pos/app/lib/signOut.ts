@@ -27,6 +27,22 @@ export function personLabel(p: { name?: string | null; email?: string | null; sc
   return email || 'someone'
 }
 
+/** A shared online device signs out after this long without a tap (T6.7; T6.0's default, the counter PC's S25 limit). */
+export const SHARED_IDLE_MS = 15 * 60_000
+
+/**
+ * Whether a shared online device has gone idle (UPGRADE.md T6.7): switched to
+ * shared, on the online till (a hub's counter PC has its own server-side rule,
+ * S25), somebody signed in, and no tap for the limit. Only taps count; the
+ * page's own background requests never keep it signed in. A personal phone
+ * keeps its sign-in.
+ */
+export function sharedIdleDue(s: { shared: boolean; online: boolean; signedIn: boolean; lastTap: number; now: number; idleMs?: number }): boolean {
+  if (!s.shared || !s.online || !s.signedIn) return false
+  if (!(s.lastTap > 0)) return false
+  return s.now - s.lastTap >= (s.idleMs ?? SHARED_IDLE_MS)
+}
+
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
 /** The question to ask before signing out, or null when nothing is waiting. */
