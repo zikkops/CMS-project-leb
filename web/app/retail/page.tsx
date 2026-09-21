@@ -48,8 +48,8 @@ function ProductCard({ product }: { product: Product }) {
         textDecoration: 'none',
         display: 'flex',
         flexDirection: 'column',
-        background: hovered ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)',
-        border: `1px solid ${hovered ? 'rgba(var(--brand-secondary-rgb),0.35)' : 'rgba(255,255,255,0.07)'}`,
+        background: hovered ? 'rgba(var(--overlay-rgb),0.04)' : 'rgba(var(--overlay-rgb),0.02)',
+        border: `1px solid ${hovered ? 'rgba(var(--brand-secondary-rgb),0.35)' : 'rgba(var(--overlay-rgb),0.07)'}`,
         borderRadius: '6px',
         overflow: 'hidden',
         transition: 'all 0.22s ease',
@@ -58,7 +58,7 @@ function ProductCard({ product }: { product: Product }) {
       }}
     >
       {/* Image */}
-      <div style={{ position: 'relative', width: '100%', paddingTop: '66%', overflow: 'hidden', background: 'rgba(255,255,255,0.03)' }}>
+      <div style={{ position: 'relative', width: '100%', paddingTop: '66%', overflow: 'hidden', background: 'rgba(var(--overlay-rgb),0.03)' }}>
         {product.image ? (
           <img
             src={product.image}
@@ -73,7 +73,7 @@ function ProductCard({ product }: { product: Product }) {
           />
         ) : (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)' }}>No photo</span>
+            <span style={{ color: 'rgba(var(--overlay-rgb),0.25)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)' }}>No photo</span>
           </div>
         )}
         {/* Price badge */}
@@ -211,8 +211,8 @@ export default function RetailPage() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 style={{
-                  width: '100%', backgroundColor: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.1)', color: 'var(--offwhite)',
+                  width: '100%', backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.1)', color: 'var(--offwhite)',
                   padding: '0.7rem 1rem 0.7rem 2.4rem', borderRadius: '4px',
                   fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)',
                   boxSizing: 'border-box',
@@ -236,7 +236,7 @@ export default function RetailPage() {
                   padding: '0.4rem 0.85rem', borderRadius: '20px', border: 'none',
                   fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase',
                   cursor: 'pointer', fontFamily: 'var(--font-inter)',
-                  backgroundColor: category === cat ? 'var(--brand-secondary)' : 'rgba(255,255,255,0.06)',
+                  backgroundColor: category === cat ? 'var(--brand-secondary)' : 'rgba(var(--overlay-rgb),0.06)',
                   color: category === cat ? '#000' : 'rgba(var(--offwhite-rgb),0.5)',
                   transition: 'all 0.15s ease',
                 }}>{cat}</button>
@@ -246,7 +246,7 @@ export default function RetailPage() {
             {/* In-stock toggle */}
             <button onClick={() => setStockOnly(s => !s)} style={{
               padding: '0.4rem 0.85rem', borderRadius: '20px',
-              border: `1px solid ${stockOnly ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
+              border: `1px solid ${stockOnly ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.1)'}`,
               fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase',
               cursor: 'pointer', fontFamily: 'var(--font-inter)',
               backgroundColor: stockOnly ? 'rgba(var(--teal-rgb),0.12)' : 'transparent',
@@ -272,7 +272,7 @@ export default function RetailPage() {
             </div>
           ) : filtered.length === 0 ? (
             <div style={{
-              border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px',
+              border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '6px',
               padding: '4rem', textAlign: 'center',
               color: 'rgba(var(--offwhite-rgb),0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem',
             }}>

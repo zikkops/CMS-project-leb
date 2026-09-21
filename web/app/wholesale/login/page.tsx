@@ -61,15 +61,15 @@ export default function WholesaleLoginPage() {
 
   const inp: React.CSSProperties = {
     width: '100%', boxSizing: 'border-box',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
+    border: '1px solid rgba(var(--overlay-rgb),0.12)',
     color: 'var(--offwhite)', padding: '0.8rem 1rem', borderRadius: '3px',
     fontSize: '0.9rem', outline: 'none', fontFamily: 'var(--font-inter)',
   }
 
   return (
     <div style={{
-      minHeight: '100vh', backgroundColor: 'var(--black, #0a0a0a)',
+      minHeight: '100vh', backgroundColor: 'var(--black)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: isMobile ? '1.5rem' : '2rem',
     }}>
@@ -108,7 +108,7 @@ export default function WholesaleLoginPage() {
           <button
             type="submit" disabled={busy}
             style={{
-              backgroundColor: busy ? 'rgba(255,255,255,0.08)' : 'var(--teal, var(--teal))',
+              backgroundColor: busy ? 'rgba(var(--overlay-rgb),0.08)' : 'var(--teal, var(--teal))',
               color: busy ? 'rgba(var(--offwhite-rgb),0.3)' : '#000',
               border: 'none', borderRadius: '3px', padding: '0.85rem',
               fontSize: '0.82rem', fontWeight: 700, letterSpacing: '0.1em',

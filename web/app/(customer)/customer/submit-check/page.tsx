@@ -26,7 +26,7 @@ interface SubmissionSummary {
 const inputStyle = {
   width: '100%',
   backgroundColor: '#1a1a1a',
-  border: '1px solid rgba(255,255,255,0.1)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.8rem 1rem',
   borderRadius: '4px',
@@ -239,9 +239,9 @@ export default function SubmitCheckPage() {
           </p>
 
           <div style={{
-            border: '1px solid rgba(255,255,255,0.08)',
+            border: '1px solid rgba(var(--overlay-rgb),0.08)',
             borderRadius: '4px',
-            backgroundColor: 'rgba(255,255,255,0.02)',
+            backgroundColor: 'rgba(var(--overlay-rgb),0.02)',
             padding: '1.5rem',
             display: 'flex',
             flexDirection: 'column',
@@ -293,7 +293,7 @@ export default function SubmitCheckPage() {
                 position: 'absolute', top: 0,
                 left: submitAnotherHovered ? '120%' : '-60%',
                 width: '40%', height: '100%',
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
+                background: 'linear-gradient(90deg, transparent, rgba(var(--overlay-rgb),0.25), transparent)',
                 transform: 'skewX(-20deg)',
                 transition: 'left 0.5s ease',
                 pointerEvents: 'none',
@@ -406,7 +406,7 @@ export default function SubmitCheckPage() {
                   height: isMobile ? '80px' : '120px',
                   borderRadius: '4px',
                   overflow: 'hidden',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.1)',
                   flexShrink: 0,
                 }}>
                   <img src={checkPhotoUrl} alt="Check" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -440,8 +440,8 @@ export default function SubmitCheckPage() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 width: '100%',
-                background: splitToggleHovered ? 'rgba(255,255,255,0.04)' : 'transparent',
-                border: `1px solid ${splitToggleHovered ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)'}`,
+                background: splitToggleHovered ? 'rgba(var(--overlay-rgb),0.04)' : 'transparent',
+                border: `1px solid ${splitToggleHovered ? 'rgba(var(--overlay-rgb),0.25)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                 color: splitToggleHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.7)',
                 padding: '0.8rem 1rem',
                 borderRadius: '4px',
@@ -455,7 +455,7 @@ export default function SubmitCheckPage() {
               <span style={{
                 width: '36px', height: '20px',
                 borderRadius: '10px',
-                backgroundColor: splitEnabled ? 'var(--purple)' : 'rgba(255,255,255,0.15)',
+                backgroundColor: splitEnabled ? 'var(--purple)' : 'rgba(var(--overlay-rgb),0.15)',
                 position: 'relative',
                 transition: 'background-color 0.2s',
                 flexShrink: 0,
@@ -542,8 +542,8 @@ export default function SubmitCheckPage() {
                               display: 'flex',
                               alignItems: 'center',
                               gap: '0.5rem',
-                              backgroundColor: hoveredBtn === `quickadd-${f.uid}` ? 'rgba(var(--purple-rgb),0.15)' : 'rgba(255,255,255,0.04)',
-                              border: `1px solid ${hoveredBtn === `quickadd-${f.uid}` ? 'rgba(var(--purple-rgb),0.5)' : 'rgba(255,255,255,0.1)'}`,
+                              backgroundColor: hoveredBtn === `quickadd-${f.uid}` ? 'rgba(var(--purple-rgb),0.15)' : 'rgba(var(--overlay-rgb),0.04)',
+                              border: `1px solid ${hoveredBtn === `quickadd-${f.uid}` ? 'rgba(var(--purple-rgb),0.5)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                               borderRadius: '20px',
                               padding: '0.3rem 0.8rem 0.3rem 0.3rem',
                               cursor: 'pointer',
@@ -595,7 +595,7 @@ export default function SubmitCheckPage() {
                     {friendSearch.trim() && searchResults.length > 0 && (
                       <div style={{
                         marginTop: '0.5rem',
-                        border: '1px solid rgba(255,255,255,0.08)',
+                        border: '1px solid rgba(var(--overlay-rgb),0.08)',
                         borderRadius: '4px',
                         backgroundColor: '#111',
                         maxHeight: '220px',
@@ -614,9 +614,9 @@ export default function SubmitCheckPage() {
                               gap: '0.7rem',
                               width: '100%',
                               padding: '0.7rem 1rem',
-                              background: hoveredBtn === `searchresult-${u.uid}` ? 'rgba(255,255,255,0.05)' : 'transparent',
+                              background: hoveredBtn === `searchresult-${u.uid}` ? 'rgba(var(--overlay-rgb),0.05)' : 'transparent',
                               border: 'none',
-                              borderBottom: '1px solid rgba(255,255,255,0.04)',
+                              borderBottom: '1px solid rgba(var(--overlay-rgb),0.04)',
                               cursor: 'pointer',
                               textAlign: 'left',
                               transition: 'background 0.15s ease',
@@ -691,7 +691,7 @@ export default function SubmitCheckPage() {
               bottom: 0, left: 0, right: 0,
               padding: '1rem 1.25rem',
               backgroundColor: 'rgba(10,10,10,0.95)',
-              borderTop: '1px solid rgba(255,255,255,0.08)',
+              borderTop: '1px solid rgba(var(--overlay-rgb),0.08)',
               backdropFilter: 'blur(8px)',
             }}>
               <button type="submit" disabled={!canSubmit} style={{

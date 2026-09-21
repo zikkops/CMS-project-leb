@@ -127,8 +127,8 @@ export default function AdminErrorsPage() {
           {(['all', 'pos', 'admin', 'web'] as const).map(a => (
             <button key={a} onClick={() => setAppFilter(a)} style={{
               minHeight: '38px', padding: '0 0.9rem', borderRadius: '4px', cursor: 'pointer',
-              backgroundColor: appFilter === a ? 'rgba(255,255,255,0.08)' : 'transparent',
-              border: `1px solid ${appFilter === a ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)'}`,
+              backgroundColor: appFilter === a ? 'rgba(var(--overlay-rgb),0.08)' : 'transparent',
+              border: `1px solid ${appFilter === a ? 'rgba(var(--overlay-rgb),0.25)' : 'rgba(var(--overlay-rgb),0.1)'}`,
               color: 'var(--offwhite)', fontFamily: 'var(--font-inter)', fontSize: '0.78rem',
             }}>{a === 'all' ? 'All three' : a}</button>
           ))}
@@ -161,7 +161,7 @@ export default function AdminErrorsPage() {
         ) : (
           shown.map(r => (
             <div key={r.id} style={{
-              border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px',
+              border: '1px solid rgba(var(--overlay-rgb),0.1)', borderRadius: '6px',
               padding: '0.9rem 1rem', marginBottom: '0.6rem',
             }}>
               <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -201,7 +201,7 @@ export default function AdminErrorsPage() {
               {open === r.id && (
                 <pre style={{
                   marginTop: '0.7rem', padding: '0.7rem', borderRadius: '4px',
-                  background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(var(--overlay-rgb),0.08)',
                   fontSize: '0.7rem', lineHeight: 1.6, color: 'rgba(var(--offwhite-rgb),0.6)',
                   overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                 }}>{r.stack}</pre>

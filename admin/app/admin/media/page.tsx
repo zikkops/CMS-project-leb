@@ -99,7 +99,7 @@ export default function MediaLibraryPage() {
           </div>
           <button onClick={handleSync} disabled={syncing} style={{
             backgroundColor: 'transparent',
-            border: '1px solid rgba(255,255,255,0.1)',
+            border: '1px solid rgba(var(--overlay-rgb),0.1)',
             color: 'rgba(var(--offwhite-rgb),0.6)',
             padding: '0.7rem 1.5rem',
             borderRadius: '2px',
@@ -150,7 +150,7 @@ export default function MediaLibraryPage() {
                   disabled={loadingMore}
                   style={{
                     backgroundColor: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(var(--overlay-rgb),0.1)',
                     color: loadingMore ? 'rgba(var(--offwhite-rgb),0.3)' : 'rgba(var(--offwhite-rgb),0.6)',
                     padding: '0.8rem 2.5rem',
                     borderRadius: '2px',

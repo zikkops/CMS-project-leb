@@ -153,7 +153,7 @@ function LineRow({ line, now, discount, onMore }: {
   return (
     <div style={{
       display: 'flex', gap: '0.8rem', alignItems: 'flex-start',
-      padding: '0.85rem 0.2rem', borderBottom: '1px solid rgba(255,255,255,0.07)',
+      padding: '0.85rem 0.2rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.07)',
       opacity: voided ? 0.5 : 1,
     }}>
       <span style={{
@@ -299,7 +299,7 @@ function TextSheet({ title, initial = '', placeholder, required = false, submitL
         placeholder={placeholder}
         style={{
           width: '100%', boxSizing: 'border-box', padding: '0.8rem 0.9rem', borderRadius: '10px',
-          background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.18)', color: 'var(--offwhite)',
+          background: 'rgba(var(--overlay-rgb),0.05)', border: '2px solid rgba(var(--overlay-rgb),0.18)', color: 'var(--offwhite)',
           fontFamily: 'var(--font-inter)', fontSize: '1.05rem', lineHeight: 1.5, outline: 'none', resize: 'vertical',
         }}
       />
@@ -832,7 +832,7 @@ export default function CheckPage() {
           {/* Sticky, because a waiter's thumb lives at the bottom of the screen. */}
           <div style={{
             position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 20,
-            backgroundColor: 'rgba(10,10,10,0.97)', borderTop: '1px solid rgba(255,255,255,0.12)',
+            backgroundColor: 'rgba(10,10,10,0.97)', borderTop: '1px solid rgba(var(--overlay-rgb),0.12)',
             padding: '0.8rem 1rem',
           }}>
             <div style={{ maxWidth: '720px', margin: '0 auto' }}>{actionBar}</div>
@@ -848,17 +848,17 @@ export default function CheckPage() {
           <section style={{
             position: 'sticky', top: '1rem', height: 'calc(100vh - 4.5rem)',
             display: 'flex', flexDirection: 'column',
-            background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(var(--overlay-rgb),0.025)', border: '1px solid rgba(var(--overlay-rgb),0.1)',
             borderRadius: '14px', padding: '1.1rem 1.1rem 0',
           }}>
             {header}
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.2rem' }}>{lines}</div>
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', padding: '0.9rem 0 1rem' }}>{actionBar}</div>
+            <div style={{ borderTop: '1px solid rgba(var(--overlay-rgb),0.1)', padding: '0.9rem 0 1rem' }}>{actionBar}</div>
           </section>
 
           {/* The menu, always open. */}
           <section style={{
-            background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(var(--overlay-rgb),0.025)', border: '1px solid rgba(var(--overlay-rgb),0.1)',
             borderRadius: '14px', padding: '0.4rem 1.1rem 1.2rem',
           }}>
             {draftsLocked && (
@@ -951,7 +951,7 @@ export default function CheckPage() {
                     padding: '0.6rem 0.9rem', fontFamily: 'var(--font-inter)',
                     // Waste reasons in red: the food is gone. The others are
                     // still a void, so still outlined red, but quieter.
-                    backgroundColor: r.isWaste ? 'rgba(var(--red-rgb),0.12)' : 'rgba(255,255,255,0.04)',
+                    backgroundColor: r.isWaste ? 'rgba(var(--red-rgb),0.12)' : 'rgba(var(--overlay-rgb),0.04)',
                     border: `1px solid ${r.isWaste ? 'rgba(var(--red-rgb),0.6)' : 'rgba(var(--red-rgb),0.3)'}`,
                     color: 'var(--offwhite)',
                     display: 'flex', alignItems: 'center', gap: '0.7rem',
@@ -1015,7 +1015,7 @@ export default function CheckPage() {
             </div>
           )}
 
-          <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '1.1rem 0' }} />
+          <div style={{ height: '1px', background: 'rgba(var(--overlay-rgb),0.1)', margin: '1.1rem 0' }} />
 
           <div style={{ display: 'grid', gap: '0.6rem' }}>
             {canDiscount && (check.payments ?? []).length === 0 && (
@@ -1169,7 +1169,7 @@ export default function CheckPage() {
             placeholder="Table number"
             style={{
               width: '100%', minHeight: '68px', textAlign: 'center',
-              background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.18)',
+              background: 'rgba(var(--overlay-rgb),0.05)', border: '2px solid rgba(var(--overlay-rgb),0.18)',
               borderRadius: '10px', color: 'var(--offwhite)',
               fontFamily: 'var(--font-cinzel)', fontSize: '2rem', outline: 'none',
             }}

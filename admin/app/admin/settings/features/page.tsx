@@ -69,7 +69,7 @@ function FeatureRow({
     <div style={{
       display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
       gap: '1rem', padding: '0.85rem 0',
-      borderBottom: '1px solid rgba(255,255,255,0.05)',
+      borderBottom: '1px solid rgba(var(--overlay-rgb),0.05)',
     }}>
       <div style={{ minWidth: 0 }}>
         <p style={{
@@ -81,7 +81,7 @@ function FeatureRow({
             <span style={{
               marginLeft: '0.55rem', fontSize: '0.58rem', letterSpacing: '0.1em',
               textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)',
-              border: '1px solid rgba(255,255,255,0.12)', borderRadius: '3px', padding: '0.1rem 0.35rem',
+              border: '1px solid rgba(var(--overlay-rgb),0.12)', borderRadius: '3px', padding: '0.1rem 0.35rem',
             }}>Core</span>
           )}
         </p>
@@ -111,7 +111,7 @@ function FeatureRow({
         aria-label={`${def.label}: ${effective ? 'on' : 'off'}`}
         style={{
           flexShrink: 0, width: '44px', height: '24px', borderRadius: '12px',
-          border: `1px solid ${effective ? 'var(--teal)' : 'rgba(255,255,255,0.12)'}`,
+          border: `1px solid ${effective ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.12)'}`,
           background: effective ? 'rgba(var(--teal-rgb),0.25)' : 'transparent',
           cursor: locked ? 'not-allowed' : 'pointer',
           opacity: locked ? 0.35 : 1,
@@ -268,7 +268,7 @@ export default function FeatureSwitchboardPage() {
           onClick={save}
           disabled={saving || loading || !dirty}
           style={{
-            background: dirty ? 'var(--teal)' : 'rgba(255,255,255,0.05)',
+            background: dirty ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.05)',
             color: dirty ? '#000' : 'rgba(var(--offwhite-rgb),0.3)',
             border: 'none', borderRadius: '4px', padding: '0.75rem 1.75rem',
             fontFamily: 'var(--font-inter)', fontSize: '0.8rem', fontWeight: 700,

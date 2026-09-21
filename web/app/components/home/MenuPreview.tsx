@@ -53,9 +53,9 @@ export default function MenuPreview() {
 
   return (
     <section style={{
-      backgroundColor: 'rgba(255,255,255,0.015)',
-      borderTop: '1px solid rgba(255,255,255,0.05)',
-      borderBottom: '1px solid rgba(255,255,255,0.05)',
+      backgroundColor: 'rgba(var(--overlay-rgb),0.015)',
+      borderTop: '1px solid rgba(var(--overlay-rgb),0.05)',
+      borderBottom: '1px solid rgba(var(--overlay-rgb),0.05)',
       padding: isMobile ? '4rem 1.25rem' : '6rem 3rem',
     }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -122,7 +122,7 @@ export default function MenuPreview() {
                     overflow: 'hidden',
                     textDecoration: 'none',
                     display: 'block',
-                    border: `1px solid ${hovered ? color : 'rgba(255,255,255,0.06)'}`,
+                    border: `1px solid ${hovered ? color : 'rgba(var(--overlay-rgb),0.06)'}`,
                     transform: hovered ? 'translateY(-4px)' : 'none',
                     boxShadow: hovered ? '0 12px 24px rgba(0,0,0,0.35)' : 'none',
                     transition: 'transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
@@ -143,7 +143,7 @@ export default function MenuPreview() {
                   ) : (
                     <div style={{
                       position: 'absolute', inset: 0,
-                      backgroundColor: 'rgba(255,255,255,0.03)',
+                      backgroundColor: 'rgba(var(--overlay-rgb),0.03)',
                     }} />
                   )}
 

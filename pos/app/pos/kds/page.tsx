@@ -75,7 +75,7 @@ function useNow(everyMs = 10_000) {
 
 /** How long it has waited: the border and the timer. */
 const URGENCY = {
-  fresh: { border: 'rgba(255,255,255,0.16)', width: 2, text: 'var(--offwhite)' },
+  fresh: { border: 'rgba(var(--overlay-rgb),0.16)', width: 2, text: 'var(--offwhite)' },
   aging: { border: 'var(--brand-secondary)', width: 3, text: 'var(--brand-secondary)' },
   late: { border: 'var(--red)', width: 4, text: 'var(--red)' },
 } as const
@@ -142,7 +142,7 @@ function TicketCard({
   return (
     <div style={{
       border: `${URGENCY[level].width}px solid ${URGENCY[level].border}`,
-      borderRadius: '14px', backgroundColor: level === 'late' ? 'rgba(var(--red-rgb),0.06)' : 'rgba(255,255,255,0.03)',
+      borderRadius: '14px', backgroundColor: level === 'late' ? 'rgba(var(--red-rgb),0.06)' : 'rgba(var(--overlay-rgb),0.03)',
       display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'var(--font-inter)',
     }}>
       {/* The status IS the header. */}
@@ -473,7 +473,7 @@ export default function KdsPage() {
       {paperError && (
         <p style={{
           color: 'rgba(var(--offwhite-rgb),0.7)', fontSize: '0.92rem', marginBottom: '1rem',
-          lineHeight: 1.6, border: '1px solid rgba(255,255,255,0.14)',
+          lineHeight: 1.6, border: '1px solid rgba(var(--overlay-rgb),0.14)',
           borderRadius: '8px', padding: '0.7rem 1rem',
         }}><FontAwesomeIcon icon={faPrint} style={{ marginRight: '0.5rem' }} />Paper: {paperError} — nothing is lost; the screen is the record.</p>
       )}

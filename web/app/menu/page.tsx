@@ -158,7 +158,7 @@ export default function MenuPage() {
             padding: isMobile ? '1.5rem' : '3rem 0',
           }}>
             {!isMobile && (
-              <div style={{ borderRight: '1px solid rgba(255,255,255,0.06)', padding: '3rem 0', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <div style={{ borderRight: '1px solid rgba(var(--overlay-rgb),0.06)', padding: '3rem 0', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                 {Array.from({ length: 6 }).map((_, i) => (
                   <Skeleton key={i} width="80%" height="1.2rem" style={{ marginLeft: '1.5rem' }} />
                 ))}
@@ -166,7 +166,7 @@ export default function MenuPage() {
             )}
             <div style={{ padding: isMobile ? '0' : '4rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.9rem 1.2rem', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '4px' }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.9rem 1.2rem', border: '1px solid rgba(var(--overlay-rgb),0.06)', borderRadius: '4px' }}>
                   <Skeleton width="50px" height="50px" />
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <Skeleton width="40%" height="1rem" />
@@ -237,7 +237,7 @@ export default function MenuPage() {
               width: '80%',
               maxWidth: '320px',
               backgroundColor: 'var(--black)',
-              borderRight: '1px solid rgba(255,255,255,0.08)',
+              borderRight: '1px solid rgba(var(--overlay-rgb),0.08)',
               boxShadow: '8px 0 24px rgba(0,0,0,0.6)',
               zIndex: 60,
               padding: '6rem 0 2rem',
@@ -245,7 +245,7 @@ export default function MenuPage() {
               transform: categoriesOpen ? 'translateX(0)' : 'translateX(-100%)',
               transition: 'transform 0.3s ease',
             } : {
-              borderRight: '1px solid rgba(255,255,255,0.06)',
+              borderRight: '1px solid rgba(var(--overlay-rgb),0.06)',
               padding: '3rem 0',
               position: 'sticky',
               top: '64px',
@@ -364,7 +364,7 @@ export default function MenuPage() {
                               left: '-60%',
                               width: '40%',
                               height: '100%',
-                              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
+                              background: 'linear-gradient(90deg, transparent, rgba(var(--overlay-rgb),0.08), transparent)',
                               transform: 'skewX(-20deg)',
                               transition: 'left 0.4s ease',
                               pointerEvents: 'none',
@@ -496,7 +496,7 @@ export default function MenuPage() {
                                   justifyContent: 'space-between',
                                   alignItems: 'flex-start',
                                   padding: '1.1rem 1.2rem',
-                                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                  borderBottom: '1px solid rgba(var(--overlay-rgb),0.05)',
                                   gap: '1rem',
                                 }}>
                                   <div style={{ flex: 1 }}>

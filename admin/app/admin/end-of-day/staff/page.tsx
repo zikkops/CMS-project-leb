@@ -7,8 +7,8 @@ import { getBranchStaff, saveBranchStaff, listAllStaff, type StaffUser } from '@
 import { startLoad } from '@big-cms/shared/startLoad'
 
 const inp: React.CSSProperties = {
-  backgroundColor: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.1)',
+  backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.6rem 0.8rem',
   borderRadius: '2px',
@@ -166,8 +166,8 @@ export default function EndOfDayStaffPage() {
           {/* Current roster */}
           {staff.length > 0 && (
             <div style={{
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.07)',
+              background: 'rgba(var(--overlay-rgb),0.02)',
+              border: '1px solid rgba(var(--overlay-rgb),0.07)',
               borderRadius: '4px', overflow: 'hidden',
               marginBottom: '1.5rem',
             }}>
@@ -175,7 +175,7 @@ export default function EndOfDayStaffPage() {
                 <div key={`${name}-${idx}`} style={{
                   display: 'flex', alignItems: 'center', gap: '0.75rem',
                   padding: '0.75rem 1rem',
-                  borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                  borderTop: idx > 0 ? '1px solid rgba(var(--overlay-rgb),0.04)' : 'none',
                 }}>
                   <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.9rem', color: 'var(--offwhite)', flex: 1 }}>
                     {name}
@@ -203,7 +203,7 @@ export default function EndOfDayStaffPage() {
 
           {staff.length === 0 && (
             <div style={{
-              border: '1px dashed rgba(255,255,255,0.07)', borderRadius: '4px',
+              border: '1px dashed rgba(var(--overlay-rgb),0.07)', borderRadius: '4px',
               padding: '2rem', textAlign: 'center',
               color: 'rgba(var(--offwhite-rgb),0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
               marginBottom: '1.5rem',
@@ -214,8 +214,8 @@ export default function EndOfDayStaffPage() {
 
           {/* ── Add staff ── */}
           <div style={{
-            background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: 'rgba(var(--overlay-rgb),0.02)',
+            border: '1px solid rgba(var(--overlay-rgb),0.08)',
             borderRadius: '6px', padding: '1.25rem',
             marginBottom: '1.5rem',
           }}>
@@ -242,7 +242,7 @@ export default function EndOfDayStaffPage() {
                 <div style={{
                   marginTop: '0.4rem',
                   backgroundColor: '#1a1a1a',
-                  border: '1px solid rgba(255,255,255,0.12)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.12)',
                   borderRadius: '4px', overflow: 'hidden',
                 }}>
                   {searchMatches.length === 0 ? (
@@ -263,10 +263,10 @@ export default function EndOfDayStaffPage() {
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         width: '100%', padding: '0.7rem 1rem', textAlign: 'left',
-                        background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)',
+                        background: 'none', border: 'none', borderBottom: '1px solid rgba(var(--overlay-rgb),0.05)',
                         cursor: 'pointer', gap: '0.75rem',
                       }}
-                      onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.07)')}
+                      onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(var(--overlay-rgb),0.07)')}
                       onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
                       <div style={{ textAlign: 'left' }}>
@@ -303,7 +303,7 @@ export default function EndOfDayStaffPage() {
                 <button
                   type="button" onClick={addName}
                   style={{
-                    backgroundColor: newName.trim() ? 'var(--brand-secondary)' : 'rgba(255,255,255,0.06)',
+                    backgroundColor: newName.trim() ? 'var(--brand-secondary)' : 'rgba(var(--overlay-rgb),0.06)',
                     border: 'none',
                     color: newName.trim() ? '#000' : 'rgba(var(--offwhite-rgb),0.4)',
                     padding: '0.6rem 1.1rem',

@@ -194,7 +194,7 @@ function TileCard({ tile, compact }: { tile: Tile; compact: boolean }) {
   return (
     <Link href={tile.href} style={{
       display: 'flex', flexDirection: 'column', gap: '0.35rem', textDecoration: 'none', minWidth: 0,
-      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)',
+      background: 'rgba(var(--overlay-rgb),0.03)', border: '1px solid rgba(var(--overlay-rgb),0.09)',
       borderTop: `3px solid ${colour}`, borderRadius: '10px', padding: compact ? '0.8rem 0.9rem' : '0.95rem 1.05rem',
     }}>
       <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, color: 'rgba(var(--offwhite-rgb),0.55)' }}>

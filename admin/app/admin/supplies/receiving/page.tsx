@@ -64,7 +64,7 @@ function useIsMobile(breakpoint = 768) {
 // outside the original three gets one at all.
 
 const inp: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
   color: 'var(--offwhite)', borderRadius: '4px', padding: '0.5rem 0.7rem',
   fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box',
   fontFamily: 'var(--font-inter)',
@@ -152,8 +152,8 @@ function LineRow({
 
   return (
     <div style={{
-      background: touched ? 'rgba(var(--brand-secondary-rgb),0.04)' : 'rgba(255,255,255,0.02)',
-      border: `1px solid ${touched ? accent : 'rgba(255,255,255,0.07)'}`,
+      background: touched ? 'rgba(var(--brand-secondary-rgb),0.04)' : 'rgba(var(--overlay-rgb),0.02)',
+      border: `1px solid ${touched ? accent : 'rgba(var(--overlay-rgb),0.07)'}`,
       borderRadius: '6px', padding: '0.8rem 0.9rem',
       display: 'flex', flexDirection: 'column', gap: '0.6rem',
     }}>
@@ -232,7 +232,7 @@ function LineRow({
             title={line.vatable === false ? 'No VAT on this line' : 'VAT applies to this line'}
             style={{
               background: line.vatable === false ? 'transparent' : 'rgba(var(--teal-rgb),0.1)',
-              border: `1px solid ${line.vatable === false ? 'rgba(255,255,255,0.1)' : 'rgba(var(--teal-rgb),0.35)'}`,
+              border: `1px solid ${line.vatable === false ? 'rgba(var(--overlay-rgb),0.1)' : 'rgba(var(--teal-rgb),0.35)'}`,
               color: line.vatable === false ? 'rgba(var(--offwhite-rgb),0.3)' : 'var(--teal)',
               borderRadius: '3px', padding: '0.2rem 0.45rem', cursor: 'pointer',
               fontFamily: 'var(--font-inter)', fontSize: '0.6rem', letterSpacing: '0.06em',
@@ -259,7 +259,7 @@ function LineRow({
               style={{
                 ...inp, width: '100%', textAlign: 'center', fontWeight: 600,
                 color: tooWarm ? 'var(--red)' : 'var(--offwhite)',
-                borderColor: tooWarm ? 'var(--red)' : tempMissing ? 'rgba(var(--brand-secondary-rgb),0.6)' : 'rgba(255,255,255,0.12)',
+                borderColor: tooWarm ? 'var(--red)' : tempMissing ? 'rgba(var(--brand-secondary-rgb),0.6)' : 'rgba(var(--overlay-rgb),0.12)',
               }}
             />
           </div>
@@ -792,7 +792,7 @@ function ReceivingInner() {
                     <button key={c} onClick={() => changeCurrency(c)} style={{
                       flex: 1,
                       background: currency === c ? 'rgba(var(--teal-rgb),0.15)' : 'transparent',
-                      border: `1px solid ${currency === c ? 'var(--teal)' : 'rgba(255,255,255,0.09)'}`,
+                      border: `1px solid ${currency === c ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.09)'}`,
                       color: currency === c ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.35)',
                       borderRadius: '4px', padding: '0.5rem', fontSize: '0.78rem',
                       fontWeight: currency === c ? 600 : 400, cursor: 'pointer',
@@ -821,7 +821,7 @@ function ReceivingInner() {
             )}
 
             {lines.length === 0 ? (
-              <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '2.5rem 1.5rem', textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px', padding: '2.5rem 1.5rem', textAlign: 'center', marginBottom: '1.5rem' }}>
                 <p style={{ color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem', marginBottom: '1rem' }}>
                   {orderId ? 'No stocked items on this order.' : 'Pick a weekly order above, or add items for an unplanned delivery.'}
                 </p>
@@ -894,7 +894,7 @@ function ReceivingInner() {
                     starts with the number agreeing. The server recomputes all
                     of this; nothing here is trusted. */}
                 <div style={{
-                  background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)',
+                  background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.07)',
                   borderRadius: '6px', padding: '1rem 1.1rem', marginBottom: '1.5rem',
                   fontFamily: 'var(--font-inter)', fontSize: '0.82rem',
                 }}>
@@ -911,7 +911,7 @@ function ReceivingInner() {
                       <span>{label}</span><span>{fmt(value as number, currency)}</span>
                     </div>
                   ))}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.07)', color: 'var(--offwhite)', fontWeight: 700 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.07)', color: 'var(--offwhite)', fontWeight: 700 }}>
                     <span>Total</span><span>{fmt(totals.grand, currency)} {currency}</span>
                   </div>
                 </div>
@@ -942,7 +942,7 @@ function ReceivingInner() {
                 onClick={() => submit('draft')}
                 disabled={!ready || saving}
                 style={{
-                  background: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
+                  background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.15)',
                   color: 'rgba(var(--offwhite-rgb),0.6)', padding: '0.75rem 1.5rem', borderRadius: '2px',
                   fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase',
                   cursor: ready && !saving ? 'pointer' : 'not-allowed',
@@ -955,7 +955,7 @@ function ReceivingInner() {
                 disabled={!ready || saving}
                 title={!ready ? 'Add at least one line first' : undefined}
                 style={{
-                  background: ready ? deptColor : 'rgba(255,255,255,0.08)',
+                  background: ready ? deptColor : 'rgba(var(--overlay-rgb),0.08)',
                   color: ready ? '#000' : 'rgba(var(--offwhite-rgb),0.3)', border: 'none',
                   padding: '0.75rem 2rem', borderRadius: '2px',
                   fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700,

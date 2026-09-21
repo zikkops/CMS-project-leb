@@ -93,7 +93,7 @@ function lastSentAt(lines: CheckLine[]): number | null {
 }
 
 const LEVEL_BORDER = {
-  fresh: 'rgba(255,255,255,0.18)',
+  fresh: 'rgba(var(--overlay-rgb),0.18)',
   aging: 'var(--brand-secondary)',
   late: 'var(--red)',
 } as const
@@ -144,7 +144,7 @@ function CheckCard({ check, now, onOpen, isMobile }: {
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
         width: '100%', cursor: 'pointer', position: 'relative',
-        backgroundColor: level === 'late' ? 'rgba(var(--red-rgb),0.14)' : 'rgba(255,255,255,0.05)',
+        backgroundColor: level === 'late' ? 'rgba(var(--red-rgb),0.14)' : 'rgba(var(--overlay-rgb),0.05)',
         border: `${level === 'fresh' ? 1 : 3}px solid ${LEVEL_BORDER[level]}`,
         borderRadius: '14px', color: 'var(--offwhite)',
         fontFamily: 'var(--font-inter)', padding: '0.6rem',
@@ -184,7 +184,7 @@ function ReadingCard({ icon, label, value, sub, main, colour }: {
       flex: main ? '2 1 280px' : '1 1 190px', minHeight: '150px',
       display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '0.4rem',
       padding: '1rem 1.1rem', borderRadius: '14px',
-      background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
+      background: 'rgba(var(--overlay-rgb),0.04)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
       borderTop: `5px solid ${colour}`, fontFamily: 'var(--font-inter)',
     }}>
       <span style={{
@@ -428,7 +428,7 @@ export default function FloorPage() {
               width: '150px', height: '150px', flex: '0 0 auto',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
               borderRadius: '14px', cursor: 'pointer',
-              background: 'rgba(255,255,255,0.06)', border: '2px solid rgba(255,255,255,0.22)',
+              background: 'rgba(var(--overlay-rgb),0.06)', border: '2px solid rgba(var(--overlay-rgb),0.22)',
               color: 'var(--offwhite)', fontFamily: 'var(--font-inter)',
               WebkitTapHighlightColor: 'transparent',
             }}
@@ -513,7 +513,7 @@ export default function FloorPage() {
       {/* Sticky: a waiter's thumb lives at the bottom of the screen. */}
       <div style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 20,
-        backgroundColor: 'rgba(10,10,10,0.97)', borderTop: '1px solid rgba(255,255,255,0.12)',
+        backgroundColor: 'rgba(10,10,10,0.97)', borderTop: '1px solid rgba(var(--overlay-rgb),0.12)',
         padding: '0.8rem 1rem',
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -531,7 +531,7 @@ export default function FloorPage() {
           <div onClick={e => e.stopPropagation()} style={{
             backgroundColor: '#111', width: '100%', maxWidth: '560px',
             borderRadius: isMobile ? '14px 14px 0 0' : '14px', padding: '1.4rem 1.2rem 1.6rem',
-            border: '1px solid rgba(255,255,255,0.12)',
+            border: '1px solid rgba(var(--overlay-rgb),0.12)',
           }}>
             <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem', color: 'var(--offwhite)', marginBottom: '0.3rem' }}>
               What to show
@@ -548,8 +548,8 @@ export default function FloorPage() {
                     minHeight: '68px', borderRadius: '12px', cursor: 'pointer', textAlign: 'left',
                     display: 'flex', alignItems: 'center', gap: '0.9rem', padding: '0.6rem 1rem',
                     fontFamily: 'var(--font-inter)', color: 'var(--offwhite)',
-                    background: on ? 'rgba(var(--teal-rgb),0.14)' : 'rgba(255,255,255,0.04)',
-                    border: `2px solid ${on ? 'var(--teal)' : 'rgba(255,255,255,0.14)'}`,
+                    background: on ? 'rgba(var(--teal-rgb),0.14)' : 'rgba(var(--overlay-rgb),0.04)',
+                    border: `2px solid ${on ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.14)'}`,
                   }}>
                     <FontAwesomeIcon icon={look.icon} style={{ color: look.colour, fontSize: '1.35rem', width: '1.5rem' }} />
                     <span style={{ flex: 1 }}>
@@ -559,7 +559,7 @@ export default function FloorPage() {
                     <span style={{
                       width: '1.9rem', height: '1.9rem', borderRadius: '6px', flexShrink: 0,
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      background: on ? 'var(--teal)' : 'transparent', border: `2px solid ${on ? 'var(--teal)' : 'rgba(255,255,255,0.3)'}`,
+                      background: on ? 'var(--teal)' : 'transparent', border: `2px solid ${on ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.3)'}`,
                     }}>{on && <FontAwesomeIcon icon={faCheck} style={{ color: '#fff' }} />}</span>
                   </button>
                 )
@@ -595,7 +595,7 @@ export default function FloorPage() {
             placeholder="7"
             style={{
               width: '100%', minHeight: '72px', textAlign: 'center',
-              background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.18)',
+              background: 'rgba(var(--overlay-rgb),0.05)', border: '2px solid rgba(var(--overlay-rgb),0.18)',
               borderRadius: '10px', color: 'var(--offwhite)',
               fontFamily: 'var(--font-cinzel)', fontSize: '2.2rem', outline: 'none',
             }}

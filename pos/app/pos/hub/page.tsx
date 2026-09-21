@@ -51,7 +51,7 @@ interface HubStatus {
 }
 
 const field: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(var(--overlay-rgb),0.04)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
   borderRadius: '4px', padding: '0.9rem 1rem', color: 'var(--offwhite)',
   fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: '1.4rem', letterSpacing: '0.12em',
   outline: 'none', width: '100%', boxSizing: 'border-box', textTransform: 'uppercase', textAlign: 'center',
@@ -59,7 +59,7 @@ const field: React.CSSProperties = {
 
 const row: React.CSSProperties = {
   display: 'flex', justifyContent: 'space-between', gap: '1rem',
-  padding: '0.7rem 0', borderTop: '1px solid rgba(255,255,255,0.08)',
+  padding: '0.7rem 0', borderTop: '1px solid rgba(var(--overlay-rgb),0.08)',
   fontSize: '0.9rem',
 }
 
@@ -257,18 +257,18 @@ export default function HubPage() {
         <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.7rem', marginBottom: '1.6rem', textAlign: 'center' }}>Café hub</h1>
 
         {notHub && (
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
+          <p style={{ textAlign: 'center', color: 'rgba(var(--overlay-rgb),0.6)', lineHeight: 1.7 }}>
             This page is for a café hub. This POS runs online, so there is nothing to pair.
           </p>
         )}
 
         {!notHub && !status && (slow
           ? <ErrorNote tone="warn" message="The hub is not answering yet. It may still be starting: the first start takes up to 30 seconds. If this stays, restart the BIG CMS POS app." />
-          : <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Looking…</p>)}
+          : <p style={{ textAlign: 'center', color: 'rgba(var(--overlay-rgb),0.4)' }}>Looking…</p>)}
 
         {status && needsPairing && (
           <form onSubmit={pair} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: 1.7, fontSize: '0.9rem' }}>
+            <p style={{ color: 'rgba(var(--overlay-rgb),0.7)', lineHeight: 1.7, fontSize: '0.9rem' }}>
               {status.revoked
                 ? 'An admin unpaired this hub. It keeps what it had, but takes nothing new until it is paired again.'
                 : 'This hub is not paired with the cloud yet, so it has no menu or staff of its own.'}
@@ -376,11 +376,11 @@ export default function HubPage() {
               <div key={m} style={{ marginTop: '0.8rem' }}><ErrorNote message={m} /></div>
             ))}
             {status.receiptsLeft === 0 && (
-              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem', lineHeight: 1.7, marginTop: '0.8rem' }}>
+              <p style={{ color: 'rgba(var(--overlay-rgb),0.6)', fontSize: '0.8rem', lineHeight: 1.7, marginTop: '0.8rem' }}>
                 With no receipt numbers left, checks can be opened, sent and paid, but not closed, until the hub is online and fetches more.
               </p>
             )}
-            <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.8rem', lineHeight: 1.7, marginTop: '1rem' }}>
+            <p style={{ color: 'rgba(var(--overlay-rgb),0.45)', fontSize: '0.8rem', lineHeight: 1.7, marginTop: '1rem' }}>
               The till works from what this hub holds, with or without the internet. While
               it is online, every two minutes the hub sends its checks, tickets, drawer and
               stock movements up, takes the menu, settings and staff roles down, and fetches

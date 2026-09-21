@@ -39,17 +39,17 @@ export default function MemberQr() {
   return (
     <div style={{
       marginTop: '1rem', padding: '1rem', borderRadius: '8px',
-      backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+      backgroundColor: 'rgba(var(--overlay-rgb),0.06)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', maxWidth: '280px',
     }}>
       <p style={{
         fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.18em',
-        textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)',
+        textTransform: 'uppercase', color: 'rgba(var(--overlay-rgb),0.6)',
       }}>Your member code</p>
       {err ? (
         <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--red)', textAlign: 'center' }}>{err}</p>
       ) : !state ? (
-        <div style={{ width: '220px', height: '220px', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.08)' }} />
+        <div style={{ width: '220px', height: '220px', borderRadius: '6px', backgroundColor: 'rgba(var(--overlay-rgb),0.08)' }} />
       ) : (
         <>
           {/* A data: URL, so nothing is fetched from anywhere the CSP would have to allow. */}
@@ -62,7 +62,7 @@ export default function MemberQr() {
         </>
       )}
       <p style={{
-        fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)',
+        fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--overlay-rgb),0.5)',
         textAlign: 'center', lineHeight: 1.5,
       }}>Show this when you pay and the points go straight onto your account.</p>
     </div>

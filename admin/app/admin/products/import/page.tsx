@@ -300,7 +300,7 @@ export default function ImportGamesPage() {
   const inputStyle = {
     width: '100%',
     backgroundColor: '#1a1a1a',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid rgba(var(--overlay-rgb),0.1)',
     color: 'var(--offwhite)',
     padding: '0.6rem 0.8rem',
     borderRadius: '2px',
@@ -355,8 +355,8 @@ export default function ImportGamesPage() {
 
         {/* Upload */}
         <div style={{
-          background: 'rgba(255,255,255,0.02)',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: 'rgba(var(--overlay-rgb),0.02)',
+          border: '1px solid rgba(var(--overlay-rgb),0.06)',
           borderRadius: '4px',
           padding: '1.5rem',
           marginBottom: '2rem',
@@ -385,8 +385,8 @@ export default function ImportGamesPage() {
         {/* Mapping */}
         {headers.length > 0 && (
           <div style={{
-            background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            background: 'rgba(var(--overlay-rgb),0.02)',
+            border: '1px solid rgba(var(--overlay-rgb),0.06)',
             borderRadius: '4px',
             padding: '1.5rem',
             marginBottom: '2rem',
@@ -438,8 +438,8 @@ export default function ImportGamesPage() {
         {/* Preview */}
         {rows.length > 0 && mapping.name && (
           <div style={{
-            background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            background: 'rgba(var(--overlay-rgb),0.02)',
+            border: '1px solid rgba(var(--overlay-rgb),0.06)',
             borderRadius: '4px',
             padding: '1.5rem',
             marginBottom: '2rem',
@@ -456,7 +456,7 @@ export default function ImportGamesPage() {
 
             <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', fontFamily: 'var(--font-inter)', fontSize: '0.78rem' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <tr style={{ borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)' }}>
                   {['Name', 'Category', 'Retail', 'Wholesale', ...BRANCHES, 'Image'].map(h => (
                     <th key={h} style={{ textAlign: 'left', padding: '0.5rem 0.8rem', color: 'rgba(var(--offwhite-rgb),0.3)', fontWeight: 400 }}>{h}</th>
                   ))}
@@ -464,7 +464,7 @@ export default function ImportGamesPage() {
               </thead>
               <tbody>
                 {rows.slice(0, 5).map((row, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <tr key={i} style={{ borderBottom: '1px solid rgba(var(--overlay-rgb),0.04)' }}>
                     <td style={{ padding: '0.5rem 0.8rem', color: 'var(--offwhite)' }}>{row[mapping.name] || '—'}</td>
                     <td style={{ padding: '0.5rem 0.8rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>
                       {mapping.category ? normalizeCategory(row[mapping.category]) : '—'}
@@ -501,8 +501,8 @@ export default function ImportGamesPage() {
         {/* Import action */}
         {rows.length > 0 && mapping.name && (
           <div style={{
-            background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            background: 'rgba(var(--overlay-rgb),0.02)',
+            border: '1px solid rgba(var(--overlay-rgb),0.06)',
             borderRadius: '4px',
             padding: '1.5rem',
           }}>

@@ -39,7 +39,7 @@ function supplyStatus(qty: number, threshold: number): 'ok' | 'low' | 'out' {
 
 
 const inp: React.CSSProperties = {
-  backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)',
+  backgroundColor: '#1a1a1a', border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)', padding: '0.6rem 0.8rem', borderRadius: '2px',
   fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)',
 }
@@ -190,7 +190,7 @@ export default function SubmitOrderPage() {
               letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
             }}>View Reports</a>
             <button onClick={() => { setDone(false); setQtys({}); setNotes('') }} style={{
-              backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+              backgroundColor: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)',
               color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.7rem 1.5rem', borderRadius: '2px',
               fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase',
               cursor: 'pointer', fontFamily: 'var(--font-inter)',
@@ -222,7 +222,7 @@ export default function SubmitOrderPage() {
 
         {allowedDepts.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
             color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
@@ -235,7 +235,7 @@ export default function SubmitOrderPage() {
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading items…</p>
         ) : items.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
             color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
@@ -288,7 +288,7 @@ export default function SubmitOrderPage() {
                   </button>
 
                   {suppliesOpen && (
-                    <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.05)', display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                       {alerts.map(s => {
                         const qty = s.quantity[branchKey] ?? 0
                         const st  = supplyStatus(qty, s.threshold)
@@ -340,7 +340,7 @@ export default function SubmitOrderPage() {
                     onClick={() => { setDept(d); setQtys({}) }}
                     style={{
                       backgroundColor: dept === d ? `${DEPT_COLOR[d]}20` : 'transparent',
-                      border: `1px solid ${dept === d ? DEPT_COLOR[d] : 'rgba(255,255,255,0.12)'}`,
+                      border: `1px solid ${dept === d ? DEPT_COLOR[d] : 'rgba(var(--overlay-rgb),0.12)'}`,
                       color: dept === d ? DEPT_COLOR[d] : 'rgba(var(--offwhite-rgb),0.5)',
                       padding: '0.55rem 1.2rem', borderRadius: '2px', fontSize: '0.78rem',
                       letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer',
@@ -350,7 +350,7 @@ export default function SubmitOrderPage() {
                   >
                     <span style={{
                       width: '6px', height: '6px', borderRadius: '50%',
-                      backgroundColor: dept === d ? DEPT_COLOR[d] : 'rgba(255,255,255,0.2)',
+                      backgroundColor: dept === d ? DEPT_COLOR[d] : 'rgba(var(--overlay-rgb),0.2)',
                       flexShrink: 0,
                     }} />
                     {d}
@@ -400,7 +400,7 @@ export default function SubmitOrderPage() {
                             </p>
 
                             <div style={{
-                              background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                              background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)',
                               borderLeft: `3px solid ${DEPT_COLOR[dept]}30`,
                               borderRadius: '4px', overflow: 'clip',
                             }}>
@@ -410,7 +410,7 @@ export default function SubmitOrderPage() {
                                     <div style={{
                                       position: 'sticky', top: 0, zIndex: 10,
                                       padding: '0.4rem 1.25rem',
-                                      borderTop: '1px solid rgba(255,255,255,0.04)',
+                                      borderTop: '1px solid rgba(var(--overlay-rgb),0.04)',
                                       background: '#1a1a1a',
                                       fontFamily: 'var(--font-inter)', fontSize: '0.7rem',
                                       letterSpacing: '0.1em', textTransform: 'uppercase',
@@ -434,7 +434,7 @@ export default function SubmitOrderPage() {
                                       // Mobile: input on top, name below
                                       <div key={item.id} style={{
                                         padding: '0.9rem 1.25rem',
-                                        borderTop: (idx > 0 || hasCategories) ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                                        borderTop: (idx > 0 || hasCategories) ? '1px solid rgba(var(--overlay-rgb),0.04)' : 'none',
                                       }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
                                           <input
@@ -466,7 +466,7 @@ export default function SubmitOrderPage() {
                                         display: 'grid', gridTemplateColumns: '1fr auto',
                                         alignItems: 'center', gap: '1rem',
                                         padding: '0.85rem 1.25rem',
-                                        borderTop: (idx > 0 || hasCategories) ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                                        borderTop: (idx > 0 || hasCategories) ? '1px solid rgba(var(--overlay-rgb),0.04)' : 'none',
                                       }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                                           <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'var(--offwhite)', fontWeight: 500 }}>{item.name}</span>

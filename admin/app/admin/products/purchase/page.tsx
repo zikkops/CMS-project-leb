@@ -36,7 +36,7 @@ function useIsMobile(bp = 768) {
 }
 
 const inp: React.CSSProperties = {
-  width: '100%', backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)',
+  width: '100%', backgroundColor: '#1a1a1a', border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)', padding: '0.75rem 1rem', borderRadius: '2px',
   fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)',
 }
@@ -209,7 +209,7 @@ export default function RecordSalePage() {
             <a href="/admin/products/invoices" style={{
               fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase',
               color: 'rgba(var(--offwhite-rgb),0.4)', textDecoration: 'none', fontFamily: 'var(--font-inter)',
-              border: '1px solid rgba(255,255,255,0.08)', padding: '0.5rem 1rem', borderRadius: '2px',
+              border: '1px solid rgba(var(--overlay-rgb),0.08)', padding: '0.5rem 1rem', borderRadius: '2px',
             }}>View Invoices →</a>
           </div>
         </div>
@@ -242,7 +242,7 @@ export default function RecordSalePage() {
               <a
                 href="/admin/products/invoices"
                 style={{
-                  backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
+                  backgroundColor: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.15)',
                   color: 'rgba(var(--offwhite-rgb),0.6)', textDecoration: 'none',
                   padding: '0.8rem 1.8rem', borderRadius: '2px', fontSize: '0.78rem',
                   letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
@@ -273,7 +273,7 @@ export default function RecordSalePage() {
             <div>
               {/* Order info */}
               <div style={{
-                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)',
                 borderRadius: '4px', padding: '1.5rem', marginBottom: '1.5rem',
               }}>
                 <p style={sectionLabel}>Order Info</p>
@@ -303,7 +303,7 @@ export default function RecordSalePage() {
 
               {/* Product picker */}
               <div style={{
-                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)',
                 borderRadius: '4px', padding: '1.5rem',
               }}>
                 <p style={sectionLabel}>Add Products</p>
@@ -323,8 +323,8 @@ export default function RecordSalePage() {
                       <div key={product.id} style={{
                         display: 'flex', alignItems: 'center', gap: '0.8rem',
                         padding: '0.7rem 0.8rem', borderRadius: '3px',
-                        backgroundColor: inCart ? 'rgba(var(--purple-rgb),0.1)' : 'rgba(255,255,255,0.02)',
-                        border: `1px solid ${inCart ? 'rgba(var(--purple-rgb),0.3)' : 'rgba(255,255,255,0.05)'}`,
+                        backgroundColor: inCart ? 'rgba(var(--purple-rgb),0.1)' : 'rgba(var(--overlay-rgb),0.02)',
+                        border: `1px solid ${inCart ? 'rgba(var(--purple-rgb),0.3)' : 'rgba(var(--overlay-rgb),0.05)'}`,
                         opacity: stock === 0 && !inCart ? 0.4 : 1,
                       }}>
                         {product.image && (
@@ -373,7 +373,7 @@ export default function RecordSalePage() {
             {/* Right: cart + submit */}
             <div style={{ position: isMobile ? 'static' : 'sticky', top: '2rem' }}>
               <div style={{
-                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)',
                 borderRadius: '4px', padding: '1.5rem',
               }}>
                 <p style={sectionLabel}>Cart</p>
@@ -390,7 +390,7 @@ export default function RecordSalePage() {
                       return (
                         <div key={line.product.id} style={{
                           padding: '0.8rem', borderRadius: '3px',
-                          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                          background: 'rgba(var(--overlay-rgb),0.03)', border: '1px solid rgba(var(--overlay-rgb),0.06)',
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                             <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.82rem', color: 'var(--offwhite)', flex: 1, marginRight: '0.5rem' }}>
@@ -447,7 +447,7 @@ export default function RecordSalePage() {
                 {cart.length > 0 && (
                   <div style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '0.75rem 0', borderTop: '1px solid rgba(255,255,255,0.08)',
+                    padding: '0.75rem 0', borderTop: '1px solid rgba(var(--overlay-rgb),0.08)',
                     marginBottom: '1rem',
                   }}>
                     <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.5)' }}>Order Total</span>

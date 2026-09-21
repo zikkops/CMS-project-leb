@@ -107,7 +107,7 @@ export default function EventsPreview() {
             onMouseLeave={() => setViewAllHovered(false)}
             style={{
               backgroundColor: viewAllHovered ? 'rgba(var(--purple-rgb),0.12)' : 'transparent',
-              border: `1px solid ${viewAllHovered ? 'var(--purple)' : 'rgba(255,255,255,0.2)'}`,
+              border: `1px solid ${viewAllHovered ? 'var(--purple)' : 'rgba(var(--overlay-rgb),0.2)'}`,
               color: viewAllHovered ? 'var(--purple)' : 'var(--offwhite)',
               padding: '0.8rem 2rem',
               borderRadius: '2px',
@@ -386,7 +386,7 @@ export default function EventsPreview() {
                 <p style={{
                   fontFamily: 'var(--font-inter)',
                   fontSize: '0.75rem',
-                  color: 'rgba(255,255,255,0.6)',
+                  color: 'rgba(var(--overlay-rgb),0.6)',
                   textTransform: 'uppercase',
                   letterSpacing: '0.1em',
                 }}>
@@ -466,8 +466,8 @@ export default function EventsPreview() {
                   { label: 'Contact', value: selected.contactNumber || BRAND.contact.phone },
                 ].map(({ label, value }) => (
                   <div key={label} style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'rgba(var(--overlay-rgb),0.03)',
+                    border: '1px solid rgba(var(--overlay-rgb),0.06)',
                     borderRadius: '4px',
                     padding: '0.8rem 1rem',
                   }}>
@@ -519,7 +519,7 @@ export default function EventsPreview() {
                     left: reserveHovered ? '120%' : '-60%',
                     width: '40%',
                     height: '100%',
-                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
+                    background: 'linear-gradient(90deg, transparent, rgba(var(--overlay-rgb),0.25), transparent)',
                     transform: 'skewX(-20deg)',
                     transition: 'left 0.5s ease',
                     pointerEvents: 'none',
@@ -533,8 +533,8 @@ export default function EventsPreview() {
                     style={{
                       display: 'block',
                       textAlign: 'center',
-                      backgroundColor: registerHovered ? 'rgba(255,255,255,0.06)' : 'transparent',
-                      border: `1px solid ${registerHovered ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)'}`,
+                      backgroundColor: registerHovered ? 'rgba(var(--overlay-rgb),0.06)' : 'transparent',
+                      border: `1px solid ${registerHovered ? 'rgba(var(--overlay-rgb),0.4)' : 'rgba(var(--overlay-rgb),0.15)'}`,
                       color: registerHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.7)',
                       padding: '0.9rem',
                       borderRadius: '2px',

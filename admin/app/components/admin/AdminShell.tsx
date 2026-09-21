@@ -59,7 +59,7 @@ function NavLink({ item, color, active, compact }: { item: AdminNavItem; color: 
         justifyContent: compact ? 'center' : 'flex-start',
         padding: compact ? '0.55rem 0' : '0.5rem 0.65rem',
         borderRadius: '6px',
-        backgroundColor: active ? tint(color, 16) : hovered ? 'rgba(255,255,255,0.05)' : 'transparent',
+        backgroundColor: active ? tint(color, 16) : hovered ? 'rgba(var(--overlay-rgb),0.05)' : 'transparent',
         color: active || hovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.68)',
         borderLeft: !compact ? `3px solid ${active ? color : 'transparent'}` : 'none',
         textDecoration: 'none', fontFamily: 'var(--font-inter)', fontSize: '0.86rem',
@@ -101,7 +101,7 @@ function GuideStrip({ section, item, setupItems, hidden, onToggle, isMobile }: {
         <button type="button" onClick={onToggle} aria-expanded={false} aria-label={`About ${section.title} and this page`} title={`About ${section.title}`} style={{
           flexShrink: 0, width: '30px', height: '30px', borderRadius: '50%', cursor: 'pointer',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          background: 'transparent', border: '1px solid rgba(255,255,255,0.14)', color: section.color,
+          background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.14)', color: section.color,
         }}>
           <FontAwesomeIcon icon={faCircleQuestion} />
         </button>
@@ -149,7 +149,7 @@ function GuideStrip({ section, item, setupItems, hidden, onToggle, isMobile }: {
                   display: 'inline-flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap',
                   padding: '0.35rem 0.7rem', borderRadius: '999px', textDecoration: 'none',
                   fontSize: '0.8rem', color: 'var(--offwhite)',
-                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.14)',
+                  background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.14)',
                 }}>
                   <FontAwesomeIcon icon={s.icon} style={{ color: section.color }} />{s.label}
                 </Link>
@@ -288,7 +288,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         display: 'flex', alignItems: 'center',
         justifyContent: compact ? 'center' : 'space-between',
         padding: compact ? '1.1rem 0' : '1.05rem 1rem 1.05rem 1.25rem',
-        borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0,
+        borderBottom: '1px solid rgba(var(--overlay-rgb),0.07)', flexShrink: 0,
       }}>
         {!compact && (
           <Link href="/admin" style={{
@@ -306,7 +306,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </button>
         ) : (
           <button onClick={toggleCollapsed} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} style={{
-            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.1)',
             color: 'rgba(var(--offwhite-rgb),0.65)', cursor: 'pointer', width: '30px', height: '30px',
             borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '0.75rem', flexShrink: 0,
@@ -326,7 +326,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             aria-label="Find a page"
             style={{
               width: '100%', boxSizing: 'border-box', minHeight: '38px', marginBottom: '0.8rem',
-              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px',
+              background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.12)', borderRadius: '6px',
               padding: '0.45rem 0.7rem', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem', outline: 'none',
             }}
           />
@@ -408,7 +408,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       </nav>
 
       <div style={{
-        borderTop: '1px solid rgba(255,255,255,0.07)',
+        borderTop: '1px solid rgba(var(--overlay-rgb),0.07)',
         padding: compact ? '0.9rem 0.45rem' : '0.9rem 1rem', flexShrink: 0,
       }}>
         {!compact && user && (
@@ -423,7 +423,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <Link href="/" title="View Site" style={{
             flex: compact ? undefined : 1,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
-            border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(var(--offwhite-rgb),0.7)',
+            border: '1px solid rgba(var(--overlay-rgb),0.12)', color: 'rgba(var(--offwhite-rgb),0.7)',
             padding: '0.55rem', borderRadius: '6px', fontSize: '0.78rem', textDecoration: 'none',
             fontFamily: 'var(--font-inter)',
           }}>
@@ -459,8 +459,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <aside style={{
           position: 'fixed', top: 0, left: 0, bottom: 0,
           width: `${sidebarWidth}px`,
-          backgroundColor: '#0a0a0a',
-          borderRight: '1px solid rgba(255,255,255,0.07)',
+          backgroundColor: 'var(--surface-deep)',
+          borderRight: '1px solid rgba(var(--overlay-rgb),0.07)',
           display: 'flex', flexDirection: 'column',
           zIndex: 40,
           transition: hydrated ? 'width 0.2s ease' : 'none',
@@ -476,7 +476,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           position: 'fixed', top: 0, left: 0, right: 0, height: `${MOBILE_BAR_H}px`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 1.2rem',
-          backgroundColor: 'rgba(5,5,5,0.97)', borderBottom: '1px solid rgba(255,255,255,0.07)',
+          backgroundColor: 'rgba(5,5,5,0.97)', borderBottom: '1px solid rgba(var(--overlay-rgb),0.07)',
           zIndex: 50,
         }}>
           <Link href="/admin" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.95rem', color: 'var(--offwhite)', textDecoration: 'none' }}>
@@ -503,7 +503,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             onClick={e => e.stopPropagation()}
             style={{
               position: 'absolute', top: 0, left: 0, bottom: 0, width: '82vw', maxWidth: '320px',
-              backgroundColor: '#0a0a0a', borderRight: '1px solid rgba(255,255,255,0.08)',
+              backgroundColor: 'var(--surface-deep)', borderRight: '1px solid rgba(var(--overlay-rgb),0.08)',
               display: 'flex', flexDirection: 'column',
               transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
               transition: 'transform 0.25s ease',

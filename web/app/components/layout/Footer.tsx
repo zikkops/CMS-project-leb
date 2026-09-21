@@ -41,7 +41,7 @@ export default function Footer() {
   return (
     <footer style={{
       backgroundColor: '#060606',
-      borderTop: '1px solid rgba(255,255,255,0.05)',
+      borderTop: '1px solid rgba(var(--overlay-rgb),0.05)',
       padding: isMobile ? '3rem 1.25rem 1.5rem' : '4rem 3rem 2rem',
     }}>
       <div style={{
@@ -188,7 +188,7 @@ export default function Footer() {
                     style={{
                       width: '36px',
                       height: '36px',
-                      border: `1px solid ${hovered ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
+                      border: `1px solid ${hovered ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                       backgroundColor: hovered ? 'rgba(var(--teal-rgb),0.12)' : 'transparent',
                       borderRadius: '50%',
                       display: 'flex',
@@ -209,7 +209,7 @@ export default function Footer() {
 
         {/* Bottom */}
         <div style={{
-          borderTop: '1px solid rgba(255,255,255,0.05)',
+          borderTop: '1px solid rgba(var(--overlay-rgb),0.05)',
           paddingTop: isMobile ? '1.25rem' : '1.5rem',
           display: 'flex',
           flexDirection: isMobile ? 'column' : 'row',

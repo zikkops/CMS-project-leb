@@ -81,7 +81,7 @@ const usd = (n: number) => `$${n.toFixed(2)}`
 const lbpFmt = (n: number) => `${Math.round(n).toLocaleString('en-US')} LBP`
 
 const card: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(var(--overlay-rgb),0.03)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
   borderRadius: '14px', padding: '1rem 1.1rem', marginBottom: '1rem',
 }
 
@@ -504,8 +504,8 @@ export default function CounterPage() {
               style={{
                 minHeight: '84px', minWidth: '96px', padding: '0.5rem 0.7rem', borderRadius: '12px', cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.3rem',
-                background: on ? 'rgba(var(--teal-rgb),0.2)' : 'rgba(255,255,255,0.04)',
-                border: `${on ? 3 : 2}px solid ${on ? 'var(--teal)' : t.waiting > 0 ? 'var(--brand-secondary)' : 'rgba(255,255,255,0.16)'}`,
+                background: on ? 'rgba(var(--teal-rgb),0.2)' : 'rgba(var(--overlay-rgb),0.04)',
+                border: `${on ? 3 : 2}px solid ${on ? 'var(--teal)' : t.waiting > 0 ? 'var(--brand-secondary)' : 'rgba(var(--overlay-rgb),0.16)'}`,
                 color: 'var(--offwhite)', fontFamily: 'var(--font-inter)',
               }}
             >
@@ -532,7 +532,7 @@ export default function CounterPage() {
             placeholder="Table number"
             style={{
               width: '100%', minHeight: '64px', textAlign: 'center',
-              background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.18)',
+              background: 'rgba(var(--overlay-rgb),0.05)', border: '2px solid rgba(var(--overlay-rgb),0.18)',
               borderRadius: '10px', color: 'var(--offwhite)',
               fontFamily: 'var(--font-cinzel)', fontSize: '2rem', outline: 'none',
             }}
@@ -569,7 +569,7 @@ export default function CounterPage() {
       {lines.map(l => (
         <div key={l.key} style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem',
-          fontSize: '1.02rem', padding: '0.45rem 0', borderBottom: '1px solid rgba(255,255,255,0.06)',
+          fontSize: '1.02rem', padding: '0.45rem 0', borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
           color: l.where === 'live' ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.8)',
         }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -653,7 +653,7 @@ export default function CounterPage() {
         placeholder={currency === 'USD' ? usd(bill.remainingUsd) : lbpFmt(bill.remainingLbp)}
         style={{
           width: '100%', minHeight: '68px', textAlign: 'center',
-          background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.18)',
+          background: 'rgba(var(--overlay-rgb),0.05)', border: '2px solid rgba(var(--overlay-rgb),0.18)',
           borderRadius: '10px', color: 'var(--offwhite)',
           fontFamily: 'var(--font-cinzel)', fontSize: '2rem', outline: 'none',
         }}
@@ -736,8 +736,8 @@ export default function CounterPage() {
               aria-label={out ? `${i.name}, sold out today` : undefined} style={{
               minHeight: '92px', borderRadius: '12px', cursor: out ? 'not-allowed' : 'pointer', textAlign: 'left',
               padding: '0.75rem 0.9rem 0.75rem 1rem', fontFamily: 'var(--font-inter)',
-              backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--offwhite)',
-              border: '1px solid rgba(255,255,255,0.12)', borderLeft: `6px solid ${out ? 'var(--red)' : colour}`,
+              backgroundColor: 'rgba(var(--overlay-rgb),0.05)', color: 'var(--offwhite)',
+              border: '1px solid rgba(var(--overlay-rgb),0.12)', borderLeft: `6px solid ${out ? 'var(--red)' : colour}`,
               display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '0.35rem',
               opacity: out ? 0.5 : 1,
             }}>
@@ -867,13 +867,13 @@ export default function CounterPage() {
         )}
 
         {/* ── This device ──────────────────────────────────────────────── */}
-        <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.1)' }}>
           {device.supported ? (
             <label style={{
               display: 'flex', gap: '0.8rem', alignItems: 'flex-start', fontSize: '0.95rem', lineHeight: 1.6, cursor: 'pointer',
               padding: '0.8rem 1rem', borderRadius: '12px',
-              background: device.isCounter ? `rgba(${GOOD_RGB},0.1)` : 'rgba(255,255,255,0.03)',
-              border: `2px solid ${device.isCounter ? GOOD : 'rgba(255,255,255,0.14)'}`,
+              background: device.isCounter ? `rgba(${GOOD_RGB},0.1)` : 'rgba(var(--overlay-rgb),0.03)',
+              border: `2px solid ${device.isCounter ? GOOD : 'rgba(var(--overlay-rgb),0.14)'}`,
             }}>
               <input
                 type="checkbox"

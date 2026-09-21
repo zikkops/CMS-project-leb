@@ -179,7 +179,7 @@ export default function ReceiptPage() {
                 inputMode="email" autoComplete="off" placeholder="customer@example.com" aria-label="The customer's email"
                 style={{
                   flex: '1 1 16rem', minWidth: 0, minHeight: '56px', padding: '0 0.9rem', borderRadius: '10px',
-                  background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.16)',
+                  background: 'rgba(var(--overlay-rgb),0.05)', border: '2px solid rgba(var(--overlay-rgb),0.16)',
                   color: 'var(--offwhite)', fontSize: '1.05rem', fontFamily: 'var(--font-inter)', outline: 'none',
                 }} />
               <PosButton icon={faPaperPlane} type="submit" label={sending ? 'Sending…' : 'Send'} tone="primary" disabled={sending} />

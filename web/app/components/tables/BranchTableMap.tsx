@@ -23,7 +23,7 @@ export default function BranchTableMap({ imageUrl, imageWidth, imageHeight, tabl
   const hovered = bookable.find(t => t.id === hoveredId)
 
   return (
-    <div style={{ position: 'relative', width: '100%', border: '1px solid rgba(255,255,255,0.06)' }}>
+    <div style={{ position: 'relative', width: '100%', border: '1px solid rgba(var(--overlay-rgb),0.06)' }}>
       <img src={imageUrl} alt="Floor plan" style={{ display: 'block', width: '100%' }} />
       {bookable.map(table => {
         const selected = selectedIds.includes(table.id)

@@ -91,8 +91,8 @@ export default function AdminLoginPage() {
               required
               style={{
                 width: '100%',
-                backgroundColor: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.1)',
+                backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
+                border: '1px solid rgba(var(--overlay-rgb),0.1)',
                 color: 'var(--offwhite)',
                 padding: '0.85rem 1rem',
                 borderRadius: '2px',
@@ -122,8 +122,8 @@ export default function AdminLoginPage() {
               required
               style={{
                 width: '100%',
-                backgroundColor: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.1)',
+                backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
+                border: '1px solid rgba(var(--overlay-rgb),0.1)',
                 color: 'var(--offwhite)',
                 padding: '0.85rem 1rem',
                 borderRadius: '2px',

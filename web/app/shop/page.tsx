@@ -93,7 +93,7 @@ function FilterSection({
           gap: '0.5rem',
           background: 'transparent',
           border: 'none',
-          borderBottom: `1px solid ${hovered ? 'rgba(var(--purple-rgb),0.4)' : 'rgba(255,255,255,0.06)'}`,
+          borderBottom: `1px solid ${hovered ? 'rgba(var(--purple-rgb),0.4)' : 'rgba(var(--overlay-rgb),0.06)'}`,
           padding: '0 0 0.8rem',
           marginBottom: collapsed ? '0' : '0.8rem',
           cursor: 'pointer',
@@ -268,8 +268,8 @@ export default function ShopPage() {
             onChange={e => setSearch(e.target.value)}
             style={{
               width: '100%',
-              backgroundColor: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
+              border: '1px solid rgba(var(--overlay-rgb),0.1)',
               color: 'var(--offwhite)',
               padding: '0.75rem 1rem 0.75rem 2.5rem',
               borderRadius: '4px',
@@ -362,7 +362,7 @@ export default function ShopPage() {
         </div>
       </FilterSection>
 
-      <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.06)' }} />
+      <div style={{ height: '1px', backgroundColor: 'rgba(var(--overlay-rgb),0.06)' }} />
 
       {/* Results + Reset */}
       <div>
@@ -386,8 +386,8 @@ export default function ShopPage() {
             alignItems: 'center',
             justifyContent: 'center',
             gap: '0.5rem',
-            background: resetHovered ? 'rgba(255,255,255,0.06)' : 'transparent',
-            border: `1px solid ${resetHovered ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}`,
+            background: resetHovered ? 'rgba(var(--overlay-rgb),0.06)' : 'transparent',
+            border: `1px solid ${resetHovered ? 'rgba(var(--overlay-rgb),0.3)' : 'rgba(var(--overlay-rgb),0.1)'}`,
             color: resetHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.4)',
             padding: '0.6rem',
             borderRadius: '4px',
@@ -552,7 +552,7 @@ export default function ShopPage() {
               bottom: 0,
               width: '50%',
               backgroundColor: 'var(--black)',
-              borderRight: '1px solid rgba(255,255,255,0.08)',
+              borderRight: '1px solid rgba(var(--overlay-rgb),0.08)',
               boxShadow: '8px 0 24px rgba(0,0,0,0.6)',
               zIndex: 60,
               overflowY: 'auto',
@@ -584,8 +584,8 @@ export default function ShopPage() {
                   onMouseEnter={() => setCloseFiltersHovered(true)}
                   onMouseLeave={() => setCloseFiltersHovered(false)}
                   style={{
-                    background: closeFiltersHovered ? 'rgba(255,255,255,0.08)' : 'transparent',
-                    border: `1px solid ${closeFiltersHovered ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                    background: closeFiltersHovered ? 'rgba(var(--overlay-rgb),0.08)' : 'transparent',
+                    border: `1px solid ${closeFiltersHovered ? 'rgba(var(--overlay-rgb),0.3)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                     color: closeFiltersHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.6)',
                     width: '32px',
                     height: '32px',
@@ -616,7 +616,7 @@ export default function ShopPage() {
                 gap: isMobile ? '0.75rem' : '1.5rem',
               }}>
                 {Array.from({ length: isMobile ? 4 : 6 }).map((_, i) => (
-                  <div key={i} style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div key={i} style={{ border: '1px solid rgba(var(--overlay-rgb),0.06)', borderRadius: '4px', overflow: 'hidden' }}>
                     <Skeleton height={isMobile ? '120px' : '200px'} borderRadius="0" />
                     <div style={{ padding: isMobile ? '0.8rem' : '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                       <Skeleton width="70%" height="1rem" />
@@ -660,8 +660,8 @@ export default function ShopPage() {
                       onMouseEnter={() => setHoveredId(product.id)}
                       onMouseLeave={() => setHoveredId(null)}
                       style={{
-                        background: 'rgba(255,255,255,0.02)',
-                        border: `1px solid ${hovered && !outOfStock ? 'rgba(var(--purple-rgb),0.4)' : 'rgba(255,255,255,0.06)'}`,
+                        background: 'rgba(var(--overlay-rgb),0.02)',
+                        border: `1px solid ${hovered && !outOfStock ? 'rgba(var(--purple-rgb),0.4)' : 'rgba(var(--overlay-rgb),0.06)'}`,
                         borderRadius: '4px',
                         overflow: 'hidden',
                         display: 'flex',
@@ -763,7 +763,7 @@ export default function ShopPage() {
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           paddingTop: '0.6rem',
-                          borderTop: '1px solid rgba(255,255,255,0.05)',
+                          borderTop: '1px solid rgba(var(--overlay-rgb),0.05)',
                         }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                             {product.price > 0 && (
@@ -847,7 +847,7 @@ export default function ShopPage() {
                   disabled={page === 1}
                   style={{
                     background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(var(--overlay-rgb),0.1)',
                     color: page === 1 ? 'rgba(var(--offwhite-rgb),0.2)' : 'rgba(var(--offwhite-rgb),0.6)',
                     padding: '0.5rem 1rem',
                     borderRadius: '2px',
@@ -866,7 +866,7 @@ export default function ShopPage() {
                   return (
                     <button key={p} onClick={() => goToPage(p)} style={{
                       background: active ? 'var(--purple)' : 'transparent',
-                      border: `1px solid ${active ? 'var(--purple)' : 'rgba(255,255,255,0.1)'}`,
+                      border: `1px solid ${active ? 'var(--purple)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                       color: active ? '#fff' : 'rgba(var(--offwhite-rgb),0.5)',
                       width: '36px', height: '36px',
                       borderRadius: '2px',
@@ -882,7 +882,7 @@ export default function ShopPage() {
                   disabled={page === totalPages}
                   style={{
                     background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(var(--overlay-rgb),0.1)',
                     color: page === totalPages ? 'rgba(var(--offwhite-rgb),0.2)' : 'rgba(var(--offwhite-rgb),0.6)',
                     padding: '0.5rem 1rem',
                     borderRadius: '2px',

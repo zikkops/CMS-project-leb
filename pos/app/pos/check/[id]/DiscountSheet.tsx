@@ -121,8 +121,8 @@ export default function DiscountSheet({ target, onDone }: { target: DiscountTarg
             inputMode={kind === 'amount' ? 'decimal' : 'numeric'}
             placeholder={kind === 'percent' ? 'Percent off, e.g. 10' : 'Dollars off, e.g. 5'}
             style={{
-              ...tap, width: '100%', marginTop: '0.6rem', backgroundColor: '#0a0a0a', color: 'var(--offwhite)',
-              cursor: 'text', border: '1px solid rgba(255,255,255,0.14)', fontSize: '1rem', textAlign: 'right',
+              ...tap, width: '100%', marginTop: '0.6rem', backgroundColor: 'var(--surface-deep)', color: 'var(--offwhite)',
+              cursor: 'text', border: '1px solid rgba(var(--overlay-rgb),0.14)', fontSize: '1rem', textAlign: 'right',
             }}
           />
         )}
@@ -135,8 +135,8 @@ export default function DiscountSheet({ target, onDone }: { target: DiscountTarg
           {DISCOUNT_REASONS.map(r => (
             <button key={r.key} onClick={() => setReasonKey(r.key)} disabled={busy} style={{
               ...tap, width: '100%', textAlign: 'left', padding: '0.6rem 0.9rem',
-              backgroundColor: reasonKey === r.key ? 'rgba(var(--teal-rgb),0.15)' : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${reasonKey === r.key ? 'var(--teal)' : 'rgba(255,255,255,0.12)'}`,
+              backgroundColor: reasonKey === r.key ? 'rgba(var(--teal-rgb),0.15)' : 'rgba(var(--overlay-rgb),0.03)',
+              border: `1px solid ${reasonKey === r.key ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.12)'}`,
               color: 'var(--offwhite)',
             }}>{r.label}</button>
           ))}
@@ -146,8 +146,8 @@ export default function DiscountSheet({ target, onDone }: { target: DiscountTarg
           onChange={e => setNote(e.target.value)}
           placeholder={reasonKey === 'other' ? 'What happened? (needed for Other)' : 'Note (optional)'}
           style={{
-            ...tap, width: '100%', marginTop: '0.6rem', backgroundColor: '#0a0a0a', color: 'var(--offwhite)',
-            cursor: 'text', border: '1px solid rgba(255,255,255,0.14)',
+            ...tap, width: '100%', marginTop: '0.6rem', backgroundColor: 'var(--surface-deep)', color: 'var(--offwhite)',
+            cursor: 'text', border: '1px solid rgba(var(--overlay-rgb),0.14)',
           }}
         />
 

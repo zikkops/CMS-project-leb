@@ -76,7 +76,7 @@ export default function WholesaleOrdersPage() {
           {loading ? (
             <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
           ) : orders.length === 0 ? (
-            <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem' }}>
+            <div style={{ border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem' }}>
               No orders yet.
             </div>
           ) : (
@@ -84,7 +84,7 @@ export default function WholesaleOrdersPage() {
               {orders.map(o => {
                 const open = openId === o.id
                 return (
-                  <div key={o.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', overflow: 'hidden' }}>
+                  <div key={o.id} style={{ background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.07)', borderRadius: '6px', overflow: 'hidden' }}>
                     <div
                       onClick={() => setOpenId(open ? null : o.id)}
                       style={{ padding: '0.9rem 1.1rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}
@@ -128,11 +128,11 @@ export default function WholesaleOrdersPage() {
                     </div>
 
                     {open && (
-                      <div style={{ padding: '0 1.1rem 1.1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ padding: '0 1.1rem 1.1rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.05)' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '0.75rem' }}>
                           <tbody>
                             {o.items.map(i => (
-                              <tr key={i.productId} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                              <tr key={i.productId} style={{ borderTop: '1px solid rgba(var(--overlay-rgb),0.04)' }}>
                                 <td style={{ padding: '0.45rem 0', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'var(--offwhite)' }}>{i.name}</td>
                                 <td style={{ padding: '0.45rem 0', textAlign: 'right', fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>
                                   {i.quantity} × ${i.unitPrice.toFixed(2)}

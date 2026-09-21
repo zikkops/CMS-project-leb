@@ -59,7 +59,7 @@ export default function MediaPickerModal({
         onClick={e => e.stopPropagation()}
         style={{
           backgroundColor: '#0d0d0d',
-          border: '1px solid rgba(255,255,255,0.08)',
+          border: '1px solid rgba(var(--overlay-rgb),0.08)',
           borderRadius: '4px',
           width: '100%',
           maxWidth: '900px',
@@ -73,14 +73,14 @@ export default function MediaPickerModal({
           justifyContent: 'space-between',
           alignItems: 'center',
           padding: isMobile ? '1rem 1.25rem' : '1.25rem 1.75rem',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
         }}>
           <h3 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color: 'var(--offwhite)' }}>
             Choose from Media
           </h3>
           <button onClick={onClose} style={{
             background: 'transparent',
-            border: '1px solid rgba(255,255,255,0.1)',
+            border: '1px solid rgba(var(--overlay-rgb),0.1)',
             color: 'rgba(var(--offwhite-rgb),0.5)',
             padding: '0.4rem 1rem',
             borderRadius: '2px',

@@ -18,7 +18,7 @@ export default function Skeleton({
       width,
       height,
       borderRadius,
-      backgroundColor: 'rgba(255,255,255,0.04)',
+      backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
       ...style,
     }}>
       <div style={{
@@ -27,7 +27,7 @@ export default function Skeleton({
         bottom: 0,
         left: '-60%',
         width: '50%',
-        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)',
+        background: 'linear-gradient(90deg, transparent, rgba(var(--overlay-rgb),0.1), transparent)',
         transform: 'skewX(-20deg)',
         animation: 'skeletonShine 1.6s ease-in-out infinite',
       }} />

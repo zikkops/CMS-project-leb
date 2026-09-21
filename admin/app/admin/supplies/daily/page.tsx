@@ -19,7 +19,7 @@ import { startLoad } from '@big-cms/shared/startLoad'
 // outside the original three gets one at all.
 
 const inp: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
   color: 'var(--offwhite)', borderRadius: '4px', padding: '0.5rem 0.7rem',
   fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box',
   fontFamily: 'var(--font-inter)',
@@ -242,7 +242,7 @@ function DailyInventoryInner() {
             {departmentOptions.map(d => (
               <button key={d} onClick={() => setDepartment(d)} style={{
                 background: department === d ? `${supplyCategoryColor(d)}18` : 'transparent',
-                border: `1px solid ${department === d ? supplyCategoryColor(d) : 'rgba(255,255,255,0.09)'}`,
+                border: `1px solid ${department === d ? supplyCategoryColor(d) : 'rgba(var(--overlay-rgb),0.09)'}`,
                 color: department === d ? supplyCategoryColor(d) : 'rgba(var(--offwhite-rgb),0.35)',
                 borderRadius: '6px', padding: '0.5rem 1.25rem',
                 fontSize: '0.78rem', fontWeight: department === d ? 600 : 400,
@@ -290,7 +290,7 @@ function DailyInventoryInner() {
 
             {/* Progress */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              <div style={{ flex: 1, height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+              <div style={{ flex: 1, height: '6px', borderRadius: '3px', background: 'rgba(var(--overlay-rgb),0.06)', overflow: 'hidden' }}>
                 <div style={{
                   width: items.length > 0 ? `${(countedCount / items.length) * 100}%` : '0%',
                   height: '100%', background: allCounted ? 'var(--teal)' : supplyCategoryColor(department), transition: 'width 0.2s',
@@ -303,7 +303,7 @@ function DailyInventoryInner() {
 
             {/* Items */}
             {visibleItems.length === 0 ? (
-              <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
+              <div style={{ border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
                 {search ? 'No items match your search.' : `No ${department} items yet — add them from the Inventory Management page first.`}
               </div>
             ) : (
@@ -315,8 +315,8 @@ function DailyInventoryInner() {
                   const delta = counted ? Number(val) - prev : 0
                   return (
                     <div key={s.id} style={{
-                      background: counted ? 'rgba(var(--teal-rgb),0.04)' : 'rgba(255,255,255,0.02)',
-                      border: `1px solid ${counted ? 'rgba(var(--teal-rgb),0.2)' : 'rgba(255,255,255,0.07)'}`,
+                      background: counted ? 'rgba(var(--teal-rgb),0.04)' : 'rgba(var(--overlay-rgb),0.02)',
+                      border: `1px solid ${counted ? 'rgba(var(--teal-rgb),0.2)' : 'rgba(var(--overlay-rgb),0.07)'}`,
                       borderRadius: '6px', padding: '0.8rem 0.9rem',
                       display: 'flex', flexDirection: 'column', gap: '0.5rem',
                     }}>
@@ -396,7 +396,7 @@ function DailyInventoryInner() {
                 onClick={handleSaveDraft}
                 disabled={saving || submitting || items.length === 0}
                 style={{
-                  background: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
+                  background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.15)',
                   color: 'rgba(var(--offwhite-rgb),0.6)', padding: '0.75rem 1.5rem', borderRadius: '2px',
                   fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase',
                   cursor: saving || submitting ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-inter)',
@@ -409,7 +409,7 @@ function DailyInventoryInner() {
                 disabled={!allCounted || saving || submitting}
                 title={!allCounted ? 'Every item needs a count before submitting' : undefined}
                 style={{
-                  background: allCounted ? supplyCategoryColor(department) : 'rgba(255,255,255,0.08)',
+                  background: allCounted ? supplyCategoryColor(department) : 'rgba(var(--overlay-rgb),0.08)',
                   color: allCounted ? '#000' : 'rgba(var(--offwhite-rgb),0.3)', border: 'none', padding: '0.75rem 2rem', borderRadius: '2px',
                   fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700,
                   cursor: allCounted && !saving && !submitting ? 'pointer' : 'not-allowed',
@@ -457,7 +457,7 @@ function DailyInventoryInner() {
                       return (
                         <div key={h.id} style={{
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
-                          background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                          background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)',
                           borderRadius: '4px', padding: '0.7rem 1rem',
                         }}>
                           <div>

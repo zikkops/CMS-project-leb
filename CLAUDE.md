@@ -1727,6 +1727,10 @@ the operation behind a route handler if that matters.
   but nothing in `app/` uses it. Don't introduce classes, don't add CSS modules.
 - Palette via CSS vars: `var(--teal)`, `var(--red)`, `var(--purple)`,
   `var(--navy)`, `var(--black)`, `var(--offwhite)`.
+- Neutrals are theme tokens (Sep 2026): `rgba(var(--overlay-rgb), 0.08)` for
+  a faint tint, divider or hover, never `rgba(255,255,255,0.08)`;
+  `var(--surface-deep)` for the darkest panel and `var(--on-accent)` for text on
+  a bright chip. `verify:brand` fails on the literal in app code.
 - `var(--font-cinzel)` for headings, `var(--font-inter)` for body. FontAwesome
   for icons.
 - `useIsMobile()` is **deliberately duplicated** in nearly every file rather than

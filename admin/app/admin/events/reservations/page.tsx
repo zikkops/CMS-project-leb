@@ -95,8 +95,8 @@ export default function EventReservationsPage() {
   const isManagerBranchScoped = role === 'manager'
 
   const cardStyle = {
-    background: 'rgba(255,255,255,0.02)',
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'rgba(var(--overlay-rgb),0.02)',
+    border: '1px solid rgba(var(--overlay-rgb),0.06)',
     borderRadius: '4px',
     padding: isMobile ? '1.1rem' : '1.5rem',
     display: 'flex',
@@ -155,7 +155,7 @@ export default function EventReservationsPage() {
               value={adminBranchFilter}
               onChange={e => setAdminBranchFilter(e.target.value)}
               style={{
-                backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--offwhite)',
+                backgroundColor: '#1a1a1a', border: '1px solid rgba(var(--overlay-rgb),0.1)', color: 'var(--offwhite)',
                 padding: '0.6rem 0.9rem', borderRadius: '2px', fontSize: '0.82rem', outline: 'none', fontFamily: 'var(--font-inter)',
               }}
             >
@@ -169,7 +169,7 @@ export default function EventReservationsPage() {
               value={managerBranchFilter}
               onChange={e => setManagerBranchFilter(e.target.value)}
               style={{
-                backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--offwhite)',
+                backgroundColor: '#1a1a1a', border: '1px solid rgba(var(--overlay-rgb),0.1)', color: 'var(--offwhite)',
                 padding: '0.6rem 0.9rem', borderRadius: '2px', fontSize: '0.82rem', outline: 'none', fontFamily: 'var(--font-inter)',
               }}
             >
@@ -192,7 +192,7 @@ export default function EventReservationsPage() {
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : visible.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
             padding: isMobile ? '3rem 1.5rem' : '4rem', textAlign: 'center',
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem',
           }}>
@@ -260,13 +260,13 @@ export default function EventReservationsPage() {
                       {r.participants.map(part => (
                         <span key={part.uid} style={{
                           fontSize: '0.72rem', padding: '0.25rem 0.7rem', borderRadius: '2px',
-                          backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)',
+                          backgroundColor: 'rgba(var(--overlay-rgb),0.05)', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)',
                         }}>{part.name}</span>
                       ))}
                       {r.participantPhones.map(phone => (
                         <span key={phone} style={{
                           fontSize: '0.72rem', padding: '0.25rem 0.7rem', borderRadius: '2px',
-                          backgroundColor: 'rgba(255,255,255,0.05)', color: 'rgba(var(--offwhite-rgb),0.6)', fontFamily: 'var(--font-inter)',
+                          backgroundColor: 'rgba(var(--overlay-rgb),0.05)', color: 'rgba(var(--offwhite-rgb),0.6)', fontFamily: 'var(--font-inter)',
                         }}>📞 {phone}</span>
                       ))}
                     </div>
@@ -300,7 +300,7 @@ export default function EventReservationsPage() {
                         <button
                           onClick={() => { setRejectingId(null); setRejectReason('') }}
                           style={{
-                            background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
+                            background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
                             padding: '0.7rem 1.2rem', borderRadius: '2px', fontSize: '0.72rem', letterSpacing: '0.06em',
                             textTransform: 'uppercase', fontFamily: 'var(--font-inter)', cursor: 'pointer',
                           }}
@@ -310,7 +310,7 @@ export default function EventReservationsPage() {
                   )}
 
                   {rejectingId !== r.id && (
-                    <div style={{ display: 'flex', gap: '0.6rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', gap: '0.6rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.05)' }}>
                       <button
                         onClick={() => handleApprove(r)}
                         disabled={isBusy}

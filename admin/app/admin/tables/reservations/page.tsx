@@ -105,8 +105,8 @@ export default function TableReservationsPage() {
   const isManagerBranchScoped = role === 'manager'
 
   const cardStyle = {
-    background: 'rgba(255,255,255,0.02)',
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'rgba(var(--overlay-rgb),0.02)',
+    border: '1px solid rgba(var(--overlay-rgb),0.06)',
     borderRadius: '4px',
     padding: isMobile ? '1.1rem' : '1.5rem',
     display: 'flex',
@@ -165,7 +165,7 @@ export default function TableReservationsPage() {
               value={adminBranchFilter}
               onChange={e => setAdminBranchFilter(e.target.value)}
               style={{
-                backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--offwhite)',
+                backgroundColor: '#1a1a1a', border: '1px solid rgba(var(--overlay-rgb),0.1)', color: 'var(--offwhite)',
                 padding: '0.6rem 0.9rem', borderRadius: '2px', fontSize: '0.82rem', outline: 'none', fontFamily: 'var(--font-inter)',
               }}
             >
@@ -179,7 +179,7 @@ export default function TableReservationsPage() {
               value={managerBranchFilter}
               onChange={e => setManagerBranchFilter(e.target.value)}
               style={{
-                backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--offwhite)',
+                backgroundColor: '#1a1a1a', border: '1px solid rgba(var(--overlay-rgb),0.1)', color: 'var(--offwhite)',
                 padding: '0.6rem 0.9rem', borderRadius: '2px', fontSize: '0.82rem', outline: 'none', fontFamily: 'var(--font-inter)',
               }}
             >
@@ -194,7 +194,7 @@ export default function TableReservationsPage() {
           {(['pending', 'approved'] as const).map(t => (
             <button key={t} onClick={() => { setTab(t); setProcessedIds(new Set()) }} style={{
               background: tab === t ? 'var(--teal)' : 'transparent',
-              border: `1px solid ${tab === t ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
+              border: `1px solid ${tab === t ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.1)'}`,
               color: tab === t ? '#fff' : 'rgba(var(--offwhite-rgb),0.5)',
               padding: '0.55rem 1.2rem',
               borderRadius: '2px',
@@ -222,7 +222,7 @@ export default function TableReservationsPage() {
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : visible.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
             padding: isMobile ? '3rem 1.5rem' : '4rem', textAlign: 'center',
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem',
           }}>
@@ -319,7 +319,7 @@ export default function TableReservationsPage() {
                         <button
                           onClick={() => { setRejectingId(null); setRejectReason('') }}
                           style={{
-                            background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
+                            background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
                             padding: '0.7rem 1.2rem', borderRadius: '2px', fontSize: '0.72rem', letterSpacing: '0.06em',
                             textTransform: 'uppercase', fontFamily: 'var(--font-inter)', cursor: 'pointer',
                           }}
@@ -329,7 +329,7 @@ export default function TableReservationsPage() {
                   )}
 
                   {rejectingId !== r.id && (
-                    <div style={{ display: 'flex', gap: '0.6rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', gap: '0.6rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.05)' }}>
                       {tab === 'approved' ? (
                         <button
                           onClick={() => handleCheckIn(r)}

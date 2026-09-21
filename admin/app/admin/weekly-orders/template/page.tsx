@@ -17,7 +17,7 @@ const UNITS: OrderUnit[] = ['box', 'kg', 'liter', 'gallon', 'bottle', 'bag', 'pc
 
 
 const inp: React.CSSProperties = {
-  backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)',
+  backgroundColor: '#1a1a1a', border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)', padding: '0.55rem 0.75rem', borderRadius: '2px',
   fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)',
 }
@@ -30,7 +30,7 @@ const btnPrimary: React.CSSProperties = {
 }
 
 const btnGhost: React.CSSProperties = {
-  backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+  backgroundColor: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.5rem 0.9rem', borderRadius: '2px',
   fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase',
   cursor: 'pointer', fontFamily: 'var(--font-inter)',
@@ -75,7 +75,7 @@ function AddItemForm({ providers, onSave }: {
 
   return (
     <form onSubmit={submit} style={{
-      background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)',
+      background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.08)',
       borderRadius: '4px', padding: '1.1rem 1.4rem', marginBottom: '2rem',
     }}>
       <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginBottom: '0.9rem', letterSpacing: '0.12em' }}>ADD ITEM</p>
@@ -172,7 +172,7 @@ function ItemRow({ item, providers, onUpdated, onDeleted }: {
     try { await onDeleted(item.id, item.name) } finally { setDeleting(false) }
   }
 
-  const basePad: React.CSSProperties = { padding: '0.7rem 1rem', borderTop: '1px solid rgba(255,255,255,0.04)' }
+  const basePad: React.CSSProperties = { padding: '0.7rem 1rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.04)' }
 
   if (editing) {
     return (
@@ -424,7 +424,7 @@ export default function OrderTemplatePage() {
                 </button>
               )}
               <a href="/admin/weekly-orders/providers" style={{
-                backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.12)',
+                backgroundColor: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.12)',
                 color: 'rgba(var(--offwhite-rgb),0.5)', textDecoration: 'none',
                 padding: '0.6rem 1.1rem', borderRadius: '2px', fontSize: '0.73rem',
                 letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
@@ -471,25 +471,25 @@ export default function OrderTemplatePage() {
         {loading ? (
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : items.length === 0 ? (
-          <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
+          <div style={{ border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
             No items yet — add your first one above.
           </div>
         ) : searchQuery.trim() ? (
           searchResults.length === 0 ? (
-            <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
+            <div style={{ border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
               No items match &ldquo;{searchQuery.trim()}&rdquo;.
             </div>
           ) : (
             <div style={{
-              background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+              background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)',
               borderRadius: '4px', overflow: 'hidden',
             }}>
-              <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
+              <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)', background: 'rgba(var(--overlay-rgb),0.02)' }}>
                 <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                   {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
                 </span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr auto' : '2fr 1.4fr auto auto', gap: '0.6rem', padding: '0.4rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr auto' : '2fr 1.4fr auto auto', gap: '0.6rem', padding: '0.4rem 1rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.04)' }}>
                 {(isMobile ? ['English Name', ''] : ['English Name', 'Arabic / عربي', 'Unit / Pack', '']).map((h, i) => (
                   <span key={i} style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.25)' }}>{h}</span>
                 ))}
@@ -552,7 +552,7 @@ export default function OrderTemplatePage() {
 
                           return (
                             <div key={providerId ?? '__none__'} style={{
-                              background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                              background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)',
                               borderLeft: `3px solid ${DEPT_COLOR[dept]}40`,
                               borderRadius: '4px', overflow: 'hidden',
                             }}>
@@ -564,8 +564,8 @@ export default function OrderTemplatePage() {
                                   return next
                                 })}
                                 style={{
-                                  padding: '0.6rem 1rem', background: 'rgba(255,255,255,0.025)',
-                                  borderBottom: isCollapsed ? 'none' : '1px solid rgba(255,255,255,0.05)',
+                                  padding: '0.6rem 1rem', background: 'rgba(var(--overlay-rgb),0.025)',
+                                  borderBottom: isCollapsed ? 'none' : '1px solid rgba(var(--overlay-rgb),0.05)',
                                   display: 'flex', alignItems: 'center', gap: '0.75rem',
                                   cursor: 'pointer', userSelect: 'none',
                                 }}
@@ -594,7 +594,7 @@ export default function OrderTemplatePage() {
                                 return (
                                   <>
                                     {/* Column headers */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.4fr auto auto', gap: '0.6rem', padding: '0.4rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.4fr auto auto', gap: '0.6rem', padding: '0.4rem 1rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.04)' }}>
                                       {['English Name', 'Arabic / عربي', 'Unit / Pack', ''].map((h, i) => (
                                         <span key={i} style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.25)' }}>{h}</span>
                                       ))}
@@ -616,8 +616,8 @@ export default function OrderTemplatePage() {
                                               style={{
                                                 display: 'flex', alignItems: 'center', gap: '0.5rem',
                                                 padding: '0.35rem 1rem',
-                                                borderTop: '1px solid rgba(255,255,255,0.04)',
-                                                background: 'rgba(255,255,255,0.015)',
+                                                borderTop: '1px solid rgba(var(--overlay-rgb),0.04)',
+                                                background: 'rgba(var(--overlay-rgb),0.015)',
                                                 cursor: 'pointer', userSelect: 'none',
                                               }}
                                             >

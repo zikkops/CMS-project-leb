@@ -38,10 +38,10 @@ export function CommandPalette({ sections, onGo, onClose }: {
       display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '12vh 1rem 1rem',
     }}>
       <div role="dialog" aria-modal="true" aria-label="Go to a page" onClick={e => e.stopPropagation()} style={{
-        width: '100%', maxWidth: '560px', background: '#141414', border: '1px solid rgba(255,255,255,0.14)',
+        width: '100%', maxWidth: '560px', background: '#141414', border: '1px solid rgba(var(--overlay-rgb),0.14)',
         borderRadius: '12px', overflow: 'hidden', fontFamily: 'var(--font-inter)', boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.9rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.9rem 1rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.08)' }}>
           <FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: 'rgba(var(--offwhite-rgb),0.45)' }} />
           <input
             ref={input}
@@ -56,7 +56,7 @@ export function CommandPalette({ sections, onGo, onClose }: {
             aria-activedescendant={results[chosen] ? `palette-${chosen}` : undefined}
             style={{ flex: 1, background: 'none', border: 'none', outline: 'none', color: 'var(--offwhite)', fontSize: '1rem', fontFamily: 'inherit' }}
           />
-          <kbd style={{ fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', padding: '0.1rem 0.35rem' }}>Esc</kbd>
+          <kbd style={{ fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.4)', border: '1px solid rgba(var(--overlay-rgb),0.15)', borderRadius: '4px', padding: '0.1rem 0.35rem' }}>Esc</kbd>
         </div>
         <ul id="palette-results" role="listbox" style={{ listStyle: 'none', margin: 0, padding: '0.4rem', maxHeight: '50vh', overflowY: 'auto' }}>
           {results.length === 0 && (
@@ -68,7 +68,7 @@ export function CommandPalette({ sections, onGo, onClose }: {
               onClick={() => onGo(item.href)}
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.7rem', borderRadius: '8px', cursor: 'pointer',
-                background: i === chosen ? 'rgba(255,255,255,0.07)' : 'transparent',
+                background: i === chosen ? 'rgba(var(--overlay-rgb),0.07)' : 'transparent',
               }}>
               <FontAwesomeIcon icon={item.icon} style={{ color: section.color, width: '1rem' }} />
               <span style={{ flex: 1, minWidth: 0 }}>

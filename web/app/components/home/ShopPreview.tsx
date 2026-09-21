@@ -87,7 +87,7 @@ export default function ShopPreview() {
             gap: isMobile ? '0.75rem' : '1.5rem',
           }}>
             {[0, 1, 2, 3].map(i => (
-              <div key={i} style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div key={i} style={{ border: '1px solid rgba(var(--overlay-rgb),0.06)', borderRadius: '4px', overflow: 'hidden' }}>
                 <Skeleton height={isMobile ? '120px' : '200px'} borderRadius="0" />
                 <div style={{ padding: isMobile ? '0.8rem' : '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                   <Skeleton width="70%" height="1rem" />
@@ -113,8 +113,8 @@ export default function ShopPreview() {
                   onMouseEnter={() => setHoveredId(id)}
                   onMouseLeave={() => setHoveredId(null)}
                   style={{
-                    background: 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${hovered && !outOfStock ? 'rgba(var(--purple-rgb),0.4)' : 'rgba(255,255,255,0.06)'}`,
+                    background: 'rgba(var(--overlay-rgb),0.02)',
+                    border: `1px solid ${hovered && !outOfStock ? 'rgba(var(--purple-rgb),0.4)' : 'rgba(var(--overlay-rgb),0.06)'}`,
                     borderRadius: '4px',
                     overflow: 'hidden',
                     display: 'flex',
@@ -199,7 +199,7 @@ export default function ShopPreview() {
                     <div style={{
                       marginTop: 'auto',
                       paddingTop: '0.6rem',
-                      borderTop: '1px solid rgba(255,255,255,0.05)',
+                      borderTop: '1px solid rgba(var(--overlay-rgb),0.05)',
                       display: 'flex',
                       flexDirection: isMobile ? 'column' : 'row',
                       alignItems: isMobile ? 'flex-start' : 'center',

@@ -147,5 +147,27 @@ for (const [name, where] of undefinedVars) {
 }
 eq('and the source does reference the triplets', referenced.has('--offwhite-rgb'), true)
 
+// ── Theme tokens (UPGRADE.md T4.4) ─────────────────────────────────────────
+// The neutrals every screen is drawn with are variables, so a light theme or a
+// client's own palette is one stylesheet. A literal white tint or the old
+// near-black in app code is a colour that theme would miss. Two files are not
+// CSS and cannot read a variable: the web app manifest and the POS icon.
+console.log('\nthe theme tokens exist, and app code uses them')
+eq('--overlay-rgb is three channels', /^\d{1,3}, \d{1,3}, \d{1,3}$/.test(DEFINED.get('--overlay-rgb') ?? ''), true)
+eq('--surface-deep and --on-accent are defined', DEFINED.has('--surface-deep') && DEFINED.has('--on-accent'), true)
+const NOT_CSS = new Set(['pos/app/manifest.ts', 'pos/app/pos/icon.svg/route.ts'])
+const literals = []
+for (const dir of ['web/app', 'admin/app', 'pos/app']) {
+  for (const file of walk(join(ROOT, dir))) {
+    const rel = relative(ROOT, file).split('\\').join('/')
+    if (NOT_CSS.has(rel)) continue
+    readFileSync(file, 'utf8').split(/\r?\n/).forEach((line, i) => {
+      if (/rgba\(\s*255\s*,\s*255\s*,\s*255\s*,|#0a0a0a/i.test(line)) literals.push(`${rel}:${i + 1}`)
+    })
+  }
+}
+eq('no literal white tint or #0a0a0a in app code', literals.length, 0)
+for (const where of literals.slice(0, 10)) console.log(`        ${where}  use rgba(var(--overlay-rgb), a) or var(--surface-deep)`)
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail > 0 ? 1 : 0)

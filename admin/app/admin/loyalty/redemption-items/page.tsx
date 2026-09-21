@@ -23,7 +23,7 @@ const EMPTY_FORM = { name: '', description: '', coinCost: 100, isActive: true }
 const inputStyle = {
   width: '100%',
   backgroundColor: '#1a1a1a',
-  border: '1px solid rgba(255,255,255,0.1)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.75rem 1rem',
   borderRadius: '2px',
@@ -136,7 +136,7 @@ export default function RedemptionItemsPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
             {items.map(item => (
               <div key={item.id} style={{
-                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)',
                 borderRadius: '4px', padding: '1rem 1.2rem', display: 'flex', flexDirection: 'column', gap: '0.6rem',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
@@ -147,7 +147,7 @@ export default function RedemptionItemsPage() {
 
                 <button onClick={() => toggleItemActive(item.id, !item.isActive)} style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '2px',
+                  background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)', borderRadius: '2px',
                   padding: '0.6rem 0.8rem', cursor: 'pointer',
                 }}>
                   <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.6)' }}>
@@ -155,7 +155,7 @@ export default function RedemptionItemsPage() {
                   </span>
                   <span style={{
                     width: '40px', height: '22px', borderRadius: '11px',
-                    backgroundColor: item.isActive ? 'var(--teal)' : 'rgba(255,255,255,0.15)',
+                    backgroundColor: item.isActive ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.15)',
                     position: 'relative', transition: 'background-color 0.2s', flexShrink: 0,
                   }}>
                     <span style={{
@@ -167,7 +167,7 @@ export default function RedemptionItemsPage() {
 
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button onClick={() => openEdit(item)} style={{
-                    flex: 1, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                    flex: 1, background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)',
                     color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.6rem', borderRadius: '2px', fontSize: '0.72rem',
                     cursor: 'pointer', fontFamily: 'var(--font-inter)',
                   }}>Edit</button>
@@ -181,10 +181,10 @@ export default function RedemptionItemsPage() {
             ))}
           </div>
         ) : (
-          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+          <div style={{ background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)', borderRadius: '4px', overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <tr style={{ borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)' }}>
                   {['Name', 'Description', 'Points', 'Status', 'Actions'].map(h => (
                     <th key={h} style={{
                       padding: '1rem 1.2rem', textAlign: 'left', fontSize: '0.65rem', letterSpacing: '0.2em',
@@ -195,7 +195,7 @@ export default function RedemptionItemsPage() {
               </thead>
               <tbody>
                 {items.map(item => (
-                  <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <tr key={item.id} style={{ borderBottom: '1px solid rgba(var(--overlay-rgb),0.04)' }}>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--offwhite)' }}>{item.name}</td>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.5)', maxWidth: '280px' }}>{item.description}</td>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--teal)' }}>{item.coinCost}</td>
@@ -205,7 +205,7 @@ export default function RedemptionItemsPage() {
                       }}>
                         <span style={{
                           width: '36px', height: '20px', borderRadius: '10px',
-                          backgroundColor: item.isActive ? 'var(--teal)' : 'rgba(255,255,255,0.15)',
+                          backgroundColor: item.isActive ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.15)',
                           position: 'relative', transition: 'background-color 0.2s', flexShrink: 0,
                         }}>
                           <span style={{
@@ -221,7 +221,7 @@ export default function RedemptionItemsPage() {
                     <td style={{ padding: '1rem 1.2rem' }}>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <button onClick={() => openEdit(item)} style={{
-                          background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
+                          background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
                           padding: '0.4rem 0.8rem', borderRadius: '2px', fontSize: '0.7rem', cursor: 'pointer', fontFamily: 'var(--font-inter)',
                         }}>Edit</button>
                         <button onClick={() => handleDelete(item)} style={{
@@ -245,12 +245,12 @@ export default function RedemptionItemsPage() {
           alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: isMobile ? '1rem' : '2rem',
         }}>
           <div style={{
-            backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
+            backgroundColor: '#111', border: '1px solid rgba(var(--overlay-rgb),0.1)', borderRadius: '8px',
             width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto',
           }}>
             <div style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: isMobile ? '1.25rem 1.5rem' : '1.5rem 2rem', borderBottom: '1px solid rgba(255,255,255,0.06)',
+              padding: isMobile ? '1.25rem 1.5rem' : '1.5rem 2rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
             }}>
               <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem', color: 'var(--offwhite)' }}>
                 {editing ? 'Edit Item' : 'Add New Item'}
@@ -289,7 +289,7 @@ export default function RedemptionItemsPage() {
                 }}>
                   <span style={{
                     width: '40px', height: '22px', borderRadius: '11px',
-                    backgroundColor: form.isActive ? 'var(--teal)' : 'rgba(255,255,255,0.15)',
+                    backgroundColor: form.isActive ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.15)',
                     position: 'relative', transition: 'background-color 0.2s', flexShrink: 0,
                   }}>
                     <span style={{
@@ -305,7 +305,7 @@ export default function RedemptionItemsPage() {
 
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                 <button type="button" onClick={() => setOpen(false)} style={{
-                  flex: 1, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                  flex: 1, background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)',
                   color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.8rem', borderRadius: '2px', fontSize: '0.75rem',
                   cursor: 'pointer', fontFamily: 'var(--font-inter)',
                 }}>Cancel</button>

@@ -24,7 +24,7 @@ const EMPTY_FORM = { tier: TIER_LABELS[0], perk: '' }
 const inputStyle = {
   width: '100%',
   backgroundColor: '#1a1a1a',
-  border: '1px solid rgba(255,255,255,0.1)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.75rem 1rem',
   borderRadius: '2px',
@@ -126,7 +126,7 @@ export default function TierPerksPage() {
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : perks.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
           }}>
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
@@ -144,8 +144,8 @@ export default function TierPerksPage() {
                   flexDirection: isMobile ? 'column' : 'row',
                   alignItems: isMobile ? 'stretch' : 'center',
                   gap: isMobile ? '0.8rem' : '1.2rem',
-                  background: 'rgba(255,255,255,0.02)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'rgba(var(--overlay-rgb),0.02)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.06)',
                   borderLeft: `3px solid ${color}`,
                   borderRadius: '4px',
                   padding: isMobile ? '1rem 1.2rem' : '1rem 1.5rem',
@@ -163,7 +163,7 @@ export default function TierPerksPage() {
                   </p>
                   <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                     <button onClick={() => openEdit(p)} style={{
-                      background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
+                      background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
                       padding: '0.4rem 0.8rem', borderRadius: '2px', fontSize: '0.7rem', cursor: 'pointer', fontFamily: 'var(--font-inter)',
                     }}>Edit</button>
                     <button onClick={() => handleDelete(p)} style={{
@@ -185,12 +185,12 @@ export default function TierPerksPage() {
           alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: isMobile ? '1rem' : '2rem',
         }}>
           <div style={{
-            backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
+            backgroundColor: '#111', border: '1px solid rgba(var(--overlay-rgb),0.1)', borderRadius: '8px',
             width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto',
           }}>
             <div style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: isMobile ? '1.25rem 1.5rem' : '1.5rem 2rem', borderBottom: '1px solid rgba(255,255,255,0.06)',
+              padding: isMobile ? '1.25rem 1.5rem' : '1.5rem 2rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
             }}>
               <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem', color: 'var(--offwhite)' }}>
                 {editing ? 'Edit Perk' : 'Add New Perk'}
@@ -222,7 +222,7 @@ export default function TierPerksPage() {
 
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                 <button type="button" onClick={() => setOpen(false)} style={{
-                  flex: 1, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                  flex: 1, background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)',
                   color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.8rem', borderRadius: '2px', fontSize: '0.75rem',
                   cursor: 'pointer', fontFamily: 'var(--font-inter)',
                 }}>Cancel</button>

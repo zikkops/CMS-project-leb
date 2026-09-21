@@ -148,8 +148,8 @@ function TransactionCard({
       alignItems: 'flex-start',
       gap: isMobile ? '0.8rem' : '1rem',
       padding: isMobile ? '1rem' : '1.2rem',
-      backgroundColor: 'rgba(255,255,255,0.02)',
-      border: '1px solid rgba(255,255,255,0.06)',
+      backgroundColor: 'rgba(var(--overlay-rgb),0.02)',
+      border: '1px solid rgba(var(--overlay-rgb),0.06)',
       borderRadius: '4px',
       width: '100%',
     }}>
@@ -208,7 +208,7 @@ function TransactionCard({
                   height: isMobile ? '60px' : '50px',
                   borderRadius: '4px',
                   overflow: 'hidden',
-                  border: `1px solid ${photoHovered ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                  border: `1px solid ${photoHovered ? 'rgba(var(--overlay-rgb),0.4)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                   padding: 0,
                   cursor: 'pointer',
                   flexShrink: 0,
@@ -234,7 +234,7 @@ function TransactionCard({
             style={{
               marginTop: '0.7rem',
               background: cancelHovered ? 'rgba(var(--red-rgb),0.1)' : 'transparent',
-              border: `1px solid ${cancelHovered ? 'var(--red)' : 'rgba(255,255,255,0.1)'}`,
+              border: `1px solid ${cancelHovered ? 'var(--red)' : 'rgba(var(--overlay-rgb),0.1)'}`,
               color: cancelHovered ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.5)',
               padding: '0.5rem 1rem',
               borderRadius: '2px',
@@ -277,7 +277,7 @@ function ActionButton({ href, label, color, variant = 'solid' }: {
         textAlign: 'center',
         backgroundColor: hovered ? `${color}15` : (variant === 'solid' ? color : 'transparent'),
         color: variant === 'solid' || hovered ? '#fff' : 'rgba(var(--offwhite-rgb),0.7)',
-        border: `1px solid ${hovered ? color : (variant === 'solid' ? color : 'rgba(255,255,255,0.1)')}`,
+        border: `1px solid ${hovered ? color : (variant === 'solid' ? color : 'rgba(var(--overlay-rgb),0.1)')}`,
         padding: '0.9rem',
         borderRadius: '4px',
         fontSize: '0.8rem',
@@ -296,7 +296,7 @@ function ActionButton({ href, label, color, variant = 'solid' }: {
         left: hovered ? '120%' : '-60%',
         width: '40%',
         height: '100%',
-        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
+        background: 'linear-gradient(90deg, transparent, rgba(var(--overlay-rgb),0.25), transparent)',
         transform: 'skewX(-20deg)',
         transition: 'left 0.5s ease',
         pointerEvents: 'none',
@@ -509,7 +509,7 @@ export default function CustomerProfilePage() {
   }
 
   const emptyStateStyle = {
-    border: '1px dashed rgba(255,255,255,0.08)',
+    border: '1px dashed rgba(var(--overlay-rgb),0.08)',
     borderRadius: '4px',
     padding: isMobile ? '2rem 1rem' : '2.5rem',
     textAlign: 'center' as const,
@@ -522,7 +522,7 @@ export default function CustomerProfilePage() {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: 'var(--black)', padding: isMobile ? '1.25rem' : '3rem' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(var(--overlay-rgb),0.08)' }}>
             <div style={{
               padding: isMobile ? '2rem 1.25rem' : '3rem',
               display: 'flex',
@@ -548,7 +548,7 @@ export default function CustomerProfilePage() {
       <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
         {/* Profile Card */}
-        <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(var(--overlay-rgb),0.08)' }}>
 
           {/* Banner */}
           <div style={{
@@ -570,8 +570,8 @@ export default function CustomerProfilePage() {
                 top: isMobile ? '0.8rem' : '1.2rem',
                 right: isMobile ? '0.8rem' : '1.2rem',
                 background: signOutHovered ? 'rgba(var(--red-rgb),0.15)' : 'rgba(0,0,0,0.25)',
-                border: `1px solid ${signOutHovered ? 'var(--red)' : 'rgba(255,255,255,0.25)'}`,
-                color: signOutHovered ? 'var(--red)' : 'rgba(255,255,255,0.8)',
+                border: `1px solid ${signOutHovered ? 'var(--red)' : 'rgba(var(--overlay-rgb),0.25)'}`,
+                color: signOutHovered ? 'var(--red)' : 'rgba(var(--overlay-rgb),0.8)',
                 padding: isMobile ? '0.5rem 0.9rem' : '0.6rem 1.2rem',
                 borderRadius: '2px',
                 fontSize: '0.7rem',
@@ -685,7 +685,7 @@ export default function CustomerProfilePage() {
                 <p style={{
                   fontFamily: 'var(--font-inter)',
                   fontSize: '0.85rem',
-                  color: 'rgba(255,255,255,0.75)',
+                  color: 'rgba(var(--overlay-rgb),0.75)',
                 }}>
                   {tierInfo.tier} member
                 </p>
@@ -720,7 +720,7 @@ export default function CustomerProfilePage() {
                   width: '100%',
                   height: '10px',
                   borderRadius: '6px',
-                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  backgroundColor: 'rgba(var(--overlay-rgb),0.15)',
                   overflow: 'hidden',
                 }}>
                   <div style={{
@@ -734,7 +734,7 @@ export default function CustomerProfilePage() {
                 <p style={{
                   fontFamily: 'var(--font-inter)',
                   fontSize: isMobile ? '0.68rem' : '0.75rem',
-                  color: 'rgba(255,255,255,0.55)',
+                  color: 'rgba(var(--overlay-rgb),0.55)',
                   marginTop: '0.4rem',
                 }}>
                   {tierInfo.nextTier === null
@@ -768,7 +768,7 @@ export default function CustomerProfilePage() {
                       fontSize: '0.68rem',
                       padding: '0.25rem 0.7rem',
                       borderRadius: '2px',
-                      backgroundColor: 'rgba(255,255,255,0.12)',
+                      backgroundColor: 'rgba(var(--overlay-rgb),0.12)',
                       color: '#fff',
                       fontFamily: 'var(--font-inter)',
                       letterSpacing: '0.05em',
@@ -777,7 +777,7 @@ export default function CustomerProfilePage() {
                 ) : (
                   <span style={{
                     fontSize: '0.78rem',
-                    color: 'rgba(255,255,255,0.45)',
+                    color: 'rgba(var(--overlay-rgb),0.45)',
                     fontFamily: 'var(--font-inter)',
                   }}>No badges yet</span>
                 )}
@@ -803,9 +803,9 @@ export default function CustomerProfilePage() {
                     alignItems: 'center',
                     gap: '1rem',
                     padding: isMobile ? '0.8rem 1rem' : '0.9rem 1.2rem',
-                    backgroundColor: unlocked ? `${color}0d` : 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${unlocked ? `${color}40` : 'rgba(255,255,255,0.06)'}`,
-                    borderLeft: `3px solid ${unlocked ? color : 'rgba(255,255,255,0.1)'}`,
+                    backgroundColor: unlocked ? `${color}0d` : 'rgba(var(--overlay-rgb),0.02)',
+                    border: `1px solid ${unlocked ? `${color}40` : 'rgba(var(--overlay-rgb),0.06)'}`,
+                    borderLeft: `3px solid ${unlocked ? color : 'rgba(var(--overlay-rgb),0.1)'}`,
                     borderRadius: '4px',
                     opacity: unlocked ? 1 : 0.55,
                   }}>
@@ -826,7 +826,7 @@ export default function CustomerProfilePage() {
                       fontSize: '0.62rem',
                       padding: '0.2rem 0.6rem',
                       borderRadius: '2px',
-                      backgroundColor: unlocked ? `${color}25` : 'rgba(255,255,255,0.06)',
+                      backgroundColor: unlocked ? `${color}25` : 'rgba(var(--overlay-rgb),0.06)',
                       color: unlocked ? color : 'rgba(var(--offwhite-rgb),0.35)',
                       fontFamily: 'var(--font-inter)',
                       letterSpacing: '0.06em',
@@ -993,7 +993,7 @@ export default function CustomerProfilePage() {
                     onMouseLeave={() => setHoveredTab(null)}
                     style={{
                       backgroundColor: active ? theme.accent : hov ? `${theme.accent}25` : 'transparent',
-                      border: `1px solid ${active || hov ? theme.accent : 'rgba(255,255,255,0.1)'}`,
+                      border: `1px solid ${active || hov ? theme.accent : 'rgba(var(--overlay-rgb),0.1)'}`,
                       color: active ? '#fff' : hov ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.5)',
                       padding: isMobile ? '0.55rem 0.8rem' : '0.6rem 1.2rem',
                       borderRadius: '2px',
@@ -1051,8 +1051,8 @@ export default function CustomerProfilePage() {
                       alignItems: 'flex-start',
                       gap: isMobile ? '0.8rem' : '1rem',
                       padding: isMobile ? '1rem' : '1.2rem',
-                      backgroundColor: 'rgba(255,255,255,0.02)',
-                      border: '1px solid rgba(255,255,255,0.06)',
+                      backgroundColor: 'rgba(var(--overlay-rgb),0.02)',
+                      border: '1px solid rgba(var(--overlay-rgb),0.06)',
                       borderRadius: '4px',
                       width: '100%',
                     }}>
@@ -1092,7 +1092,7 @@ export default function CustomerProfilePage() {
                             style={{
                               marginTop: '0.7rem',
                               background: hoveredCancelId === r.id ? 'rgba(var(--red-rgb),0.1)' : 'transparent',
-                              border: `1px solid ${hoveredCancelId === r.id ? 'var(--red)' : 'rgba(255,255,255,0.1)'}`,
+                              border: `1px solid ${hoveredCancelId === r.id ? 'var(--red)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                               color: hoveredCancelId === r.id ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.5)',
                               padding: '0.5rem 1rem',
                               borderRadius: '2px',
@@ -1121,8 +1121,8 @@ export default function CustomerProfilePage() {
                       alignItems: 'flex-start',
                       gap: isMobile ? '0.8rem' : '1rem',
                       padding: isMobile ? '1rem' : '1.2rem',
-                      backgroundColor: 'rgba(255,255,255,0.02)',
-                      border: '1px solid rgba(255,255,255,0.06)',
+                      backgroundColor: 'rgba(var(--overlay-rgb),0.02)',
+                      border: '1px solid rgba(var(--overlay-rgb),0.06)',
                       borderRadius: '4px',
                       width: '100%',
                     }}>
@@ -1168,8 +1168,8 @@ export default function CustomerProfilePage() {
                       alignItems: 'flex-start',
                       gap: isMobile ? '0.8rem' : '1rem',
                       padding: isMobile ? '1rem' : '1.2rem',
-                      backgroundColor: 'rgba(255,255,255,0.02)',
-                      border: '1px solid rgba(255,255,255,0.06)',
+                      backgroundColor: 'rgba(var(--overlay-rgb),0.02)',
+                      border: '1px solid rgba(var(--overlay-rgb),0.06)',
                       borderRadius: '4px',
                       width: '100%',
                     }}>
@@ -1230,7 +1230,7 @@ export default function CustomerProfilePage() {
             onClick={e => e.stopPropagation()}
             style={{
               backgroundColor: '#0d0d0d',
-              border: '1px solid rgba(255,255,255,0.08)',
+              border: '1px solid rgba(var(--overlay-rgb),0.08)',
               borderRadius: '4px',
               width: '100%',
               maxWidth: '480px',
@@ -1245,7 +1245,7 @@ export default function CustomerProfilePage() {
               alignItems: 'center',
               gap: '0.75rem',
               padding: isMobile ? '1rem 1.25rem' : '1.25rem 1.75rem',
-              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
               flexShrink: 0,
             }}>
               <h3 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '0.95rem' : '1.1rem', color: 'var(--offwhite)' }}>
@@ -1255,8 +1255,8 @@ export default function CustomerProfilePage() {
                 onMouseEnter={() => setModalCloseHovered(true)}
                 onMouseLeave={() => setModalCloseHovered(false)}
                 style={{
-                  background: modalCloseHovered ? 'rgba(255,255,255,0.08)' : 'transparent',
-                  border: `1px solid ${modalCloseHovered ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                  background: modalCloseHovered ? 'rgba(var(--overlay-rgb),0.08)' : 'transparent',
+                  border: `1px solid ${modalCloseHovered ? 'rgba(var(--overlay-rgb),0.3)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                   color: modalCloseHovered ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.5)',
                   padding: isMobile ? '0.35rem 0.7rem' : '0.4rem 1rem',
                   borderRadius: '2px',
@@ -1311,7 +1311,7 @@ export default function CustomerProfilePage() {
                           overflow: 'hidden',
                           padding: 0,
                           backgroundColor: '#1a1a1a',
-                          border: selected ? `3px solid ${theme.accent}` : `2px solid ${hov ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                          border: selected ? `3px solid ${theme.accent}` : `2px solid ${hov ? 'rgba(var(--overlay-rgb),0.4)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                           cursor: 'pointer',
                           transform: hov && !selected ? 'scale(1.06)' : 'scale(1)',
                           transition: 'all 0.2s ease',
@@ -1356,7 +1356,7 @@ export default function CustomerProfilePage() {
                           height: '44px',
                           borderRadius: '50%',
                           backgroundColor: t.background,
-                          border: selected ? `3px solid ${t.accent}` : `2px solid ${hov ? t.accent : 'rgba(255,255,255,0.15)'}`,
+                          border: selected ? `3px solid ${t.accent}` : `2px solid ${hov ? t.accent : 'rgba(var(--overlay-rgb),0.15)'}`,
                           boxShadow: selected ? `0 0 0 2px #0d0d0d, 0 0 0 4px ${t.accent}` : 'none',
                           cursor: 'pointer',
                           padding: 0,

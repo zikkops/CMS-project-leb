@@ -140,7 +140,7 @@ export default function LoyaltyActivityPage() {
 
   const inputStyle = {
     backgroundColor: '#1a1a1a',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid rgba(var(--overlay-rgb),0.1)',
     color: 'var(--offwhite)',
     padding: '0.6rem 0.9rem',
     borderRadius: '2px',
@@ -190,8 +190,8 @@ export default function LoyaltyActivityPage() {
             {(['all', 'Loyalty Submission', 'Loyalty Management', 'Customer Account'] as const).map(s => (
               <button key={s} onClick={() => setSectionFilter(s)} style={{
                 backgroundColor: sectionFilter === s ? (s === 'all' ? 'var(--offwhite)' : SECTION_COLORS[s]) : 'transparent',
-                border: `1px solid ${sectionFilter === s ? 'transparent' : 'rgba(255,255,255,0.1)'}`,
-                color: sectionFilter === s ? '#0a0a0a' : 'rgba(var(--offwhite-rgb),0.5)',
+                border: `1px solid ${sectionFilter === s ? 'transparent' : 'rgba(var(--overlay-rgb),0.1)'}`,
+                color: sectionFilter === s ? 'var(--on-accent)' : 'rgba(var(--offwhite-rgb),0.5)',
                 padding: '0.5rem 1rem',
                 borderRadius: '2px',
                 fontSize: '0.72rem',
@@ -208,8 +208,8 @@ export default function LoyaltyActivityPage() {
             {(['all', 'create', 'update', 'delete'] as const).map(a => (
               <button key={a} onClick={() => setActionFilter(a)} style={{
                 backgroundColor: actionFilter === a ? (a === 'all' ? 'var(--offwhite)' : ACTION_COLORS[a]) : 'transparent',
-                border: `1px solid ${actionFilter === a ? 'transparent' : 'rgba(255,255,255,0.1)'}`,
-                color: actionFilter === a ? '#0a0a0a' : 'rgba(var(--offwhite-rgb),0.5)',
+                border: `1px solid ${actionFilter === a ? 'transparent' : 'rgba(var(--overlay-rgb),0.1)'}`,
+                color: actionFilter === a ? 'var(--on-accent)' : 'rgba(var(--offwhite-rgb),0.5)',
                 padding: '0.5rem 1rem',
                 borderRadius: '2px',
                 fontSize: '0.72rem',
@@ -235,7 +235,7 @@ export default function LoyaltyActivityPage() {
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : filtered.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)',
             borderRadius: '4px',
             padding: '4rem',
             textAlign: 'center',
@@ -246,8 +246,8 @@ export default function LoyaltyActivityPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
             {filtered.map(log => (
               <div key={log.id} style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                background: 'rgba(var(--overlay-rgb),0.02)',
+                border: '1px solid rgba(var(--overlay-rgb),0.06)',
                 borderRadius: '4px',
                 padding: '1rem 1.2rem',
                 display: 'flex',
@@ -282,7 +282,7 @@ export default function LoyaltyActivityPage() {
                 <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                   {log.userEmail}
                 </p>
-                <div style={{ paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ paddingTop: '0.4rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.05)' }}>
                   <Details log={log} />
                 </div>
               </div>
@@ -290,14 +290,14 @@ export default function LoyaltyActivityPage() {
           </div>
         ) : (
           <div style={{
-            background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            background: 'rgba(var(--overlay-rgb),0.02)',
+            border: '1px solid rgba(var(--overlay-rgb),0.06)',
             borderRadius: '4px',
             overflow: 'hidden',
           }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <tr style={{ borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)' }}>
                   {['Time', 'User', 'Action', 'Section', 'Item', 'Details'].map(h => (
                     <th key={h} style={{
                       padding: '1rem 1.2rem',
@@ -314,7 +314,7 @@ export default function LoyaltyActivityPage() {
               </thead>
               <tbody>
                 {filtered.map(log => (
-                  <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <tr key={log.id} style={{ borderBottom: '1px solid rgba(var(--overlay-rgb),0.04)' }}>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.5)', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
                       {log.createdAt?.toDate().toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' }) ?? '—'}
                     </td>

@@ -154,7 +154,7 @@ export default function WholesaleOrdersAdminPage() {
   if (checking) return null
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--surface-deep)', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)' }}>
       <div style={{ maxWidth: '960px', margin: '0 auto', padding: isMobile ? '2rem 1rem' : '3rem 2rem' }}>
 
         <a href="/admin" style={{ fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none', display: 'block', marginBottom: '0.5rem' }}>
@@ -180,8 +180,8 @@ export default function WholesaleOrdersAdminPage() {
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.75rem', flexWrap: 'wrap' }}>
           {(['pending', ...WHOLESALE_ORDER_STATUSES.filter(s => s !== 'pending'), 'all'] as const).map(s => (
             <button key={s} onClick={() => setFilter(s as WholesaleOrderStatus | 'all')} style={{
-              background: filter === s ? 'rgba(255,255,255,0.08)' : 'transparent',
-              border: `1px solid ${filter === s ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.09)'}`,
+              background: filter === s ? 'rgba(var(--overlay-rgb),0.08)' : 'transparent',
+              border: `1px solid ${filter === s ? 'rgba(var(--overlay-rgb),0.25)' : 'rgba(var(--overlay-rgb),0.09)'}`,
               color: filter === s ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.35)',
               borderRadius: '20px', padding: '0.4rem 1rem', fontSize: '0.72rem',
               letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
@@ -202,7 +202,7 @@ export default function WholesaleOrdersAdminPage() {
         {loading ? (
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)' }}>Loading…</p>
         ) : visible.length === 0 ? (
-          <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.2)', fontSize: '0.88rem' }}>
+          <div style={{ border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.2)', fontSize: '0.88rem' }}>
             No {filter === 'all' ? '' : filter} orders.
           </div>
         ) : (
@@ -210,7 +210,7 @@ export default function WholesaleOrdersAdminPage() {
             {visible.map(o => {
               const open = openId === o.id
               return (
-                <div key={o.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', overflow: 'hidden' }}>
+                <div key={o.id} style={{ background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.07)', borderRadius: '6px', overflow: 'hidden' }}>
                   <div onClick={() => setOpenId(open ? null : o.id)} style={{
                     padding: '0.9rem 1.1rem', cursor: 'pointer', display: 'flex',
                     justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
@@ -237,7 +237,7 @@ export default function WholesaleOrdersAdminPage() {
                   </div>
 
                   {open && (
-                    <div style={{ padding: '0 1.1rem 1.1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ padding: '0 1.1rem 1.1rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.05)' }}>
                       <p style={{ fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.35)', margin: '0.75rem 0' }}>
                         {o.accountEmail}
                         {o.decidedByEmail && ` · decided by ${o.decidedByEmail} ${fmt(o.decidedAt)}`}
@@ -247,7 +247,7 @@ export default function WholesaleOrdersAdminPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '380px' }}>
                           <tbody>
                             {o.items.map(i => (
-                              <tr key={i.productId} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                              <tr key={i.productId} style={{ borderTop: '1px solid rgba(var(--overlay-rgb),0.04)' }}>
                                 <td style={{ padding: '0.45rem 0', fontSize: '0.82rem' }}>{i.name}</td>
                                 <td style={{ padding: '0.45rem 0', textAlign: 'right', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>
                                   {i.quantity} × ${i.unitPrice.toFixed(2)}
@@ -305,7 +305,7 @@ export default function WholesaleOrdersAdminPage() {
                         }}>Email Order</button>
                         <button onClick={() => copyOrder(o)} style={{
                           background: 'transparent', color: 'rgba(var(--offwhite-rgb),0.5)',
-                          border: '1px solid rgba(255,255,255,0.12)', borderRadius: '4px',
+                          border: '1px solid rgba(var(--overlay-rgb),0.12)', borderRadius: '4px',
                           padding: '0.6rem 1.2rem', fontSize: '0.75rem',
                           letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
                         }}>Copy</button>

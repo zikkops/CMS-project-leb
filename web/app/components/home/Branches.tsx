@@ -70,7 +70,7 @@ export default function Branches() {
       }}>
         {branches.map(({ city, label, address, hours, phone, whatsapp, mapsUrl, color }) => (
           <div key={city} style={{
-            border: '1px solid rgba(255,255,255,0.06)',
+            border: '1px solid rgba(var(--overlay-rgb),0.06)',
             borderRadius: '4px',
             overflow: 'hidden',
           }}>
@@ -126,7 +126,7 @@ export default function Branches() {
                   style={{
                     flex: 1,
                     background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(var(--overlay-rgb),0.1)',
                     color: 'rgba(var(--offwhite-rgb),0.6)',
                     padding: '0.6rem',
                     borderRadius: '2px',

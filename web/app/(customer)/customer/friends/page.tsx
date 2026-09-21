@@ -21,7 +21,7 @@ interface OwnProfile {
 const inputStyle = {
   width: '100%',
   backgroundColor: '#1a1a1a',
-  border: '1px solid rgba(255,255,255,0.1)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.8rem 1rem',
   borderRadius: '4px',
@@ -148,13 +148,13 @@ export default function FriendsPage() {
     alignItems: 'center',
     gap: '0.8rem',
     padding: isMobile ? '0.9rem' : '1rem 1.2rem',
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    border: '1px solid rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(var(--overlay-rgb),0.02)',
+    border: '1px solid rgba(var(--overlay-rgb),0.06)',
     borderRadius: '4px',
   }
 
   const emptyStateStyle = {
-    border: '1px dashed rgba(255,255,255,0.08)',
+    border: '1px dashed rgba(var(--overlay-rgb),0.08)',
     borderRadius: '4px',
     padding: isMobile ? '1.5rem 1rem' : '2rem',
     textAlign: 'center' as const,
@@ -336,7 +336,7 @@ export default function FriendsPage() {
                     onMouseLeave={() => setHoveredBtn(null)}
                     style={{
                       background: 'transparent',
-                      border: `1px solid ${hoveredBtn === `remove-${f.requestId}` ? 'var(--red)' : 'rgba(255,255,255,0.1)'}`,
+                      border: `1px solid ${hoveredBtn === `remove-${f.requestId}` ? 'var(--red)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                       color: hoveredBtn === `remove-${f.requestId}` ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.5)',
                       padding: '0.5rem 1rem',
                       borderRadius: '2px',

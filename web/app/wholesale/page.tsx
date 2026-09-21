@@ -59,8 +59,8 @@ function ProductCard({
       onMouseLeave={() => setHovered(false)}
       style={{
         display: 'flex', flexDirection: 'column',
-        background: qty > 0 ? 'rgba(var(--purple-rgb),0.07)' : hovered ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)',
-        border: `1px solid ${qty > 0 ? 'rgba(var(--purple-rgb),0.6)' : hovered ? 'rgba(var(--purple-rgb),0.4)' : 'rgba(255,255,255,0.07)'}`,
+        background: qty > 0 ? 'rgba(var(--purple-rgb),0.07)' : hovered ? 'rgba(var(--overlay-rgb),0.04)' : 'rgba(var(--overlay-rgb),0.02)',
+        border: `1px solid ${qty > 0 ? 'rgba(var(--purple-rgb),0.6)' : hovered ? 'rgba(var(--purple-rgb),0.4)' : 'rgba(var(--overlay-rgb),0.07)'}`,
         borderRadius: '6px',
         overflow: 'hidden',
         transition: 'all 0.22s ease',
@@ -84,7 +84,7 @@ function ProductCard({
             />
           ) : (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)' }}>No photo</span>
+              <span style={{ color: 'rgba(var(--overlay-rgb),0.25)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)' }}>No photo</span>
             </div>
           )}
 
@@ -140,7 +140,7 @@ function ProductCard({
             aria-label={`Remove one ${product.name}`}
             style={{
               width: '30px', height: '30px', borderRadius: '4px', cursor: qty === 0 ? 'not-allowed' : 'pointer',
-              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
               color: qty === 0 ? 'rgba(var(--offwhite-rgb),0.2)' : 'var(--offwhite)', fontSize: '1rem', lineHeight: 1,
             }}
           >−</button>
@@ -150,7 +150,7 @@ function ProductCard({
             aria-label={`Quantity of ${product.name}`}
             style={{
               width: '56px', textAlign: 'center', padding: '0.35rem',
-              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
               borderRadius: '4px', color: qty > 0 ? 'var(--purple)' : 'var(--offwhite)',
               fontWeight: 700, fontFamily: 'var(--font-inter)', fontSize: '0.85rem', outline: 'none',
             }}
@@ -384,7 +384,7 @@ export default function WholesalePage() {
                     rel="noopener noreferrer"
                     style={{
                       background: 'transparent', color: 'rgba(var(--offwhite-rgb),0.6)',
-                      border: '1px solid rgba(255,255,255,0.15)', padding: '0.65rem 1.4rem',
+                      border: '1px solid rgba(var(--overlay-rgb),0.15)', padding: '0.65rem 1.4rem',
                       borderRadius: '3px', textDecoration: 'none', fontFamily: 'var(--font-inter)',
                       fontSize: '0.76rem', letterSpacing: '0.08em', textTransform: 'uppercase',
                     }}
@@ -399,13 +399,13 @@ export default function WholesalePage() {
 
             <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/wholesale/orders" style={{
-              background: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
+              background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.15)',
               color: 'rgba(var(--offwhite-rgb),0.6)', padding: '0.8rem 1.6rem', borderRadius: '3px',
               fontFamily: 'var(--font-inter)', fontSize: '0.8rem', letterSpacing: '0.1em',
               textTransform: 'uppercase', textDecoration: 'none',
             }}>My Orders</Link>
             <button onClick={() => setPlaced(null)} style={{
-              background: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
+              background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.15)',
               color: 'rgba(var(--offwhite-rgb),0.6)', padding: '0.8rem 2rem', borderRadius: '3px',
               fontFamily: 'var(--font-inter)', fontSize: '0.8rem', letterSpacing: '0.1em',
               textTransform: 'uppercase', cursor: 'pointer',
@@ -443,12 +443,12 @@ export default function WholesalePage() {
               <Link href="/wholesale/orders" style={{
                 fontFamily: 'var(--font-inter)', fontSize: '0.75rem', letterSpacing: '0.06em',
                 color: 'rgba(var(--offwhite-rgb),0.5)', textDecoration: 'none',
-                border: '1px solid rgba(255,255,255,0.12)', borderRadius: '3px', padding: '0.5rem 1rem',
+                border: '1px solid rgba(var(--overlay-rgb),0.12)', borderRadius: '3px', padding: '0.5rem 1rem',
               }}>My Orders</Link>
               <button onClick={() => signOut(auth)} style={{
                 fontFamily: 'var(--font-inter)', fontSize: '0.75rem', letterSpacing: '0.06em',
                 color: 'rgba(var(--offwhite-rgb),0.35)', background: 'none',
-                border: '1px solid rgba(255,255,255,0.08)', borderRadius: '3px', padding: '0.5rem 1rem', cursor: 'pointer',
+                border: '1px solid rgba(var(--overlay-rgb),0.08)', borderRadius: '3px', padding: '0.5rem 1rem', cursor: 'pointer',
               }}>Sign out</button>
             </div>
           </div>
@@ -460,7 +460,7 @@ export default function WholesalePage() {
               <input
                 type="search" placeholder="Search products…" value={search}
                 onChange={e => setSearch(e.target.value)}
-                style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--offwhite)', padding: '0.7rem 1rem 0.7rem 2.4rem', borderRadius: '4px', fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)', boxSizing: 'border-box' }}
+                style={{ width: '100%', backgroundColor: 'rgba(var(--overlay-rgb),0.04)', border: '1px solid rgba(var(--overlay-rgb),0.1)', color: 'var(--offwhite)', padding: '0.7rem 1rem 0.7rem 2.4rem', borderRadius: '4px', fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)', boxSizing: 'border-box' }}
               />
               {search && (
                 <button onClick={() => setSearch('')} style={{ position: 'absolute', right: '0.7rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(var(--offwhite-rgb),0.35)', cursor: 'pointer', padding: 0 }}>
@@ -471,14 +471,14 @@ export default function WholesalePage() {
 
             <select
               value={category} onChange={e => setCategory(e.target.value)}
-              style={{ flex: isMobile ? undefined : '0 0 200px', background: '#1c1c1c', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--offwhite)', padding: '0.7rem 1rem', borderRadius: '4px', fontSize: '0.85rem', fontFamily: 'var(--font-inter)', outline: 'none', cursor: 'pointer' }}
+              style={{ flex: isMobile ? undefined : '0 0 200px', background: '#1c1c1c', border: '1px solid rgba(var(--overlay-rgb),0.15)', color: 'var(--offwhite)', padding: '0.7rem 1rem', borderRadius: '4px', fontSize: '0.85rem', fontFamily: 'var(--font-inter)', outline: 'none', cursor: 'pointer' }}
             >
               {allCats.map(cat => (
                 <option key={cat} value={cat} style={{ background: '#1c1c1c', color: 'var(--offwhite)' }}>{cat}</option>
               ))}
             </select>
 
-            <button onClick={() => setStockOnly(s => !s)} style={{ padding: '0.4rem 0.85rem', borderRadius: '20px', border: `1px solid ${stockOnly ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`, fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'var(--font-inter)', backgroundColor: stockOnly ? 'rgba(var(--teal-rgb),0.12)' : 'transparent', color: stockOnly ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.45)', whiteSpace: 'nowrap' }}>
+            <button onClick={() => setStockOnly(s => !s)} style={{ padding: '0.4rem 0.85rem', borderRadius: '20px', border: `1px solid ${stockOnly ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.1)'}`, fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'var(--font-inter)', backgroundColor: stockOnly ? 'rgba(var(--teal-rgb),0.12)' : 'transparent', color: stockOnly ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.45)', whiteSpace: 'nowrap' }}>
               In Stock Only
             </button>
           </div>
@@ -494,7 +494,7 @@ export default function WholesalePage() {
               {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} height="320px" borderRadius="6px" />)}
             </div>
           ) : filtered.length === 0 ? (
-            <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem' }}>
+            <div style={{ border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.2)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem' }}>
               {products.length === 0 ? 'No products are currently listed for wholesale.' : 'No products match your filters.'}
             </div>
           ) : (
@@ -538,18 +538,18 @@ export default function WholesalePage() {
               <input
                 value={notes} onChange={e => setNotes(e.target.value)}
                 placeholder="Notes for this order (optional)"
-                style={{ flex: 1, minWidth: '180px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--offwhite)', padding: '0.6rem 0.9rem', borderRadius: '4px', fontSize: '0.82rem', outline: 'none', fontFamily: 'var(--font-inter)' }}
+                style={{ flex: 1, minWidth: '180px', background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.12)', color: 'var(--offwhite)', padding: '0.6rem 0.9rem', borderRadius: '4px', fontSize: '0.82rem', outline: 'none', fontFamily: 'var(--font-inter)' }}
               />
             )}
 
             <button onClick={() => setCart({})} style={{
-              background: 'none', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(var(--offwhite-rgb),0.4)',
+              background: 'none', border: '1px solid rgba(var(--overlay-rgb),0.12)', color: 'rgba(var(--offwhite-rgb),0.4)',
               padding: '0.7rem 1.1rem', borderRadius: '3px', cursor: 'pointer',
               fontFamily: 'var(--font-inter)', fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase',
             }}>Clear</button>
 
             <button onClick={handleSubmit} disabled={submitting} style={{
-              background: submitting ? 'rgba(255,255,255,0.08)' : 'var(--purple)',
+              background: submitting ? 'rgba(var(--overlay-rgb),0.08)' : 'var(--purple)',
               color: submitting ? 'rgba(var(--offwhite-rgb),0.3)' : '#fff',
               border: 'none', padding: '0.75rem 2rem', borderRadius: '3px',
               cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 700,

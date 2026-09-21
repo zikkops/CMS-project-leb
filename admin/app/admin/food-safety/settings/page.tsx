@@ -27,12 +27,12 @@ interface Unit { id: string; name: string; kind: UnitKind; active: boolean }
 interface Settings { limits: FoodSafetyLimits; allergens: string[]; openingChecks: ChecklistItem[]; closingChecks: ChecklistItem[] }
 
 const inp: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
   color: 'var(--offwhite)', borderRadius: '4px', padding: '0.5rem 0.7rem',
   fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'var(--font-inter)',
 }
 const card: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)',
+  background: 'rgba(var(--overlay-rgb),0.03)', border: '1px solid rgba(var(--overlay-rgb),0.1)',
   borderRadius: '6px', padding: '1rem 1.1rem', marginBottom: '1.2rem',
 }
 const heading: React.CSSProperties = {

@@ -43,7 +43,7 @@ function useIsMobile(breakpoint = 768) {
 }
 
 const field: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(var(--overlay-rgb),0.04)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
   borderRadius: '4px', padding: '0.9rem 1rem', color: 'var(--offwhite)',
   fontFamily: 'var(--font-inter)', fontSize: '1rem', outline: 'none', width: '100%',
 }
@@ -70,7 +70,7 @@ function HubNotice() {
   if (!status) return null
   const link = (text: string) => <a href="/pos/hub" style={{ color: 'var(--teal)' }}>{text}</a>
   return (
-    <p style={{ marginTop: '1.4rem', textAlign: 'center', fontSize: '0.8rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.5)' }}>
+    <p style={{ marginTop: '1.4rem', textAlign: 'center', fontSize: '0.8rem', lineHeight: 1.6, color: 'rgba(var(--overlay-rgb),0.5)' }}>
       {!status.paired
         ? <>This café hub is not paired, so it has no menu yet. {link('Pair it')}</>
         // Unpaired by an admin, it still has what it took; it just takes nothing new.
@@ -83,7 +83,7 @@ function HubNotice() {
 
 /** Each way of signing in is its own card, titled, so the two never read as one form (UPGRADE.md T1.12). */
 const card: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(var(--overlay-rgb),0.03)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
   borderRadius: '12px', padding: '1.1rem 1rem 1.2rem',
 }
 const cardTitle: React.CSSProperties = {
@@ -165,7 +165,7 @@ function CounterSignIn({ onSignedIn }: { onSignedIn: (session: HubSession) => vo
       <p style={cardNote}>Tap your name, then confirm on your phone. Works without the internet.</p>
       {request ? (
         <div style={{ textAlign: 'center' }}>
-          <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.9rem', lineHeight: 1.6 }}>
+          <p style={{ color: 'rgba(var(--overlay-rgb),0.75)', fontSize: '0.9rem', lineHeight: 1.6 }}>
             {request.label.charAt(0).toUpperCase() + request.label.slice(1)}: in the staff app on your phone, tap
             <strong> Sign in the counter PC</strong>, type this code, and confirm with your fingerprint.
           </p>
@@ -190,7 +190,7 @@ function CounterSignIn({ onSignedIn }: { onSignedIn: (session: HubSession) => vo
         </div>
       )}
       {problem && <div style={{ marginTop: '0.7rem' }}><ErrorNote message={problem} /></div>}
-      <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.9rem' }}>
+      <p style={{ fontSize: '0.8rem', color: 'rgba(var(--overlay-rgb),0.45)', marginTop: '0.9rem' }}>
         Signs out after 15 minutes without a tap.
       </p>
     </section>

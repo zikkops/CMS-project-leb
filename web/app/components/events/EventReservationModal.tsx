@@ -10,7 +10,7 @@ import { createEventReservationRequest } from '@big-cms/shared/eventReservations
 const inputStyle = {
   width: '100%',
   backgroundColor: '#1a1a1a',
-  border: '1px solid rgba(255,255,255,0.1)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.75rem 1rem',
   borderRadius: '4px',
@@ -139,7 +139,7 @@ export default function EventReservationModal({ event, onClose }: {
         onClick={e => e.stopPropagation()}
         style={{
           backgroundColor: '#111',
-          border: '1px solid rgba(255,255,255,0.1)',
+          border: '1px solid rgba(var(--overlay-rgb),0.1)',
           borderRadius: '8px',
           width: '100%',
           maxWidth: '520px',
@@ -151,7 +151,7 @@ export default function EventReservationModal({ event, onClose }: {
           justifyContent: 'space-between',
           alignItems: 'flex-start',
           padding: isMobile ? '1.25rem 1.5rem' : '1.5rem 2rem',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
         }}>
           <div>
             <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem', color: 'var(--offwhite)' }}>
@@ -227,7 +227,7 @@ export default function EventReservationModal({ event, onClose }: {
                     {participantPhones.map(phone => (
                       <span key={phone} style={{
                         display: 'flex', alignItems: 'center', gap: '0.4rem',
-                        backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+                        backgroundColor: 'rgba(var(--overlay-rgb),0.04)', border: '1px solid rgba(var(--overlay-rgb),0.1)',
                         borderRadius: '20px', padding: '0.3rem 0.4rem 0.3rem 0.8rem', fontSize: '0.78rem',
                         color: 'var(--offwhite)', fontFamily: 'var(--font-inter)',
                       }}>
@@ -251,7 +251,7 @@ export default function EventReservationModal({ event, onClose }: {
                         <button key={f.uid} type="button"
                           onClick={() => addParticipant({ uid: f.uid, name: f.displayName })}
                           style={{
-                            backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+                            backgroundColor: 'rgba(var(--overlay-rgb),0.04)', border: '1px solid rgba(var(--overlay-rgb),0.1)',
                             borderRadius: '20px', padding: '0.3rem 0.8rem', fontSize: '0.78rem',
                             color: 'var(--offwhite)', cursor: 'pointer', fontFamily: 'var(--font-inter)',
                           }}>+ {f.displayName}</button>
@@ -271,7 +271,7 @@ export default function EventReservationModal({ event, onClose }: {
                   />
                   {search.trim() && searchResults.length > 0 && (
                     <div style={{
-                      marginTop: '0.5rem', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px',
+                      marginTop: '0.5rem', border: '1px solid rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
                       backgroundColor: '#0d0d0d', maxHeight: '160px', overflowY: 'auto',
                     }}>
                       {searchResults.map(u => (
@@ -279,7 +279,7 @@ export default function EventReservationModal({ event, onClose }: {
                           onClick={() => addParticipant({ uid: u.uid, name: u.displayName })}
                           style={{
                             display: 'block', width: '100%', textAlign: 'left', padding: '0.6rem 1rem',
-                            background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.04)',
+                            background: 'transparent', border: 'none', borderBottom: '1px solid rgba(var(--overlay-rgb),0.04)',
                             cursor: 'pointer', fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--offwhite)',
                           }}>{u.displayName}</button>
                       ))}
@@ -296,7 +296,7 @@ export default function EventReservationModal({ event, onClose }: {
                     style={{ ...inputStyle, flex: 1 }}
                   />
                   <button type="button" onClick={addPhone} style={{
-                    backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
+                    backgroundColor: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.15)',
                     color: 'rgba(var(--offwhite-rgb),0.7)', padding: '0 1rem', borderRadius: '4px',
                     fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'var(--font-inter)',
                   }}>Add</button>

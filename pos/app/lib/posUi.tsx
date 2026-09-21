@@ -41,10 +41,10 @@ const FONT: Record<Size, string> = { sm: '0.88rem', md: '1rem', lg: '1.12rem' }
 
 const TONE: Record<Tone, { bg: string; border: string; color: string }> = {
   primary: { bg: 'var(--teal)', border: 'var(--teal)', color: '#fff' },
-  neutral: { bg: 'rgba(255,255,255,0.07)', border: 'rgba(255,255,255,0.2)', color: 'var(--offwhite)' },
+  neutral: { bg: 'rgba(var(--overlay-rgb),0.07)', border: 'rgba(var(--overlay-rgb),0.2)', color: 'var(--offwhite)' },
   danger: { bg: 'rgba(var(--red-rgb),0.14)', border: 'rgba(var(--red-rgb),0.6)', color: 'var(--red)' },
   warn: { bg: 'rgba(var(--brand-secondary-rgb),0.14)', border: 'rgba(var(--brand-secondary-rgb),0.55)', color: 'var(--brand-secondary)' },
-  quiet: { bg: 'transparent', border: 'rgba(255,255,255,0.14)', color: 'rgba(var(--offwhite-rgb),0.75)' },
+  quiet: { bg: 'transparent', border: 'rgba(var(--overlay-rgb),0.14)', color: 'rgba(var(--offwhite-rgb),0.75)' },
 }
 
 /**
@@ -99,8 +99,8 @@ export function PosButton({
         borderRadius: '8px', cursor: disabled ? 'not-allowed' : 'pointer',
         fontFamily: 'var(--font-inter)', fontSize: FONT[size], fontWeight: tone === 'primary' ? 700 : 600,
         letterSpacing: '0.01em', lineHeight: 1.15, textAlign: 'center',
-        background: disabled ? 'rgba(255,255,255,0.03)' : t.bg,
-        border: `${disabled ? '1px dashed' : tone === 'primary' ? '2px solid' : '1px solid'} ${disabled ? 'rgba(255,255,255,0.16)' : t.border}`,
+        background: disabled ? 'rgba(var(--overlay-rgb),0.03)' : t.bg,
+        border: `${disabled ? '1px dashed' : tone === 'primary' ? '2px solid' : '1px solid'} ${disabled ? 'rgba(var(--overlay-rgb),0.16)' : t.border}`,
         color: disabled ? 'rgba(var(--offwhite-rgb),0.35)' : t.color,
         boxShadow: tone === 'primary' && !disabled ? '0 4px 14px rgba(var(--teal-rgb),0.28)' : 'none',
         transition: 'background 120ms, transform 80ms',
@@ -115,7 +115,7 @@ export function PosButton({
           minWidth: '1.6rem', height: '1.6rem', padding: '0 0.45rem', borderRadius: '999px',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           fontSize: '0.85rem', fontWeight: 700,
-          background: tone === 'primary' && !disabled ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.12)',
+          background: tone === 'primary' && !disabled ? 'rgba(0,0,0,0.25)' : 'rgba(var(--overlay-rgb),0.12)',
           color: 'inherit',
         }}>{badge}</span>
       )}
@@ -153,8 +153,8 @@ export function Chip({ label, active, onClick, colour, icon, size = 'md', count,
         minHeight: `${HEIGHT[size]}px`, padding: size === 'sm' ? '0 0.85rem' : '0 1.1rem',
         borderRadius: '999px', cursor: disabled ? 'not-allowed' : 'pointer',
         fontFamily: 'var(--font-inter)', fontSize: FONT[size], fontWeight: active ? 700 : 500,
-        background: active ? c : 'rgba(255,255,255,0.04)',
-        border: `2px solid ${active ? c : 'rgba(255,255,255,0.14)'}`,
+        background: active ? c : 'rgba(var(--overlay-rgb),0.04)',
+        border: `2px solid ${active ? c : 'rgba(var(--overlay-rgb),0.14)'}`,
         color: active ? '#fff' : 'var(--offwhite)',
         opacity: disabled ? 0.4 : 1,
         WebkitTapHighlightColor: 'transparent',
@@ -180,7 +180,7 @@ export function StatusBadge({ icon, label, tone = 'neutral' }: { icon?: IconDefi
       display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap',
       padding: '0.22rem 0.6rem', borderRadius: '999px',
       fontFamily: 'var(--font-inter)', fontSize: '0.78rem', fontWeight: 600,
-      background: tone === 'primary' ? 'rgba(var(--teal-rgb),0.16)' : tone === 'neutral' ? 'rgba(255,255,255,0.07)' : t.bg,
+      background: tone === 'primary' ? 'rgba(var(--teal-rgb),0.16)' : tone === 'neutral' ? 'rgba(var(--overlay-rgb),0.07)' : t.bg,
       border: `1px solid ${tone === 'primary' ? 'rgba(var(--teal-rgb),0.5)' : t.border}`,
       color: tone === 'primary' ? 'var(--teal)' : t.color,
     }}>
@@ -267,7 +267,7 @@ export function Stepper({ value, onChange, min = 1, max = 99, label }: {
 }) {
   const btn: CSSProperties = {
     width: `${HEIGHT.sm}px`, height: `${HEIGHT.sm}px`, borderRadius: '8px',
-    background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.2)',
+    background: 'rgba(var(--overlay-rgb),0.07)', border: '1px solid rgba(var(--overlay-rgb),0.2)',
     color: 'var(--offwhite)', fontSize: '1.3rem', fontWeight: 700, cursor: 'pointer',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   }
@@ -375,7 +375,7 @@ export function Sheet({ label, onClose, children, backdropCloses = true, onSubmi
   const inner: CSSProperties = {
     backgroundColor: '#111', width: '100%', maxWidth: center ? '560px' : '720px',
     maxHeight: '90vh', overflowY: 'auto', borderRadius: center ? '14px' : '14px 14px 0 0',
-    padding: '1.4rem 1.2rem 2rem', border: '1px solid rgba(255,255,255,0.12)', outline: 'none',
+    padding: '1.4rem 1.2rem 2rem', border: '1px solid rgba(var(--overlay-rgb),0.12)', outline: 'none',
   }
   const common = {
     role: 'dialog' as const, 'aria-modal': true, 'aria-label': label, tabIndex: -1, style: inner,

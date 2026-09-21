@@ -52,7 +52,7 @@ function DishRow({ dish, open, onToggle, isMobile }: {
   return (
     <div style={{
       borderRadius: '12px', marginBottom: '0.5rem',
-      background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.1)',
+      background: 'rgba(var(--overlay-rgb),0.035)', border: '1px solid rgba(var(--overlay-rgb),0.1)',
     }}>
       <button type="button" onClick={onToggle} aria-expanded={open} style={{
         all: 'unset', boxSizing: 'border-box', cursor: 'pointer', width: '100%', minHeight: '68px',
@@ -194,7 +194,7 @@ export default function PosAllergensPage() {
               style={{
                 width: '100%', boxSizing: 'border-box', minHeight: '56px', padding: '0 1rem',
                 fontFamily: 'var(--font-inter)', fontSize: '1.05rem', color: 'var(--offwhite)',
-                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '10px', outline: 'none',
+                background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.18)', borderRadius: '10px', outline: 'none',
               }}
             />
 

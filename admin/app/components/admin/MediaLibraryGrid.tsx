@@ -39,7 +39,7 @@ export default function MediaLibraryGrid({
   if (items.length === 0) {
     return (
       <div style={{
-        border: '1px dashed rgba(255,255,255,0.08)',
+        border: '1px dashed rgba(var(--overlay-rgb),0.08)',
         borderRadius: '4px',
         padding: '3rem',
         textAlign: 'center',
@@ -59,7 +59,7 @@ export default function MediaLibraryGrid({
       {items.map(item => (
         <div key={item.id} style={{
           position: 'relative',
-          border: '1px solid rgba(255,255,255,0.08)',
+          border: '1px solid rgba(var(--overlay-rgb),0.08)',
           borderRadius: '4px',
           overflow: 'hidden',
           backgroundColor: '#fff',

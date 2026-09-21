@@ -76,7 +76,7 @@ function formatError(err: unknown): string {
 const inputStyle = {
   width: '100%',
   backgroundColor: '#1a1a1a',
-  border: '1px solid rgba(255,255,255,0.1)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.8rem 1rem',
   borderRadius: '4px',
@@ -318,7 +318,7 @@ export default function CustomerLoginPage() {
                 position: 'absolute', top: 0,
                 left: !busy && continueHovered ? '120%' : '-60%',
                 width: '40%', height: '100%',
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
+                background: 'linear-gradient(90deg, transparent, rgba(var(--overlay-rgb),0.25), transparent)',
                 transform: 'skewX(-20deg)',
                 transition: 'left 0.5s ease',
                 pointerEvents: 'none',
@@ -385,7 +385,7 @@ export default function CustomerLoginPage() {
             cursor: busy ? 'not-allowed' : 'pointer',
             opacity: busy ? 0.6 : 1,
             marginBottom: '1.5rem',
-            boxShadow: !busy && googleHovered ? '0 4px 16px rgba(255,255,255,0.15)' : 'none',
+            boxShadow: !busy && googleHovered ? '0 4px 16px rgba(var(--overlay-rgb),0.15)' : 'none',
             transform: !busy && googleHovered ? 'translateY(-2px)' : 'none',
             transition: 'all 0.2s ease',
           }}>
@@ -400,7 +400,7 @@ export default function CustomerLoginPage() {
 
         {/* Divider */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1.5rem' }}>
-          <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255,255,255,0.08)' }} />
+          <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(var(--overlay-rgb),0.08)' }} />
           <span style={{
             fontFamily: 'var(--font-inter)',
             fontSize: '0.7rem',
@@ -408,7 +408,7 @@ export default function CustomerLoginPage() {
             textTransform: 'uppercase',
             color: 'rgba(var(--offwhite-rgb),0.3)',
           }}>or continue with email</span>
-          <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255,255,255,0.08)' }} />
+          <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(var(--overlay-rgb),0.08)' }} />
         </div>
 
         {/* Email / Password */}
@@ -523,7 +523,7 @@ export default function CustomerLoginPage() {
               position: 'absolute', top: 0,
               left: !busy && submitHovered ? '120%' : '-60%',
               width: '40%', height: '100%',
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
+              background: 'linear-gradient(90deg, transparent, rgba(var(--overlay-rgb),0.25), transparent)',
               transform: 'skewX(-20deg)',
               transition: 'left 0.5s ease',
               pointerEvents: 'none',

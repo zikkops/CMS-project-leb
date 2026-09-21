@@ -112,11 +112,11 @@ export default function DailyInventoryDayPage() {
           </h1>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <a href={`/admin/supplies/daily/history/${shiftDate(date, -1)}`} style={{
-              background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
+              background: 'none', border: '1px solid rgba(var(--overlay-rgb),0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
               borderRadius: '4px', padding: '0.4rem 0.8rem', fontSize: '0.75rem', textDecoration: 'none', fontFamily: 'var(--font-inter)',
             }}>‹ Prev day</a>
             <a href={`/admin/supplies/daily/history/${shiftDate(date, 1)}`} style={{
-              background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
+              background: 'none', border: '1px solid rgba(var(--overlay-rgb),0.1)', color: 'rgba(var(--offwhite-rgb),0.5)',
               borderRadius: '4px', padding: '0.4rem 0.8rem', fontSize: '0.75rem', textDecoration: 'none', fontFamily: 'var(--font-inter)',
             }}>Next day ›</a>
           </div>
@@ -130,7 +130,7 @@ export default function DailyInventoryDayPage() {
         {loading ? (
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>Loading…</p>
         ) : reports.length === 0 ? (
-          <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
+          <div style={{ border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
             No inventory counts started or submitted for this day.
           </div>
         ) : (
@@ -142,7 +142,7 @@ export default function DailyInventoryDayPage() {
               const value = varianceValue(r)
               return (
                 <div key={r.id} style={{
-                  background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)',
+                  background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.07)',
                   borderRadius: '6px', overflow: 'hidden',
                 }}>
                   <div
@@ -179,7 +179,7 @@ export default function DailyInventoryDayPage() {
                   </div>
 
                   {expanded && (
-                    <div style={{ padding: '0 1.1rem 1.1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ padding: '0 1.1rem 1.1rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.05)' }}>
                       <div style={{ margin: '0.75rem 0' }}>
                         <a
                           href={`/admin/supplies/daily?branch=${encodeURIComponent(r.branch)}&department=${encodeURIComponent(r.department)}&date=${r.date}`}
@@ -195,7 +195,7 @@ export default function DailyInventoryDayPage() {
                       <div style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '520px' }}>
                           <thead>
-                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                            <tr style={{ borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)' }}>
                               {['Item', 'Unit', 'Expected', 'Counted', 'Variance', 'Value'].map(h => (
                                 <th key={h} style={{
                                   padding: '0.5rem 0.85rem', textAlign: h === 'Item' ? 'left' : 'right',
@@ -210,7 +210,7 @@ export default function DailyInventoryDayPage() {
                               const v = variance(i)
                               const off = v.varianceQty !== null && v.varianceQty !== 0
                               return (
-                                <tr key={i.supplyId} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                                <tr key={i.supplyId} style={{ borderTop: '1px solid rgba(var(--overlay-rgb),0.04)' }}>
                                   <td style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', color: i.name ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>
                                     {i.name || 'Name not recorded'}
                                     {i.nameAr && <span dir="rtl" style={{ display: 'block', fontSize: '0.7rem', color: 'rgba(var(--brand-secondary-rgb),0.75)', marginTop: '0.1rem' }}>{i.nameAr}</span>}

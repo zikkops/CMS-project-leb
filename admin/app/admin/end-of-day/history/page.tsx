@@ -69,7 +69,7 @@ export default function EndOfDayHistoryPage() {
                 padding: '0.45rem 1rem',
                 borderRadius: '2px', border: 'none', cursor: 'pointer',
                 fontSize: '0.75rem', fontFamily: 'var(--font-inter)',
-                backgroundColor: branch === b ? 'var(--brand-secondary)' : 'rgba(255,255,255,0.05)',
+                backgroundColor: branch === b ? 'var(--brand-secondary)' : 'rgba(var(--overlay-rgb),0.05)',
                 color: branch === b ? '#000' : 'rgba(var(--offwhite-rgb),0.5)',
                 fontWeight: branch === b ? 600 : 400,
               }}
@@ -85,7 +85,7 @@ export default function EndOfDayHistoryPage() {
 
         {!loading && reports.length === 0 && (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
             color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
@@ -109,8 +109,8 @@ export default function EndOfDayHistoryPage() {
               const diffUsdColor = t.differenceUsd  === 0 ? 'var(--teal)' : t.differenceUsd  > 0 ? 'var(--red)' : 'var(--brand-secondary)'
               return (
                 <div key={r.id} style={{
-                  background: 'rgba(255,255,255,0.02)',
-                  border: '1px solid rgba(255,255,255,0.07)',
+                  background: 'rgba(var(--overlay-rgb),0.02)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.07)',
                   borderRadius: '4px',
                   padding: '0.9rem 1.1rem',
                   display: 'flex', flexDirection: 'column', gap: '0.5rem',
@@ -133,7 +133,7 @@ export default function EndOfDayHistoryPage() {
                       <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: diffUsdColor, fontWeight: 600 }}>{formatUsd(t.differenceUsd)}</p>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.05)' }}>
                     <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
                       {r.submittedByEmail}
                     </span>
@@ -189,8 +189,8 @@ export default function EndOfDayHistoryPage() {
                   gridTemplateColumns: '130px 110px 1fr 1fr 1fr 60px',
                   gap: '0.75rem',
                   alignItems: 'center',
-                  background: 'rgba(255,255,255,0.02)',
-                  border: '1px solid rgba(255,255,255,0.07)',
+                  background: 'rgba(var(--overlay-rgb),0.02)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.07)',
                   borderRadius: '4px',
                   padding: '0.9rem 1rem',
                 }}>

@@ -35,7 +35,7 @@ const labelStyle: React.CSSProperties = {
 const selectStyle: React.CSSProperties = {
   width: '100%',
   backgroundColor: '#1a1a1a',
-  border: '1px solid rgba(255,255,255,0.12)',
+  border: '1px solid rgba(var(--overlay-rgb),0.12)',
   color: 'var(--offwhite)',
   padding: '0.75rem 1rem',
   borderRadius: '2px',
@@ -177,7 +177,7 @@ export default function TransferStockPage() {
               <div style={{
                 ...selectStyle,
                 color: 'rgba(var(--offwhite-rgb),0.5)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                border: '1px solid rgba(var(--overlay-rgb),0.06)',
                 backgroundColor: '#141414',
                 display: 'flex', alignItems: 'center',
               }}>
@@ -228,7 +228,7 @@ export default function TransferStockPage() {
               style={{
                 width: '100%',
                 backgroundColor: '#1a1a1a',
-                border: '1px solid rgba(255,255,255,0.12)',
+                border: '1px solid rgba(var(--overlay-rgb),0.12)',
                 color: 'var(--offwhite)',
                 padding: '0.75rem 1rem 0.75rem 2.4rem',
                 borderRadius: '2px',
@@ -241,7 +241,7 @@ export default function TransferStockPage() {
             {showResults && (
               <div style={{
                 position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20,
-                border: '1px solid rgba(255,255,255,0.08)', borderTop: 'none',
+                border: '1px solid rgba(var(--overlay-rgb),0.08)', borderTop: 'none',
                 borderRadius: '0 0 2px 2px', backgroundColor: '#111',
                 maxHeight: '220px', overflowY: 'auto',
               }}>
@@ -261,12 +261,12 @@ export default function TransferStockPage() {
                       style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                         width: '100%', textAlign: 'left',
-                        background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.04)',
+                        background: 'transparent', border: 'none', borderBottom: '1px solid rgba(var(--overlay-rgb),0.04)',
                         color: avail > 0 ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.3)',
                         padding: '0.65rem 1rem', fontSize: '0.82rem',
                         fontFamily: 'var(--font-inter)', cursor: avail > 0 ? 'pointer' : 'default',
                       }}
-                      onMouseEnter={e => { if (avail > 0) (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(255,255,255,0.05)' }}
+                      onMouseEnter={e => { if (avail > 0) (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(var(--overlay-rgb),0.05)' }}
                       onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'}
                     >
                       <span>{g.name}</span>
@@ -293,8 +293,8 @@ export default function TransferStockPage() {
                   display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.8rem',
                   alignItems: 'center',
                   padding: '0.8rem 1rem',
-                  backgroundColor: 'rgba(255,255,255,0.02)',
-                  border: `1px solid ${invalid ? 'rgba(var(--red-rgb),0.25)' : 'rgba(255,255,255,0.06)'}`,
+                  backgroundColor: 'rgba(var(--overlay-rgb),0.02)',
+                  border: `1px solid ${invalid ? 'rgba(var(--red-rgb),0.25)' : 'rgba(var(--overlay-rgb),0.06)'}`,
                   borderRadius: '2px',
                 }}>
                   <div>
@@ -315,7 +315,7 @@ export default function TransferStockPage() {
                     style={{
                       width: '72px',
                       backgroundColor: '#1a1a1a',
-                      border: `1px solid ${invalid ? 'rgba(var(--red-rgb),0.4)' : 'rgba(255,255,255,0.12)'}`,
+                      border: `1px solid ${invalid ? 'rgba(var(--red-rgb),0.4)' : 'rgba(var(--overlay-rgb),0.12)'}`,
                       color: 'var(--offwhite)',
                       padding: '0.5rem 0.6rem',
                       borderRadius: '2px',

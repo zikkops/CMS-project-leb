@@ -129,7 +129,7 @@ export default function About() {
           height: isMobile ? '240px' : '450px',
           borderRadius: '4px',
           overflow: 'hidden',
-          border: '1px solid rgba(255,255,255,0.06)',
+          border: '1px solid rgba(var(--overlay-rgb),0.06)',
         }}>
           <Image
             src={PLACEHOLDER.heroBackground}
@@ -210,7 +210,7 @@ export default function About() {
               left: storyHovered ? '120%' : '-60%',
               width: '40%',
               height: '100%',
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
+              background: 'linear-gradient(90deg, transparent, rgba(var(--overlay-rgb),0.25), transparent)',
               transform: 'skewX(-20deg)',
               transition: 'left 0.5s ease',
               pointerEvents: 'none',
@@ -225,8 +225,8 @@ export default function About() {
         display: 'grid',
         gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
         gap: '1px',
-        backgroundColor: 'rgba(255,255,255,0.06)',
-        border: '1px solid rgba(255,255,255,0.06)',
+        backgroundColor: 'rgba(var(--overlay-rgb),0.06)',
+        border: '1px solid rgba(var(--overlay-rgb),0.06)',
         borderRadius: '4px',
         overflow: 'hidden',
       }}>

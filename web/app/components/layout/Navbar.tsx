@@ -126,7 +126,7 @@ export default function Navbar() {
       textTransform: 'uppercase' as const,
       fontFamily: 'var(--font-inter)',
       color: active ? (danger ? 'var(--red)' : 'var(--teal)') : 'rgba(var(--offwhite-rgb),0.7)',
-      backgroundColor: active ? 'rgba(255,255,255,0.04)' : 'transparent',
+      backgroundColor: active ? 'rgba(var(--overlay-rgb),0.04)' : 'transparent',
       textDecoration: 'none',
       border: 'none',
       cursor: 'pointer',
@@ -175,7 +175,7 @@ export default function Navbar() {
         backgroundColor: scrolled || open ? 'rgba(5,5,5,0.95)' : 'transparent',
         backdropFilter: scrolled || open ? 'blur(20px)' : 'none',
         WebkitBackdropFilter: scrolled || open ? 'blur(20px)' : 'none',
-        borderBottom: scrolled || open ? '1px solid rgba(255,255,255,0.06)' : 'none',
+        borderBottom: scrolled || open ? '1px solid rgba(var(--overlay-rgb),0.06)' : 'none',
         transition: 'all 0.3s ease',
       }}>
 
@@ -276,7 +276,7 @@ export default function Navbar() {
                   }}>
                     <div style={{
                       width: '310px', maxHeight: '420px', overflowY: 'auto',
-                      backgroundColor: 'rgba(8,8,8,0.98)', border: '1px solid rgba(255,255,255,0.08)',
+                      backgroundColor: 'rgba(8,8,8,0.98)', border: '1px solid rgba(var(--overlay-rgb),0.08)',
                       borderRadius: '2px', boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
                     }}>
                       {totalNotifCount === 0 ? (
@@ -289,7 +289,7 @@ export default function Navbar() {
                           {friendRequests.map(req => {
                             const busy = friendBusyId === req.id
                             return (
-                              <div key={req.id} style={{ padding: '0.8rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                              <div key={req.id} style={{ padding: '0.8rem 1rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)' }}>
                                 <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--brand-secondary)', marginBottom: '0.3rem' }}>
                                   Friend Request
                                 </p>
@@ -327,7 +327,7 @@ export default function Navbar() {
                           {pendingInvites.map(invite => {
                             const busy = inviteBusyId === invite.id
                             return (
-                              <div key={invite.id} style={{ padding: '0.8rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                              <div key={invite.id} style={{ padding: '0.8rem 1rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)' }}>
                                 <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: '0.2rem' }}>
                                   {INVITE_TYPE_LABELS[invite.reservationType]} Invite
                                 </p>
@@ -359,7 +359,7 @@ export default function Navbar() {
                           {statusNotifications.map(n => {
                             const approved = n.type === 'reservation_approved'
                             return (
-                              <div key={n.id} style={{ padding: '0.8rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                              <div key={n.id} style={{ padding: '0.8rem 1rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: approved ? '#2ECC71' : 'var(--red)', marginBottom: '0.2rem' }}>
                                     {approved ? '✓ Approved' : '✕ Rejected'} · {RESERVATION_TYPE_LABELS[n.reservationType]}
@@ -435,7 +435,7 @@ export default function Navbar() {
                       <div style={{
                         minWidth: '170px',
                         backgroundColor: 'rgba(8,8,8,0.98)',
-                        border: '1px solid rgba(255,255,255,0.08)',
+                        border: '1px solid rgba(var(--overlay-rgb),0.08)',
                         borderRadius: '2px',
                         overflow: 'hidden',
                         boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
@@ -443,7 +443,7 @@ export default function Navbar() {
                         <Link href="/customer/profile"
                           onMouseEnter={() => setHoveredMenuItem('profile')}
                           onMouseLeave={() => setHoveredMenuItem(null)}
-                          style={{ ...menuItemStyle(hoveredMenuItem === 'profile'), borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                          style={{ ...menuItemStyle(hoveredMenuItem === 'profile'), borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)' }}>
                           See Profile
                         </Link>
                         <button
@@ -522,13 +522,13 @@ export default function Navbar() {
                   }}>
                     <div style={{
                       minWidth: '180px', backgroundColor: 'rgba(8,8,8,0.98)',
-                      border: '1px solid rgba(255,255,255,0.08)', borderRadius: '2px',
+                      border: '1px solid rgba(var(--overlay-rgb),0.08)', borderRadius: '2px',
                       overflow: 'hidden', boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
                     }}>
                       <Link href="/tables"
                         onMouseEnter={() => setHoveredContactItem('reserve')}
                         onMouseLeave={() => setHoveredContactItem(null)}
-                        style={{ ...menuItemStyle(hoveredContactItem === 'reserve'), borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        style={{ ...menuItemStyle(hoveredContactItem === 'reserve'), borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)' }}>
                         Reserve a Table
                       </Link>
                       <Link href="/#branches-section"

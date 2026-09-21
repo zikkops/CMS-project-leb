@@ -190,7 +190,7 @@ export default function AdminPage() {
             <FontAwesomeIcon icon={faThumbtack} /> Quick access
           </p>
           {pinned.length === 0 ? (
-            <p style={{ fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.45)', border: '1px dashed rgba(255,255,255,0.12)', borderRadius: '10px', padding: '1rem 1.25rem' }}>
+            <p style={{ fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.45)', border: '1px dashed rgba(var(--overlay-rgb),0.12)', borderRadius: '10px', padding: '1rem 1.25rem' }}>
               Pin the pages you use most with the <FontAwesomeIcon icon={faThumbtack} style={{ margin: '0 0.25rem' }} /> on any card below.
             </p>
           ) : (
@@ -303,8 +303,8 @@ function DashboardCard({ card, setup, pinned, onTogglePin }: {
       onMouseLeave={() => setHovered(false)}
       style={{
         position: 'relative', display: 'flex', alignItems: 'center', gap: '0.8rem',
-        background: hovered ? tint(color, 12) : setup ? 'rgba(255,255,255,0.015)' : 'rgba(255,255,255,0.035)',
-        border: `1px ${setup ? 'dashed' : 'solid'} ${hovered ? tint(color, 55) : 'rgba(255,255,255,0.12)'}`,
+        background: hovered ? tint(color, 12) : setup ? 'rgba(var(--overlay-rgb),0.015)' : 'rgba(var(--overlay-rgb),0.035)',
+        border: `1px ${setup ? 'dashed' : 'solid'} ${hovered ? tint(color, 55) : 'rgba(var(--overlay-rgb),0.12)'}`,
         borderRadius: '10px', padding: '0.9rem 2.4rem 0.9rem 1rem', minHeight: '72px',
         textDecoration: 'none', transition: 'background 0.15s ease, border-color 0.15s ease',
       }}

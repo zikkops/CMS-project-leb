@@ -105,9 +105,9 @@ function ClosedRow({ check, isMobile, onRefund, onReceipt }: {
 
   return (
     <div style={{
-      border: `1px solid ${refunded ? 'rgba(var(--red-rgb),0.35)' : 'rgba(255,255,255,0.12)'}`,
+      border: `1px solid ${refunded ? 'rgba(var(--red-rgb),0.35)' : 'rgba(var(--overlay-rgb),0.12)'}`,
       borderRadius: '12px', marginBottom: '0.6rem', overflow: 'hidden',
-      background: open ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.02)',
+      background: open ? 'rgba(var(--overlay-rgb),0.035)' : 'rgba(var(--overlay-rgb),0.02)',
     }}>
       <button
         type="button"
@@ -123,7 +123,7 @@ function ClosedRow({ check, isMobile, onRefund, onReceipt }: {
         <span style={{
           minWidth: '3.4rem', height: '3.4rem', borderRadius: '10px', flexShrink: 0,
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          background: refunded ? 'rgba(var(--red-rgb),0.12)' : 'rgba(255,255,255,0.06)',
+          background: refunded ? 'rgba(var(--red-rgb),0.12)' : 'rgba(var(--overlay-rgb),0.06)',
         }}>
           <span style={{ fontSize: '0.62rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.55)' }}>Table</span>
           <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.35rem', lineHeight: 1, color: refunded ? 'var(--red)' : 'var(--offwhite)' }}>
@@ -163,7 +163,7 @@ function ClosedRow({ check, isMobile, onRefund, onReceipt }: {
       </button>
 
       {open && (
-        <div style={{ padding: '0 1rem 1rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ padding: '0 1rem 1rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.08)' }}>
           <p style={{ fontSize: '0.9rem', color: 'rgba(var(--offwhite-rgb),0.6)', paddingTop: '0.8rem', lineHeight: 1.7 }}>
             <FontAwesomeIcon icon={faUserGroup} style={{ marginRight: '0.4rem' }} />
             {check.guestCount} {check.guestCount === 1 ? 'guest' : 'guests'} · closed {stampOf(meta.closedAt?.seconds)}
@@ -182,7 +182,7 @@ function ClosedRow({ check, isMobile, onRefund, onReceipt }: {
           <div style={{ marginTop: '0.6rem' }}>
             {check.lines.map(l => (
               <p key={l.id} style={{
-                fontSize: '0.98rem', padding: '0.35rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)',
+                fontSize: '0.98rem', padding: '0.35rem 0', borderBottom: '1px solid rgba(var(--overlay-rgb),0.05)',
                 color: l.status === 'void' ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.9)',
               }}>
                 <span style={{ textDecoration: l.status === 'void' ? 'line-through' : 'none' }}>
@@ -256,7 +256,7 @@ function RefundPanel({ check, busy, error, onConfirm, onCancel }: {
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
     }}>
       <div style={{
-        background: '#121212', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '14px',
+        background: '#121212', border: '1px solid rgba(var(--overlay-rgb),0.12)', borderRadius: '14px',
         width: '100%', maxWidth: '560px', maxHeight: '92vh', overflowY: 'auto', padding: '1.4rem',
         fontFamily: 'var(--font-inter)',
       }}>
@@ -274,8 +274,8 @@ function RefundPanel({ check, busy, error, onConfirm, onCancel }: {
               <button key={r.key} type="button" onClick={() => setReasonKey(r.key)} disabled={busy} aria-pressed={chosen} style={{
                 minHeight: '60px', textAlign: 'left', padding: '0.6rem 0.9rem', borderRadius: '10px', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: '0.75rem',
-                background: chosen ? 'rgba(var(--red-rgb),0.16)' : 'rgba(255,255,255,0.04)',
-                border: `2px solid ${chosen ? 'var(--red)' : 'rgba(255,255,255,0.14)'}`,
+                background: chosen ? 'rgba(var(--red-rgb),0.16)' : 'rgba(var(--overlay-rgb),0.04)',
+                border: `2px solid ${chosen ? 'var(--red)' : 'rgba(var(--overlay-rgb),0.14)'}`,
                 color: 'var(--offwhite)', fontFamily: 'var(--font-inter)', fontSize: '1rem', fontWeight: chosen ? 700 : 500,
               }}>
                 <FontAwesomeIcon icon={r.isWaste ? faTrashCan : faRotateLeft}
@@ -299,7 +299,7 @@ function RefundPanel({ check, busy, error, onConfirm, onCancel }: {
           placeholder={reason?.key === 'other' ? 'Say what happened (required)' : 'A note (optional)'}
           style={{
             width: '100%', boxSizing: 'border-box', marginTop: '0.9rem', minHeight: '54px', padding: '0.6rem 0.9rem',
-            background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(255,255,255,0.16)', borderRadius: '10px',
+            background: 'rgba(var(--overlay-rgb),0.05)', border: '2px solid rgba(var(--overlay-rgb),0.16)', borderRadius: '10px',
             color: 'var(--offwhite)', fontFamily: 'var(--font-inter)', fontSize: '1rem', outline: 'none',
           }} />
 

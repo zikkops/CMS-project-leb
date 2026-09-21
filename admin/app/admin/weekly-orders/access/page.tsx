@@ -114,7 +114,7 @@ export default function WeeklyOrdersAccessPage() {
 
               return (
                 <div key={account.id} style={{
-                  background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)',
                   borderRadius: '4px', padding: '1rem 1.25rem',
                   display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
                 }}>
@@ -147,7 +147,7 @@ export default function WeeklyOrdersAccessPage() {
                           title={isPrivileged ? `${ROLE_LABELS[account.role]}s always have ${dept} access` : `Toggle ${dept} access`}
                           style={{
                             backgroundColor: hasAccess ? `${DEPT_COLOR[dept]}20` : 'transparent',
-                            border: `1px solid ${hasAccess ? DEPT_COLOR[dept] : 'rgba(255,255,255,0.1)'}`,
+                            border: `1px solid ${hasAccess ? DEPT_COLOR[dept] : 'rgba(var(--overlay-rgb),0.1)'}`,
                             color: hasAccess ? DEPT_COLOR[dept] : 'rgba(var(--offwhite-rgb),0.2)',
                             padding: '0.3rem 0.7rem', borderRadius: '2px',
                             fontSize: '0.7rem', letterSpacing: '0.05em',

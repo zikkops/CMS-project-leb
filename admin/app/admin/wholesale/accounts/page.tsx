@@ -105,7 +105,7 @@ export default function WholesaleAccountsPage() {
 
   const inp: React.CSSProperties = {
     width: '100%', boxSizing: 'border-box',
-    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+    background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
     color: 'var(--offwhite)', borderRadius: '4px', padding: '0.6rem 0.8rem',
     fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)',
   }
@@ -115,7 +115,7 @@ export default function WholesaleAccountsPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--surface-deep)', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)' }}>
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: isMobile ? '2rem 1rem' : '3rem 2rem' }}>
 
         <a href="/admin" style={{ fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none', display: 'block', marginBottom: '0.5rem' }}>
@@ -149,7 +149,7 @@ export default function WholesaleAccountsPage() {
 
         {showForm && (
           <form onSubmit={create} style={{
-            background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)',
+            background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.08)',
             borderRadius: '6px', padding: '1.5rem', marginBottom: '2rem',
             display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem',
           }}>
@@ -178,7 +178,7 @@ export default function WholesaleAccountsPage() {
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end' }}>
               <button type="submit" disabled={saving} style={{
-                background: saving ? 'rgba(255,255,255,0.08)' : 'var(--teal)',
+                background: saving ? 'rgba(var(--overlay-rgb),0.08)' : 'var(--teal)',
                 color: saving ? 'rgba(var(--offwhite-rgb),0.3)' : '#000',
                 border: 'none', borderRadius: '4px', padding: '0.7rem 1.5rem',
                 fontSize: '0.8rem', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', width: '100%',
@@ -190,15 +190,15 @@ export default function WholesaleAccountsPage() {
         {loading ? (
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)' }}>Loading…</p>
         ) : accounts.length === 0 ? (
-          <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.2)', fontSize: '0.88rem' }}>
+          <div style={{ border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.2)', fontSize: '0.88rem' }}>
             No wholesale accounts yet.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
             {accounts.map(a => (
               <div key={a.uid} style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: `1px solid ${a.active ? 'rgba(255,255,255,0.07)' : 'rgba(var(--red-rgb),0.25)'}`,
+                background: 'rgba(var(--overlay-rgb),0.02)',
+                border: `1px solid ${a.active ? 'rgba(var(--overlay-rgb),0.07)' : 'rgba(var(--red-rgb),0.25)'}`,
                 borderRadius: '6px', padding: '1rem 1.2rem',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 gap: '1rem', flexWrap: 'wrap', opacity: a.active ? 1 : 0.6,

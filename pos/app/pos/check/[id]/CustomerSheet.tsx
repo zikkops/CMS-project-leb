@@ -134,8 +134,8 @@ export default function CustomerSheet({ check, onDone }: { check: Check; onDone:
             autoCorrect="off"
             spellCheck={false}
             style={{
-              ...tap, flex: 1, backgroundColor: '#0a0a0a', color: 'var(--offwhite)', cursor: 'text',
-              border: '1px solid rgba(255,255,255,0.14)', fontSize: '1rem', letterSpacing: '0.1em',
+              ...tap, flex: 1, backgroundColor: 'var(--surface-deep)', color: 'var(--offwhite)', cursor: 'text',
+              border: '1px solid rgba(var(--overlay-rgb),0.14)', fontSize: '1rem', letterSpacing: '0.1em',
             }}
           />
           <PosButton icon={faPlus} label={busy ? '…' : 'Add'} tone="primary" disabled={busy || !code} onClick={() => { if (code) void attach(code) }} />

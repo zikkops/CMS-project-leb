@@ -107,7 +107,7 @@ function EnquiryCta() {
         left: hovered ? '120%' : '-60%',
         width: '40%',
         height: '100%',
-        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
+        background: 'linear-gradient(90deg, transparent, rgba(var(--overlay-rgb),0.25), transparent)',
         transform: 'skewX(-20deg)',
         transition: 'left 0.5s ease',
         pointerEvents: 'none',
@@ -362,10 +362,10 @@ export default function ProductPage() {
               {outOfStock ? (
                 <button disabled style={{
                   width: '100%',
-                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  backgroundColor: 'rgba(var(--overlay-rgb),0.05)',
                   color: 'rgba(var(--offwhite-rgb),0.25)',
                   padding: '1rem',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.08)',
                   borderRadius: '2px',
                   fontSize: '0.82rem',
                   letterSpacing: '0.15em',

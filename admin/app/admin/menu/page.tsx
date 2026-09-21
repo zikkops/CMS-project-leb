@@ -57,7 +57,7 @@ const EMPTY_ITEM = {
 const SECTIONS: Section[] = ['Food', 'Beverage', 'Sweets']
 
 const smallButton: React.CSSProperties = {
-  background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(var(--offwhite-rgb),0.75)',
+  background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.15)', color: 'rgba(var(--offwhite-rgb),0.75)',
   padding: '0.45rem 0.8rem', borderRadius: '2px', fontSize: '0.72rem', cursor: 'pointer', fontFamily: 'var(--font-inter)',
 }
 
@@ -97,12 +97,12 @@ function SortableItem({ item, suggestion, onEdit, onDelete, isMobile }: {
       alignItems: 'center',
       gap: isMobile ? '0.6rem' : '1rem',
       padding: isMobile ? '0.8rem 1rem' : '0.9rem 1.2rem',
-      borderBottom: '1px solid rgba(255,255,255,0.04)',
-      background: 'rgba(255,255,255,0.01)',
+      borderBottom: '1px solid rgba(var(--overlay-rgb),0.04)',
+      background: 'rgba(var(--overlay-rgb),0.01)',
     }}>
       <div {...attributes} {...listeners} style={{
         cursor: 'grab',
-        color: 'rgba(255,255,255,0.2)',
+        color: 'rgba(var(--overlay-rgb),0.2)',
         fontSize: '1rem',
         flexShrink: 0,
       }}>⠿</div>
@@ -164,7 +164,7 @@ function SortableItem({ item, suggestion, onEdit, onDelete, isMobile }: {
       <div style={{ display: 'flex', gap: '0.5rem' }}>
         <button onClick={() => onEdit(item)} style={{
           background: 'transparent',
-          border: '1px solid rgba(255,255,255,0.1)',
+          border: '1px solid rgba(var(--overlay-rgb),0.1)',
           color: 'rgba(var(--offwhite-rgb),0.5)',
           padding: '0.35rem 0.7rem',
           borderRadius: '2px',
@@ -416,7 +416,7 @@ export default function AdminMenuPage() {
   const inputStyle = {
     width: '100%',
     backgroundColor: '#1a1a1a',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid rgba(var(--overlay-rgb),0.1)',
     color: 'var(--offwhite)',
     padding: '0.75rem 1rem',
     borderRadius: '2px',
@@ -485,7 +485,7 @@ export default function AdminMenuPage() {
           display: 'flex',
           gap: '0',
           flexWrap: 'wrap',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          borderBottom: '1px solid rgba(var(--overlay-rgb),0.08)',
           marginBottom: '2rem',
         }}>
           {SECTIONS.map(s => (
@@ -519,8 +519,8 @@ export default function AdminMenuPage() {
             </p>
 
             <div style={{
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.06)',
+              background: 'rgba(var(--overlay-rgb),0.02)',
+              border: '1px solid rgba(var(--overlay-rgb),0.06)',
               borderRadius: '4px',
               overflow: 'hidden',
               marginBottom: '1.5rem',
@@ -538,7 +538,7 @@ export default function AdminMenuPage() {
                   alignItems: 'center',
                   gap: '0.8rem',
                   padding: '0.8rem 1rem',
-                  borderBottom: '1px solid rgba(255,255,255,0.04)',
+                  borderBottom: '1px solid rgba(var(--overlay-rgb),0.04)',
                   backgroundColor: activeCategory === cat.id
                     ? `${sectionColors[activeSection]}15`
                     : 'transparent',
@@ -561,7 +561,7 @@ export default function AdminMenuPage() {
                     <div style={{
                       width: '36px', height: '36px',
                       borderRadius: '2px',
-                      backgroundColor: 'rgba(255,255,255,0.04)',
+                      backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
                       flexShrink: 0,
                     }} />
                   )}
@@ -604,8 +604,8 @@ export default function AdminMenuPage() {
 
             {/* Add Category Form */}
             <div style={{
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.06)',
+              background: 'rgba(var(--overlay-rgb),0.02)',
+              border: '1px solid rgba(var(--overlay-rgb),0.06)',
               borderRadius: '4px',
               padding: '1.2rem',
               display: 'flex',
@@ -644,7 +644,7 @@ export default function AdminMenuPage() {
                   />
                   <button type="button" onClick={() => setPickerTarget('new')} style={{
                     background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(var(--overlay-rgb),0.1)',
                     color: 'rgba(var(--offwhite-rgb),0.6)',
                     padding: '0.5rem 0.8rem',
                     borderRadius: '2px',
@@ -666,7 +666,7 @@ export default function AdminMenuPage() {
                     width: '100%', height: '80px',
                     objectFit: 'cover', borderRadius: '2px',
                     marginTop: '0.5rem',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(var(--overlay-rgb),0.06)',
                   }} />
                 )}
               </div>
@@ -713,7 +713,7 @@ export default function AdminMenuPage() {
               <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
             ) : !activeCategory ? (
               <div style={{
-                border: '1px dashed rgba(255,255,255,0.08)',
+                border: '1px dashed rgba(var(--overlay-rgb),0.08)',
                 borderRadius: '4px',
                 padding: '3rem',
                 textAlign: 'center',
@@ -723,7 +723,7 @@ export default function AdminMenuPage() {
               }}>Select or create a category on the left</div>
             ) : activeCatItems.length === 0 ? (
               <div style={{
-                border: '1px dashed rgba(255,255,255,0.08)',
+                border: '1px dashed rgba(var(--overlay-rgb),0.08)',
                 borderRadius: '4px',
                 padding: '3rem',
                 textAlign: 'center',
@@ -733,8 +733,8 @@ export default function AdminMenuPage() {
               }}>No items yet — click + Add Item to get started</div>
             ) : (
               <div style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                background: 'rgba(var(--overlay-rgb),0.02)',
+                border: '1px solid rgba(var(--overlay-rgb),0.06)',
                 borderRadius: '4px',
                 overflow: 'hidden',
               }}>
@@ -764,7 +764,7 @@ export default function AdminMenuPage() {
         }}>
           <div style={{
             backgroundColor: '#111',
-            border: '1px solid rgba(255,255,255,0.1)',
+            border: '1px solid rgba(var(--overlay-rgb),0.1)',
             borderRadius: '8px',
             width: '100%',
             maxWidth: '480px',
@@ -776,7 +776,7 @@ export default function AdminMenuPage() {
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: isMobile ? '1.25rem 1.5rem' : '1.5rem 2rem',
-              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
             }}>
               <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem', color: 'var(--offwhite)' }}>
                 Edit Category
@@ -818,7 +818,7 @@ export default function AdminMenuPage() {
                   />
                   <button type="button" onClick={() => setPickerTarget('edit')} style={{
                     background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(var(--overlay-rgb),0.1)',
                     color: 'rgba(var(--offwhite-rgb),0.6)',
                     padding: '0.5rem 0.8rem',
                     borderRadius: '2px',
@@ -840,7 +840,7 @@ export default function AdminMenuPage() {
                     width: '100%', height: '100px',
                     objectFit: 'cover', borderRadius: '2px',
                     marginTop: '0.5rem',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(var(--overlay-rgb),0.06)',
                   }} />
                 )}
               </div>
@@ -848,7 +848,7 @@ export default function AdminMenuPage() {
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                 <button type="button" onClick={() => setEditingCat(null)} style={{
                   flex: 1, background: 'transparent',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.1)',
                   color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.8rem',
                   borderRadius: '2px', fontSize: '0.75rem',
                   cursor: 'pointer', fontFamily: 'var(--font-inter)',
@@ -880,7 +880,7 @@ export default function AdminMenuPage() {
         }}>
           <div style={{
             backgroundColor: '#111',
-            border: '1px solid rgba(255,255,255,0.1)',
+            border: '1px solid rgba(var(--overlay-rgb),0.1)',
             borderRadius: '8px',
             width: '100%',
             maxWidth: '500px',
@@ -892,7 +892,7 @@ export default function AdminMenuPage() {
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: isMobile ? '1.25rem 1.5rem' : '1.5rem 2rem',
-              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
             }}>
               <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem', color: 'var(--offwhite)' }}>
                 {editing ? 'Edit Item' : 'Add Menu Item'}
@@ -916,7 +916,7 @@ export default function AdminMenuPage() {
                 <div style={{ display: 'flex', gap: '0.9rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <div style={{
                     width: '96px', height: '72px', borderRadius: '4px', overflow: 'hidden', flexShrink: 0,
-                    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                    background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.1)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     {form.image
@@ -987,7 +987,7 @@ export default function AdminMenuPage() {
                         flex: 1,
                         padding: '0.6rem',
                         borderRadius: '2px',
-                        border: `1px solid ${form.available === val ? sectionColors[activeSection] : 'rgba(255,255,255,0.1)'}`,
+                        border: `1px solid ${form.available === val ? sectionColors[activeSection] : 'rgba(var(--overlay-rgb),0.1)'}`,
                         backgroundColor: form.available === val ? `${sectionColors[activeSection]}20` : 'transparent',
                         color: form.available === val ? sectionColors[activeSection] : 'rgba(var(--offwhite-rgb),0.4)',
                         cursor: 'pointer',
@@ -1003,7 +1003,7 @@ export default function AdminMenuPage() {
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                 <button type="button" onClick={() => setOpen(false)} style={{
                   flex: 1, background: 'transparent',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.1)',
                   color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.8rem',
                   borderRadius: '2px', fontSize: '0.75rem',
                   cursor: 'pointer', fontFamily: 'var(--font-inter)',

@@ -234,7 +234,7 @@ export default function LoyaltyPage() {
                     position: 'absolute', top: 0,
                     left: signInHovered ? '120%' : '-60%',
                     width: '40%', height: '100%',
-                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
+                    background: 'linear-gradient(90deg, transparent, rgba(var(--overlay-rgb),0.25), transparent)',
                     transform: 'skewX(-20deg)',
                     transition: 'left 0.5s ease',
                     pointerEvents: 'none',
@@ -271,7 +271,7 @@ export default function LoyaltyPage() {
                       position: 'absolute', top: 0,
                       left: signInHovered ? '120%' : '-60%',
                       width: '40%', height: '100%',
-                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
+                      background: 'linear-gradient(90deg, transparent, rgba(var(--overlay-rgb),0.25), transparent)',
                       transform: 'skewX(-20deg)',
                       transition: 'left 0.5s ease',
                       pointerEvents: 'none',
@@ -385,10 +385,10 @@ export default function LoyaltyPage() {
               }}>
                 {EARN_CARDS.map(card => (
                   <div key={card.title} style={{
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(var(--overlay-rgb),0.06)',
                     borderTop: `3px solid ${card.color}`,
                     borderRadius: '4px',
-                    background: 'rgba(255,255,255,0.02)',
+                    background: 'rgba(var(--overlay-rgb),0.02)',
                     padding: isMobile ? '1.5rem' : '2rem',
                     display: 'flex',
                     flexDirection: 'column',
@@ -439,7 +439,7 @@ export default function LoyaltyPage() {
                 <div style={{ position: 'relative', paddingLeft: '2.2rem' }}>
                   <div style={{
                     position: 'absolute', left: '9px', top: '10px', bottom: '10px',
-                    width: '2px', backgroundColor: 'rgba(255,255,255,0.08)',
+                    width: '2px', backgroundColor: 'rgba(var(--overlay-rgb),0.08)',
                   }} />
                   {TIERS.map(tier => {
                     const color = tier.color
@@ -538,7 +538,7 @@ export default function LoyaltyPage() {
                   })}
                 </div>
               ) : (
-                <div style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ border: '1px solid rgba(var(--overlay-rgb),0.06)', borderRadius: '4px', overflow: 'hidden' }}>
                   {PERKS.map((p, i) => {
                     const color = tierColor(p.tier)
                     return (
@@ -548,8 +548,8 @@ export default function LoyaltyPage() {
                         alignItems: 'center',
                         padding: '1.1rem 1.5rem',
                         borderLeft: `3px solid ${color}`,
-                        borderBottom: i < PERKS.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                        background: i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent',
+                        borderBottom: i < PERKS.length - 1 ? '1px solid rgba(var(--overlay-rgb),0.05)' : 'none',
+                        background: i % 2 === 0 ? 'rgba(var(--overlay-rgb),0.02)' : 'transparent',
                       }}>
                         <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color }}>{p.tier}</span>
                         <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.7)' }}>{p.perk}</span>
@@ -572,7 +572,7 @@ export default function LoyaltyPage() {
                 </div>
               ) : redemptionItems.length === 0 ? (
                 <div style={{
-                  border: '1px dashed rgba(255,255,255,0.08)',
+                  border: '1px dashed rgba(var(--overlay-rgb),0.08)',
                   borderRadius: '4px',
                   padding: isMobile ? '2.5rem 1.5rem' : '3rem',
                   textAlign: 'center',
@@ -585,9 +585,9 @@ export default function LoyaltyPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '1.25rem' }}>
                   {redemptionItems.map(item => (
                     <div key={item.id} style={{
-                      border: '1px solid rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(var(--overlay-rgb),0.06)',
                       borderRadius: '4px',
-                      background: 'rgba(255,255,255,0.02)',
+                      background: 'rgba(var(--overlay-rgb),0.02)',
                       padding: isMobile ? '1.4rem' : '1.75rem',
                       display: 'flex',
                       flexDirection: 'column',
@@ -684,7 +684,7 @@ export default function LoyaltyPage() {
             padding: isMobile ? '4rem 1.5rem' : '6rem 2rem',
             overflow: 'hidden',
             background: 'linear-gradient(180deg, rgba(var(--teal-rgb),0.06) 0%, rgba(10,10,10,0) 100%)',
-            borderTop: '1px solid rgba(255,255,255,0.05)',
+            borderTop: '1px solid rgba(var(--overlay-rgb),0.05)',
           }}>
             <div style={{
               position: 'absolute', inset: 0, pointerEvents: 'none',
@@ -737,7 +737,7 @@ export default function LoyaltyPage() {
                   position: 'absolute', top: 0,
                   left: joinHovered ? '120%' : '-60%',
                   width: '40%', height: '100%',
-                  background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
+                  background: 'linear-gradient(90deg, transparent, rgba(var(--overlay-rgb),0.25), transparent)',
                   transform: 'skewX(-20deg)',
                   transition: 'left 0.5s ease',
                   pointerEvents: 'none',

@@ -27,7 +27,7 @@ interface DaySummary {
 }
 
 const inp: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
   color: 'var(--offwhite)', borderRadius: '4px', padding: '0.5rem 0.7rem',
   fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'var(--font-inter)',
 }
@@ -105,7 +105,7 @@ export default function FoodSafetyHistoryPage() {
             <Link key={d.date} href={`/admin/food-safety?branch=${encodeURIComponent(branch)}&date=${d.date}`} style={{ textDecoration: 'none' }}>
               <div style={{
                 display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '7rem 8rem 1fr auto', gap: '0.3rem 1rem', alignItems: 'center',
-                padding: '0.7rem 0.9rem', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                padding: '0.7rem 0.9rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
               }}>
                 <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>{d.date}</span>
                 <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color }}>{status}</span>

@@ -136,7 +136,7 @@ function useIsMobile(breakpoint = 768) {
 }
 
 const inp: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
   color: 'var(--offwhite)', borderRadius: '4px', padding: '0.5rem 0.65rem',
   fontSize: '0.82rem', outline: 'none', width: '100%', boxSizing: 'border-box',
   fontFamily: 'var(--font-inter)',
@@ -267,7 +267,7 @@ function RecipeEditor({
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '0.5rem' : '2rem',
     }}>
       <div style={{
-        background: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
+        background: '#121212', border: '1px solid rgba(var(--overlay-rgb),0.1)', borderRadius: '8px',
         width: '100%', maxWidth: '760px', maxHeight: '92vh', overflowY: 'auto',
         padding: isMobile ? '1.25rem' : '2rem',
       }}>
@@ -332,7 +332,7 @@ function RecipeEditor({
                       <div key={option.id} style={{
                         display: 'grid', gap: '0.5rem', alignItems: 'start',
                         gridTemplateColumns: isMobile ? '1fr' : '140px 120px 1fr',
-                        padding: '0.5rem', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '4px',
+                        padding: '0.5rem', border: '1px solid rgba(var(--overlay-rgb),0.06)', borderRadius: '4px',
                       }}>
                         <span style={{ fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.75)', fontFamily: 'var(--font-inter)', paddingTop: '0.45rem' }}>
                           {option.name}
@@ -393,7 +393,7 @@ function RecipeEditor({
         )}
 
         {/* ── Cost and what stops a save ──────────────────────────────── */}
-        <div style={{ marginTop: '1.5rem', padding: '0.9rem 1rem', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+        <div style={{ marginTop: '1.5rem', padding: '0.9rem 1rem', border: '1px solid rgba(var(--overlay-rgb),0.08)', borderRadius: '6px' }}>
           <p style={{ ...lbl, marginBottom: '0.4rem' }}>As written, without options</p>
           <CostSummary price={item.price} cost={base} vatRate={vatRate} target={target} supplies={supplies} />
         </div>
@@ -462,7 +462,7 @@ function RecipeEditor({
             </button>
           )}
           <button onClick={onClose} style={{
-            background: 'transparent', color: 'rgba(var(--offwhite-rgb),0.5)', border: '1px solid rgba(255,255,255,0.1)',
+            background: 'transparent', color: 'rgba(var(--offwhite-rgb),0.5)', border: '1px solid rgba(var(--overlay-rgb),0.1)',
             borderRadius: '4px', padding: '0.7rem 1rem', fontSize: '0.85rem', cursor: 'pointer',
           }}>
             Close
@@ -666,14 +666,14 @@ export default function RecipesPage() {
       {!loading && !loadError && sections.map(section => (
         <div key={section.id || 'uncategorised'} style={{ marginTop: '2rem' }}>
           <p style={{ ...lbl, marginBottom: '0.6rem' }}>{section.name}</p>
-          <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', overflow: 'hidden' }}>
+          <div style={{ border: '1px solid rgba(var(--overlay-rgb),0.07)', borderRadius: '6px', overflow: 'hidden' }}>
             {section.items.map((item, i) => {
               const recipe = recipes[item.id]
               return (
                 <div key={item.id} style={{
                   display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '0.5rem' : '1rem',
                   alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between',
-                  padding: '0.8rem 1rem', borderTop: i > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                  padding: '0.8rem 1rem', borderTop: i > 0 ? '1px solid rgba(var(--overlay-rgb),0.05)' : 'none',
                 }}>
                   <div style={{ minWidth: 0 }}>
                     <p style={{ fontSize: '0.88rem', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)' }}>{item.name}</p>
@@ -683,7 +683,7 @@ export default function RecipesPage() {
                     <CostSummary price={item.price} cost={recipe ? costOf(recipe, supplies) : null}
                       vatRate={vatRate} target={targetOf(item)} supplies={supplies} align={isMobile ? 'left' : 'right'} />
                     <button onClick={() => openEditor(item)} style={{
-                      background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--offwhite)',
+                      background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.15)', color: 'var(--offwhite)',
                       borderRadius: '4px', padding: '0.45rem 0.9rem', fontSize: '0.75rem', cursor: 'pointer', flexShrink: 0,
                     }}>
                       {recipe ? 'Edit recipe' : 'Add recipe'}

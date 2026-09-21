@@ -63,12 +63,12 @@ interface AnswerDraft { done: boolean | null; note: string }
 interface ReadingDraft { tempC: string; note: string; outOfUse: boolean }
 
 const inp: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
   color: 'var(--offwhite)', borderRadius: '4px', padding: '0.5rem 0.7rem',
   fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'var(--font-inter)',
 }
 const card: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)',
+  background: 'rgba(var(--overlay-rgb),0.03)', border: '1px solid rgba(var(--overlay-rgb),0.1)',
   borderRadius: '6px', padding: '1rem 1.1rem', marginBottom: '1rem',
 }
 const heading: React.CSSProperties = {
@@ -104,10 +104,10 @@ function Checklist({ title, items, answers, onChange, disabled }: {
         const button = (active: boolean, color: string): React.CSSProperties => ({
           ...inp, cursor: disabled ? 'default' : 'pointer', padding: '0.35rem 0.7rem', fontSize: '0.75rem',
           background: active ? color : 'transparent', color: active ? '#fff' : 'rgba(var(--offwhite-rgb),0.6)',
-          border: `1px solid ${active ? color : 'rgba(255,255,255,0.15)'}`,
+          border: `1px solid ${active ? color : 'rgba(var(--overlay-rgb),0.15)'}`,
         })
         return (
-          <div key={item.key} style={{ padding: '0.55rem 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <div key={item.key} style={{ padding: '0.55rem 0', borderTop: '1px solid rgba(var(--overlay-rgb),0.05)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)', flex: '1 1 16rem' }}>{item.label}</span>
               <span style={{ display: 'flex', gap: '0.4rem' }}>
@@ -142,7 +142,7 @@ function ReadingRow({ unit, draft, limits, onChange, disabled, stampedBy }: {
   const unreadable = temp !== undefined && !draft.outOfUse && verdict === null
   const needsNote = draft.outOfUse || verdict?.status === 'breach'
   return (
-    <div style={{ padding: '0.6rem 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+    <div style={{ padding: '0.6rem 0', borderTop: '1px solid rgba(var(--overlay-rgb),0.05)' }}>
       <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <span style={{ flex: '1 1 12rem' }}>
           <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>{unit.name}</span>

@@ -122,8 +122,8 @@ export default function TodaySchedulePage() {
   if (checking) return null
 
   const cardBase: React.CSSProperties = {
-    background: 'rgba(255,255,255,0.02)',
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'rgba(var(--overlay-rgb),0.02)',
+    border: '1px solid rgba(var(--overlay-rgb),0.06)',
     borderRadius: '4px',
     padding: isMobile ? '1.1rem' : '1.5rem',
     display: 'flex',
@@ -161,7 +161,7 @@ export default function TodaySchedulePage() {
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : entries.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
             padding: isMobile ? '3rem 1.5rem' : '4rem', textAlign: 'center',
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem',
           }}>
@@ -262,13 +262,13 @@ export default function TodaySchedulePage() {
                           {(entry.data as EventReservation).participants.map(p => (
                             <span key={p.uid} style={{
                               fontSize: '0.72rem', padding: '0.25rem 0.7rem', borderRadius: '2px',
-                              backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)',
+                              backgroundColor: 'rgba(var(--overlay-rgb),0.05)', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)',
                             }}>{p.name}</span>
                           ))}
                           {(entry.data as EventReservation).participantPhones.map(phone => (
                             <span key={phone} style={{
                               fontSize: '0.72rem', padding: '0.25rem 0.7rem', borderRadius: '2px',
-                              backgroundColor: 'rgba(255,255,255,0.05)', color: 'rgba(var(--offwhite-rgb),0.6)', fontFamily: 'var(--font-inter)',
+                              backgroundColor: 'rgba(var(--overlay-rgb),0.05)', color: 'rgba(var(--offwhite-rgb),0.6)', fontFamily: 'var(--font-inter)',
                             }}>📞 {phone}</span>
                           ))}
                         </div>

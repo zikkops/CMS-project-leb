@@ -16,8 +16,8 @@ import { distributeTips } from '@big-cms/shared/tips'
 // out at 11%. See the note at the top of shared/src/tips.ts.
 
 const inp: React.CSSProperties = {
-  backgroundColor: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.1)',
+  backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.6rem 0.8rem',
   borderRadius: '2px',
@@ -211,7 +211,7 @@ export default function TipsCalculatorPage() {
 
         {!loading && branch && monthReports.length === 0 && (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
             color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
@@ -250,15 +250,15 @@ function PeriodCard({ period }: { period: PeriodResult }) {
 
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.02)',
-      border: '1px solid rgba(255,255,255,0.07)',
+      background: 'rgba(var(--overlay-rgb),0.02)',
+      border: '1px solid rgba(var(--overlay-rgb),0.07)',
       borderRadius: '6px',
       overflow: 'hidden',
     }}>
       {/* Card header */}
       <div style={{
         padding: '1rem 1.25rem',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.5rem',
       }}>
         <div>
@@ -279,7 +279,7 @@ function PeriodCard({ period }: { period: PeriodResult }) {
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
         gap: '0.1rem',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
       }}>
         <SummaryCell label="Total tips" value={formatUsd(period.totalTipsUsd)} dim={period.totalTipsUsd === 0} />
         <SummaryCell label={`After ${+(period.deductionRate * 100).toFixed(2)}% deduction`} value={formatUsd(period.netTipsUsd)} highlight />
@@ -306,7 +306,7 @@ function PeriodCard({ period }: { period: PeriodResult }) {
             fontFamily: 'var(--font-inter)', fontSize: '0.62rem',
             letterSpacing: '0.1em', textTransform: 'uppercase',
             color: 'rgba(var(--offwhite-rgb),0.3)',
-            borderBottom: '1px solid rgba(255,255,255,0.04)',
+            borderBottom: '1px solid rgba(var(--overlay-rgb),0.04)',
           }}>
             <span>Staff member</span>
             {!isMobile && <span style={{ textAlign: 'center' }}>AM/PM shifts</span>}
@@ -321,7 +321,7 @@ function PeriodCard({ period }: { period: PeriodResult }) {
               <div key={s.name} style={{
                 display: 'grid', gridTemplateColumns: staffGridCols,
                 padding: '0.75rem 1.25rem', alignItems: 'center',
-                borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                borderTop: idx > 0 ? '1px solid rgba(var(--overlay-rgb),0.04)' : 'none',
               }}>
                 <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'var(--offwhite)' }}>
                   {s.name}
@@ -359,8 +359,8 @@ function PeriodCard({ period }: { period: PeriodResult }) {
           <div style={{
             display: 'grid', gridTemplateColumns: staffGridCols,
             padding: '0.75rem 1.25rem',
-            borderTop: '1px solid rgba(255,255,255,0.1)',
-            background: 'rgba(255,255,255,0.02)',
+            borderTop: '1px solid rgba(var(--overlay-rgb),0.1)',
+            background: 'rgba(var(--overlay-rgb),0.02)',
           }}>
             <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
               Total
@@ -383,7 +383,7 @@ function PeriodCard({ period }: { period: PeriodResult }) {
       {/* Legend */}
       <div style={{
         padding: '0.65rem 1.25rem',
-        borderTop: '1px solid rgba(255,255,255,0.04)',
+        borderTop: '1px solid rgba(var(--overlay-rgb),0.04)',
         background: 'rgba(0,0,0,0.2)',
         fontFamily: 'var(--font-inter)', fontSize: '0.65rem',
         color: 'rgba(var(--offwhite-rgb),0.2)', letterSpacing: '0.03em',

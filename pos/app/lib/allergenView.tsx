@@ -47,7 +47,7 @@ export function AllergenAnswer({ verified, contains, others, size = 'sm' }: {
         <span style={{ fontFamily: 'var(--font-inter)', fontSize: font, color: 'rgba(var(--offwhite-rgb),0.6)' }}>at least</span>
       )}
       {answer.kind === 'none' && (
-        <span style={{ ...pill('rgba(var(--offwhite-rgb),0.75)', 'rgba(255,255,255,0.05)'), fontWeight: 500 }}>
+        <span style={{ ...pill('rgba(var(--offwhite-rgb),0.75)', 'rgba(var(--overlay-rgb),0.05)'), fontWeight: 500 }}>
           <FontAwesomeIcon icon={faCircleCheck} />No listed allergens
         </span>
       )}

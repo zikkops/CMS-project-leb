@@ -94,7 +94,7 @@ export default function InvoicesPage() {
   }
 
   const inp: React.CSSProperties = {
-    width: '100%', backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)',
+    width: '100%', backgroundColor: '#1a1a1a', border: '1px solid rgba(var(--overlay-rgb),0.1)',
     color: 'var(--offwhite)', padding: '0.65rem 0.8rem', borderRadius: '2px',
     fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)',
     resize: 'vertical' as const,
@@ -124,7 +124,7 @@ export default function InvoicesPage() {
                 letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
               }}>+ Record a Sale</a>
               <button onClick={load} style={{
-                backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                backgroundColor: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)',
                 color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.65rem 1.2rem', borderRadius: '2px',
                 fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase',
                 cursor: 'pointer', fontFamily: 'var(--font-inter)',
@@ -137,8 +137,8 @@ export default function InvoicesPage() {
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
           {(['all', 'completed', 'refunded'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)} style={{
-              backgroundColor: filter === f ? 'rgba(255,255,255,0.08)' : 'transparent',
-              border: `1px solid ${filter === f ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)'}`,
+              backgroundColor: filter === f ? 'rgba(var(--overlay-rgb),0.08)' : 'transparent',
+              border: `1px solid ${filter === f ? 'rgba(var(--overlay-rgb),0.2)' : 'rgba(var(--overlay-rgb),0.08)'}`,
               color: filter === f ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.4)',
               padding: '0.45rem 1rem', borderRadius: '2px', fontSize: '0.72rem',
               letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer',
@@ -156,7 +156,7 @@ export default function InvoicesPage() {
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : visible.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
             color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
@@ -168,7 +168,7 @@ export default function InvoicesPage() {
               const isRefundOpen = refunding === order.id
               return (
                 <div key={order.id} style={{
-                  background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)',
                   borderRadius: '4px', overflow: 'hidden',
                 }}>
                   {/* Card body */}
@@ -258,7 +258,7 @@ export default function InvoicesPage() {
                           onClick={() => handleRegenerate(order)}
                           disabled={regenerating === order.id}
                           style={{
-                            backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
+                            backgroundColor: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.15)',
                             color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.45rem 1rem', borderRadius: '2px',
                             fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase',
                             cursor: regenerating === order.id ? 'not-allowed' : 'pointer',
@@ -335,7 +335,7 @@ export default function InvoicesPage() {
                         <button
                           onClick={() => { setRefunding(null); setRefundNote('') }}
                           style={{
-                            backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                            backgroundColor: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)',
                             color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.6rem 1.2rem', borderRadius: '2px',
                             fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase',
                             cursor: 'pointer', fontFamily: 'var(--font-inter)',

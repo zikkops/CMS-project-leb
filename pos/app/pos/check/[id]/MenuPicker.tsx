@@ -89,7 +89,7 @@ export function ModifierSheet({
       {allergens && (
         <div style={{
           margin: '0.2rem 0 0.4rem', padding: '0.75rem 0.9rem', borderRadius: '10px',
-          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.12)',
+          background: 'rgba(var(--overlay-rgb),0.03)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
         }}>
           <p style={{
             display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.5rem',
@@ -127,8 +127,8 @@ export function ModifierSheet({
                   minHeight: '60px', borderRadius: '10px', cursor: 'pointer', textAlign: 'left',
                   padding: '0.6rem 0.9rem', fontFamily: 'var(--font-inter)', fontSize: '1rem',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem',
-                  backgroundColor: on ? 'rgba(var(--teal-rgb),0.22)' : 'rgba(255,255,255,0.04)',
-                  border: `2px solid ${on ? 'var(--teal)' : 'rgba(255,255,255,0.14)'}`,
+                  backgroundColor: on ? 'rgba(var(--teal-rgb),0.22)' : 'rgba(var(--overlay-rgb),0.04)',
+                  border: `2px solid ${on ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.14)'}`,
                   color: 'var(--offwhite)', fontWeight: on ? 700 : 500,
                 }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -188,7 +188,7 @@ function CategoryTile({ name, image, colour, count, icon, onClick }: {
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '0.5rem',
       }}>
         <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.35rem', color: '#fff', lineHeight: 1.1 }}>{name}</span>
-        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', whiteSpace: 'nowrap' }}>
+        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--overlay-rgb),0.8)', whiteSpace: 'nowrap' }}>
           {count} {count === 1 ? 'item' : 'items'}
         </span>
       </span>
@@ -237,10 +237,10 @@ function ItemTile({ name, image, colour, locked, onClick, children, soldOut = fa
       aria-label={soldOut ? `${name}, sold out today${marking ? ': tap to put it back on' : ''}` : marking ? `${name}: tap to mark sold out` : undefined}
       style={{
       borderRadius: '12px', overflow: 'hidden', cursor: off ? 'not-allowed' : 'pointer', textAlign: 'left', padding: 0,
-      backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)',
+      backgroundColor: 'rgba(var(--overlay-rgb),0.05)', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)',
       // Longhands only: a shorthand beside borderTop that changes between renders is a React styling bug.
       borderWidth: marking ? '4px 2px 2px' : '4px 1px 1px', borderStyle: marking ? 'solid dashed dashed' : 'solid',
-      borderColor: `${soldOut ? 'var(--red)' : colour} ${marking ? 'var(--red)' : 'rgba(255,255,255,0.12)'} ${marking ? 'var(--red)' : 'rgba(255,255,255,0.12)'}`,
+      borderColor: `${soldOut ? 'var(--red)' : colour} ${marking ? 'var(--red)' : 'rgba(var(--overlay-rgb),0.12)'} ${marking ? 'var(--red)' : 'rgba(var(--overlay-rgb),0.12)'}`,
       display: 'flex', flexDirection: 'column', opacity: off ? 0.45 : 1, WebkitTapHighlightColor: 'transparent',
       position: 'relative',
     }}>

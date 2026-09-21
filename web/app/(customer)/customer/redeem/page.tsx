@@ -22,7 +22,7 @@ const labelStyle = {
 const inputStyle = {
   width: '100%',
   backgroundColor: '#1a1a1a',
-  border: '1px solid rgba(255,255,255,0.1)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.8rem 1rem',
   borderRadius: '4px',
@@ -137,7 +137,7 @@ export default function RedeemPage() {
                 position: 'absolute', top: 0,
                 left: redeemAgainHovered ? '120%' : '-60%',
                 width: '40%', height: '100%',
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
+                background: 'linear-gradient(90deg, transparent, rgba(var(--overlay-rgb),0.25), transparent)',
                 transform: 'skewX(-20deg)',
                 transition: 'left 0.5s ease',
                 pointerEvents: 'none',
@@ -184,9 +184,9 @@ export default function RedeemPage() {
         </h1>
 
         <div style={{
-          border: '1px solid rgba(255,255,255,0.08)',
+          border: '1px solid rgba(var(--overlay-rgb),0.08)',
           borderRadius: '4px',
-          backgroundColor: 'rgba(255,255,255,0.02)',
+          backgroundColor: 'rgba(var(--overlay-rgb),0.02)',
           padding: isMobile ? '1.25rem' : '1.5rem',
           display: 'flex',
           justifyContent: 'space-between',
@@ -205,7 +205,7 @@ export default function RedeemPage() {
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : items.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)',
             borderRadius: '4px',
             padding: isMobile ? '3rem 1.5rem' : '4rem',
             textAlign: 'center',
@@ -222,8 +222,8 @@ export default function RedeemPage() {
 
               return (
                 <div key={item.id} style={{
-                  background: 'rgba(255,255,255,0.02)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'rgba(var(--overlay-rgb),0.02)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.06)',
                   borderRadius: '4px',
                   padding: isMobile ? '1.1rem' : '1.5rem',
                   display: 'flex',
@@ -239,7 +239,7 @@ export default function RedeemPage() {
                   </div>
 
                   {isConfirming ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.9rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.05)', paddingTop: '0.9rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-inter)', fontSize: '0.82rem' }}>
                         <span style={{ color: 'rgba(var(--offwhite-rgb),0.4)' }}>Current Balance</span>
                         <span style={{ color: 'var(--offwhite)' }}>{points.toLocaleString()} points</span>
@@ -286,8 +286,8 @@ export default function RedeemPage() {
                           onMouseLeave={() => setHoveredBtn(null)}
                           style={{
                             flex: isMobile ? 1 : 'initial',
-                            background: hoveredBtn === `cancel-${item.id}` ? 'rgba(255,255,255,0.06)' : 'transparent',
-                            border: `1px solid ${hoveredBtn === `cancel-${item.id}` ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                            background: hoveredBtn === `cancel-${item.id}` ? 'rgba(var(--overlay-rgb),0.06)' : 'transparent',
+                            border: `1px solid ${hoveredBtn === `cancel-${item.id}` ? 'rgba(var(--overlay-rgb),0.3)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                             color: hoveredBtn === `cancel-${item.id}` ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.5)',
                             padding: '0.8rem 1.5rem',
                             borderRadius: '2px',
@@ -310,7 +310,7 @@ export default function RedeemPage() {
                       style={{
                         width: isMobile ? '100%' : 'auto',
                         alignSelf: isMobile ? 'stretch' : 'flex-end',
-                        backgroundColor: canAfford ? (hoveredBtn === `redeem-${item.id}` ? 'rgba(var(--purple-rgb),0.8)' : 'var(--purple)') : 'rgba(255,255,255,0.05)',
+                        backgroundColor: canAfford ? (hoveredBtn === `redeem-${item.id}` ? 'rgba(var(--purple-rgb),0.8)' : 'var(--purple)') : 'rgba(var(--overlay-rgb),0.05)',
                         color: canAfford ? '#fff' : 'rgba(var(--offwhite-rgb),0.35)',
                         border: 'none',
                         padding: '0.8rem 1.5rem',

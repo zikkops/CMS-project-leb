@@ -16,7 +16,7 @@ import { startLoad } from '@big-cms/shared/startLoad'
 // collisions, rather than a fixed table that only knew the original three.
 
 const sel: React.CSSProperties = {
-  background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.12)',
+  background: '#1a1a1a', border: '1px solid rgba(var(--overlay-rgb),0.12)',
   color: 'var(--offwhite)', borderRadius: '4px', padding: '0.5rem 0.7rem',
   fontSize: '0.82rem', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-inter)',
 }
@@ -144,12 +144,12 @@ export default function DailyInventoryHistoryPage() {
 
         {/* Month nav */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-          <button onClick={goPrevMonth} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.5)', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '0.9rem' }}>‹</button>
+          <button onClick={goPrevMonth} style={{ background: 'none', border: '1px solid rgba(var(--overlay-rgb),0.1)', color: 'rgba(var(--offwhite-rgb),0.5)', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '0.9rem' }}>‹</button>
           <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color: 'var(--offwhite)', minWidth: '160px', textAlign: 'center' }}>
             {MONTH_LABEL(viewYear, viewMonth)}
           </p>
-          <button onClick={goNextMonth} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.5)', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '0.9rem' }}>›</button>
-          <button onClick={goToday} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(var(--offwhite-rgb),0.4)', borderRadius: '4px', padding: '0.4rem 0.9rem', cursor: 'pointer', fontSize: '0.72rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)' }}>Today</button>
+          <button onClick={goNextMonth} style={{ background: 'none', border: '1px solid rgba(var(--overlay-rgb),0.1)', color: 'rgba(var(--offwhite-rgb),0.5)', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '0.9rem' }}>›</button>
+          <button onClick={goToday} style={{ background: 'none', border: '1px solid rgba(var(--overlay-rgb),0.1)', color: 'rgba(var(--offwhite-rgb),0.4)', borderRadius: '4px', padding: '0.4rem 0.9rem', cursor: 'pointer', fontSize: '0.72rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)' }}>Today</button>
         </div>
 
         {loading ? (
@@ -183,8 +183,8 @@ export default function DailyInventoryHistoryPage() {
                       position: 'relative',
                       display: 'block', textDecoration: 'none',
                       minHeight: isMobile ? '52px' : '78px',
-                      background: dayReports.length > 0 ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.01)',
-                      border: `1px solid ${isToday ? 'var(--teal)' : 'rgba(255,255,255,0.06)'}`,
+                      background: dayReports.length > 0 ? 'rgba(var(--overlay-rgb),0.025)' : 'rgba(var(--overlay-rgb),0.01)',
+                      border: `1px solid ${isToday ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.06)'}`,
                       borderRadius: '6px', padding: isMobile ? '0.3rem' : '0.5rem',
                     }}
                   >
@@ -215,7 +215,7 @@ export default function DailyInventoryHistoryPage() {
                       <div style={{
                         position: 'absolute', top: '100%', left: 0, zIndex: 30,
                         marginTop: '0.3rem', minWidth: '220px',
-                        background: '#141414', border: '1px solid rgba(255,255,255,0.12)',
+                        background: '#141414', border: '1px solid rgba(var(--overlay-rgb),0.12)',
                         borderRadius: '6px', padding: '0.65rem 0.8rem',
                         boxShadow: '0 8px 24px rgba(0,0,0,0.4)', pointerEvents: 'none',
                       }}>

@@ -183,7 +183,7 @@ export default function AdminUsersPage() {
   const inputStyle = {
     width: '100%',
     backgroundColor: '#1a1a1a',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid rgba(var(--overlay-rgb),0.1)',
     color: 'var(--offwhite)',
     padding: '0.75rem 1rem',
     borderRadius: '2px',
@@ -269,8 +269,8 @@ export default function AdminUsersPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
             {accounts.map(account => (
               <div key={account.id} style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                background: 'rgba(var(--overlay-rgb),0.02)',
+                border: '1px solid rgba(var(--overlay-rgb),0.06)',
                 borderRadius: '4px',
                 padding: '1rem 1.2rem',
                 display: 'flex',
@@ -317,7 +317,7 @@ export default function AdminUsersPage() {
                     style={{
                       flex: 1,
                       background: 'transparent',
-                      border: '1px solid rgba(255,255,255,0.1)',
+                      border: '1px solid rgba(var(--overlay-rgb),0.1)',
                       color: canEdit(account) ? 'rgba(var(--offwhite-rgb),0.6)' : 'rgba(var(--offwhite-rgb),0.2)',
                       padding: '0.6rem 0.8rem',
                       borderRadius: '2px',
@@ -345,14 +345,14 @@ export default function AdminUsersPage() {
           </div>
         ) : (
           <div style={{
-            background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            background: 'rgba(var(--overlay-rgb),0.02)',
+            border: '1px solid rgba(var(--overlay-rgb),0.06)',
             borderRadius: '4px',
             overflow: 'hidden',
           }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <tr style={{ borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)' }}>
                   {['Email', 'Role', 'Branches', 'Actions'].map(h => (
                     <th key={h} style={{
                       padding: '1rem 1.2rem',
@@ -369,7 +369,7 @@ export default function AdminUsersPage() {
               </thead>
               <tbody>
                 {accounts.map(account => (
-                  <tr key={account.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <tr key={account.id} style={{ borderBottom: '1px solid rgba(var(--overlay-rgb),0.04)' }}>
                     <td style={{ padding: '1rem 1.2rem', fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>
                       {account.firstName ? `${account.firstName} · ` : <span title="Managers see the first name at a café hub" style={{ color: 'var(--brand-secondary)' }}>No first name · </span>}{account.email}
                       {account.id === user?.uid && (
@@ -432,7 +432,7 @@ export default function AdminUsersPage() {
                           disabled={!canEdit(account)}
                           style={{
                             background: 'transparent',
-                            border: '1px solid rgba(255,255,255,0.1)',
+                            border: '1px solid rgba(var(--overlay-rgb),0.1)',
                             color: canEdit(account) ? 'rgba(var(--offwhite-rgb),0.6)' : 'rgba(var(--offwhite-rgb),0.2)',
                             padding: '0.4rem 0.8rem',
                             borderRadius: '2px',
@@ -476,7 +476,7 @@ export default function AdminUsersPage() {
         }}>
           <div style={{
             backgroundColor: '#111',
-            border: '1px solid rgba(255,255,255,0.1)',
+            border: '1px solid rgba(var(--overlay-rgb),0.1)',
             borderRadius: '8px',
             width: '100%',
             maxWidth: '480px',
@@ -488,7 +488,7 @@ export default function AdminUsersPage() {
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: isMobile ? '1.25rem 1.5rem' : '1.5rem 2rem',
-              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
             }}>
               <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem', color: 'var(--offwhite)' }}>
                 {editing ? 'Edit Account' : 'Add New Account'}
@@ -560,7 +560,7 @@ export default function AdminUsersPage() {
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         backgroundColor: form.role === r ? `${ROLE_COLORS[r]}15` : 'transparent',
-                        border: `1px solid ${form.role === r ? ROLE_COLORS[r] : 'rgba(255,255,255,0.1)'}`,
+                        border: `1px solid ${form.role === r ? ROLE_COLORS[r] : 'rgba(var(--overlay-rgb),0.1)'}`,
                         color: form.role === r ? ROLE_COLORS[r] : 'rgba(var(--offwhite-rgb),0.5)',
                         padding: '0.6rem 1rem',
                         borderRadius: '2px',
@@ -588,7 +588,7 @@ export default function AdminUsersPage() {
                           justifyContent: 'space-between',
                           alignItems: 'center',
                           backgroundColor: checked ? 'rgba(var(--teal-rgb),0.12)' : 'transparent',
-                          border: `1px solid ${checked ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
+                          border: `1px solid ${checked ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                           color: checked ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.5)',
                           padding: '0.6rem 1rem',
                           borderRadius: '2px',
@@ -601,7 +601,7 @@ export default function AdminUsersPage() {
                         <span style={{
                           width: '16px', height: '16px',
                           borderRadius: '3px',
-                          border: `1px solid ${checked ? 'var(--teal)' : 'rgba(255,255,255,0.2)'}`,
+                          border: `1px solid ${checked ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.2)'}`,
                           backgroundColor: checked ? 'var(--teal)' : 'transparent',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontSize: '0.65rem',
@@ -664,12 +664,12 @@ export default function AdminUsersPage() {
 
                         const bg    = state === 'revoked'  ? 'rgba(var(--red-rgb),0.08)'
                                     : state === 'granted'  ? 'rgba(149,102,210,0.12)'
-                                    : state === 'via-role' ? 'rgba(255,255,255,0.02)'
+                                    : state === 'via-role' ? 'rgba(var(--overlay-rgb),0.02)'
                                     : 'transparent'
                         const border = state === 'revoked'  ? '1px solid rgba(var(--red-rgb),0.4)'
                                      : state === 'granted'  ? '1px solid var(--purple)'
-                                     : state === 'via-role' ? '1px solid rgba(255,255,255,0.07)'
-                                     : '1px solid rgba(255,255,255,0.06)'
+                                     : state === 'via-role' ? '1px solid rgba(var(--overlay-rgb),0.07)'
+                                     : '1px solid rgba(var(--overlay-rgb),0.06)'
                         const color  = state === 'revoked'  ? 'var(--red)'
                                      : state === 'granted'  ? 'var(--purple)'
                                      : state === 'via-role' ? 'rgba(var(--offwhite-rgb),0.45)'
@@ -712,7 +712,7 @@ export default function AdminUsersPage() {
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                 <button type="button" onClick={() => setOpen(false)} style={{
                   flex: 1, background: 'transparent',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.1)',
                   color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.8rem',
                   borderRadius: '2px', fontSize: '0.75rem',
                   cursor: 'pointer', fontFamily: 'var(--font-inter)',

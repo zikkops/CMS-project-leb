@@ -54,7 +54,7 @@ const tap: React.CSSProperties = {
 
 const chip: React.CSSProperties = {
   ...tap, minHeight: '44px', padding: '0.45rem 0.8rem', fontSize: '0.92rem',
-  backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.14)',
+  backgroundColor: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.14)',
   color: 'rgba(var(--offwhite-rgb),0.75)',
 }
 
@@ -111,7 +111,7 @@ function SplitPanel({ check, onFill, disabled }: {
   }
 
   const picked = (active: boolean): React.CSSProperties => ({
-    borderColor: active ? 'var(--teal)' : 'rgba(255,255,255,0.14)',
+    borderColor: active ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.14)',
     backgroundColor: active ? 'rgba(var(--teal-rgb),0.15)' : 'transparent',
     color: active ? 'var(--offwhite)' : chip.color,
   })
@@ -157,7 +157,7 @@ function SplitPanel({ check, onFill, disabled }: {
               {live.map(l => {
                 const who = (assigned[l.id] ?? []).filter(p => p <= people).sort((a, b) => a - b)
                 return (
-                  <div key={l.id} style={{ padding: '0.55rem 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div key={l.id} style={{ padding: '0.55rem 0', borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', fontSize: '0.88rem', marginBottom: '0.35rem' }}>
                       <span>{describeLine(l)}</span>
                       <span style={{ color: 'rgba(var(--offwhite-rgb),0.6)', whiteSpace: 'nowrap' }}>
@@ -324,7 +324,7 @@ export default function PaySheet({
         </div>
 
         {payments.length > 0 && (
-          <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.7rem' }}>
+          <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.08)', paddingTop: '0.7rem' }}>
             {payments.map(p => (
               <div key={p.key} style={{
                 display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem',
@@ -385,8 +385,8 @@ export default function PaySheet({
                 placeholder={currency === 'USD' ? 'Amount in $' : 'Amount in LBP'}
                 disabled={locked}
                 style={{
-                  ...tap, flex: 1, backgroundColor: '#0a0a0a', color: 'var(--offwhite)',
-                  border: '1px solid rgba(255,255,255,0.14)', cursor: 'text', fontSize: '1rem',
+                  ...tap, flex: 1, backgroundColor: 'var(--surface-deep)', color: 'var(--offwhite)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.14)', cursor: 'text', fontSize: '1rem',
                 }}
               />
               <PosButton icon={faEquals} label="Exact" tone="quiet" disabled={locked} onClick={exact} />
@@ -396,7 +396,7 @@ export default function PaySheet({
                 Tip on the card
                 <input value={tip} disabled={locked} inputMode="decimal" placeholder="$0"
                   onChange={e => { if (!locked) { setTip(e.target.value.replace(/[^0-9.]/g, '')); setError('') } }}
-                  style={{ ...tap, flex: 1, backgroundColor: '#0a0a0a', color: 'var(--offwhite)', border: '1px solid rgba(255,255,255,0.14)', cursor: 'text', fontSize: '1rem' }} />
+                  style={{ ...tap, flex: 1, backgroundColor: 'var(--surface-deep)', color: 'var(--offwhite)', border: '1px solid rgba(var(--overlay-rgb),0.14)', cursor: 'text', fontSize: '1rem' }} />
               </label>
             )}
             {tipping && Number(tip) > 0 && !tipIssue && Number(amount) > 0 && (

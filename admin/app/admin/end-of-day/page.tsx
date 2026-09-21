@@ -21,8 +21,8 @@ import { ROLE_LABELS } from '@big-cms/shared/adminAuth'
 import { startLoad } from '@big-cms/shared/startLoad'
 
 const inp: React.CSSProperties = {
-  backgroundColor: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.1)',
+  backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.6rem 0.8rem',
   borderRadius: '2px',
@@ -335,8 +335,8 @@ function EndOfDayInner() {
 
             {/* ── Summary ──────────────────────────────────────────────────── */}
             <div style={{
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.07)',
+              background: 'rgba(var(--overlay-rgb),0.02)',
+              border: '1px solid rgba(var(--overlay-rgb),0.07)',
               borderRadius: '6px',
               padding: '1.25rem 1.5rem',
               marginBottom: '2.5rem',
@@ -360,13 +360,13 @@ function EndOfDayInner() {
                 {/* LBP */}
                 <div>
                   <p style={{ ...labelStyle, color: 'var(--teal)', marginBottom: '0.75rem' }}>Lebanese Pound (LBP)</p>
-                  <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.07)', borderRadius: '4px', overflow: 'hidden' }}>
                     {LBP_DENOMS.map((denom, i) => (
                       <div key={denom} style={{
                         display: 'grid', gridTemplateColumns: '1fr auto',
                         alignItems: 'center', gap: '0.75rem',
                         padding: '0.65rem 1rem',
-                        borderTop: i > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                        borderTop: i > 0 ? '1px solid rgba(var(--overlay-rgb),0.04)' : 'none',
                       }}>
                         <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.7)' }}>
                           {denom.toLocaleString()}
@@ -385,7 +385,7 @@ function EndOfDayInner() {
                     ))}
                     <div style={{
                       padding: '0.65rem 1rem',
-                      borderTop: '1px solid rgba(255,255,255,0.08)',
+                      borderTop: '1px solid rgba(var(--overlay-rgb),0.08)',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     }}>
                       <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)', letterSpacing: '0.05em' }}>TOTAL</span>
@@ -399,13 +399,13 @@ function EndOfDayInner() {
                 {/* USD */}
                 <div>
                   <p style={{ ...labelStyle, color: 'var(--brand-secondary)', marginBottom: '0.75rem' }}>US Dollar (USD)</p>
-                  <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.07)', borderRadius: '4px', overflow: 'hidden' }}>
                     {USD_DENOMS.map((denom, i) => (
                       <div key={denom} style={{
                         display: 'grid', gridTemplateColumns: '1fr auto',
                         alignItems: 'center', gap: '0.75rem',
                         padding: '0.65rem 1rem',
-                        borderTop: i > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                        borderTop: i > 0 ? '1px solid rgba(var(--overlay-rgb),0.04)' : 'none',
                       }}>
                         <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.7)' }}>
                           ${denom}
@@ -424,7 +424,7 @@ function EndOfDayInner() {
                     ))}
                     <div style={{
                       padding: '0.65rem 1rem',
-                      borderTop: '1px solid rgba(255,255,255,0.08)',
+                      borderTop: '1px solid rgba(var(--overlay-rgb),0.08)',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     }}>
                       <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)', letterSpacing: '0.05em' }}>TOTAL</span>
@@ -439,8 +439,8 @@ function EndOfDayInner() {
               {/* Grand total row */}
               <div style={{
                 marginTop: '1rem',
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(var(--overlay-rgb),0.03)',
+                border: '1px solid rgba(var(--overlay-rgb),0.08)',
                 borderRadius: '4px',
                 padding: '0.9rem 1.25rem',
                 display: 'flex', justifyContent: 'space-around', gap: '1rem', flexWrap: 'wrap',
@@ -585,8 +585,8 @@ function EndOfDayInner() {
             {/* ── Difference ───────────────────────────────────────────────── */}
             <div style={{
               marginBottom: '2.5rem',
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.07)',
+              background: 'rgba(var(--overlay-rgb),0.02)',
+              border: '1px solid rgba(var(--overlay-rgb),0.07)',
               borderRadius: '6px',
               padding: '1.25rem 1.5rem',
             }}>
@@ -612,14 +612,14 @@ function EndOfDayInner() {
               )}
 
               {attendance.length > 0 && (
-                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden', marginBottom: '1rem' }}>
+                <div style={{ background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)', borderRadius: '4px', overflow: 'hidden', marginBottom: '1rem' }}>
                   {attendance.map((entry, idx) => {
                     const present = entry.shift !== 'none'
                     return (
                       <div key={`${entry.name}-${idx}`} style={{
                         display: 'flex', alignItems: 'center', gap: '0.75rem',
                         padding: '0.75rem 1rem',
-                        borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                        borderTop: idx > 0 ? '1px solid rgba(var(--overlay-rgb),0.04)' : 'none',
                       }}>
                         {/* Present checkbox */}
                         <button
@@ -629,7 +629,7 @@ function EndOfDayInner() {
                           style={{
                             width: 22, height: 22, flexShrink: 0,
                             borderRadius: '3px',
-                            border: `2px solid ${present ? 'var(--teal)' : 'rgba(255,255,255,0.2)'}`,
+                            border: `2px solid ${present ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.2)'}`,
                             backgroundColor: present ? 'var(--teal)' : 'transparent',
                             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}
@@ -667,7 +667,7 @@ function EndOfDayInner() {
                                 padding: '0.3rem 0.65rem',
                                 borderRadius: '2px', border: 'none', cursor: 'pointer',
                                 fontSize: '0.72rem', fontFamily: 'var(--font-inter)', fontWeight: 600,
-                                backgroundColor: entry.shift === s ? 'var(--teal)' : 'rgba(255,255,255,0.06)',
+                                backgroundColor: entry.shift === s ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.06)',
                                 color: entry.shift === s ? '#fff' : 'rgba(var(--offwhite-rgb),0.4)',
                               }}
                             >
@@ -839,7 +839,7 @@ function StaffSearchCombobox({
           <div style={{
             marginTop: '0.4rem',
             backgroundColor: '#1a1a1a',
-            border: '1px solid rgba(255,255,255,0.12)',
+            border: '1px solid rgba(var(--overlay-rgb),0.12)',
             borderRadius: '4px',
             overflow: 'hidden',
           }}>
@@ -855,10 +855,10 @@ function StaffSearchCombobox({
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   width: '100%', padding: '0.7rem 1rem', textAlign: 'left',
-                  background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)',
+                  background: 'none', border: 'none', borderBottom: '1px solid rgba(var(--overlay-rgb),0.05)',
                   cursor: 'pointer', gap: '0.75rem',
                 }}
-                onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.07)')}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(var(--overlay-rgb),0.07)')}
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
                 <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>
@@ -890,8 +890,8 @@ function StaffSearchCombobox({
         <button
           type="button" onClick={addFreeText}
           style={{
-            backgroundColor: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            backgroundColor: 'rgba(var(--overlay-rgb),0.06)',
+            border: '1px solid rgba(var(--overlay-rgb),0.1)',
             color: 'rgba(var(--offwhite-rgb),0.5)',
             padding: '0.6rem 0.9rem',
             borderRadius: '2px', fontSize: '0.75rem',
@@ -935,8 +935,8 @@ function HintBox({ hints, color }: { hints: string[]; color: string }) {
     <div style={{
       marginTop: '0.75rem',
       padding: '0.75rem 1rem',
-      background: 'rgba(255,255,255,0.02)',
-      border: '1px solid rgba(255,255,255,0.06)',
+      background: 'rgba(var(--overlay-rgb),0.02)',
+      border: '1px solid rgba(var(--overlay-rgb),0.06)',
       borderLeft: `3px solid ${color}50`,
       borderRadius: '2px',
     }}>
@@ -972,8 +972,8 @@ function LineItemList({
 }) {
   const isMobile = useIsMobile()
   const inp2: React.CSSProperties = {
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
+    border: '1px solid rgba(var(--overlay-rgb),0.1)',
     color: 'var(--offwhite)',
     padding: '0.55rem 0.75rem',
     borderRadius: '2px',
@@ -985,13 +985,13 @@ function LineItemList({
   return (
     <div>
       {items.length > 0 && (
-        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.75rem' }}>
+        <div style={{ background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.75rem' }}>
           {items.map((item, idx) => (
             <div key={idx} style={{
               display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto',
               gap: '0.6rem', alignItems: 'center',
               padding: '0.65rem 1rem',
-              borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+              borderTop: idx > 0 ? '1px solid rgba(var(--overlay-rgb),0.04)' : 'none',
             }}>
               <input
                 type="text"
@@ -1020,7 +1020,7 @@ function LineItemList({
           ))}
           <div style={{
             padding: '0.65rem 1rem',
-            borderTop: '1px solid rgba(255,255,255,0.08)',
+            borderTop: '1px solid rgba(var(--overlay-rgb),0.08)',
             display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', alignItems: 'center',
           }}>
             <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)', letterSpacing: '0.05em' }}>TOTAL USD</span>

@@ -28,7 +28,7 @@ function formatResetDate(dateStr: string): string {
 const inputStyle = {
   width: '100%',
   backgroundColor: '#1a1a1a',
-  border: '1px solid rgba(255,255,255,0.1)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.75rem 1rem',
   borderRadius: '2px',
@@ -160,15 +160,15 @@ export default function ManageCustomersPage() {
   if (checking) return null
 
   const cardStyle = {
-    background: 'rgba(255,255,255,0.02)',
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'rgba(var(--overlay-rgb),0.02)',
+    border: '1px solid rgba(var(--overlay-rgb),0.06)',
     borderRadius: '4px',
     padding: isMobile ? '1rem 1.2rem' : '1.2rem 1.5rem',
   }
 
   const actionBtnStyle = {
     background: 'transparent',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid rgba(var(--overlay-rgb),0.1)',
     color: 'rgba(var(--offwhite-rgb),0.6)',
     padding: '0.4rem 0.8rem',
     borderRadius: '2px',
@@ -272,7 +272,7 @@ export default function ManageCustomersPage() {
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : filtered.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
           }}>
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
@@ -345,7 +345,7 @@ export default function ManageCustomersPage() {
                     <button onClick={() => handleResendPassword(customer)} disabled={!customer.email} style={{
                       ...actionBtnStyle,
                       color: sentEmailId === customer.id ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.6)',
-                      borderColor: sentEmailId === customer.id ? 'var(--teal)' : 'rgba(255,255,255,0.1)',
+                      borderColor: sentEmailId === customer.id ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.1)',
                       cursor: customer.email ? 'pointer' : 'not-allowed',
                       opacity: customer.email ? 1 : 0.4,
                     }}>{sentEmailId === customer.id ? '✓ Sent' : 'Reset Password'}</button>
@@ -368,12 +368,12 @@ export default function ManageCustomersPage() {
           zIndex: 100, padding: isMobile ? '1rem' : '2rem',
         }}>
           <div onClick={e => e.stopPropagation()} style={{
-            backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
+            backgroundColor: '#111', border: '1px solid rgba(var(--overlay-rgb),0.1)', borderRadius: '8px',
             width: '100%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto',
           }}>
             <div style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: isMobile ? '1.25rem 1.5rem' : '1.5rem 2rem', borderBottom: '1px solid rgba(255,255,255,0.06)',
+              padding: isMobile ? '1.25rem 1.5rem' : '1.5rem 2rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
             }}>
               <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color: 'var(--offwhite)' }}>
                 Edit Points
@@ -413,7 +413,7 @@ export default function ManageCustomersPage() {
 
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                 <button type="button" onClick={() => setEditing(null)} style={{
-                  flex: 1, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                  flex: 1, background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)',
                   color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.8rem', borderRadius: '2px', fontSize: '0.75rem',
                   cursor: 'pointer', fontFamily: 'var(--font-inter)',
                 }}>Cancel</button>

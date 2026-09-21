@@ -43,7 +43,7 @@ const lbp = (n: number) => `${Math.round(n).toLocaleString('en-US')} LBP`
 
 const field: React.CSSProperties = {
   minHeight: '42px', padding: '0 0.7rem', borderRadius: '4px',
-  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.14)',
+  background: 'rgba(var(--overlay-rgb),0.04)', border: '1px solid rgba(var(--overlay-rgb),0.14)',
   color: 'var(--offwhite)', fontFamily: 'var(--font-inter)', fontSize: '0.88rem',
   outline: 'none',
 }
@@ -165,7 +165,7 @@ export default function SalesExportPage() {
         {/* Controls, in one row above the results — the range IS the query. */}
         <div style={{
           display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-end',
-          paddingBottom: '1.2rem', borderBottom: '1px solid rgba(255,255,255,0.08)',
+          paddingBottom: '1.2rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.08)',
         }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
             <span style={{ fontSize: '0.64rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.4)' }}>From</span>
@@ -212,8 +212,8 @@ export default function SalesExportPage() {
           <>
             <div style={{
               display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '132px' : '150px'}, 1fr))`,
-              gap: '1px', background: 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.1)', margin: '1.5rem 0',
+              gap: '1px', background: 'rgba(var(--overlay-rgb),0.1)',
+              border: '1px solid rgba(var(--overlay-rgb),0.1)', margin: '1.5rem 0',
             }}>
               {[
                 ['Checks', String(totals.checks)],
@@ -245,7 +245,7 @@ export default function SalesExportPage() {
                 disabled={data.days.length === 0}
                 style={{
                   ...button, backgroundColor: 'transparent',
-                  border: '1px solid rgba(255,255,255,0.18)', color: 'rgba(var(--offwhite-rgb),0.75)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.18)', color: 'rgba(var(--offwhite-rgb),0.75)',
                 }}
               >Day summary as CSV</button>
               <span style={{ alignSelf: 'center', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.35)' }}>
@@ -267,7 +267,7 @@ export default function SalesExportPage() {
                         <th key={h} style={{
                           padding: '0.5rem 0.6rem', fontWeight: 500, fontSize: '0.68rem',
                           letterSpacing: '0.1em', textTransform: 'uppercase',
-                          borderBottom: '1px solid rgba(255,255,255,0.12)', whiteSpace: 'nowrap',
+                          borderBottom: '1px solid rgba(var(--overlay-rgb),0.12)', whiteSpace: 'nowrap',
                         }}>{h}</th>
                       ))}
                     </tr>
@@ -299,8 +299,8 @@ export default function SalesExportPage() {
           <>
             <div style={{
               display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '132px' : '150px'}, 1fr))`,
-              gap: '1px', background: 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.1)', margin: '1.5rem 0',
+              gap: '1px', background: 'rgba(var(--overlay-rgb),0.1)',
+              border: '1px solid rgba(var(--overlay-rgb),0.1)', margin: '1.5rem 0',
             }}>
               {[
                 ['Points issued', pointTotals.issued.toLocaleString('en-US')],
@@ -354,7 +354,7 @@ export default function SalesExportPage() {
                         <th key={h} style={{
                           padding: '0.5rem 0.6rem', fontWeight: 500, fontSize: '0.68rem',
                           letterSpacing: '0.1em', textTransform: 'uppercase',
-                          borderBottom: '1px solid rgba(255,255,255,0.12)', whiteSpace: 'nowrap',
+                          borderBottom: '1px solid rgba(var(--overlay-rgb),0.12)', whiteSpace: 'nowrap',
                         }}>{h}</th>
                       ))}
                     </tr>
@@ -389,6 +389,6 @@ export default function SalesExportPage() {
 
 const cell: React.CSSProperties = {
   padding: '0.5rem 0.6rem',
-  borderBottom: '1px solid rgba(255,255,255,0.06)',
+  borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
   whiteSpace: 'nowrap',
 }

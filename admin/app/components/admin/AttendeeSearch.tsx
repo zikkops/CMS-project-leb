@@ -6,7 +6,7 @@ import { fetchCustomerDirectory, type DirectoryUser } from '@big-cms/shared/frie
 const inputStyle = {
   width: '100%',
   backgroundColor: '#1a1a1a',
-  border: '1px solid rgba(255,255,255,0.1)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.8rem 1rem',
   borderRadius: '4px',
@@ -105,7 +105,7 @@ export default function AttendeeSearch({
         ) : (
           <div style={{
             marginTop: '0.5rem',
-            border: '1px solid rgba(255,255,255,0.08)',
+            border: '1px solid rgba(var(--overlay-rgb),0.08)',
             borderRadius: '4px',
             backgroundColor: '#111',
             maxHeight: isMobile ? '240px' : '280px',
@@ -124,7 +124,7 @@ export default function AttendeeSearch({
                   padding: '0.7rem 1rem',
                   background: 'transparent',
                   border: 'none',
-                  borderBottom: '1px solid rgba(255,255,255,0.04)',
+                  borderBottom: '1px solid rgba(var(--overlay-rgb),0.04)',
                   cursor: 'pointer',
                   textAlign: 'left',
                 }}

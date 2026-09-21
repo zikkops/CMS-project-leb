@@ -48,7 +48,7 @@ export default function EndOfDayLogPage() {
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)' }}>Loading…</p>
         ) : logs.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
             color: 'rgba(var(--offwhite-rgb),0.25)', fontSize: '0.85rem',
           }}>
@@ -58,8 +58,8 @@ export default function EndOfDayLogPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {logs.map(entry => (
               <div key={entry.id} style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                background: 'rgba(var(--overlay-rgb),0.02)',
+                border: '1px solid rgba(var(--overlay-rgb),0.06)',
                 borderRadius: '4px',
                 padding: '0.85rem 1.1rem',
                 display: 'grid',

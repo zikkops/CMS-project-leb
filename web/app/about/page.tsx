@@ -132,7 +132,7 @@ export default function AboutPage() {
               height: isMobile ? '260px' : '500px',
               borderRadius: '4px',
               overflow: 'hidden',
-              border: '1px solid rgba(255,255,255,0.06)',
+              border: '1px solid rgba(var(--overlay-rgb),0.06)',
             }}>
               <Image
                 src={PLACEHOLDER.heroBackground}
@@ -149,8 +149,8 @@ export default function AboutPage() {
             display: 'grid',
             gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
             gap: '1px',
-            backgroundColor: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            backgroundColor: 'rgba(var(--overlay-rgb),0.06)',
+            border: '1px solid rgba(var(--overlay-rgb),0.06)',
             borderRadius: '4px',
             overflow: 'hidden',
             marginBottom: isMobile ? '3rem' : '6rem',
@@ -245,9 +245,9 @@ export default function AboutPage() {
                   display: 'flex',
                   gap: '1.5rem',
                   padding: isMobile ? '1.5rem' : '2rem',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.06)',
                   borderRadius: '4px',
-                  background: 'rgba(255,255,255,0.02)',
+                  background: 'rgba(var(--overlay-rgb),0.02)',
                   alignItems: 'flex-start',
                 }}>
                   <div style={{
@@ -258,8 +258,8 @@ export default function AboutPage() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderRadius: '4px',
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'rgba(var(--overlay-rgb),0.03)',
+                    border: '1px solid rgba(var(--overlay-rgb),0.06)',
                   }}>
                     <FontAwesomeIcon icon={icon} style={{ fontSize: '1.15rem', color }} />
                   </div>

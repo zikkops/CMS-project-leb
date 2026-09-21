@@ -210,7 +210,7 @@ export default function AdminGamesPage() {
   const inputStyle = {
     width: '100%',
     backgroundColor: '#1a1a1a',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid rgba(var(--overlay-rgb),0.1)',
     color: 'var(--offwhite)',
     padding: '0.75rem 1rem',
     borderRadius: '2px',
@@ -262,7 +262,7 @@ export default function AdminGamesPage() {
           <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.8rem', width: isMobile ? '100%' : 'auto', flexWrap: 'wrap' }}>
             <button onClick={() => exportGamesCSV(products, false)} style={{
               backgroundColor: 'transparent',
-              border: '1px solid rgba(255,255,255,0.1)',
+              border: '1px solid rgba(var(--overlay-rgb),0.1)',
               color: 'rgba(var(--offwhite-rgb),0.6)',
               padding: '0.7rem 1.2rem',
               borderRadius: '2px',
@@ -274,7 +274,7 @@ export default function AdminGamesPage() {
             }}>Export Retail CSV</button>
             <button onClick={() => exportGamesCSV(products, true)} style={{
               backgroundColor: 'transparent',
-              border: '1px solid rgba(255,255,255,0.1)',
+              border: '1px solid rgba(var(--overlay-rgb),0.1)',
               color: 'rgba(var(--offwhite-rgb),0.6)',
               padding: '0.7rem 1.2rem',
               borderRadius: '2px',
@@ -289,7 +289,7 @@ export default function AdminGamesPage() {
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: 'transparent',
-              border: '1px solid rgba(255,255,255,0.1)',
+              border: '1px solid rgba(var(--overlay-rgb),0.1)',
               color: 'rgba(var(--offwhite-rgb),0.6)',
               padding: '0.7rem 1.5rem',
               borderRadius: '2px',
@@ -319,7 +319,7 @@ export default function AdminGamesPage() {
         <div style={{ marginBottom: '2rem' }}>
           <button onClick={() => setShowCatManager(!showCatManager)} style={{
             background: 'transparent',
-            border: '1px solid rgba(255,255,255,0.1)',
+            border: '1px solid rgba(var(--overlay-rgb),0.1)',
             color: 'rgba(var(--offwhite-rgb),0.5)',
             padding: '0.6rem 1.2rem',
             borderRadius: '2px',
@@ -335,8 +335,8 @@ export default function AdminGamesPage() {
 
           {showCatManager && (
             <div style={{
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.06)',
+              background: 'rgba(var(--overlay-rgb),0.02)',
+              border: '1px solid rgba(var(--overlay-rgb),0.06)',
               borderRadius: '4px',
               padding: '1.5rem',
             }}>
@@ -390,7 +390,7 @@ export default function AdminGamesPage() {
                   style={{
                     flex: 1,
                     backgroundColor: '#1a1a1a',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(var(--overlay-rgb),0.1)',
                     color: 'var(--offwhite)',
                     padding: '0.6rem 0.8rem',
                     borderRadius: '2px',
@@ -482,7 +482,7 @@ export default function AdminGamesPage() {
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : filteredGames.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)',
             borderRadius: '4px',
             padding: '3rem',
             textAlign: 'center',
@@ -496,8 +496,8 @@ export default function AdminGamesPage() {
               const stock = totalStock(product.stock)
               return (
                 <div key={product.id} style={{
-                  background: 'rgba(255,255,255,0.02)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'rgba(var(--overlay-rgb),0.02)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.06)',
                   borderRadius: '4px',
                   padding: '1rem 1.2rem',
                   display: 'flex',
@@ -539,7 +539,7 @@ export default function AdminGamesPage() {
                       <button onClick={() => openEdit(product)} style={{
                         flex: 1,
                         background: 'transparent',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(var(--overlay-rgb),0.1)',
                         color: 'rgba(var(--offwhite-rgb),0.5)',
                         padding: '0.5rem',
                         borderRadius: '2px',
@@ -566,14 +566,14 @@ export default function AdminGamesPage() {
           </div>
         ) : (
           <div style={{
-            background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            background: 'rgba(var(--overlay-rgb),0.02)',
+            border: '1px solid rgba(var(--overlay-rgb),0.06)',
             borderRadius: '4px',
             overflow: 'hidden',
           }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <tr style={{ borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)' }}>
                   {['Image', 'Name', 'Category', 'Retail', 'Wholesale', 'Stock', 'Actions'].map(h => (
                     <th key={h} style={{
                       padding: '1rem 1.2rem',
@@ -590,7 +590,7 @@ export default function AdminGamesPage() {
               </thead>
               <tbody>
                 {filteredGames.map(product => (
-                  <tr key={product.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <tr key={product.id} style={{ borderBottom: '1px solid rgba(var(--overlay-rgb),0.04)' }}>
                     <td style={{ padding: '0.8rem 1.2rem' }}>
                       {product.image && (
                         <img src={product.image} alt={product.name} style={{
@@ -635,7 +635,7 @@ export default function AdminGamesPage() {
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <button onClick={() => openEdit(product)} style={{
                           background: 'transparent',
-                          border: '1px solid rgba(255,255,255,0.1)',
+                          border: '1px solid rgba(var(--overlay-rgb),0.1)',
                           color: 'rgba(var(--offwhite-rgb),0.5)',
                           padding: '0.4rem 0.8rem',
                           borderRadius: '2px',
@@ -679,7 +679,7 @@ export default function AdminGamesPage() {
             justifyContent: 'space-between',
             alignItems: 'center',
             padding: isMobile ? '1.25rem 1.5rem' : '1.5rem 3rem',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
             flexShrink: 0,
           }}>
             <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.1rem' : '1.5rem', color: 'var(--offwhite)' }}>
@@ -687,7 +687,7 @@ export default function AdminGamesPage() {
             </h2>
             <button onClick={() => setOpen(false)} style={{
               background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.1)',
+              border: '1px solid rgba(var(--overlay-rgb),0.1)',
               color: 'rgba(var(--offwhite-rgb),0.5)',
               padding: '0.5rem 1.2rem',
               borderRadius: '2px',
@@ -711,8 +711,8 @@ export default function AdminGamesPage() {
             {/* Left Column */}
             <div style={{
               padding: isMobile ? '1.5rem' : '2.5rem 3rem',
-              borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)',
-              borderBottom: isMobile ? '1px solid rgba(255,255,255,0.06)' : 'none',
+              borderRight: isMobile ? 'none' : '1px solid rgba(var(--overlay-rgb),0.06)',
+              borderBottom: isMobile ? '1px solid rgba(var(--overlay-rgb),0.06)' : 'none',
               display: 'flex',
               flexDirection: 'column',
               gap: '1.5rem',
@@ -883,7 +883,7 @@ export default function AdminGamesPage() {
                   />
                   <button type="button" onClick={() => setShowPicker(true)} style={{
                     background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(var(--overlay-rgb),0.1)',
                     color: 'rgba(var(--offwhite-rgb),0.6)',
                     padding: '0.6rem 1rem',
                     borderRadius: '2px',
@@ -910,7 +910,7 @@ export default function AdminGamesPage() {
                   flex: 1,
                   borderRadius: '4px',
                   overflow: 'hidden',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.06)',
                   backgroundColor: '#fff',
                   display: 'flex',
                   alignItems: 'center',
@@ -928,7 +928,7 @@ export default function AdminGamesPage() {
                 <div style={{
                   flex: 1,
                   minHeight: isMobile ? '200px' : '300px',
-                  border: '1px dashed rgba(255,255,255,0.1)',
+                  border: '1px dashed rgba(var(--overlay-rgb),0.1)',
                   borderRadius: '4px',
                   display: 'flex',
                   alignItems: 'center',
@@ -945,7 +945,7 @@ export default function AdminGamesPage() {
                 <button type="button" onClick={() => setOpen(false)} style={{
                   flex: 1,
                   background: 'transparent',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.1)',
                   color: 'rgba(var(--offwhite-rgb),0.5)',
                   padding: '0.9rem',
                   borderRadius: '2px',

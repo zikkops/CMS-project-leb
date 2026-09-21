@@ -90,7 +90,7 @@ const EMPTY_FORM = {
 }
 
 const inp: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
   color: 'var(--offwhite)', borderRadius: '4px', padding: '0.55rem 0.75rem',
   fontSize: '0.85rem', outline: 'none', width: '100%', boxSizing: 'border-box',
   fontFamily: 'var(--font-inter)',
@@ -330,13 +330,13 @@ export default function SuppliesPage() {
   }, [visible, groupBy])
 
   if (checking || loading) return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--surface-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
     </div>
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--surface-deep)', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)' }}>
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '3rem 2rem' }}>
 
         <a href="/admin" style={{ fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none', marginBottom: '0.5rem', display: 'block' }}>
@@ -354,7 +354,7 @@ export default function SuppliesPage() {
             <a href="/admin/supplies/daily" style={{ background: 'transparent', color: '#6A9E5A', border: '1px solid rgba(106,158,90,0.35)', borderRadius: '4px', padding: '0.65rem 1.2rem', fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
               Daily Inventory Count
             </a>
-            <button onClick={seedFromTemplates} disabled={seeding} title="Adds new items from Weekly Orders and fills in Arabic names for existing items that don't have one yet" style={{ background: 'transparent', color: 'rgba(var(--offwhite-rgb),0.5)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '4px', padding: '0.65rem 1.2rem', fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase', cursor: seeding ? 'not-allowed' : 'pointer', opacity: seeding ? 0.5 : 1 }}>
+            <button onClick={seedFromTemplates} disabled={seeding} title="Adds new items from Weekly Orders and fills in Arabic names for existing items that don't have one yet" style={{ background: 'transparent', color: 'rgba(var(--offwhite-rgb),0.5)', border: '1px solid rgba(var(--overlay-rgb),0.12)', borderRadius: '4px', padding: '0.65rem 1.2rem', fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase', cursor: seeding ? 'not-allowed' : 'pointer', opacity: seeding ? 0.5 : 1 }}>
               {seeding ? 'Syncing…' : 'Import & Sync from Weekly Orders'}
             </button>
             <button onClick={openAdd} style={{ background: 'var(--teal)', color: '#000', border: 'none', borderRadius: '4px', padding: '0.65rem 1.4rem', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}>
@@ -368,7 +368,7 @@ export default function SuppliesPage() {
           {SUPPLY_BRANCHES.map(b => (
             <button key={b} onClick={() => setBranch(b)} style={{
               background: branch === b ? `${BRANCH_COLOR(b)}18` : 'transparent',
-              border: `1px solid ${branch === b ? BRANCH_COLOR(b) : 'rgba(255,255,255,0.09)'}`,
+              border: `1px solid ${branch === b ? BRANCH_COLOR(b) : 'rgba(var(--overlay-rgb),0.09)'}`,
               color: branch === b ? BRANCH_COLOR(b) : 'rgba(var(--offwhite-rgb),0.35)',
               borderRadius: '6px', padding: '0.5rem 1.25rem',
               fontSize: '0.78rem', fontWeight: branch === b ? 600 : 400,
@@ -383,13 +383,13 @@ export default function SuppliesPage() {
             style={{ ...inp, flex: 1, minWidth: '180px', padding: '0.6rem 0.9rem' }} />
           <button type="button" onClick={() => setLowChoice(!lowOnly)} aria-pressed={lowOnly} style={{
             background: lowOnly ? 'rgba(var(--red-rgb),0.15)' : 'transparent', color: lowOnly ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.55)',
-            border: `1px solid ${lowOnly ? 'rgba(var(--red-rgb),0.4)' : 'rgba(255,255,255,0.12)'}`, borderRadius: '6px', padding: '0 1rem', minHeight: '40px',
+            border: `1px solid ${lowOnly ? 'rgba(var(--red-rgb),0.4)' : 'rgba(var(--overlay-rgb),0.12)'}`, borderRadius: '6px', padding: '0 1rem', minHeight: '40px',
             fontSize: '0.78rem', letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
           }}>Low stock only{alertCount > 0 ? ` · ${alertCount}` : ''}</button>
-          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '6px', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', background: 'rgba(var(--overlay-rgb),0.04)', border: '1px solid rgba(var(--overlay-rgb),0.09)', borderRadius: '6px', overflow: 'hidden' }}>
             {(['category', 'provider'] as const).map(g => (
               <button key={g} onClick={() => setGroupBy(g)} style={{
-                background: groupBy === g ? 'rgba(255,255,255,0.1)' : 'transparent',
+                background: groupBy === g ? 'rgba(var(--overlay-rgb),0.1)' : 'transparent',
                 color: groupBy === g ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.35)',
                 border: 'none', padding: '0.6rem 1.1rem', fontSize: '0.72rem',
                 letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
@@ -427,7 +427,7 @@ export default function SuppliesPage() {
 
         {/* Groups */}
         {visible.length === 0 ? (
-          <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.2)', fontSize: '0.88rem' }}>
+          <div style={{ border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '6px', padding: '4rem', textAlign: 'center', color: 'rgba(var(--offwhite-rgb),0.2)', fontSize: '0.88rem' }}>
             {search ? 'No items match your search.' : 'No items yet. Click "+ Add Item" or import from Weekly Orders.'}
           </div>
         ) : (
@@ -504,7 +504,7 @@ export default function SuppliesPage() {
 
                         {/* Actions */}
                         <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.1rem' }}>
-                          <button onClick={() => openEdit(s)} style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(var(--offwhite-rgb),0.5)', borderRadius: '4px', padding: '0.28rem', fontSize: '0.68rem', cursor: 'pointer' }}>Edit</button>
+                          <button onClick={() => openEdit(s)} style={{ flex: 1, background: 'rgba(var(--overlay-rgb),0.04)', border: '1px solid rgba(var(--overlay-rgb),0.08)', color: 'rgba(var(--offwhite-rgb),0.5)', borderRadius: '4px', padding: '0.28rem', fontSize: '0.68rem', cursor: 'pointer' }}>Edit</button>
                           <button onClick={() => deleteItem(s.id)} disabled={deletingId === s.id} style={{ background: 'rgba(var(--red-rgb),0.08)', border: '1px solid rgba(var(--red-rgb),0.2)', color: 'var(--red)', borderRadius: '4px', padding: '0.28rem 0.5rem', fontSize: '0.68rem', cursor: 'pointer', opacity: deletingId === s.id ? 0.5 : 1 }}>
                             {deletingId === s.id ? '…' : '✕'}
                           </button>
@@ -522,7 +522,7 @@ export default function SuppliesPage() {
       {/* Modal */}
       {modal && (
         <div onClick={e => { if (e.target === e.currentTarget) setModal(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
-          <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '2rem', width: '100%', maxWidth: '460px', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ background: '#141414', border: '1px solid rgba(var(--overlay-rgb),0.1)', borderRadius: '8px', padding: '2rem', width: '100%', maxWidth: '460px', maxHeight: '90vh', overflowY: 'auto' }}>
             <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem', marginBottom: '1.5rem' }}>
               {modal === 'add' ? 'Add Item' : 'Edit Item'}
             </h2>
@@ -625,7 +625,7 @@ export default function SuppliesPage() {
                         onClick={() => setForm(f => ({ ...f, storage: f.storage === value ? null : value }))}
                         style={{
                           ...inp, width: 'auto', cursor: canSetStorage ? 'pointer' : 'not-allowed', opacity: canSetStorage ? 1 : 0.6,
-                          background: active ? 'rgba(var(--teal-rgb),0.2)' : 'transparent', borderColor: active ? 'var(--teal)' : 'rgba(255,255,255,0.12)',
+                          background: active ? 'rgba(var(--teal-rgb),0.2)' : 'transparent', borderColor: active ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.12)',
                         }}>
                         {label}
                       </button>
@@ -662,7 +662,7 @@ export default function SuppliesPage() {
                     return (
                       <button key={value} type="button"
                         onClick={() => setForm(f => ({ ...f, allergens: value === 'checked' ? (f.allergens ?? []) : null }))}
-                        style={{ ...inp, width: 'auto', cursor: 'pointer', background: active ? 'rgba(var(--teal-rgb),0.2)' : 'transparent', borderColor: active ? 'var(--teal)' : 'rgba(255,255,255,0.12)' }}>
+                        style={{ ...inp, width: 'auto', cursor: 'pointer', background: active ? 'rgba(var(--teal-rgb),0.2)' : 'transparent', borderColor: active ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.12)' }}>
                         {label}
                       </button>
                     )
@@ -725,7 +725,7 @@ export default function SuppliesPage() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: '0.6rem', width: '100%',
                     background: form.vatable ? 'rgba(var(--teal-rgb),0.1)' : 'transparent',
-                    border: `1px solid ${form.vatable ? 'rgba(var(--teal-rgb),0.4)' : 'rgba(255,255,255,0.1)'}`,
+                    border: `1px solid ${form.vatable ? 'rgba(var(--teal-rgb),0.4)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                     borderRadius: '4px', padding: '0.6rem 0.7rem', cursor: 'pointer',
                     color: form.vatable ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.4)',
                     fontFamily: 'var(--font-inter)', fontSize: '0.8rem', textAlign: 'left',
@@ -733,7 +733,7 @@ export default function SuppliesPage() {
                 >
                   <span style={{
                     width: '15px', height: '15px', flexShrink: 0, borderRadius: '3px',
-                    border: `1px solid ${form.vatable ? 'var(--teal)' : 'rgba(255,255,255,0.2)'}`,
+                    border: `1px solid ${form.vatable ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.2)'}`,
                     background: form.vatable ? 'var(--teal)' : 'transparent',
                     color: '#000', fontSize: '0.65rem', lineHeight: '15px', textAlign: 'center',
                   }}>{form.vatable ? '✓' : ''}</span>
@@ -760,7 +760,7 @@ export default function SuppliesPage() {
               <button onClick={save} disabled={saving || !form.name.trim()} style={{ flex: 1, background: 'var(--teal)', color: '#000', border: 'none', borderRadius: '4px', padding: '0.7rem', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
                 {saving ? 'Saving…' : modal === 'add' ? 'Add Item' : 'Save Changes'}
               </button>
-              <button onClick={() => setModal(null)} style={{ background: 'transparent', color: 'rgba(var(--offwhite-rgb),0.4)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '0.7rem 1rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+              <button onClick={() => setModal(null)} style={{ background: 'transparent', color: 'rgba(var(--offwhite-rgb),0.4)', border: '1px solid rgba(var(--overlay-rgb),0.1)', borderRadius: '4px', padding: '0.7rem 1rem', fontSize: '0.85rem', cursor: 'pointer' }}>
                 Cancel
               </button>
             </div>

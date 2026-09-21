@@ -416,10 +416,11 @@ Do these after T0.1, which protects them.
   nav entry and a verifier stub. The last step prints what is left by hand
   (the rules). Built on T2.1, T4.2 and T0.1.
   *Done: Done 21 Sep 2026. `npm run new:section -- <key>` (scripts/new-section.mjs) writes the SECTIONS entry, a new FEATURES entry that is off by default (or uses --feature), the nav item under --nav with that section's icon, the admin page stub (PageHeader, useRequireRole, startLoad), the route stub (requireSection, the feature switch, toResponse, runtime nodejs), a pure rules file, and a verifier with its npm script. It then prints what is left by hand: the TODO wording, the rules (with the matching can() roles), indexes, till tile and hub collections. It works everything out before writing anything, and it refuses an existing key, an existing file or an unknown feature, role or nav section. Tried as stockTakes: tsc for admin and shared, lint, verify:features, verify:sections and verify:admin-nav all passed, and the new verifier ran 2 passed. The trial was then removed.*
-- [ ] **T4.4 Theme tokens.** Move hard-coded colours (`#0a0a0a`,
+- [x] **T4.4 Theme tokens.** Move hard-coded colours (`#0a0a0a`,
   `rgba(255,255,255,…)`) into CSS variables, one app at a time. It is the
   groundwork for a light theme, and for a client's own colours without code
   changes.
+  *Done: Done 21 Sep 2026, for all three apps. brandCss.ts gains three theme tokens: `--overlay-rgb` (255, 255, 255; a light theme sets 0, 0, 0), `--surface-deep` and `--on-accent`. A codemod moved every literal white tint and #0a0a0a in web, admin and pos app code onto them: 952 tints across 106 files, plus 15 near-blacks. Text on a chip became on-accent; backgrounds became surface-deep. The manifest and the POS icon are left alone, because they are not CSS. verify:brand now fails on the literal in app code (checked by putting one back). The tokens are in one place but not yet brand-configurable. In the browser on the web app, the tinted declarations computed to the same rgba(255, 255, 255, a) as before. shared/src has one canvas fillStyle, which cannot read a variable and was left alone.*
 - [ ] **T4.5 Split the biggest admin pages** into `_components/` using the UI
   kit: menu (1,034 lines), end-of-day (1,034), supplies/receiving (986),
   products (985), events (940), weekly-orders (872). One page per session,

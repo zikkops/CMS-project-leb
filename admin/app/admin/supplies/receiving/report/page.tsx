@@ -41,8 +41,8 @@ import { startLoad } from '@big-cms/shared/startLoad'
 type Theory = TheoreticalFoodCost & { checks: number; waste: WasteSummary }
 
 const inp: React.CSSProperties = {
-  backgroundColor: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.1)',
+  backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.6rem 0.8rem',
   borderRadius: '2px',
@@ -83,8 +83,8 @@ function Stat({ label, value, sub, color }: {
 }) {
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.03)',
-      border: '1px solid rgba(255,255,255,0.1)',
+      background: 'rgba(var(--overlay-rgb),0.03)',
+      border: '1px solid rgba(var(--overlay-rgb),0.1)',
       borderRadius: '6px',
       padding: '1.1rem 1.25rem',
     }}>
@@ -433,8 +433,8 @@ export default function FoodCostReportPage() {
           {/* What was thrown away */}
           {theory && (
             <div style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(var(--overlay-rgb),0.03)',
+              border: '1px solid rgba(var(--overlay-rgb),0.1)',
               borderRadius: '6px',
               padding: '1.1rem 1.25rem',
               margin: '1.5rem 0 0.5rem',
@@ -486,15 +486,15 @@ export default function FoodCostReportPage() {
           {/* By department */}
           {stats.byDept.length > 0 && (
             <div style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(var(--overlay-rgb),0.03)',
+              border: '1px solid rgba(var(--overlay-rgb),0.1)',
               borderRadius: '6px',
               overflow: 'hidden',
               margin: '1.5rem 0',
             }}>
               <div style={{
                 padding: '0.85rem 1.25rem',
-                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                borderBottom: '1px solid rgba(var(--overlay-rgb),0.08)',
               }}>
                 <span style={{
                   fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.12em',
@@ -505,7 +505,7 @@ export default function FoodCostReportPage() {
                 <div key={row.dept} style={{
                   display: 'flex', justifyContent: 'space-between',
                   padding: '0.75rem 1.25rem',
-                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                  borderBottom: '1px solid rgba(var(--overlay-rgb),0.05)',
                 }}>
                   <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.6)' }}>
                     {row.dept}
@@ -521,7 +521,7 @@ export default function FoodCostReportPage() {
           {/* The deliveries behind the number */}
           {deliveries.length === 0 ? (
             <div style={{
-              border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
+              border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
               padding: '2.5rem', textAlign: 'center',
               color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
             }}>
@@ -542,7 +542,7 @@ export default function FoodCostReportPage() {
                         padding: '0.6rem 0.75rem',
                         fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase',
                         color: 'rgba(var(--offwhite-rgb),0.35)', fontWeight: 400,
-                        borderBottom: '1px solid rgba(255,255,255,0.1)',
+                        borderBottom: '1px solid rgba(var(--overlay-rgb),0.1)',
                       }}>{h}</th>
                     ))}
                   </tr>
@@ -560,7 +560,7 @@ export default function FoodCostReportPage() {
                     const cellColor = dim ? 'rgba(var(--offwhite-rgb),0.3)' : 'rgba(var(--offwhite-rgb),0.75)'
                     const cell: React.CSSProperties = {
                       padding: '0.65rem 0.75rem',
-                      borderBottom: '1px solid rgba(255,255,255,0.05)',
+                      borderBottom: '1px solid rgba(var(--overlay-rgb),0.05)',
                       color: cellColor,
                     }
                     return (

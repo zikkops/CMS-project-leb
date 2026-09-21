@@ -71,7 +71,7 @@ function SuppliesStatus() {
       </button>
 
       {open && (
-        <div style={{ padding: '0.75rem 1rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ padding: '0.75rem 1rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.06)' }}>
           {alerts.map(s => {
             const lowBranches = SUPPLY_BRANCHES.filter(b => (s.quantity[b] ?? 0) < s.threshold)
             const out = lowBranches.some(b => (s.quantity[b] ?? 0) <= 0)
@@ -289,7 +289,7 @@ function ReportCard({
 
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+      background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)',
       borderRadius: '4px', overflow: 'hidden',
     }}>
       {/* Summary row */}
@@ -354,16 +354,16 @@ function ReportCard({
 
       {/* Expanded body */}
       {open && (
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ borderTop: '1px solid rgba(var(--overlay-rgb),0.06)' }}>
           {/* Action bar */}
           <div style={{
             padding: '0.75rem 1.25rem',
-            background: 'rgba(255,255,255,0.02)',
+            background: 'rgba(var(--overlay-rgb),0.02)',
             display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
           }}>
             <button onClick={copyAll} style={{
-              backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+              backgroundColor: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
               color: copied ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.7)',
               padding: '0.45rem 1rem', borderRadius: '2px', fontSize: '0.72rem',
               letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
@@ -419,7 +419,7 @@ function ReportCard({
 
           {/* Fulfilment bar — teal for lines received in full, amber for short */}
           {fulfilment && (
-            <div style={{ display: 'flex', height: '3px', background: 'rgba(255,255,255,0.05)' }}>
+            <div style={{ display: 'flex', height: '3px', background: 'rgba(var(--overlay-rgb),0.05)' }}>
               <div style={{
                 width: `${(fulfilment.full / fulfilment.total) * 100}%`,
                 backgroundColor: 'var(--teal)',
@@ -470,8 +470,8 @@ function ReportCard({
                     <div key={provKey} style={{
                       marginBottom: '1rem',
                       borderRadius: '4px',
-                      border: `1px solid ${isSent ? 'rgba(37,211,102,0.35)' : 'rgba(255,255,255,0.06)'}`,
-                      backgroundColor: isSent ? 'rgba(37,211,102,0.05)' : 'rgba(255,255,255,0.01)',
+                      border: `1px solid ${isSent ? 'rgba(37,211,102,0.35)' : 'rgba(var(--overlay-rgb),0.06)'}`,
+                      backgroundColor: isSent ? 'rgba(37,211,102,0.05)' : 'rgba(var(--overlay-rgb),0.01)',
                       padding: '0.75rem 0.85rem',
                       transition: 'border-color 0.25s, background-color 0.25s',
                     }}>
@@ -493,7 +493,7 @@ function ReportCard({
 
                         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
                           <button onClick={() => copyProvider(providerId)} style={{
-                            backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                            backgroundColor: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)',
                             color: copiedProv === provKey ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.4)',
                             padding: '0.3rem 0.7rem', borderRadius: '2px', fontSize: '0.7rem',
                             cursor: 'pointer', fontFamily: 'var(--font-inter)',
@@ -523,8 +523,8 @@ function ReportCard({
                             onClick={e => { e.stopPropagation(); handleToggleSent(provKey) }}
                             title={isSent ? 'Sent — click to unmark' : 'Mark as sent'}
                             style={{
-                              backgroundColor: isSent ? 'rgba(37,211,102,0.22)' : 'rgba(255,255,255,0.04)',
-                              border: `1px solid ${isSent ? 'rgba(37,211,102,0.6)' : 'rgba(255,255,255,0.12)'}`,
+                              backgroundColor: isSent ? 'rgba(37,211,102,0.22)' : 'rgba(var(--overlay-rgb),0.04)',
+                              border: `1px solid ${isSent ? 'rgba(37,211,102,0.6)' : 'rgba(var(--overlay-rgb),0.12)'}`,
                               color: isSent ? '#25D366' : 'rgba(var(--offwhite-rgb),0.3)',
                               padding: '0.3rem 0.75rem', borderRadius: '2px', fontSize: '0.72rem',
                               cursor: 'pointer', fontFamily: 'var(--font-inter)',
@@ -568,7 +568,7 @@ function ReportCard({
                                     padding: '0.5rem 0.9rem',
                                     background: isEditing
                                       ? 'rgba(var(--teal-rgb),0.06)'
-                                      : 'rgba(255,255,255,0.025)',
+                                      : 'rgba(var(--overlay-rgb),0.025)',
                                     borderRadius: '2px',
                                     border: isEditing
                                       ? '1px solid rgba(var(--teal-rgb),0.25)'
@@ -657,7 +657,7 @@ function ReportCard({
             ))}
 
             {report.notes && (
-              <div style={{ marginTop: '0.5rem', padding: '0.7rem 0.9rem', background: 'rgba(255,255,255,0.03)', borderRadius: '2px', borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ marginTop: '0.5rem', padding: '0.7rem 0.9rem', background: 'rgba(var(--overlay-rgb),0.03)', borderRadius: '2px', borderLeft: '2px solid rgba(var(--overlay-rgb),0.1)' }}>
                 <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '0.2rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Notes</p>
                 <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.7)' }}>{report.notes}</p>
               </div>
@@ -753,13 +753,13 @@ export default function WeeklyOrdersPage() {
               {role === 'admin' && (
                 <>
                   <a href="/admin/weekly-orders/template" style={{
-                    backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                    backgroundColor: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)',
                     color: 'rgba(var(--offwhite-rgb),0.5)', textDecoration: 'none',
                     padding: '0.65rem 1.2rem', borderRadius: '2px', fontSize: '0.72rem',
                     letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
                   }}>Edit Template</a>
                   <a href="/admin/weekly-orders/access" style={{
-                    backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                    backgroundColor: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)',
                     color: 'rgba(var(--offwhite-rgb),0.4)', textDecoration: 'none',
                     padding: '0.65rem 1.2rem', borderRadius: '2px', fontSize: '0.72rem',
                     letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
@@ -768,7 +768,7 @@ export default function WeeklyOrdersPage() {
               )}
               {canEdit && (
                 <a href="/admin/weekly-orders/log" style={{
-                  backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                  backgroundColor: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)',
                   color: 'rgba(var(--offwhite-rgb),0.4)', textDecoration: 'none',
                   padding: '0.65rem 1.2rem', borderRadius: '2px', fontSize: '0.72rem',
                   letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)',
@@ -796,15 +796,15 @@ export default function WeeklyOrdersPage() {
               const active = deptFilter === d
               return (
                 <button key={d} onClick={() => setDeptFilter(d)} style={{
-                  backgroundColor: active ? (d === 'all' ? 'rgba(255,255,255,0.08)' : `${color}18`) : 'transparent',
-                  border: `1px solid ${active ? (d === 'all' ? 'rgba(255,255,255,0.2)' : color) : 'rgba(255,255,255,0.08)'}`,
+                  backgroundColor: active ? (d === 'all' ? 'rgba(var(--overlay-rgb),0.08)' : `${color}18`) : 'transparent',
+                  border: `1px solid ${active ? (d === 'all' ? 'rgba(var(--overlay-rgb),0.2)' : color) : 'rgba(var(--overlay-rgb),0.08)'}`,
                   color: active ? (d === 'all' ? 'var(--offwhite)' : color) : 'rgba(var(--offwhite-rgb),0.35)',
                   padding: '0.4rem 0.9rem', borderRadius: '2px', fontSize: '0.7rem',
                   letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer',
                   fontFamily: 'var(--font-inter)', display: 'flex', alignItems: 'center', gap: '0.35rem',
                 }}>
                   {d !== 'all' && (
-                    <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: active ? color : 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
+                    <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: active ? color : 'rgba(var(--overlay-rgb),0.2)', flexShrink: 0 }} />
                   )}
                   {d === 'all' ? `All (${count})` : `${d} (${count})`}
                 </button>
@@ -817,8 +817,8 @@ export default function WeeklyOrdersPage() {
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
           {(['all', ...BRANCHES] as const).map(b => (
             <button key={b} onClick={() => setBranchFilter(b)} style={{
-              backgroundColor: branchFilter === b ? 'rgba(255,255,255,0.08)' : 'transparent',
-              border: `1px solid ${branchFilter === b ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)'}`,
+              backgroundColor: branchFilter === b ? 'rgba(var(--overlay-rgb),0.08)' : 'transparent',
+              border: `1px solid ${branchFilter === b ? 'rgba(var(--overlay-rgb),0.2)' : 'rgba(var(--overlay-rgb),0.08)'}`,
               color: branchFilter === b ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.4)',
               padding: '0.4rem 0.9rem', borderRadius: '2px', fontSize: '0.7rem',
               letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer',
@@ -834,7 +834,7 @@ export default function WeeklyOrdersPage() {
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : visible.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
             color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>

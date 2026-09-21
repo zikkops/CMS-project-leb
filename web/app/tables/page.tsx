@@ -84,7 +84,7 @@ export default function TablesPage() {
             {BRANCHES.map(b => (
               <button key={b} onClick={() => handleBranchSwitch(b)} style={{
                 backgroundColor: branch === b ? 'var(--teal)' : 'transparent',
-                border: `1px solid ${branch === b ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
+                border: `1px solid ${branch === b ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                 color: branch === b ? '#fff' : 'rgba(var(--offwhite-rgb),0.6)',
                 padding: '0.6rem 1.2rem', borderRadius: '2px', fontSize: '0.78rem',
                 cursor: 'pointer', fontFamily: 'var(--font-inter)',
@@ -95,7 +95,7 @@ export default function TablesPage() {
           {loading ? (
             <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
           ) : !layout?.imageUrl ? (
-            <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center' }}>
+            <div style={{ border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center' }}>
               <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
                 The floor plan for {branch} isn&apos;t ready yet — check back soon.
               </p>

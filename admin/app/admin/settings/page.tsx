@@ -38,7 +38,7 @@ const labelStyle: React.CSSProperties = {
 }
 
 const inp: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)',
+  background: 'rgba(var(--overlay-rgb),0.03)', border: '1px solid rgba(var(--overlay-rgb),0.1)',
   borderRadius: '4px', padding: '0.65rem 0.8rem', color: 'var(--offwhite)',
   fontFamily: 'var(--font-inter)', fontSize: '0.9rem', outline: 'none',
 }
@@ -421,7 +421,7 @@ export default function BusinessSettingsPage() {
           onClick={save}
           disabled={saving || loading || !dirty}
           style={{
-            background: dirty ? 'var(--teal)' : 'rgba(255,255,255,0.05)',
+            background: dirty ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.05)',
             color: dirty ? '#000' : 'rgba(var(--offwhite-rgb),0.3)',
             border: 'none', borderRadius: '4px', padding: '0.75rem 1.75rem',
             fontFamily: 'var(--font-inter)', fontSize: '0.8rem', fontWeight: 700,
@@ -432,7 +432,7 @@ export default function BusinessSettingsPage() {
 
         <p style={{
           fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.25)',
-          marginTop: '2.5rem', lineHeight: 1.7, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1.25rem',
+          marginTop: '2.5rem', lineHeight: 1.7, borderTop: '1px solid rgba(var(--overlay-rgb),0.06)', paddingTop: '1.25rem',
         }}>
           Every change is recorded in the activity log with the old and new
           value and who made it.

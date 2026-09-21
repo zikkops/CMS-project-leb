@@ -62,12 +62,12 @@ const lbp = (n: number) => `${Math.round(n).toLocaleString('en-US')} LBP`
 
 const input: React.CSSProperties = {
   minHeight: '56px', padding: '0.6rem 0.9rem', borderRadius: '10px',
-  backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--offwhite)',
-  border: '2px solid rgba(255,255,255,0.16)', fontSize: '1.1rem', textAlign: 'right',
+  backgroundColor: 'rgba(var(--overlay-rgb),0.05)', color: 'var(--offwhite)',
+  border: '2px solid rgba(var(--overlay-rgb),0.16)', fontSize: '1.1rem', textAlign: 'right',
   fontFamily: 'var(--font-inter)', outline: 'none', boxSizing: 'border-box',
 }
 const card: React.CSSProperties = {
-  backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '14px',
+  backgroundColor: 'rgba(var(--overlay-rgb),0.03)', border: '1px solid rgba(var(--overlay-rgb),0.12)', borderRadius: '14px',
   padding: '1.1rem 1.2rem', marginTop: '1rem',
 }
 const muted = 'rgba(var(--offwhite-rgb),0.6)'
@@ -106,7 +106,7 @@ function Totals({ t }: { t: DrawerTotals }) {
       {some(safeDrops) && <Row label="Taken to the safe" value={`−${usd(safeDrops.usd)} · −${lbp(safeDrops.lbp)}`} />}
       {some(payIns) && <Row label="Paid in" value={`+${usd(payIns.usd)} · +${lbp(payIns.lbp)}`} />}
       <Row label="Should be in the drawer" value={`${usd(t.expected.usd)} · ${lbp(t.expected.lbp)}`} strong />
-      <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '0.5rem 0' }} />
+      <div style={{ height: '1px', background: 'rgba(var(--overlay-rgb),0.1)', margin: '0.5rem 0' }} />
       <Row label={`Card (not in the drawer) · ${t.payments} payment${t.payments === 1 ? '' : 's'}`}
         value={`${usd(t.card.usd)} · ${lbp(t.card.lbp)}`} />
     </div>
@@ -338,7 +338,7 @@ export default function DrawerPage() {
           <div style={card}>
             <SectionLabel icon={faLock}>Shift closed</SectionLabel>
             <Totals t={z.totals} />
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '0.5rem 0' }} />
+            <div style={{ height: '1px', background: 'rgba(var(--overlay-rgb),0.1)', margin: '0.5rem 0' }} />
             <Row label="Counted" value={`${usd(z.counted.usd)} · ${lbp(z.counted.lbp)}`} strong />
             <Row label={`Dollars — ${diffWord(z.difference.usd)}`} value={`${z.difference.usd > 0 ? '+' : ''}${usd(z.difference.usd)}`}
               colour={diffColour(z.difference.usd)} icon={diffIcon(z.difference.usd)} strong />

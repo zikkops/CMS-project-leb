@@ -15,7 +15,7 @@ import { useAvailableStartTimes, createTableReservationRequest, branchOpeningHou
 const inputStyle = {
   width: '100%',
   backgroundColor: '#1a1a1a',
-  border: '1px solid rgba(255,255,255,0.1)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.75rem 1rem',
   borderRadius: '4px',
@@ -126,7 +126,7 @@ export default function TableReservationModal({ branch, tableIds, tableNumbers, 
         onClick={e => e.stopPropagation()}
         style={{
           backgroundColor: '#111',
-          border: '1px solid rgba(255,255,255,0.1)',
+          border: '1px solid rgba(var(--overlay-rgb),0.1)',
           borderRadius: '8px',
           width: '100%',
           maxWidth: '480px',
@@ -138,7 +138,7 @@ export default function TableReservationModal({ branch, tableIds, tableNumbers, 
           justifyContent: 'space-between',
           alignItems: 'flex-start',
           padding: isMobile ? '1.25rem 1.5rem' : '1.5rem 2rem',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
         }}>
           <div>
             <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem', color: 'var(--offwhite)' }}>
@@ -200,7 +200,7 @@ export default function TableReservationModal({ branch, tableIds, tableNumbers, 
                           onClick={() => setSelectedTime(t)}
                           style={{
                             backgroundColor: active ? 'var(--teal)' : 'transparent',
-                            border: `1px solid ${active ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
+                            border: `1px solid ${active ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                             color: active ? '#fff' : 'rgba(var(--offwhite-rgb),0.6)',
                             padding: '0.6rem 0.4rem',
                             borderRadius: '2px',

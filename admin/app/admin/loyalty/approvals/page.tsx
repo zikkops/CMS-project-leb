@@ -125,8 +125,8 @@ export default function LoyaltyApprovalsPage() {
   }
 
   const cardStyle = {
-    background: 'rgba(255,255,255,0.02)',
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'rgba(var(--overlay-rgb),0.02)',
+    border: '1px solid rgba(var(--overlay-rgb),0.06)',
     borderRadius: '4px',
     padding: isMobile ? '1.1rem' : '1.5rem',
     display: 'flex',
@@ -203,7 +203,7 @@ export default function LoyaltyApprovalsPage() {
               onChange={e => setAdminBranchFilter(e.target.value)}
               style={{
                 backgroundColor: '#1a1a1a',
-                border: '1px solid rgba(255,255,255,0.1)',
+                border: '1px solid rgba(var(--overlay-rgb),0.1)',
                 color: 'var(--offwhite)',
                 padding: '0.6rem 0.9rem',
                 borderRadius: '2px',
@@ -223,7 +223,7 @@ export default function LoyaltyApprovalsPage() {
               onChange={e => setManagerBranchFilter(e.target.value)}
               style={{
                 backgroundColor: '#1a1a1a',
-                border: '1px solid rgba(255,255,255,0.1)',
+                border: '1px solid rgba(var(--overlay-rgb),0.1)',
                 color: 'var(--offwhite)',
                 padding: '0.6rem 0.9rem',
                 borderRadius: '2px',
@@ -254,7 +254,7 @@ export default function LoyaltyApprovalsPage() {
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : visible.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)',
             borderRadius: '4px',
             padding: isMobile ? '3rem 1.5rem' : '4rem',
             textAlign: 'center',
@@ -345,7 +345,7 @@ export default function LoyaltyApprovalsPage() {
                               height: isMobile ? '80px' : '60px',
                               borderRadius: '4px',
                               overflow: 'hidden',
-                              border: '1px solid rgba(255,255,255,0.1)',
+                              border: '1px solid rgba(var(--overlay-rgb),0.1)',
                               padding: 0,
                               cursor: 'pointer',
                             }}
@@ -383,7 +383,7 @@ export default function LoyaltyApprovalsPage() {
                               fontSize: '0.75rem',
                               padding: '0.25rem 0.7rem',
                               borderRadius: '2px',
-                              backgroundColor: 'rgba(255,255,255,0.05)',
+                              backgroundColor: 'rgba(var(--overlay-rgb),0.05)',
                               color: 'var(--offwhite)',
                               fontFamily: 'var(--font-inter)',
                             }}>{profiles.get(uid)?.displayName ?? '…'}</span>
@@ -444,7 +444,7 @@ export default function LoyaltyApprovalsPage() {
                           onClick={() => { setRejectingId(null); setRejectReason('') }}
                           style={{
                             background: 'transparent',
-                            border: '1px solid rgba(255,255,255,0.1)',
+                            border: '1px solid rgba(var(--overlay-rgb),0.1)',
                             color: 'rgba(var(--offwhite-rgb),0.5)',
                             padding: '0.7rem 1.2rem',
                             borderRadius: '2px',
@@ -461,7 +461,7 @@ export default function LoyaltyApprovalsPage() {
 
                   {/* Approve / Reject */}
                   {rejectingId !== tx.id && (
-                    <div style={{ display: 'flex', gap: '0.6rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', gap: '0.6rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.05)' }}>
                       <button
                         onClick={() => handleApprove(tx)}
                         disabled={isBusy}

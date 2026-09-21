@@ -32,7 +32,7 @@ interface SubmissionSummary {
 const inputStyle = {
   width: '100%',
   backgroundColor: '#1a1a1a',
-  border: '1px solid rgba(255,255,255,0.1)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.8rem 1rem',
   borderRadius: '4px',
@@ -135,9 +135,9 @@ export default function LoyaltyEventsPage() {
           </p>
 
           <div style={{
-            border: '1px solid rgba(255,255,255,0.08)',
+            border: '1px solid rgba(var(--overlay-rgb),0.08)',
             borderRadius: '4px',
-            backgroundColor: 'rgba(255,255,255,0.02)',
+            backgroundColor: 'rgba(var(--overlay-rgb),0.02)',
             padding: '1.5rem',
             display: 'flex',
             flexDirection: 'column',

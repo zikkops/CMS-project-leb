@@ -34,7 +34,7 @@ const LABEL = new Map(ALLERGENS_EU14.map(a => [a.key, a.label]))
 const names = (keys: string[]) => keys.map(k => LABEL.get(k) ?? k).join(', ')
 
 const inp: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
   color: 'var(--offwhite)', borderRadius: '4px', padding: '0.55rem 0.75rem',
   fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'var(--font-inter)', width: '100%',
 }
@@ -97,7 +97,7 @@ export default function AllergenChartPage() {
         )}
 
         {shown.map(d => (
-          <div key={d.menuItemId} style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '0.8rem 0.2rem' }}>
+          <div key={d.menuItemId} style={{ borderBottom: '1px solid rgba(var(--overlay-rgb),0.07)', padding: '0.8rem 0.2rem' }}>
             <button type="button" onClick={() => setOpen(open === d.menuItemId ? null : d.menuItemId)} style={{
               all: 'unset', cursor: 'pointer', width: '100%',
               display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '14rem 1fr', gap: '0.4rem 1rem', alignItems: 'center',

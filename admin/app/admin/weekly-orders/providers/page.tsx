@@ -10,7 +10,7 @@ import { BRANCHES } from '@big-cms/shared/branches'
 import { startLoad } from '@big-cms/shared/startLoad'
 
 const inp: React.CSSProperties = {
-  backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)',
+  backgroundColor: '#1a1a1a', border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)', padding: '0.6rem 0.8rem', borderRadius: '2px',
   fontSize: '0.85rem', outline: 'none', fontFamily: 'var(--font-inter)',
 }
@@ -23,7 +23,7 @@ const btnPrimary: React.CSSProperties = {
 }
 
 const btnGhost: React.CSSProperties = {
-  backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+  backgroundColor: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'rgba(var(--offwhite-rgb),0.5)', padding: '0.55rem 1rem', borderRadius: '2px',
   fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase',
   cursor: 'pointer', fontFamily: 'var(--font-inter)',
@@ -62,7 +62,7 @@ function AddProviderForm({ onSave }: { onSave: (p: Omit<OrderProvider, 'id' | 'c
 
   return (
     <form onSubmit={submit} style={{
-      background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)',
+      background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.08)',
       borderRadius: '4px', padding: '1.4rem 1.6rem', marginBottom: '2rem',
     }}>
       <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginBottom: '1rem', letterSpacing: '0.12em' }}>ADD PROVIDER</p>
@@ -220,7 +220,7 @@ function ProviderCard({
 
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+      background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)',
       borderRadius: '4px', padding: '1.25rem 1.5rem',
     }}>
       {editing ? (
@@ -256,7 +256,7 @@ function ProviderCard({
               {categories.map(cat => (
                 <span key={cat} style={{
                   display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-                  backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                  backgroundColor: 'rgba(var(--overlay-rgb),0.06)', border: '1px solid rgba(var(--overlay-rgb),0.1)',
                   borderRadius: '2px', padding: '0.25rem 0.55rem',
                   fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'var(--offwhite)',
                 }}>
@@ -290,7 +290,7 @@ function ProviderCard({
                 type="button"
                 onClick={addCategory}
                 style={{
-                  backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                  backgroundColor: 'rgba(var(--overlay-rgb),0.06)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
                   color: 'rgba(var(--offwhite-rgb),0.6)', padding: '0.55rem 0.9rem', borderRadius: '2px',
                   fontSize: '0.72rem', cursor: 'pointer', fontFamily: 'var(--font-inter)',
                 }}
@@ -398,8 +398,8 @@ function ProviderCard({
                 const phone = provider.phones?.[branch]
                 return (
                   <div key={branch} style={{
-                    background: phone ? 'rgba(var(--teal-rgb),0.08)' : 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${phone ? 'rgba(var(--teal-rgb),0.25)' : 'rgba(255,255,255,0.06)'}`,
+                    background: phone ? 'rgba(var(--teal-rgb),0.08)' : 'rgba(var(--overlay-rgb),0.03)',
+                    border: `1px solid ${phone ? 'rgba(var(--teal-rgb),0.25)' : 'rgba(var(--overlay-rgb),0.06)'}`,
                     borderRadius: '3px', padding: '0.5rem 0.9rem', minWidth: '140px',
                   }}>
                     <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{branch}</p>
@@ -470,7 +470,7 @@ export default function ProvidersPage() {
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : providers.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
             padding: '3rem', textAlign: 'center',
             color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>

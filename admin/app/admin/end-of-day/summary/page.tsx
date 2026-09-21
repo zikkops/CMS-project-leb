@@ -13,8 +13,8 @@ import { BRAND } from '@big-cms/shared/brand'
 import { startLoad } from '@big-cms/shared/startLoad'
 
 const inp: React.CSSProperties = {
-  backgroundColor: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.1)',
+  backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.6rem 0.8rem',
   borderRadius: '2px',
@@ -31,7 +31,7 @@ function Row({ label, value, color, sub }: { label: string; value: string; color
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
       padding: '0.85rem 1.25rem',
-      borderBottom: '1px solid rgba(255,255,255,0.05)',
+      borderBottom: '1px solid rgba(var(--overlay-rgb),0.05)',
     }}>
       <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.45)', letterSpacing: '0.04em' }}>
         {label}
@@ -179,7 +179,7 @@ function EndOfDaySummaryInner() {
 
         {!loading && branch && date && !report && (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px',
             padding: '2.5rem', textAlign: 'center',
             color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
           }}>
@@ -234,8 +234,8 @@ function EndOfDaySummaryInner() {
 
           {/* Screenshot card */}
           <div style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(var(--overlay-rgb),0.03)',
+            border: '1px solid rgba(var(--overlay-rgb),0.1)',
             borderRadius: '6px',
             overflow: 'hidden',
           }}>
@@ -281,8 +281,8 @@ function EndOfDaySummaryInner() {
 
             {/* Difference */}
             <div style={{
-              background: 'rgba(255,255,255,0.02)',
-              borderTop: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(var(--overlay-rgb),0.02)',
+              borderTop: '1px solid rgba(var(--overlay-rgb),0.08)',
             }}>
               <div style={{ padding: '0.6rem 1.25rem 0.2rem' }}>
                 <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
@@ -304,7 +304,7 @@ function EndOfDaySummaryInner() {
             {/* Footer */}
             <div style={{
               padding: '0.6rem 1.25rem',
-              borderTop: '1px solid rgba(255,255,255,0.05)',
+              borderTop: '1px solid rgba(var(--overlay-rgb),0.05)',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
               <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.2)' }}>

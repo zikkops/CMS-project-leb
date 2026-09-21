@@ -66,7 +66,7 @@ function HeroButton({
         left: hovered ? '120%' : '-60%',
         width: '40%',
         height: '100%',
-        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
+        background: 'linear-gradient(90deg, transparent, rgba(var(--overlay-rgb),0.2), transparent)',
         transform: 'skewX(-20deg)',
         transition: 'left 0.5s ease',
         pointerEvents: 'none',

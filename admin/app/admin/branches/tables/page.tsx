@@ -45,7 +45,7 @@ interface DragState {
 const inputStyle = {
   width: '100%',
   backgroundColor: '#1a1a1a',
-  border: '1px solid rgba(255,255,255,0.1)',
+  border: '1px solid rgba(var(--overlay-rgb),0.1)',
   color: 'var(--offwhite)',
   padding: '0.6rem 0.8rem',
   borderRadius: '2px',
@@ -66,7 +66,7 @@ const labelStyle = {
 
 const btnStyle = {
   background: 'transparent',
-  border: '1px solid rgba(255,255,255,0.15)',
+  border: '1px solid rgba(var(--overlay-rgb),0.15)',
   color: 'rgba(var(--offwhite-rgb),0.7)',
   padding: '0.5rem 1rem',
   borderRadius: '2px',
@@ -300,7 +300,7 @@ export default function BranchTablesPage() {
           {BRANCHES.map(b => (
             <button key={b} onClick={() => handleBranchSwitch(b)} style={{
               backgroundColor: branch === b ? 'var(--teal)' : 'transparent',
-              border: `1px solid ${branch === b ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
+              border: `1px solid ${branch === b ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.1)'}`,
               color: branch === b ? '#fff' : 'rgba(var(--offwhite-rgb),0.6)',
               padding: '0.6rem 1.2rem', borderRadius: '2px', fontSize: '0.78rem',
               cursor: 'pointer', fontFamily: 'var(--font-inter)',
@@ -313,7 +313,7 @@ export default function BranchTablesPage() {
             {migrating ? 'Converting this branch\'s saved layout to the newer pixel-based sizing…' : 'Loading…'}
           </p>
         ) : !imageUrl ? (
-          <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center' }}>
+          <div style={{ border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px', padding: '3rem', textAlign: 'center' }}>
             <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.4)', marginBottom: '1.2rem' }}>
               No floor plan uploaded yet for {branch}.
             </p>
@@ -336,7 +336,7 @@ export default function BranchTablesPage() {
                   style={{
                     ...btnStyle,
                     backgroundColor: adjacencyMode ? 'var(--purple)' : 'transparent',
-                    borderColor: adjacencyMode ? 'var(--purple)' : 'rgba(255,255,255,0.15)',
+                    borderColor: adjacencyMode ? 'var(--purple)' : 'rgba(var(--overlay-rgb),0.15)',
                     color: adjacencyMode ? '#fff' : 'rgba(var(--offwhite-rgb),0.7)',
                   }}
                 >{adjacencyMode ? 'Adjacency Mode: On' : 'Adjacency Mode: Off'}</button>
@@ -355,7 +355,7 @@ export default function BranchTablesPage() {
 
               <div
                 ref={containerRef}
-                style={{ position: 'relative', width: '100%', userSelect: 'none', touchAction: 'none', border: '1px solid rgba(255,255,255,0.06)' }}
+                style={{ position: 'relative', width: '100%', userSelect: 'none', touchAction: 'none', border: '1px solid rgba(var(--overlay-rgb),0.06)' }}
               >
                 <img src={imageUrl} alt={`${branch} floor plan`} style={{ display: 'block', width: '100%', pointerEvents: 'none' }} />
 
@@ -416,7 +416,7 @@ export default function BranchTablesPage() {
             {/* Inline editor panel for the selected marker */}
             <div>
               {selected && !adjacencyMode ? (
-                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '4px', padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                <div style={{ background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)', borderRadius: '4px', padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
                   <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.95rem', color: 'var(--offwhite)' }}>Table {selected.number}</p>
                   <div>
                     <label style={labelStyle}>Number</label>

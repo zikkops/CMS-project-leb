@@ -46,7 +46,7 @@ const label: React.CSSProperties = {
   color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.35rem',
 }
 const inp: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)',
+  background: 'rgba(var(--overlay-rgb),0.03)', border: '1px solid rgba(var(--overlay-rgb),0.1)',
   borderRadius: '4px', padding: '0.6rem 0.75rem', color: 'var(--offwhite)',
   fontFamily: 'var(--font-inter)', fontSize: '0.88rem', outline: 'none', width: '100%',
 }
@@ -158,7 +158,7 @@ function GroupEditor({
               disabled={options.length === 1}
               style={{
                 ...btn, padding: '0 0.7rem', background: 'none',
-                border: '1px solid rgba(255,255,255,0.1)',
+                border: '1px solid rgba(var(--overlay-rgb),0.1)',
                 color: options.length === 1 ? 'rgba(var(--offwhite-rgb),0.15)' : 'var(--red)',
                 cursor: options.length === 1 ? 'default' : 'pointer',
               }}
@@ -172,7 +172,7 @@ function GroupEditor({
         disabled={options.length >= MODIFIER_LIMITS.optionsPerGroup}
         style={{
           ...btn, marginTop: '0.6rem', background: 'none',
-          border: '1px dashed rgba(255,255,255,0.18)', color: 'rgba(var(--offwhite-rgb),0.5)',
+          border: '1px dashed rgba(var(--overlay-rgb),0.18)', color: 'rgba(var(--offwhite-rgb),0.5)',
         }}
       >+ Add option</button>
 
@@ -186,7 +186,7 @@ function GroupEditor({
       <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.1rem' }}>
         <button onClick={onCancel} style={{
           ...btn, flex: 1, background: 'transparent',
-          border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(var(--offwhite-rgb),0.6)',
+          border: '1px solid rgba(var(--overlay-rgb),0.14)', color: 'rgba(var(--offwhite-rgb),0.6)',
         }}>Cancel</button>
         <button
           disabled={Boolean(problem) || saving}
@@ -225,7 +225,7 @@ function AttachPanel({
   return (
     <div style={{
       marginTop: '0.75rem', paddingTop: '0.75rem',
-      borderTop: '1px solid rgba(255,255,255,0.07)',
+      borderTop: '1px solid rgba(var(--overlay-rgb),0.07)',
     }}>
       <p style={{ ...label, marginBottom: '0.5rem' }}>On which items</p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
@@ -239,7 +239,7 @@ function AttachPanel({
               style={{
                 ...btn, minHeight: '36px', padding: '0 0.75rem', fontSize: '0.75rem',
                 backgroundColor: on ? 'rgba(var(--teal-rgb),0.18)' : 'transparent',
-                border: `1px solid ${on ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
+                border: `1px solid ${on ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                 color: on ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.45)',
               }}
             >{on ? '✓ ' : ''}{i.name}</button>
@@ -372,7 +372,7 @@ export default function ModifiersPage() {
 
       {groups.map(g => (
         <div key={g.id} style={{
-          border: '1px solid rgba(255,255,255,0.08)', borderRadius: '5px',
+          border: '1px solid rgba(var(--overlay-rgb),0.08)', borderRadius: '5px',
           padding: isMobile ? '0.9rem' : '1.1rem', marginBottom: '0.7rem',
         }}>
           {editing !== null && editing !== 'new' && editing.id === g.id ? (
@@ -406,11 +406,11 @@ export default function ModifiersPage() {
                 <div style={{ display: 'flex', gap: '0.4rem' }}>
                   <button onClick={() => setExpanded(expanded === g.id ? null : g.id)} style={{
                     ...btn, background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(var(--offwhite-rgb),0.6)',
+                    border: '1px solid rgba(var(--overlay-rgb),0.12)', color: 'rgba(var(--offwhite-rgb),0.6)',
                   }}>{expanded === g.id ? 'Done' : 'Attach'}</button>
                   <button onClick={() => setEditing(g)} style={{
                     ...btn, background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(var(--offwhite-rgb),0.6)',
+                    border: '1px solid rgba(var(--overlay-rgb),0.12)', color: 'rgba(var(--offwhite-rgb),0.6)',
                   }}>Edit</button>
                   <button onClick={() => remove(g)} style={{
                     ...btn, background: 'transparent',

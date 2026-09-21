@@ -216,7 +216,7 @@ export default function AdminEventsPage() {
   const inputStyle = {
     width: '100%',
     backgroundColor: '#1a1a1a',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid rgba(var(--overlay-rgb),0.1)',
     color: 'var(--offwhite)',
     padding: '0.75rem 1rem',
     borderRadius: '2px',
@@ -270,7 +270,7 @@ export default function AdminEventsPage() {
               backgroundColor: 'transparent',
               color: 'rgba(var(--offwhite-rgb),0.5)',
               padding: '0.7rem 1.5rem',
-              border: '1px solid rgba(255,255,255,0.1)',
+              border: '1px solid rgba(var(--overlay-rgb),0.1)',
               borderRadius: '2px',
               fontSize: '0.75rem',
               letterSpacing: '0.1em',
@@ -296,8 +296,8 @@ export default function AdminEventsPage() {
         {/* Type Manager Panel */}
         {showTypeManager && (
           <div style={{
-            background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: 'rgba(var(--overlay-rgb),0.02)',
+            border: '1px solid rgba(var(--overlay-rgb),0.08)',
             borderRadius: '4px',
             padding: '1.5rem',
             marginBottom: '2rem',
@@ -335,7 +335,7 @@ export default function AdminEventsPage() {
                 style={{
                   flex: 1,
                   backgroundColor: '#1a1a1a',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.1)',
                   color: 'var(--offwhite)',
                   padding: '0.6rem 0.8rem',
                   borderRadius: '2px',
@@ -357,7 +357,7 @@ export default function AdminEventsPage() {
         {/* Filters */}
         <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {/* Upcoming / Done tabs */}
-          <div style={{ display: 'flex', gap: '0.25rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0' }}>
+          <div style={{ display: 'flex', gap: '0.25rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)', paddingBottom: '0' }}>
             {(['upcoming', 'done'] as const).map(s => (
               <button
                 key={s}
@@ -390,7 +390,7 @@ export default function AdminEventsPage() {
                 onClick={() => setFilterBranch(val)}
                 style={{
                   background: filterBranch === val ? 'rgba(var(--teal-rgb),0.15)' : 'transparent',
-                  border: `1px solid ${filterBranch === val ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
+                  border: `1px solid ${filterBranch === val ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.1)'}`,
                   color: filterBranch === val ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.4)',
                   padding: '0.35rem 0.9rem',
                   borderRadius: '2px',
@@ -412,7 +412,7 @@ export default function AdminEventsPage() {
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)' }}>Loading…</p>
         ) : filteredEvents.length === 0 ? (
           <div style={{
-            border: '1px dashed rgba(255,255,255,0.08)',
+            border: '1px dashed rgba(var(--overlay-rgb),0.08)',
             borderRadius: '4px',
             padding: '4rem',
             textAlign: 'center',
@@ -433,7 +433,7 @@ export default function AdminEventsPage() {
               const d = ymdToLocalDate(ev.date)
               return (
                 <div key={ev.id} style={{
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.06)',
                   borderRadius: '4px',
                   overflow: 'hidden',
                 }}>
@@ -447,11 +447,11 @@ export default function AdminEventsPage() {
                   ) : (
                     <div style={{
                       height: '140px',
-                      backgroundColor: 'rgba(255,255,255,0.02)',
+                      backgroundColor: 'rgba(var(--overlay-rgb),0.02)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: 'rgba(255,255,255,0.1)',
+                      color: 'rgba(var(--overlay-rgb),0.1)',
                       fontSize: '0.75rem',
                       fontFamily: 'var(--font-inter)',
                     }}>No image</div>
@@ -534,7 +534,7 @@ export default function AdminEventsPage() {
                       <button onClick={() => openEdit(ev)} style={{
                         flex: 1,
                         background: 'transparent',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(var(--overlay-rgb),0.1)',
                         color: 'rgba(var(--offwhite-rgb),0.5)',
                         padding: '0.5rem',
                         borderRadius: '2px',
@@ -577,7 +577,7 @@ export default function AdminEventsPage() {
             justifyContent: 'space-between',
             alignItems: 'center',
             padding: isMobile ? '1.25rem 1.5rem' : '1.5rem 3rem',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid rgba(var(--overlay-rgb),0.06)',
             flexShrink: 0,
           }}>
             <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.1rem' : '1.5rem', color: 'var(--offwhite)' }}>
@@ -585,7 +585,7 @@ export default function AdminEventsPage() {
             </h2>
             <button onClick={() => setOpen(false)} style={{
               background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.1)',
+              border: '1px solid rgba(var(--overlay-rgb),0.1)',
               color: 'rgba(var(--offwhite-rgb),0.5)',
               padding: '0.5rem 1.2rem',
               borderRadius: '2px',
@@ -609,8 +609,8 @@ export default function AdminEventsPage() {
             {/* Left Column */}
             <div style={{
               padding: isMobile ? '1.5rem' : '2.5rem 3rem',
-              borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)',
-              borderBottom: isMobile ? '1px solid rgba(255,255,255,0.06)' : 'none',
+              borderRight: isMobile ? 'none' : '1px solid rgba(var(--overlay-rgb),0.06)',
+              borderBottom: isMobile ? '1px solid rgba(var(--overlay-rgb),0.06)' : 'none',
               display: 'flex',
               flexDirection: 'column',
               gap: '1.5rem',
@@ -743,7 +743,7 @@ export default function AdminEventsPage() {
                     style={{ ...inputStyle, cursor: 'pointer', flex: 1 }} />
                   <button type="button" onClick={() => setShowPicker(true)} style={{
                     background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(var(--overlay-rgb),0.1)',
                     color: 'rgba(var(--offwhite-rgb),0.6)',
                     padding: '0.6rem 1rem',
                     borderRadius: '2px',
@@ -770,7 +770,7 @@ export default function AdminEventsPage() {
                 <div style={{
                   borderRadius: '4px',
                   overflow: 'hidden',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.06)',
                   height: '200px',
                 }}>
                   <img src={form.image} alt="Preview" style={{
@@ -782,7 +782,7 @@ export default function AdminEventsPage() {
               ) : (
                 <div style={{
                   height: '200px',
-                  border: '1px dashed rgba(255,255,255,0.1)',
+                  border: '1px dashed rgba(var(--overlay-rgb),0.1)',
                   borderRadius: '4px',
                   display: 'flex',
                   alignItems: 'center',
@@ -815,7 +815,7 @@ export default function AdminEventsPage() {
                           : 'transparent',
                         border: `1px solid ${form.contactNumber === number
                           ? 'var(--teal)'
-                          : 'rgba(255,255,255,0.1)'}`,
+                          : 'rgba(var(--overlay-rgb),0.1)'}`,
                         color: form.contactNumber === number
                           ? 'var(--teal)'
                           : 'rgba(var(--offwhite-rgb),0.5)',
@@ -869,10 +869,10 @@ export default function AdminEventsPage() {
 
               {/* Preview Card */}
               <div style={{
-                border: '1px solid rgba(255,255,255,0.06)',
+                border: '1px solid rgba(var(--overlay-rgb),0.06)',
                 borderRadius: '4px',
                 padding: '1.2rem',
-                background: 'rgba(255,255,255,0.02)',
+                background: 'rgba(var(--overlay-rgb),0.02)',
               }}>
                 <p style={{ ...labelStyle, marginBottom: '0.8rem' }}>Preview</p>
                 <p style={{
@@ -902,7 +902,7 @@ export default function AdminEventsPage() {
                 <button type="button" onClick={() => setOpen(false)} style={{
                   flex: 1,
                   background: 'transparent',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(var(--overlay-rgb),0.1)',
                   color: 'rgba(var(--offwhite-rgb),0.5)',
                   padding: '0.9rem',
                   borderRadius: '2px',

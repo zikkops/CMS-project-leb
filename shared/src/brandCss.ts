@@ -80,6 +80,17 @@ export function brandCssVars(): string {
   --purple-rgb:   var(--brand-tertiary-rgb);
   --offwhite-rgb: var(--brand-foreground-rgb);
 
+  /* Theme tokens (UPGRADE.md T4.4): the neutrals the screens are drawn with,
+     which used to be literals in every file. --overlay-rgb tints panels,
+     dividers and hovers over the dark background: a light theme sets it to
+     0, 0, 0 and everything faint follows. --surface-deep is the darkest
+     panel, below the page; --on-accent is text on a bright chip or button.
+     Write rgba(var(--overlay-rgb), 0.08), never rgba(255,255,255,0.08):
+     verify:brand fails on the literal in app code. */
+  --overlay-rgb:  255, 255, 255;
+  --surface-deep: #0a0a0a;
+  --on-accent:    #0a0a0a;
+
   --font-display: var(--font-brand-display);
   --font-body:    var(--font-brand-body);
   /* Legacy font aliases, same reasoning as the colours. */
