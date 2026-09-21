@@ -62,6 +62,7 @@
     "hub:seed": "node --env-file=.env.local scripts/hub-seed.mjs",
     "dev:pos-hub": "node scripts/pos-hub-dev.mjs",
     "desktop": "npm --prefix desktop start",
+    "new:section": "node scripts/new-section.mjs",
     "verify:all": "node scripts/verify-all.mjs"
   },
   "dependencies": {

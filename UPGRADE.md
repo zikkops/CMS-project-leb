@@ -410,11 +410,12 @@ Do these after T0.1, which protects them.
   - Keep reference equality: derive once, and re-export the same arrays
     (`useRequireRole()` finds a section by reference).
   *Done: Done 21 Sep 2026. `SECTIONS` in shared/src/roles.ts declares each section's roles, label and feature on one line. `SECTION_ACCESS` is derived from it, with each value the entry's own roles array, so reference equality holds. `SECTION_LABELS` is derived there too and re-exported from adminAuth.ts as the same object. `featureForSection()` reads the registry, and features no longer carry `sections` lists. verify:features now checks that every section names a real feature and has a label: 22 sections read, and a mutated feature name was caught. docs/adding-a-section.md updated.*
-- [ ] **T4.3 `npm run new:section <key>` scaffolder.** It writes the registry
+- [x] **T4.3 `npm run new:section <key>` scaffolder.** It writes the registry
   entry, the admin page stub (with `PageHeader`, `useRequireRole`), the API
   route stub (with `requireSection`, `toResponse`, `runtime = 'nodejs'`), the
   nav entry and a verifier stub. The last step prints what is left by hand
   (the rules). Built on T2.1, T4.2 and T0.1.
+  *Done: Done 21 Sep 2026. `npm run new:section -- <key>` (scripts/new-section.mjs) writes the SECTIONS entry, a new FEATURES entry that is off by default (or uses --feature), the nav item under --nav with that section's icon, the admin page stub (PageHeader, useRequireRole, startLoad), the route stub (requireSection, the feature switch, toResponse, runtime nodejs), a pure rules file, and a verifier with its npm script. It then prints what is left by hand: the TODO wording, the rules (with the matching can() roles), indexes, till tile and hub collections. It works everything out before writing anything, and it refuses an existing key, an existing file or an unknown feature, role or nav section. Tried as stockTakes: tsc for admin and shared, lint, verify:features, verify:sections and verify:admin-nav all passed, and the new verifier ran 2 passed. The trial was then removed.*
 - [ ] **T4.4 Theme tokens.** Move hard-coded colours (`#0a0a0a`,
   `rgba(255,255,255,…)`) into CSS variables, one app at a time. It is the
   groundwork for a light theme, and for a client's own colours without code

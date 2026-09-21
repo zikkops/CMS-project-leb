@@ -13,6 +13,10 @@ enforced steps is missed. The rest are convention.
 Written 18 Sep 2026 (UPGRADE.md T0.2). Since 21 Sep 2026 (T4.2) steps 1 to 3
 are one entry in `SECTIONS`, and till tiles are one entry in `POS_TILES` (T4.1).
 
+`npm run new:section -- <key>` (T4.3) writes steps 1, 2, 4, 5 and 6 and a
+verifier stub, and prints the rest. Its options are in the header of
+`scripts/new-section.mjs`. Try it with `--dry-run` first.
+
 ## The minimum: an admin page with its own permission
 
 | # | File | What to add | Enforced by |
