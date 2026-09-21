@@ -504,6 +504,120 @@ Each needs its own plan note in the vault first, and the owner's answers.
 
 ---
 
+## Tier 6: signing staff in and out (added 21 Sep 2026)
+
+How staff sign in today:
+- **Online till:** Firebase email and password, typed on every device.
+- **Café hub:** staff unlock their own phone with a fingerprint, or a manager
+  approves. The counter PC shows a four-digit code, typed into the staff app.
+  A hub session lasts until 05:00.
+- **Signing out:** only a small Sign out button on the floor
+  (`pos/app/pos/page.tsx`). Nothing on the counter, the check screen or the
+  kitchen display, and no way to end a session from anywhere else.
+- **Clock in and out** (T3.12) is a separate step in the staff app.
+
+The goal is a sign-in that takes one scan, and a sign-out that happens
+reliably at the end of a shift and whenever a shared device changes hands.
+
+**A QR code is shown by the device being signed in, and scanned by the phone
+of the person signing in — never the other way round.** A code shown by the
+device lives two minutes, works once, and needs a fingerprint or a signed-in
+phone to answer it, so a photo of it is worthless. A code a person carries (a
+printed badge, a QR on a lanyard) is a password anyone can photograph; see
+T6.8.
+
+Every task keeps the existing rules: codes and secrets stored only as hashes,
+one refusal for every kind of wrong answer, the approval signed over a
+challenge from `issueChallenge()`, and logged under the person. Each adds its
+cases to `verify:hub-sync` (or a new verifier for the online till), with
+mutations caught by name, and is checked on the emulator against a built hub.
+
+- [ ] **T6.0 The owner's answers first** (owner). Answer and record these
+  here before T6.3 onwards:
+  - Which devices are **shared** (the counter PC, a kitchen tablet, a
+    waiter's tablet at the pass) and which are one person's phone?
+  - Should the **online till** (no hub) get scan-to-sign-in too (T6.4), or
+    only hub cafés?
+  - Should signing in **clock you in**, and signing out clock you out
+    (T6.6), or stay separate?
+  - What idle limit should shared online devices have? The counter PC uses
+    15 minutes (S25).
+  - Printed badges: no (the default, T6.8), or yes with a PIN?
+- [ ] **T6.1 Sign out from every till screen, and one sign-out for all.**
+  Today only the floor has the button. Put it on the counter, the check
+  screen's actions, the kitchen display (for a person, not a kitchen screen
+  session) and the drawer, all through one `signOut()` that:
+  - ends the hub session (`DELETE /api/hub/session`) or the Firebase sign-in
+  - clears the stored session
+  - lands on the sign-in page
+
+  If the device holds unsent lines or a queued outbox, say so first; that
+  must never block signing out. Low risk: no data change.
+- [ ] **T6.2 "Switch user" on a shared device.** Signing out of a shared
+  device goes straight to a sign-in screen that lists the staff (first names,
+  as the counter already does), so the next person taps their name and scans
+  (T6.3). A screen that says who is signed in, large, on every page of a
+  shared device, so nobody takes an order under someone else's name.
+- [ ] **T6.3 Scan to sign in at the counter PC** (hub). The counter's sign-in
+  screen shows a QR beside the four-digit code.
+  - The QR encodes the hub's fingerprint, the request id and the code
+    (`bigcms-signin:…`).
+  - The staff app scans it with the camera plugin it already has, and the
+    fingerprint signs the existing `counterSignInMessage()`. Nothing new to
+    trust, and no code to type.
+  - The code stays as the fallback when the camera will not read.
+  - The QR is redrawn with each new request (two minutes), and
+    `parseSignInLink()` refuses anything but this hub's fingerprint.
+  - Also a **"scan to sign in" start from the phone**: tapping your name
+    becomes optional, because the scan says who you are.
+- [ ] **T6.4 Scan to sign in on the online till** (owner, from T6.0). For
+  cafés without a hub, a shared browser device shows a QR instead of an email
+  and password.
+  - The device asks the cloud for a request (`POST /api/staff-signin`, a
+    random id plus a collect secret the device keeps). The QR shows the id.
+  - The staff member's own phone, already signed in to the staff site or the
+    staff app, scans it and approves. The approval route checks their Firebase
+    token and that they are staff (`requireStaff()`).
+  - The device collects a Firebase custom token for that person
+    (`adminAuth().createCustomToken(uid)`) and calls
+    `signInWithCustomToken`. Their claims come with the account, so roles and
+    grants work unchanged.
+  - Two minutes, one use, stored hashed, and logged.
+  - **Server-only collection, no Firestore rule, so no rules deploy.**
+  - The device never sees a password, and the phone never sees the device's
+    secret.
+- [ ] **T6.5 See where you are signed in, and end it from anywhere.**
+  - The staff app lists your live sessions: counter PC, kitchen screen, or
+    another phone, with when each started. You can end any of them.
+  - The hub page (`/pos/hub`) and a new admin page list everyone signed in at
+    each hub, so a manager can end one. For example: somebody went home still
+    signed in on the counter.
+  - `hubSessions` gains a readable label (device, started, last tap). The
+    token stays hashed.
+  - Ending a session is logged.
+- [ ] **T6.6 Check out at the end of a shift** (owner, from T6.0). Signing
+  out offers "Clock out too", and signing in offers "Clock in". Both write the
+  existing `timeEntries` through `clockWithKey()`, so the timesheet (T3.3)
+  sees them. The 05:00 expiry stays as the backstop. A person still clocked in
+  at 05:00 is flagged on the timesheet as "no clock-out", never clocked out
+  silently at a guessed time.
+- [ ] **T6.7 Idle sign-out on shared online devices.** A per-device "This is a
+  shared device" switch on the online till (remembered in localStorage), with
+  the idle rule the counter PC already has (S25, `followIdle()`), at the limit
+  from T6.0. Only taps count, never background requests. Personal phones keep
+  their sign-in.
+- [ ] **T6.8 Printed staff badges: not built unless the owner asks** (owner).
+  A static QR on a card or lanyard is a password anyone can photograph, and it
+  cannot tell who is holding it. If the owner wants badges anyway:
+  - a badge only ever narrows the list to one person, and the PIN (or the
+    phone's fingerprint) is the proof
+  - each badge is revocable, from Staff Phones
+  - it never signs anyone in on a hub on its own
+
+  Record the decision here either way.
+
+---
+
 ## Not in this list, on purpose
 
 These are larger than a session and need their own scope note in the vault
