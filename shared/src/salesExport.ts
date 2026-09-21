@@ -25,6 +25,7 @@ import { checkTotals, orderTypeOf, ORDER_TYPES, type Check } from './checks'
 import { vatIncluded } from './money'
 import { ymdInZone } from './dates'
 import { refundOf } from './drawer'
+import { cardTipsOf } from './payments'
 import { timestampMs } from './timestamps'
 
 export interface ExportOptions {
@@ -77,6 +78,12 @@ export interface CheckRow {
   cashUsd: number
   cashLbp: number
   card: number
+  /**
+   * Card tips on this check (T3.9), in USD: owed to staff, never a sale
+   * (docs/reporting.md, gap 4). A refund row carries 0: a tip on a refunded
+   * check stays with the staff it was given to (gap 27, decided under T7.3).
+   */
+  cardTips: number
   server: string
 }
 
@@ -194,6 +201,7 @@ export function refundRow(check: Check, opts: ExportOptions): CheckRow {
     cashUsd: neg(back.cash.usd),
     cashLbp: neg(back.cash.lbp),
     card: neg(back.card.usd),
+    cardTips: 0,
   }
 }
 
@@ -228,6 +236,7 @@ export function checkRow(check: Check, opts: ExportOptions): CheckRow {
     rate,
     netLbp: Math.round(totals.net * rate),
     ...t,
+    cardTips: cardTipsOf(check.payments ?? []),
     server: check.openedByEmail ?? '',
   }
 }
@@ -361,7 +370,7 @@ export const SHEETS = {
     ['checkDiscount', 'Check discount'], ['service', 'Service'], ['net', 'Net USD'],
     ['vatRate', 'VAT rate'], ['vat', 'VAT incl. USD'],
     ['rate', 'Rate'], ['netLbp', 'Net LBP'],
-    ['cashUsd', 'Cash USD'], ['cashLbp', 'Cash LBP'], ['card', 'Card USD'],
+    ['cashUsd', 'Cash USD'], ['cashLbp', 'Cash LBP'], ['card', 'Card USD'], ['cardTips', 'Card tips USD'],
     ['server', 'Opened by'],
   ],
   payments: [

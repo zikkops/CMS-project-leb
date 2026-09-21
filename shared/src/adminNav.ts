@@ -182,6 +182,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
       { label: 'Tips Calculator', href: '/admin/end-of-day/tips', access: SECTION_ACCESS.endOfDay, icon: faHandHoldingDollar, kind: 'use', desc: 'Split the tips between staff after the deduction.' },
       { label: 'End of Day Log', href: '/admin/end-of-day/log', access: SECTION_ACCESS.endOfDay, icon: faScroll, kind: 'use', desc: 'Who submitted or changed which end-of-day report, and when.' },
       { label: 'Sales Export', href: '/admin/exports', access: SECTION_ACCESS.endOfDay, icon: faFileExport, kind: 'use', desc: 'Closed checks for a date range, with VAT and both currencies, for the accountant.' },
+      { label: 'Sales Summary', href: '/admin/reports/sales', access: SECTION_ACCESS.endOfDay, icon: faReceipt, kind: 'use', desc: 'Gross, discounts, net sales without VAT, VAT, service, refunds and card tips, per branch.' },
       { label: 'Product Mix', href: '/admin/reports/mix', access: SECTION_ACCESS.endOfDay, icon: faChartPie, kind: 'use', desc: 'Best sellers by count and by revenue, and each category’s share.' },
       { label: 'Hourly Sales', href: '/admin/reports/hourly', access: SECTION_ACCESS.endOfDay, icon: faChartColumn, kind: 'use', desc: 'Takings hour by hour, beside the same day a week before.' },
       { label: 'Timesheet', href: '/admin/reports/timesheet', access: SECTION_ACCESS.endOfDay, icon: faUserClock, kind: 'use', desc: 'Who clocked in and out with the staff app, and their hours.' },

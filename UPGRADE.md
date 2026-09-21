@@ -745,7 +745,7 @@ Principles for every task here:
   and the cap warning (T5.8) never fires on an ordinary request. Keep a hard
   upper bound, stated on screen.
   *Done: Done 21 Sep 2026. Every report read goes through readInChunks() (shared/src/server/salesExport.ts): the sales export and its refunds, food cost, the loyalty ledger (transactions, and redemptions by both fields) and the timesheet. It reads a month of café days at a time (rangeChunks() in reportPeriods.ts), each piece with the padded window and its own 20,000 cap. Overlapping padding keeps each document once. If any piece meets its cap, the answer is whole only through the day before the earliest cut, and the page says so. The loyalty and timesheet reads used to cut short silently; they now warn too. A report may cover up to 460 days (MAX_REPORT_DAYS, a year and a quarter, so last year can sit beside this one), and a longer request is refused with that number. Covered by verify:export (chunks cover a year with no day missed or repeated) and verify:hub (400 days read in monthly pieces: every document once, nothing cut).*
-- [ ] **T7.3 The sales summary report**, the one an accountant asks for
+- [x] **T7.3 The sales summary report**, the one an accountant asks for
   first. A new `/admin/reports/sales`, per branch and consolidated:
   - gross sales, then staff meals, item discounts, check discounts and comps,
     each shown separately
@@ -757,6 +757,7 @@ Principles for every task here:
   Each line's definition comes from `reportDefinitions.ts` and is shown on
   hover. This page must reconcile with the payments report (T7.5) and the
   drawer (T7.7) to the cent, and the verifier asserts that it does.
+  *Done: Done 21 Sep 2026. /admin/reports/sales (in ADMIN_NAV under End of Day, gated on endOfDay). The arithmetic is salesSummary() in shared/src/salesSummary.ts, built from the export's own rows, so the summary and the export cannot disagree about one check. It shows gross sales (VAT included), staff meals, item discounts and comps, and check discounts, each on its own line. Then net sales excluding VAT and service; VAT on sales; the service charge with its own VAT line (VAT-able by default, per T7.0); total VAT output; billed, in USD and in LBP at each check's own rate. Then refunds given in the period, with their net sales and VAT reversed (by refund day, T7.4), net sales after refunds, card tips shown apart as owed to staff, checks with no VAT rate counted, and the average check, plus a breakdown by order type. One column per branch and an 'All' column that is their sum. CSV and Excel downloads carry the header block. Export rows now carry cardTips too: a tip on a refunded check stays with staff (gap 27, decided). verify:export has 13 cases, with exact figures for service, service VAT and tips. Read-only against the demo project's last 60 days (422 checks, 3 branches): 421 checks, 16 refunds, $8,529.24 net sales, $936.36 VAT; the total equals the sum of the branches, gross − discounts + service = billed, net + VAT + service = billed, and billed matches the export's days. Not looked at signed in.*
 - [x] **T7.4 Refunds in the period they happen** (a correction to today's
   behaviour).
   - The export and the food cost report file a refund under the day its check

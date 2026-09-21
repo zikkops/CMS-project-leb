@@ -12,7 +12,9 @@
 // a branch, never a figure.
 
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
-import { parseExportRange, readClosedChecks, readInChunks, requestedBranches } from '@big-cms/shared/server/salesExport'
+import { parseExportRange, readClosedChecks, readInChunks, readSalesExport, requestedBranches } from '@big-cms/shared/server/salesExport'
+import { readSettings } from '@big-cms/shared/server/settings'
+import { salesSummary } from '@big-cms/shared/salesSummary'
 import { TIME_ENTRIES, timesheet, type TimeEntry } from '@big-cms/shared/timeClock'
 import { timestampMs } from '@big-cms/shared/timestamps'
 import { dayBefore, hourlySales, productMix, voidDiscountReport } from '@big-cms/shared/salesReports'
@@ -58,6 +60,16 @@ export async function GET(request: Request): Promise<Response> {
     // screen's "All" row, the sum of these, is the same figure.
     const perBranch = <T,>(checks: Check[], build: (list: Check[]) => T) =>
       chosen.length > 1 ? chosen.map(branch => ({ branch, report: build(checks.filter(c => c.branch === branch)) })) : []
+    if (report === 'sales') {
+      // The sales summary (T7.3): the export's own rows, sales by close day
+      // and refunds by refund day, added up per branch and then across.
+      const { exchangeRate } = await readSettings()
+      const result = await readSalesExport(range, { timeZone, fallbackRate: exchangeRate, branches: own })
+      return Response.json(
+        { ok: true, from: range.from, to: range.to, branches: chosen, cutShort: result.cutShort, ...salesSummary(result.checks, chosen) },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
     if (report === 'voids') {
       const { checks, branches, cutShort } = await readClosedChecks(range, { timeZone, branches: own })
       return Response.json(

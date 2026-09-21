@@ -27,7 +27,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'export-verify-'))
 execSync(
-  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts --outDir ${out} ` +
+  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts shared/src/salesSummary.ts --outDir ${out} ` +
   `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
@@ -39,6 +39,7 @@ for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
 const X = await import(`file://${join(out, 'salesExport.js')}`)
 const RP = await import(`file://${join(out, 'reportPeriods.js')}`)
 const RF = await import(`file://${join(out, 'reportFile.js')}`)
+const SS = await import(`file://${join(out, 'salesSummary.js')}`)
 const L = await import(`file://${join(out, 'loyaltyExport.js')}`)
 
 let pass = 0, fail = 0
@@ -195,6 +196,39 @@ console.log('\na refund is a credit in the period it is given (UPGRADE.md T7.4)'
   eq('...and none of the sale\'s payments', september.payments.length, 0)
   const old = X.buildExport([check({ id: 'o', receiptNumber: '78', status: 'refunded', closedAt: '2026-09-05T12:00:00.000Z' })], OPTS)
   eq('a refund from before refundedAt was read is credited on its close day', old.checks.map(r => [r.kind, r.day]), [['sale', '2026-09-05'], ['refund', '2026-09-05']])
+}
+
+console.log('\nthe sales summary adds up the way an accountant reads it (UPGRADE.md T7.3)')
+{
+  const checks = [
+    // $20 of goods, a 10% check discount, 10% service, VAT 10%, a $2 card tip.
+    check({ id: 's1', receiptNumber: '1', lines: [line({ unitPrice: 20 })], discount: { kind: 'percent', value: 0.1, reasonKey: 'regular', note: '', by: 'u', byEmail: 'u@x' },
+      serviceCharge: { rate: 0.1 }, payments: [pay({ tender: 'card', amount: 19.8, tipUsd: 2 })] }),
+    // A staff meal at half price.
+    check({ id: 's2', receiptNumber: '2', lines: [line({ unitPrice: 10 })], staffDiscount: { food: 0.5, drink: 0.5, appliedBy: 'u', appliedByEmail: 'u@x' } }),
+    // From before VAT was recorded.
+    check({ id: 's3', receiptNumber: '3', branch: 'Second', vatRate: undefined, lines: [line({ unitPrice: 8 })] }),
+    // Sold on the 12th, refunded on the 13th.
+    check({ id: 's4', receiptNumber: '4', status: 'refunded', refundedAt: '2026-09-13T09:00:00.000Z', lines: [line({ unitPrice: 11 })] }),
+  ]
+  const built = X.buildExport(checks, OPTS)
+  const s = SS.salesSummary(built.checks, ['Main', 'Second'])
+  const t = s.total
+  const add = (k) => Math.round(s.byBranch.reduce((n, b) => n + b.figures[k], 0) * 100) / 100
+  eq('the total is the sum of the branches, figure by figure', Object.keys(t).every(k => Math.abs(add(k) - t[k]) < 0.005), true)
+  eq('gross − discounts + service = billed', Math.round((t.grossSales - t.staffMeals - t.itemDiscounts - t.checkDiscounts + t.serviceCharge) * 100) / 100, t.billed)
+  eq('net sales + VAT on sales + service = billed (to the cent)', Math.abs(t.netSales + t.goodsVat + t.serviceCharge - t.billed) < 0.011, true)
+  eq('VAT output = VAT on sales + VAT on service', Math.round((t.goodsVat + t.serviceVat) * 100) / 100, t.vatOutput)
+  eq('service charge and its VAT, on their own lines', [t.serviceCharge, t.serviceVat], [1.8, 0.16])
+  eq('card tips are shown apart, never inside billed', [t.cardTips, t.billed], [2, 43.8])
+  eq('a check with no VAT rate adds no VAT and is counted', [s.byBranch[1].figures.vatOutput, t.checksWithoutVatRate], [0, 1])
+  eq('the refunded check is still a sale, and its refund a credit on its own day', [t.checks, t.refundsGiven, t.refundsBilled], [4, 1, 11])
+  eq('net sales after refunds = net sales − refunded net sales', Math.round((t.netSales - t.refundsNetSales) * 100) / 100, t.netSalesAfterRefunds)
+  eq('billed in lira at each check\'s own rate', t.billedLbp, built.checks.filter(r => r.kind === 'sale').reduce((n, r) => n + r.netLbp, 0))
+  eq('by order type: every sale in one type', s.byOrderType.reduce((n, o) => n + o.checks, 0), 4)
+  eq('the average check is billed ÷ checks', s.averageCheck, Math.round(t.billed / t.checks * 100) / 100)
+  const refundDay = SS.salesSummary(X.buildExport(checks, { ...OPTS, from: '2026-09-13', to: '2026-09-13' }).checks, ['Main', 'Second']).total
+  eq('the refund\'s day shows the refund and no sale', [refundDay.checks, refundDay.refundsGiven, refundDay.netSalesAfterRefunds], [0, 1, -10])
 }
 
 console.log('\nthe sheets are declared once, for the UI and the file both')
