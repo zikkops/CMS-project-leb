@@ -23,7 +23,6 @@ import { useSearchParams } from 'next/navigation'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '@big-cms/shared/firebase'
-import { branchColor } from '@big-cms/shared/branches'
 import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
 import { vatRateOn } from '@big-cms/shared/businessSettings'
 import { todayYmd } from '@big-cms/shared/dates'
@@ -32,19 +31,30 @@ import { supplyCategoryColor } from '@big-cms/shared/departments'
 import { useFeature } from '@big-cms/shared/useFeatures'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import {
-  judgeDeliveryTemp, deliveryTempProblem, readStorageKind, readLimits,
-  type FoodSafetyLimits, type StorageKind,
+  deliveryTempProblem, readStorageKind, readLimits,
+  type FoodSafetyLimits,
 } from '@big-cms/shared/foodSafety'
 import {
   DELIVERY_BRANCHES, DELIVERY_DEPARTMENTS,
-  REJECT_REASON_LABELS, computeTotals, isShort, priceChange, round2,
+  computeTotals, isShort, round2,
   saveDelivery, seedLinesFromOrder, unplannedLine,
-  type Currency, type DeliveryLine, type RejectReason,
+  type Currency, type DeliveryLine,
 } from '@big-cms/shared/deliveries'
 import {
   listProviders, listTemplateItems, listWeeklyReports,
   type OrderProvider, type OrderTemplateItem, type WeeklyOrderReport,
 } from '@big-cms/shared/weeklyOrders'
+import { inp, labelStyle } from './_components/styles'
+import type { SupplyRow } from './_components/types'
+import { LineRow } from './_components/LineRow'
+import { BranchDepartmentPicker } from './_components/BranchDepartmentPicker'
+import { OrderPicker } from './_components/OrderPicker'
+import { InvoiceFields } from './_components/InvoiceFields'
+import { LinesToolbar } from './_components/LinesToolbar'
+import { TotalsPanel } from './_components/TotalsPanel'
+import { SubmitBar } from './_components/SubmitBar'
+import { ReceivingHeader } from './_components/ReceivingHeader'
+import { EmptyLines } from './_components/EmptyLines'
 
 // Duplicated rather than imported from lib/useIsMobile — the established
 // pattern in this codebase (CONTRIBUTING.md), not an oversight to tidy up.
@@ -57,295 +67,6 @@ function useIsMobile(breakpoint = 768) {
     return () => window.removeEventListener('resize', check)
   }, [breakpoint])
   return isMobile
-}
-
-
-// Colours come from lib/branches so every screen agrees, and so a branch
-// outside the original three gets one at all.
-
-const inp: React.CSSProperties = {
-  background: 'rgba(var(--overlay-rgb),0.05)', border: '1px solid rgba(var(--overlay-rgb),0.12)',
-  color: 'var(--offwhite)', borderRadius: '4px', padding: '0.5rem 0.7rem',
-  fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box',
-  fontFamily: 'var(--font-inter)',
-}
-
-const labelStyle: React.CSSProperties = {
-  display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em',
-  textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)',
-  marginBottom: '0.4rem', fontFamily: 'var(--font-inter)',
-}
-
-interface SupplyRow {
-  id: string
-  name: string
-  nameAr?: string
-  category: string
-  unit: string
-  avgUnitCost: number
-  vatable?: boolean
-  /** Chilled or frozen: a delivery asks for its temperature (with Food Safety on). */
-  storage?: StorageKind | null
-}
-
-function fmt(n: number, currency: Currency): string {
-  // LBP has no meaningful minor unit at current magnitudes — showing
-  // "9,000,000.00" is noise on a phone screen at a back door.
-  return currency === 'LBP'
-    ? Math.round(n).toLocaleString('en-US')
-    : n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-// ── One receiving line ─────────────────────────────────────────────────────
-// Module scope, not nested in the page component. A component declared inside
-// another component's render body gets a new function identity every render,
-// so React unmounts and remounts it on every keystroke — which kills
-// transitions and, here, would drop focus out of the input mid-typing.
-// (CONTRIBUTING.md, gotcha #2.)
-function LineRow({
-  line, index, currency, rate, isMobile, lastCost, onChange, storage, limits, askTemp,
-}: {
-  line: DeliveryLine
-  index: number
-  currency: Currency
-  /** LBP per USD, or 0 when the delivery is priced in USD. */
-  rate: number
-  isMobile: boolean
-  /** The running average, always in USD — see `lastCostLocal` below. */
-  lastCost: number
-  onChange: (index: number, patch: Partial<DeliveryLine>) => void
-  /** The item's storage as stored. Chilled and frozen ask for a temperature. */
-  storage: StorageKind | null
-  /** The café's limits when this person can read them; null shows no verdict, and the server still judges. */
-  limits: FoodSafetyLimits | null
-  /** Food Safety is switched on. */
-  askTemp: boolean
-}) {
-  const [showReject, setShowReject] = useState(line.qtyRejected > 0)
-
-  const short = isShort(line)
-
-  // avgUnitCost is stored in USD; line.unitCost is in the delivery's currency.
-  // Comparing them directly made every LBP delivery read as a ~9,000,000%
-  // price rise and flagged every single line as an exception — which is the
-  // fastest way to teach someone to ignore the warning colour entirely.
-  const lbp = currency === 'LBP' && rate > 0
-  const lastCostLocal = lbp ? lastCost * rate : lastCost
-  const usdEquivalent = lbp ? round2(line.unitCost / rate) : null
-
-  const drift = priceChange(lastCostLocal, line.unitCost)
-  const priceUp = drift !== null && drift > 0.02
-  // Food safety (owner's decisions, 14 Sep 2026): a chilled or frozen line is
-  // received with its temperature, and one that arrived too warm with what was
-  // done about it. Only what is taken in needs one. The verdict here is the
-  // server's own function, shown while typing; the server decides.
-  const needsTemp = askTemp && (storage === 'chilled' || storage === 'frozen') && line.qtyReceived - line.qtyRejected > 0
-  const verdict = needsTemp && limits && typeof line.tempC === 'number' ? judgeDeliveryTemp(storage, line.tempC, limits) : null
-  const tempMissing = needsTemp && (line.tempC === null || line.tempC === undefined)
-  const tooWarm = verdict?.status === 'breach'
-
-  const touched = short || line.qtyRejected > 0 || priceUp || tempMissing || tooWarm
-
-  // Quiet by default, loud only when something needs attention. The whole
-  // point is that a receiver's eye lands on the exceptions.
-  const accent = short || tooWarm ? 'var(--red)' : priceUp || tempMissing ? 'var(--brand-secondary)' : 'rgba(var(--teal-rgb),0.2)'
-
-  return (
-    <div style={{
-      background: touched ? 'rgba(var(--brand-secondary-rgb),0.04)' : 'rgba(var(--overlay-rgb),0.02)',
-      border: `1px solid ${touched ? accent : 'rgba(var(--overlay-rgb),0.07)'}`,
-      borderRadius: '6px', padding: '0.8rem 0.9rem',
-      display: 'flex', flexDirection: 'column', gap: '0.6rem',
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-        <div style={{ minWidth: 0 }}>
-          <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.82rem', color: 'var(--offwhite)', lineHeight: 1.3 }}>
-            {line.name}
-          </p>
-          {line.nameAr && (
-            <p dir="rtl" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--brand-secondary-rgb),0.8)', marginTop: '0.1rem' }}>
-              {line.nameAr}
-            </p>
-          )}
-        </div>
-        {line.qtyOrdered > 0 && (
-          <span style={{
-            fontFamily: 'var(--font-inter)', fontSize: '0.62rem', letterSpacing: '0.06em',
-            color: 'rgba(var(--offwhite-rgb),0.3)', whiteSpace: 'nowrap',
-          }}>
-            ordered {line.qtyOrdered} {line.unit}
-          </span>
-        )}
-      </div>
-
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr auto',
-        gap: '0.5rem', alignItems: 'end',
-      }}>
-        <div>
-          <label style={{ ...labelStyle, marginBottom: '0.25rem' }}>Received</label>
-          <input
-            type="number" min="0" step="any" inputMode="decimal"
-            value={line.qtyReceived}
-            onChange={e => onChange(index, { qtyReceived: Number(e.target.value) })}
-            style={{ ...inp, width: '100%', textAlign: 'center', fontWeight: 600, color: short ? 'var(--red)' : 'var(--teal)' }}
-          />
-        </div>
-        <div>
-          <label style={{ ...labelStyle, marginBottom: '0.25rem' }}>
-            Unit cost {currency === 'LBP' ? '(LBP)' : '($)'}
-          </label>
-          <input
-            type="number" min="0" step="any" inputMode="decimal"
-            value={line.unitCost}
-            onChange={e => onChange(index, { unitCost: Number(e.target.value) })}
-            style={{ ...inp, width: '100%', textAlign: 'center', fontWeight: 600, color: priceUp ? 'var(--brand-secondary)' : 'var(--offwhite)' }}
-          />
-          {/* Costs are entered in whatever the invoice is written in, but
-              everything downstream — the running average, food cost — is USD.
-              Showing the conversion as you type is what makes an LBP invoice
-              checkable against the item's usual price without a calculator. */}
-          {usdEquivalent !== null && (
-            <p style={{
-              fontFamily: 'var(--font-inter)', fontSize: '0.62rem', textAlign: 'center',
-              color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.25rem',
-            }}>
-              ≈ ${usdEquivalent.toFixed(2)}
-            </p>
-          )}
-        </div>
-        <div style={{
-          textAlign: isMobile ? 'left' : 'right', gridColumn: isMobile ? '1 / -1' : undefined,
-          display: 'flex', flexDirection: isMobile ? 'row' : 'column',
-          alignItems: isMobile ? 'center' : 'flex-end', gap: '0.5rem',
-        }}>
-          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.55)', fontWeight: 600 }}>
-            {fmt(round2(line.qtyReceived * line.unitCost), currency)}
-          </span>
-          {/* Seeded from the item, overridable here: the same product arrives
-              taxed from one supplier and untaxed from another, and the person
-              holding the invoice is the only one who knows which. */}
-          <button
-            type="button"
-            onClick={() => onChange(index, { vatable: line.vatable === false })}
-            title={line.vatable === false ? 'No VAT on this line' : 'VAT applies to this line'}
-            style={{
-              background: line.vatable === false ? 'transparent' : 'rgba(var(--teal-rgb),0.1)',
-              border: `1px solid ${line.vatable === false ? 'rgba(var(--overlay-rgb),0.1)' : 'rgba(var(--teal-rgb),0.35)'}`,
-              color: line.vatable === false ? 'rgba(var(--offwhite-rgb),0.3)' : 'var(--teal)',
-              borderRadius: '3px', padding: '0.2rem 0.45rem', cursor: 'pointer',
-              fontFamily: 'var(--font-inter)', fontSize: '0.6rem', letterSpacing: '0.06em',
-              fontWeight: 700, whiteSpace: 'nowrap',
-            }}
-          >{line.vatable === false ? 'NO VAT' : 'VAT'}</button>
-        </div>
-      </div>
-
-      {needsTemp && (
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '130px 1fr', gap: '0.5rem', alignItems: 'end' }}>
-          <div>
-            <label style={{
-              ...labelStyle, marginBottom: '0.25rem',
-              color: tooWarm ? 'var(--red)' : tempMissing ? 'var(--brand-secondary)' : labelStyle.color,
-            }}>
-              {storage === 'frozen' ? 'Frozen' : 'Chilled'} · °C
-            </label>
-            <input
-              type="number" step="0.1" inputMode="decimal"
-              value={line.tempC ?? ''}
-              placeholder={storage === 'frozen' ? '-18' : '5'}
-              onChange={e => onChange(index, { tempC: e.target.value === '' ? null : Number(e.target.value) })}
-              style={{
-                ...inp, width: '100%', textAlign: 'center', fontWeight: 600,
-                color: tooWarm ? 'var(--red)' : 'var(--offwhite)',
-                borderColor: tooWarm ? 'var(--red)' : tempMissing ? 'rgba(var(--brand-secondary-rgb),0.6)' : 'rgba(var(--overlay-rgb),0.12)',
-              }}
-            />
-          </div>
-          {tooWarm ? (
-            <div>
-              <label style={{ ...labelStyle, marginBottom: '0.25rem', color: 'var(--red)' }}>What was done</label>
-              <input
-                value={line.tempNote ?? ''} maxLength={300}
-                placeholder="e.g. into the walk-in at once, supplier told — or reject it"
-                onChange={e => onChange(index, { tempNote: e.target.value })}
-                style={{ ...inp, width: '100%' }}
-              />
-            </div>
-          ) : (
-            <p style={{
-              fontFamily: 'var(--font-inter)', fontSize: '0.68rem', paddingBottom: '0.55rem',
-              color: tempMissing ? 'var(--brand-secondary)' : 'rgba(var(--offwhite-rgb),0.4)',
-            }}>
-              {tempMissing ? 'Take its temperature. It cannot be received without one.' : verdict ? verdict.message : 'Recorded with the delivery.'}
-            </p>
-          )}
-        </div>
-      )}
-      {tooWarm && verdict && (
-        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', fontWeight: 700, color: 'var(--red)' }}>
-          {verdict.message}
-        </span>
-      )}
-
-      {(short || priceUp) && (
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          {short && (
-            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', fontWeight: 700, color: 'var(--red)' }}>
-              short {line.qtyOrdered - line.qtyReceived} {line.unit}
-            </span>
-          )}
-          {/* Supplier price drift, surfaced at the moment it happens rather
-              than in a report nobody opens. "This provider raised olive oil
-              22% in six weeks" is a renegotiation, and it starts here. */}
-          {priceUp && drift !== null && (
-            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', fontWeight: 700, color: 'var(--brand-secondary)' }}>
-              price up {(drift * 100).toFixed(0)}% vs {fmt(lastCostLocal, currency)}
-            </span>
-          )}
-        </div>
-      )}
-
-      {!showReject ? (
-        <button
-          onClick={() => setShowReject(true)}
-          style={{
-            background: 'none', border: 'none', padding: 0, textAlign: 'left',
-            color: 'rgba(var(--offwhite-rgb),0.28)', fontFamily: 'var(--font-inter)',
-            fontSize: '0.68rem', cursor: 'pointer',
-          }}
-        >+ reject damaged / expired</button>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: '0.5rem', alignItems: 'end' }}>
-          <div>
-            <label style={{ ...labelStyle, marginBottom: '0.25rem' }}>Rejected</label>
-            <input
-              type="number" min="0" step="any" inputMode="decimal"
-              value={line.qtyRejected}
-              onChange={e => onChange(index, { qtyRejected: Number(e.target.value) })}
-              style={{ ...inp, width: '100%', textAlign: 'center', color: 'var(--red)', fontWeight: 600 }}
-            />
-          </div>
-          <div>
-            <label style={{ ...labelStyle, marginBottom: '0.25rem' }}>Reason</label>
-            {/* The route refuses a rejection with no reason. "Why did we
-                reject three crates" is the entire value of recording it. */}
-            <select
-              value={line.rejectReason ?? ''}
-              onChange={e => onChange(index, { rejectReason: (e.target.value || null) as RejectReason | null })}
-              style={{ ...inp, width: '100%', background: '#1a1a1a', cursor: 'pointer' }}
-            >
-              <option value="">— Select —</option>
-              {Object.entries(REJECT_REASON_LABELS).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      )}
-    </div>
-  )
 }
 
 function ReceivingInner() {
@@ -692,42 +413,17 @@ function ReceivingInner() {
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--black)', padding: isMobile ? '1.25rem 1rem 6rem' : '2rem 1.5rem 6rem' }}>
       <div style={{ maxWidth: '860px', margin: '0 auto' }}>
 
-        <div style={{ marginBottom: '1.75rem' }}>
-          <a href="/admin/supplies" style={{
-            fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
-            marginBottom: '0.5rem', display: 'block', fontFamily: 'var(--font-inter)',
-          }}>← Inventory Management</a>
-          <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.8rem', color: 'var(--offwhite)', marginBottom: '0.2rem' }}>
-            Receive a Delivery
-          </h1>
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
-            Pick the weekly order this delivery is against — everything comes pre-filled as ordered.
-            Only change the lines that were short, damaged, or priced differently.
-          </p>
-        </div>
+        <ReceivingHeader />
 
-        {/* Branch + Department */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
-          <div>
-            <label style={labelStyle}>Branch</label>
-            {branchOptions.length === 1 ? (
-              <div style={{ ...inp, display: 'inline-block', color: branchColor(branch), fontWeight: 600 }}>{branch}</div>
-            ) : (
-              <select value={branch} onChange={e => setBranch(e.target.value)} style={{ ...inp, width: '100%', background: '#1a1a1a', cursor: 'pointer' }}>
-                <option value="">— Select Branch —</option>
-                {branchOptions.map(b => <option key={b} value={b}>{b}</option>)}
-              </select>
-            )}
-          </div>
-          <div>
-            <label style={labelStyle}>Department</label>
-            <select value={department} onChange={e => setDepartment(e.target.value)} style={{ ...inp, width: '100%', background: '#1a1a1a', cursor: 'pointer' }}>
-              <option value="">— Select Department —</option>
-              {departmentOptions.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </div>
-        </div>
+        <BranchDepartmentPicker
+          isMobile={isMobile}
+          branchOptions={branchOptions}
+          branch={branch}
+          onBranch={setBranch}
+          departmentOptions={departmentOptions}
+          department={department}
+          onDepartment={setDepartment}
+        />
 
         {!branch || !department ? (
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>
@@ -737,130 +433,43 @@ function ReceivingInner() {
           <p style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>Loading…</p>
         ) : (
           <>
-            {/* Source order */}
-            <div style={{ marginBottom: '1.25rem' }}>
-              <label style={labelStyle}>Against which weekly order?</label>
-              <select value={orderId} onChange={e => loadFromOrder(e.target.value)} style={{ ...inp, width: '100%', background: '#1a1a1a', cursor: 'pointer' }}>
-                <option value="">— Unplanned delivery (no order) —</option>
-                {matchingReports.map(r => (
-                  <option key={r.id} value={r.id}>{r.weekLabel}{r.department ? ` · ${r.department}` : ''}</option>
-                ))}
-              </select>
-            </div>
+            <OrderPicker
+              orderId={orderId}
+              matchingReports={matchingReports}
+              onPick={loadFromOrder}
+              unlinkedCount={unlinkedCount}
+            />
 
-            {unlinkedCount > 0 && (
-              <div style={{
-                background: 'rgba(var(--brand-secondary-rgb),0.08)', border: '1px solid rgba(var(--brand-secondary-rgb),0.22)',
-                borderRadius: '4px', padding: '0.85rem 1.1rem', marginBottom: '1.25rem',
-                fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--brand-secondary)', lineHeight: 1.5,
-              }}>
-                {unlinkedCount} ordered item{unlinkedCount === 1 ? '' : 's'} on this order {unlinkedCount === 1 ? 'is' : 'are'} not
-                linked to a stocked supply, so {unlinkedCount === 1 ? 'it is' : 'they are'} not shown here — receiving
-                {unlinkedCount === 1 ? ' it' : ' them'} would move no stock. Run <code>npm run link:supplies</code>, or add
-                {unlinkedCount === 1 ? ' it' : ' them'} in Inventory Management.
-              </div>
-            )}
-
-            {/* Invoice + currency */}
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
-              <div>
-                <label style={labelStyle}>Supplier</label>
-                <select value={providerId} onChange={e => setProviderId(e.target.value)} style={{ ...inp, width: '100%', background: '#1a1a1a', cursor: 'pointer' }}>
-                  <option value="">— All suppliers —</option>
-                  {providers.map(p => {
-                    // How many of the loaded order's lines are this supplier's.
-                    // Shown in the option itself so it is obvious before
-                    // selecting which suppliers are actually on this order.
-                    const n = onOrderByProvider.get(p.id) ?? 0
-                    return <option key={p.id} value={p.id}>{p.name}{n > 0 ? ` (${n})` : ''}</option>
-                  })}
-                </select>
-                {hiddenCount > 0 && (
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.62rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginTop: '0.3rem' }}>
-                    Showing only this supplier&apos;s lines. Receive the rest when their van arrives.
-                  </p>
-                )}
-              </div>
-              <div>
-                <label style={labelStyle}>Invoice number</label>
-                <input value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder="F-20481" style={{ ...inp, width: '100%' }} />
-              </div>
-              <div>
-                <label style={labelStyle}>Currency</label>
-                <div style={{ display: 'flex', gap: '0.4rem' }}>
-                  {(['USD', 'LBP'] as Currency[]).map(c => (
-                    <button key={c} onClick={() => changeCurrency(c)} style={{
-                      flex: 1,
-                      background: currency === c ? 'rgba(var(--teal-rgb),0.15)' : 'transparent',
-                      border: `1px solid ${currency === c ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.09)'}`,
-                      color: currency === c ? 'var(--teal)' : 'rgba(var(--offwhite-rgb),0.35)',
-                      borderRadius: '4px', padding: '0.5rem', fontSize: '0.78rem',
-                      fontWeight: currency === c ? 600 : 400, cursor: 'pointer',
-                      fontFamily: 'var(--font-inter)',
-                    }}>{c}</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* The rate is stored ON the delivery, not read from a global at
-                display time, so this invoice still reprints at the same totals
-                next year. The server refuses an LBP delivery without one. */}
-            {currency === 'LBP' && (
-              <div style={{ marginBottom: '1.25rem' }}>
-                <label style={labelStyle}>Exchange rate used (LBP per $1)</label>
-                <input
-                  type="number" min="1" inputMode="numeric"
-                  value={rateUsed} onChange={e => setRateUsed(e.target.value)}
-                  style={{ ...inp, width: isMobile ? '100%' : '220px' }}
-                />
-                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.28)', marginTop: '0.35rem' }}>
-                  Saved with this delivery so its totals never change if the rate moves.
-                </p>
-              </div>
-            )}
+            <InvoiceFields
+              isMobile={isMobile}
+              providers={providers}
+              providerId={providerId}
+              onProvider={setProviderId}
+              onOrderByProvider={onOrderByProvider}
+              hiddenCount={hiddenCount}
+              invoiceNumber={invoiceNumber}
+              onInvoiceNumber={setInvoiceNumber}
+              currency={currency}
+              onCurrency={changeCurrency}
+              rateUsed={rateUsed}
+              onRateUsed={setRateUsed}
+            />
 
             {lines.length === 0 ? (
-              <div style={{ border: '1px dashed rgba(var(--overlay-rgb),0.08)', borderRadius: '4px', padding: '2.5rem 1.5rem', textAlign: 'center', marginBottom: '1.5rem' }}>
-                <p style={{ color: 'rgba(var(--offwhite-rgb),0.25)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-                  {orderId ? 'No stocked items on this order.' : 'Pick a weekly order above, or add items for an unplanned delivery.'}
-                </p>
-                <select
-                  value=""
-                  onChange={e => addUnplannedLine(e.target.value)}
-                  style={{ ...inp, background: '#1a1a1a', cursor: 'pointer', minWidth: '240px' }}
-                >
-                  <option value="">+ Add an item…</option>
-                  {supplies.filter(s => s.category === department).map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
+              <EmptyLines
+                orderId={orderId}
+                supplies={supplies}
+                department={department}
+                onAdd={addUnplannedLine}
+              />
             ) : (
               <>
-                {/* Confirm-and-fix: the one-tap path */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem',
-                }}>
-                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)' }}>
-                    {visible.length} line{visible.length === 1 ? '' : 's'}
-                    {hiddenCount > 0 && (
-                      <span style={{ color: 'rgba(var(--offwhite-rgb),0.28)' }}>
-                        {' '}· {hiddenCount} on this order from another supplier
-                      </span>
-                    )}
-                    {exceptions > 0 && (
-                      <span style={{ color: 'var(--brand-secondary)', fontWeight: 700 }}> · {exceptions} exception{exceptions === 1 ? '' : 's'}</span>
-                    )}
-                  </span>
-                  <button onClick={confirmAllAsOrdered} style={{
-                    background: 'rgba(var(--teal-rgb),0.12)', border: '1px solid var(--teal)',
-                    color: 'var(--teal)', padding: '0.55rem 1.25rem', borderRadius: '4px',
-                    fontSize: '0.74rem', letterSpacing: '0.06em', fontWeight: 600,
-                    cursor: 'pointer', fontFamily: 'var(--font-inter)',
-                  }}>Confirm all as ordered</button>
-                </div>
+                <LinesToolbar
+                  visibleCount={visible.length}
+                  hiddenCount={hiddenCount}
+                  exceptions={exceptions}
+                  onConfirmAll={confirmAllAsOrdered}
+                />
 
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.6rem', marginBottom: '1.5rem' }}>
                   {visible.map(({ line, index }) => (
@@ -889,32 +498,7 @@ function ReceivingInner() {
                   </select>
                 </div>
 
-                {/* Totals. Shown live so the receiver can check against the
-                    paper bill before committing — the whole three-way match
-                    starts with the number agreeing. The server recomputes all
-                    of this; nothing here is trusted. */}
-                <div style={{
-                  background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.07)',
-                  borderRadius: '6px', padding: '1rem 1.1rem', marginBottom: '1.5rem',
-                  fontFamily: 'var(--font-inter)', fontSize: '0.82rem',
-                }}>
-                  {[
-                    ['Subtotal', totals.subtotal],
-                    // Only shown when some of the invoice is exempt. On an
-                    // all-taxable delivery it would just repeat the subtotal.
-                    ...(totals.taxableSubtotal === totals.subtotal
-                      ? []
-                      : [['Of which taxable', totals.taxableSubtotal] as [string, number]]),
-                    [`VAT (${(vatRate * 100).toFixed(2).replace(/.?0+$/, '')}%)`, totals.vat],
-                  ].map(([label, value]) => (
-                    <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>
-                      <span>{label}</span><span>{fmt(value as number, currency)}</span>
-                    </div>
-                  ))}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid rgba(var(--overlay-rgb),0.07)', color: 'var(--offwhite)', fontWeight: 700 }}>
-                    <span>Total</span><span>{fmt(totals.grand, currency)} {currency}</span>
-                  </div>
-                </div>
+                <TotalsPanel totals={totals} vatRate={vatRate} currency={currency} />
 
                 <div style={{ marginBottom: '1.5rem' }}>
                   <label style={labelStyle}>Notes</label>
@@ -927,50 +511,15 @@ function ReceivingInner() {
               </>
             )}
 
-            {err && <p style={{ color: 'var(--red)', fontSize: '0.82rem', marginBottom: '1rem', fontFamily: 'var(--font-inter)' }}>{err}</p>}
-            {warning && (
-              <div style={{
-                background: 'rgba(var(--brand-secondary-rgb),0.08)', border: '1px solid rgba(var(--brand-secondary-rgb),0.22)',
-                borderRadius: '4px', padding: '0.85rem 1.1rem', marginBottom: '1rem',
-                fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'var(--brand-secondary)', lineHeight: 1.5,
-              }}>{warning}</div>
-            )}
-            {done && <p style={{ color: 'var(--teal)', fontSize: '0.82rem', marginBottom: '1rem', fontFamily: 'var(--font-inter)' }}>✓ {done}</p>}
-
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <button
-                onClick={() => submit('draft')}
-                disabled={!ready || saving}
-                style={{
-                  background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.15)',
-                  color: 'rgba(var(--offwhite-rgb),0.6)', padding: '0.75rem 1.5rem', borderRadius: '2px',
-                  fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase',
-                  cursor: ready && !saving ? 'pointer' : 'not-allowed',
-                  fontFamily: 'var(--font-inter)', opacity: saving ? 0.6 : 1,
-                }}
-              >{saving ? 'Saving…' : 'Save Draft'}</button>
-
-              <button
-                onClick={() => submit('received')}
-                disabled={!ready || saving}
-                title={!ready ? 'Add at least one line first' : undefined}
-                style={{
-                  background: ready ? deptColor : 'rgba(var(--overlay-rgb),0.08)',
-                  color: ready ? '#000' : 'rgba(var(--offwhite-rgb),0.3)', border: 'none',
-                  padding: '0.75rem 2rem', borderRadius: '2px',
-                  fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700,
-                  cursor: ready && !saving ? 'pointer' : 'not-allowed',
-                  fontFamily: 'var(--font-inter)', opacity: saving ? 0.6 : 1,
-                }}
-              >{saving ? 'Saving…' : 'Receive Delivery'}</button>
-
-              {/* A draft moves nothing. Said plainly, because a receiver
-                  walking away mid-entry at a back door is the normal case,
-                  not the edge case. */}
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.28)' }}>
-                A draft moves no stock. Receiving does, and can&apos;t be edited afterwards.
-              </span>
-            </div>
+            <SubmitBar
+              err={err}
+              warning={warning}
+              done={done}
+              ready={ready}
+              saving={saving}
+              deptColor={deptColor}
+              onSubmit={submit}
+            />
           </>
         )}
       </div>
