@@ -202,5 +202,21 @@ console.log('\nwhat the front sees when the kitchen marks a plate ready')
   eq('a plate picked up does not ring', P.newlyReady(new Set(['a', 'b']), ['a']), [])
 }
 
+console.log('\nsigning out says what is waiting, and never stops you (UPGRADE.md T6.1)')
+{
+  const outSign = mkdtempSync(join(tmpdir(), 'signout-verify-'))
+  execSync(
+    `npx tsc pos/app/lib/signOut.ts --outDir ${outSign} --module esnext --target es2022 ` +
+    `--skipLibCheck --moduleResolution bundler --strict`,
+    { stdio: 'pipe' },
+  )
+  const S = await import(`file://${join(outSign, 'signOut.js')}`)
+  eq('nothing waiting: no question, straight out', S.signOutWarning({ queued: 0, stuck: false, drafts: 0 }), null)
+  eq('unsent lines are named', S.signOutWarning({ queued: 0, stuck: false, drafts: 2 }), '2 lines are on this check and not sent to the kitchen. They stay on this device for the next person to sign in here. Sign out anyway?')
+  eq('a queued outbox is named, one change', S.signOutWarning({ queued: 1, stuck: false, drafts: 0 }).startsWith('1 change is waiting on this device'), true)
+  eq('a refused change is named too', S.signOutWarning({ queued: 0, stuck: true, drafts: 0 }).startsWith('a change was refused'), true)
+  eq('all of it, in one question', S.signOutWarning({ queued: 3, stuck: true, drafts: 1 }).split('; ').length, 3)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail > 0 ? 1 : 0)

@@ -25,7 +25,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faPlus, faChartColumn, faPen, faClock, faXmark, faCheck,
   faDoorOpen, faMoneyBillWave, faCircleCheck, faTableCells, faScaleBalanced, faRotateLeft,
-  faTriangleExclamation, faUserGroup, faRightFromBracket, type IconDefinition,
+  faTriangleExclamation, faUserGroup, type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
 import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useTillAccess } from '../lib/useTillAccess'
@@ -44,7 +44,7 @@ import { PosButton, Chip, StatusBadge, PosLoading, Stepper, Sheet } from '../lib
 import { floorReadings, readReadingChoice, READINGS, type ReadingKey } from '../lib/floorReadings'
 import { ReadyPanel } from '../lib/ReadyPanel'
 import { useHubOnly, HubOnlyBanner } from '../lib/useHubOnly'
-import { backend } from '../lib/backend'
+import { SignOutButton } from '../lib/SignOutButton'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -433,9 +433,8 @@ export default function FloorPage() {
               Open tables
             </h1>
           </div>
-          {/* The till had no way to sign out (UPGRADE.md T1.11). */}
-          <PosButton icon={faRightFromBracket} label="Sign out" tone="quiet" size="sm"
-            onClick={() => { void backend().signOut().then(() => router.replace('/pos/login')) }} />
+          {/* The till had no way to sign out (UPGRADE.md T1.11); one Sign out on every screen since T6.1. */}
+          <SignOutButton />
         </div>
 
         {isMobile && (

@@ -41,6 +41,7 @@ import { activeStations } from '@big-cms/shared/printing'
 import { useAutoPrintTickets, useAutoPrintReceipts, usePrintsHere } from '../../lib/useAutoPrint'
 import { useBusinessSettings } from '../../lib/useTillSettings'
 import { PosButton, Chip, StatusBadge, STATION_COLOUR, PosLoading } from '../../lib/posUi'
+import { SignOutButton } from '../../lib/SignOutButton'
 import { useHubOnly, HubOnlyBanner } from '../../lib/useHubOnly'
 
 const STORAGE_KEY = 'kds.station'
@@ -458,6 +459,7 @@ export default function KdsPage() {
           )}
           <PosButton icon={faArrowRightArrowLeft} label="Change station" tone="neutral" size="sm"
             onClick={() => { setStation(null); try { localStorage.removeItem(STORAGE_KEY) } catch {} }} />
+          <SignOutButton />
           <PosButton icon={faArrowLeft} label="Floor" tone="quiet" size="sm" onClick={() => router.push('/pos')} />
         </div>
       </div>

@@ -57,6 +57,7 @@ import { BRAND } from '@big-cms/shared/brand'
 import {
   PosButton, Chip, StatusBadge, SectionLabel, type Tone, PosLoading, ErrorNote, Sheet,
 } from '../../../lib/posUi'
+import { SignOutButton } from '../../../lib/SignOutButton'
 import { useHubOnly, HubOnlyBanner } from '../../../lib/useHubOnly'
 import { useAllergenChart } from '../../../lib/useAllergens'
 import { startLoad } from '@big-cms/shared/startLoad'
@@ -688,7 +689,10 @@ export default function CheckPage() {
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.8rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
         <PosButton icon={faArrowLeft} label="Floor" tone="quiet" size="sm" onClick={() => { if (drafts.length > 0) setLeaving(true); else router.push('/pos') }} />
-        <StatusBadge icon={faUserGroup} label={`${check.guestCount} ${check.guestCount === 1 ? 'guest' : 'guests'}`} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <StatusBadge icon={faUserGroup} label={`${check.guestCount} ${check.guestCount === 1 ? 'guest' : 'guests'}`} />
+          <SignOutButton drafts={drafts.length} />
+        </div>
       </div>
 
       <HubOnlyBanner hub={hubOnly} branch={check.branch} isMobile={isMobile} />

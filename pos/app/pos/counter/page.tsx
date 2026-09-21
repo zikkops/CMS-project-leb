@@ -62,6 +62,7 @@ import {
 } from '../../lib/counterTotals'
 import type { OutboxAction } from '../../lib/outbox'
 import { PosButton, Chip, StatusBadge, SectionLabel, kindColour, Stepper, GOOD, GOOD_RGB, Sheet } from '../../lib/posUi'
+import { SignOutButton } from '../../lib/SignOutButton'
 import { ReadyPanel } from '../../lib/ReadyPanel'
 import { useHubOnly, HubOnlyBanner } from '../../lib/useHubOnly'
 
@@ -485,6 +486,7 @@ export default function CounterPage() {
       {/* A plain page load, not router navigation: the floor is a server page,
           and this screen must not depend on one. */}
       <PosButton icon={faArrowLeft} label="Floor" tone="quiet" size="sm" onClick={() => { window.location.href = '/pos' }} />
+      <SignOutButton drafts={drafts.length} />
     </div>
   )
 

@@ -42,6 +42,7 @@ import {
   useOpenShift, openDrawer, readDrawer, closeDrawer, recordDrawerMovement, type ZResult,
 } from '../../lib/usePos'
 import { PosButton, StatusBadge, SectionLabel, PosLoading, Sheet, Chip } from '../../lib/posUi'
+import { SignOutButton } from '../../lib/SignOutButton'
 import { useFeature } from '../../lib/useTillSettings'
 import { useHubOnly, HubOnlyBanner } from '../../lib/useHubOnly'
 
@@ -318,7 +319,10 @@ export default function DrawerPage() {
     }}>
       <div style={{ maxWidth: '820px', margin: '0 auto' }}>
         {/* "Floor", as every other POS screen calls it — this said "Tables". */}
-        <PosButton icon={faArrowLeft} label="Floor" tone="quiet" size="sm" onClick={() => router.push('/pos')} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
+          <PosButton icon={faArrowLeft} label="Floor" tone="quiet" size="sm" onClick={() => router.push('/pos')} />
+          <SignOutButton />
+        </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.8rem', margin: '0.9rem 0 0.2rem', flexWrap: 'wrap' }}>
           <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.3rem' }}>Drawer</h1>
           <span style={{ color: muted, fontSize: '1rem' }}>{branch}</span>

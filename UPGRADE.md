@@ -553,7 +553,7 @@ mutations caught by name, and is checked on the emulator against a built hub.
     (S25), so there is one rule to explain.
   - **Printed badges: no** (T6.8).
   *Done: Defaults recorded, OWNER TO CONFIRM: shared = counter PC, kitchen screen, online-till browser marked shared (T6.7); online till gets scan-to-sign-in (T6.4); idle limit 15 min on shared online devices; no printed badges (T6.8).*
-- [ ] **T6.1 Sign out from every till screen, and one sign-out for all.**
+- [x] **T6.1 Sign out from every till screen, and one sign-out for all.**
   Today only the floor has the button. Put it on the counter, the check
   screen's actions, the kitchen display (for a person, not a kitchen screen
   session) and the drawer, all through one `signOut()` that:
@@ -563,6 +563,7 @@ mutations caught by name, and is checked on the emulator against a built hub.
 
   If the device holds unsent lines or a queued outbox, say so first; that
   must never block signing out. Low risk: no data change.
+  *Done: SignOutButton (pos/app/lib/SignOutButton.tsx) on the floor, counter, check screen, kitchen display and drawer; one signOutHere(): warns about unsent lines / queued or stuck outbox (signOutWarning(), never blocks), backend().signOut() (hub DELETE session or Firebase), plain load to /pos/login. Hidden for a kitchen screen session. verify:counter 52. Not looked at signed in.*
 - [ ] **T6.2 "Switch user" on a shared device.** Signing out of a shared
   device goes straight to a sign-in screen that lists the staff (first names,
   as the counter already does), so the next person taps their name and scans

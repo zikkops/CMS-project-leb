@@ -58,6 +58,12 @@ function load(): OutboxState {
   }
 }
 
+/** What this device is holding, for the Sign out warning (T6.1). */
+export function queuedOnThisDevice(): { queued: number; stuck: boolean } {
+  const state = load()
+  return { queued: state.queue.length, stuck: state.stuck !== null }
+}
+
 function save(state: OutboxState): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
