@@ -15,8 +15,10 @@ import type { MixCategory, MixItem, ProductMix } from '@big-cms/shared/salesRepo
 import type { CutShort } from '@big-cms/shared/salesExport'
 import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
 import { ReportRange, BranchTotals, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
+import { ReportDownloads } from '../../../components/ui/ReportDownloads'
+import { reportHeader, mixSheets } from '../files'
 
-type Report = ProductMix & { from: string; to: string; cutShort?: CutShort | null; byBranch?: { branch: string; totals: Record<string, number> }[] }
+type Report = ProductMix & { from: string; to: string; branches: string[]; cutShort?: CutShort | null; byBranch?: { branch: string; totals: Record<string, number> }[] }
 
 const pct = (share: number) => `${(share * 100).toFixed(1)}%`
 
@@ -72,6 +74,7 @@ export default function ProductMixPage() {
       {busy && !report && <Loading label="Reading the checks…" />}
       {report && (
         <>
+          <ReportDownloads header={reportHeader('Product Mix', report.from, report.to, report.branches)} sheets={mixSheets(report)} />
           <BranchTotals rows={report.byBranch ?? []} columns={[
             { key: 'checks', label: 'Checks' }, { key: 'quantity', label: 'Items sold' },
             { key: 'revenue', label: 'Item revenue', money: true }, { key: 'checkDiscounts', label: 'Check discounts', money: true },

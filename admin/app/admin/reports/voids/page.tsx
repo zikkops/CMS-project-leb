@@ -13,8 +13,10 @@ import { DISCOUNT_KIND_LABELS, type DiscountRow, type Tally, type VoidDiscountRe
 import type { CutShort } from '@big-cms/shared/salesExport'
 import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
 import { ReportRange, BranchTotals, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
+import { ReportDownloads } from '../../../components/ui/ReportDownloads'
+import { reportHeader, voidSheets } from '../files'
 
-type Report = VoidDiscountReport & { from: string; to: string; checks: number; cutShort?: CutShort | null; byBranch?: { branch: string; totals: Record<string, number> }[] }
+type Report = VoidDiscountReport & { from: string; to: string; branches: string[]; checks: number; cutShort?: CutShort | null; byBranch?: { branch: string; totals: Record<string, number> }[] }
 
 const tallyColumns: Column<Tally>[] = [
   { key: 'label', label: '', render: t => t.label, sort: (a, b) => a.label.localeCompare(b.label) },
@@ -66,6 +68,7 @@ export default function VoidsReportPage() {
       {busy && !report && <Loading label="Reading the checks…" />}
       {report && (
         <>
+          <ReportDownloads header={reportHeader('Voids & Discounts', report.from, report.to, report.branches)} sheets={voidSheets(report)} />
           <BranchTotals rows={report.byBranch ?? []} columns={[
             { key: 'voids', label: 'Voids' }, { key: 'voidValue', label: 'Voided', money: true }, { key: 'wasteValue', label: 'Waste', money: true },
             { key: 'discounts', label: 'Discounts' }, { key: 'discountValue', label: 'Took off', money: true },

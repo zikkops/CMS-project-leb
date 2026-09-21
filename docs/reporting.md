@@ -312,7 +312,12 @@ in USD at the cost stored with the count (`countVariance()` in
      cash-ups day by day.
    - CLAUDE.md's line that a 01:30 sale "belongs to the night it was made"
      does not describe the export, which files it on the next calendar day.
-   - Fix: **T7.1** chooses one café day for everything; **T7.7**, **T7.16**.
+   - **Decided 21 Sep 2026 (T7.1b):** sales, VAT and every accounting report
+     use the calendar day in the café's zone, the date on the receipt, because a
+     receipt is a tax document. Counting cash keeps the cash-up day. Cash is
+     reconciled per shift, never per calendar day. Every download says which
+     day rule it uses (`DAY_RULE_LABEL` in `shared/src/reportDefinitions.ts`).
+   - Fix: **T7.7**, **T7.16**.
 6. **Everything called "net" includes VAT**, and the export's includes
    service too.
    - This covers Net USD and Net LBP, Hourly "Takings", "Closed today", and Mix

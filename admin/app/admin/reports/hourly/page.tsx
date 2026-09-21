@@ -14,6 +14,8 @@ import type { HourRow, HourlySales } from '@big-cms/shared/salesReports'
 import type { CutShort } from '@big-cms/shared/salesExport'
 import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
 import { ReportRange, BranchTotals, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
+import { ReportDownloads } from '../../../components/ui/ReportDownloads'
+import { reportHeader, hourlySheets } from '../files'
 import { HourChart, hourLabel } from './HourChart'
 
 const change = (now: number, before: number) =>
@@ -28,7 +30,7 @@ const columns: Column<HourRow>[] = [
 
 export default function HourlySalesPage() {
   const { checking } = useRequireRole(SECTION_ACCESS.endOfDay)
-  const [report, setReport] = useState<(HourlySales & { cutShort?: CutShort | null; byBranch?: { branch: string; totals: Record<string, number> }[] }) | null>(null)
+  const [report, setReport] = useState<(HourlySales & { branches?: string[]; cutShort?: CutShort | null; byBranch?: { branch: string; totals: Record<string, number> }[] }) | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -50,6 +52,7 @@ export default function HourlySalesPage() {
       {busy && !report && <Loading label="Reading the checks…" />}
       {report && (
         <>
+          <ReportDownloads header={reportHeader('Hourly Sales', report.day, report.day, report.branches ?? [])} sheets={hourlySheets(report)} />
           <BranchTotals rows={report.byBranch ?? []} columns={[
             { key: 'checks', label: 'Checks' }, { key: 'net', label: 'Takings', money: true },
             { key: 'compareChecks', label: 'Week before, checks' }, { key: 'compareNet', label: 'Week before', money: true },

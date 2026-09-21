@@ -27,7 +27,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'export-verify-'))
 execSync(
-  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts --outDir ${out} ` +
+  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts --outDir ${out} ` +
   `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
@@ -38,6 +38,7 @@ for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
 
 const X = await import(`file://${join(out, 'salesExport.js')}`)
 const RP = await import(`file://${join(out, 'reportPeriods.js')}`)
+const RF = await import(`file://${join(out, 'reportFile.js')}`)
 const L = await import(`file://${join(out, 'loyaltyExport.js')}`)
 
 let pass = 0, fail = 0
@@ -292,6 +293,23 @@ console.log('\nthe periods and branches a report is asked for (UPGRADE.md T7.1)'
   eq('no branch, or all, is every branch of theirs', [RP.readBranchList('', own), RP.readBranchList('all', own)], [own, own])
   eq('several branches, in the café\'s order, without repeats', RP.readBranchList('Third, Main,Main', own), ['Main', 'Third'])
   eq('a branch that is not theirs refuses the request', typeof RP.readBranchList('Main,Elsewhere', ['Main']), 'string')
+}
+
+console.log('\nevery download opens with the same header block (UPGRADE.md T7.1b)')
+{
+  const h = { business: 'Placeholder Cafe', report: 'Voids & Discounts', branches: ['Main', 'Second'], from: '2026-09-01', to: '2026-09-30', dayRule: 'calendar', generatedAt: '2026-09-21T10:00:00.000Z' }
+  eq('the header names business, report, branches, period, currencies, days, time and definitions',
+    RF.headerRows(h).map(r => r[0]), ['Business', 'Report', 'Branches', 'Period', 'Currencies', 'Days', 'Generated', 'Definitions'])
+  eq('one day reads as one date', RF.headerRows({ ...h, to: h.from })[3][1], '2026-09-01')
+  const csv = RF.reportCsv(h, [{ label: 'Item', value: r => r.item }, { label: 'USD', value: r => r.usd }], [
+    { item: 'Latte, large', usd: 4.5 }, { item: 'Say "hi"', usd: 3 }, { item: '=HYPERLINK("x")', usd: 1 / 3 },
+  ])
+  const lines = csv.split('\r\n')
+  eq('then a blank line and the table', [lines[8], lines[9]], ['', 'Item,USD'])
+  eq('a comma or quote is quoted, never splitting a column', [lines[10], lines[11]], ['"Latte, large",4.5', '"Say ""hi""",3'])
+  eq('a cell that looks like a formula is never run as one', lines[12].startsWith("\"'=HYPERLINK"), true)
+  eq('numbers are plain, to the cent', lines[12].endsWith(',0.33'), true)
+  eq('the file name sorts by period', RF.reportFileName('Voids & Discounts', '2026-09-01', '2026-09-30', 'csv'), 'voids-and-discounts_2026-09-01_2026-09-30.csv')
 }
 
 console.log('\na read that hit its ceiling says so (UPGRADE.md T5.8)')
