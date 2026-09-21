@@ -37,7 +37,7 @@ try {
     'npx tsc shared/src/hubSync.ts shared/src/receiptBlocks.ts shared/src/server/hubDevices.ts shared/src/server/hubSync.ts ' +
     'shared/src/server/hubSession.ts shared/src/server/invoiceNumber.ts shared/src/server/hubLock.ts ' +
     'shared/src/server/staffKeys.ts shared/src/server/keyAttestation.ts shared/src/server/hubKeySignIn.ts shared/src/server/hubApprovals.ts ' +
-    'shared/src/server/hubCounterSignIn.ts shared/src/server/hubPrinting.ts shared/src/server/hubClock.ts ' +
+    'shared/src/server/hubCounterSignIn.ts shared/src/server/hubPrinting.ts shared/src/server/hubClock.ts shared/src/server/staffSignIn.ts ' +
     `--outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -1548,6 +1548,38 @@ console.log('\nthe counter PC signs in with the person\'s own phone, and signs o
   await rejects('THE TRAP: scanning someone else\'s named request signs nobody in', () => approveScan(joe, named), e => e.status === 404)
   await approveScan(nour, named)
   eq('...and its own person can scan it', (await HC.collectCounterSignIn({ id: named.id, secret: named.secret }, { db })).caller?.uid, 'u-counter')
+
+  // ── Scan to sign in on the online till (UPGRADE.md T6.4) ──
+  {
+    const SI = await import(url('staffSignIn.js'))
+    const SS = await import(url('server/staffSignIn.js'))
+    const minted = []
+    const mint = async uid => { minted.push(uid); return `custom-token-for-${uid}` }
+    const rana = { uid: 'u-online', email: 'rana@example.com', role: 'manager', branchIds: [branch], superadmin: false, isStaff: true }
+    eq('the QR is a link into the till, the request in the fragment', SI.approveLink('https://pos.example.com/', 'R'.repeat(22)), `https://pos.example.com/pos/approve#r=${'R'.repeat(22)}`)
+    eq('...read back only when it is a request', [SI.requestFromHash(`#r=${'R'.repeat(22)}`), SI.requestFromHash('#r=short'), SI.requestFromHash('#x=1')], ['R'.repeat(22), null, null])
+    eq('the check both screens show is four digits, the same from the same id', [SI.checkDigits('abc'), SI.checkDigits('abc') === SI.checkDigits('abc'), /^\d{4}$/.test(SI.checkDigits('R'.repeat(22)))], [SI.checkDigits('abc'), true, true])
+
+    const asked = await SS.askStaffSignIn({ db })
+    const stored = JSON.stringify((await db.doc(`${SI.STAFF_SIGNIN_REQUESTS}/${asked.id}`).get()).data())
+    eq('a device asks with no sign-in, and the cloud keeps only a hash of its secret', [SI.isSignInRequestId(asked.id), stored.includes(asked.secret), asked.code], [true, false, SI.checkDigits(asked.id)])
+    eq('before a phone approves, the device is told to wait', (await SS.collectStaffSignIn({ id: asked.id, secret: asked.secret }, { db, mint })).state, 'waiting')
+    eq('the phone sees the same four digits as the device', (await SS.peekStaffSignIn(asked.id, { db })).code, asked.code)
+    await rejects('THE TRAP: somebody not staff approves nothing', () => SS.approveStaffSignIn({ ...rana, isStaff: false }, asked.id, { db }), e => e.status === 403)
+    await SS.approveStaffSignIn(rana, asked.id, { db })
+    await rejects('...and an approved request cannot be approved again by someone else', () => SS.approveStaffSignIn({ ...rana, uid: 'u-other' }, asked.id, { db }), e => e.status === 404)
+    await rejects('THE TRAP: the device collects only with its own secret', () => SS.collectStaffSignIn({ id: asked.id, secret: 'b'.repeat(43) }, { db, mint }), e => e.status === 401)
+    const got = await SS.collectStaffSignIn({ id: asked.id, secret: asked.secret }, { db, mint })
+    eq('approved, the device gets a one-use token for the person who approved', [got.state, got.uid, got.token], ['approved', 'u-online', 'custom-token-for-u-online'])
+    eq('collecting twice gets nothing, and mints nothing', [(await SS.collectStaffSignIn({ id: asked.id, secret: asked.secret }, { db, mint })).state, minted.length], ['collected', 1])
+    const old = await SS.askStaffSignIn({ db, now: Date.now() - SI.STAFF_SIGNIN_MS - 1000 })
+    await rejects('a code approved too late approves nothing', () => SS.approveStaffSignIn(rana, old.id, { db }), e => e.status === 404)
+    eq('...and tells the device it ran out', (await SS.collectStaffSignIn({ id: old.id, secret: old.secret }, { db, mint })).state, 'expired')
+    // A flood of asks, which need no sign-in, is refused once the day's supply is used.
+    await db.doc('appSettings/staffSignInBudget').set({ day: (await import(url('dates.js'))).todayYmd(BRAND.locale.timezone), used: SI.MAX_STAFF_SIGNIN_PER_DAY })
+    await rejects('THE TRAP: past the day\'s cap, asking is refused, never stored', () => SS.askStaffSignIn({ db }), e => e.status === 429)
+    await db.doc('appSettings/staffSignInBudget').delete()
+  }
 
   // ── Idle (S25) ──
   const t0 = Date.now()

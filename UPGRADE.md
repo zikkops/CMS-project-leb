@@ -583,7 +583,7 @@ mutations caught by name, and is checked on the emulator against a built hub.
   - Also a **"scan to sign in" start from the phone**: tapping your name
     becomes optional, because the scan says who you are.
   *Done: Counter sign-in screen: 'Scan to sign in' (no name needed) and a QR beside the four-digit code (bigcms-signin:v1:<hub fp>:<request>:<code>, signInLink()/parseSignInLink() in counterSignIn.ts). Hub: open requests (one at a time) claimed by the approving key's owner; a scanned approval names its request and must be this person's own or open. Staff app: 'Scan the counter' signs the existing counterSignInMessage(); the typed code stays the fallback. verify:hub-sync 444, 4 mutations caught. Not run on the emulator or a real phone.*
-- [ ] **T6.4 Scan to sign in on the online till** (owner, from T6.0). For
+- [x] **T6.4 Scan to sign in on the online till** (owner, from T6.0). For
   cafés without a hub, a shared browser device shows a QR instead of an email
   and password.
   - The device asks the cloud for a request (`POST /api/staff-signin`, a
@@ -599,6 +599,7 @@ mutations caught by name, and is checked on the emulator against a built hub.
   - **Server-only collection, no Firestore rule, so no rules deploy.**
   - The device never sees a password, and the phone never sees the device's
     secret.
+  *Done: Online till: 'Show a code to scan' on the sign-in page (cloud only); QR = /pos/approve#r=<id> (id in the fragment), four check digits from the id on both screens; the staff member's signed-in phone approves on /pos/approve (requireStaff); the device collects a one-use Firebase custom token (createCustomToken) and signInWithCustomToken. /api/staff-signin: ask capped at 2,000 a day (unauthenticated), body capped before parsing, secrets hashed, 2 minutes, one use, logged; staffSignInRequests server-only, no rule, no rules deploy; 404 on a hub. verify:hub-sync 458, 4 mutations caught. Not run live.*
 - [ ] **T6.5 See where you are signed in, and end it from anywhere.**
   - The staff app lists your live sessions: counter PC, kitchen screen, or
     another phone, with when each started. You can end any of them.

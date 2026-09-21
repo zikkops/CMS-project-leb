@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { signInWithEmailAndPassword } from 'firebase/auth'
+import { signInWithCustomToken, signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '@big-cms/shared/firebase'
 import { setAdminSessionCookie } from '@big-cms/shared/adminAuth'
 import { BRAND } from '@big-cms/shared/brand'
@@ -23,6 +23,7 @@ import {
 } from '../../lib/backend/hub'
 import { tokenFromHandoff } from '@big-cms/shared/staffKeys'
 import { isCounterHost } from '@big-cms/shared/counterSignIn'
+import { approveLink } from '@big-cms/shared/staffSignIn'
 import { startLoad } from '@big-cms/shared/startLoad'
 import { useClientValue } from '@big-cms/shared/useClientValue'
 import { isNetworkFailure } from '@big-cms/shared/netErrors'
@@ -211,6 +212,93 @@ function CounterSignIn({ onSignedIn }: { onSignedIn: (session: HubSession) => vo
   )
 }
 
+interface OnlineRequest { id: string; secret: string; code: string; expiresAt: number }
+
+/**
+ * On the online till (no hub), a device shows a code for the staff member's own
+ * phone to scan (UPGRADE.md T6.4): no password typed on a shared screen. The
+ * phone, signed in to the till, approves; this device then signs in as them
+ * with a one-use token.
+ */
+function OnlineScanSignIn({ onSignedIn }: { onSignedIn: () => void }) {
+  const online = useClientValue(() => backend().kind === 'cloud', false)
+  const [request, setRequest] = useState<OnlineRequest | null>(null)
+  const [qr, setQr] = useState<{ id: string; url: string } | null>(null)
+  const [problem, setProblem] = useState('')
+  const [asking, setAsking] = useState(false)
+
+  useEffect(() => {
+    if (!request) return
+    const link = approveLink(window.location.origin, request.id)
+    QRCode.toDataURL(link, { margin: 1, width: 220 }).then(url => setQr({ id: request.id, url })).catch(() => setQr(null))
+  }, [request])
+
+  // Waits for the phone, asking every two seconds, until the request runs out.
+  useEffect(() => {
+    if (!request) return
+    let live = true
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const tick = async () => {
+      if (!live) return
+      if (Date.now() > request.expiresAt + 30_000) { setRequest(null); setProblem('Nobody approved on a phone in time. Show a new code.'); return }
+      try {
+        const res = await fetch('/api/staff-signin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'collect', id: request.id, secret: request.secret }) })
+        const data = await res.json().catch(() => ({})) as Record<string, unknown>
+        if (!live) return
+        if (res.ok && data.state === 'approved' && typeof data.token === 'string') {
+          await signInWithCustomToken(auth, data.token)
+          onSignedIn()
+          return
+        }
+        if (res.ok && (data.state === 'expired' || data.state === 'collected')) { setRequest(null); setProblem('That code has run out. Show a new one.'); return }
+      } catch {
+        // No answer this time: keep asking until the request runs out.
+      }
+      timer = setTimeout(() => { void tick() }, 2_000)
+    }
+    timer = setTimeout(() => { void tick() }, 2_000)
+    return () => { live = false; clearTimeout(timer) }
+  }, [request, onSignedIn])
+
+  async function ask() {
+    setAsking(true)
+    setProblem('')
+    try {
+      const res = await fetch('/api/staff-signin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ask' }) })
+      const data = await res.json().catch(() => ({})) as Record<string, unknown>
+      if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'No code this time. Sign in with your email.')
+      setRequest({ id: String(data.id), secret: String(data.secret), code: String(data.code), expiresAt: Number(data.expiresAt) })
+    } catch (err) {
+      setProblem(isNetworkFailure(err) ? 'No internet connection. Check the wifi and try again.' : err instanceof Error ? err.message : 'No code this time.')
+    } finally {
+      setAsking(false)
+    }
+  }
+
+  if (!online) return null
+  const qrUrl = request && qr?.id === request.id ? qr.url : null
+  return (
+    <section aria-labelledby="scan-phone" style={{ ...card, marginBottom: '1rem' }}>
+      <h2 id="scan-phone" style={cardTitle}><FontAwesomeIcon icon={faQrcode} />With your phone</h2>
+      {request ? (
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ color: 'rgba(var(--overlay-rgb),0.75)', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            Scan this with the camera on your own phone, signed in to the till, and approve. Check your phone shows <strong>{request.code}</strong>.
+          </p>
+          {qrUrl && <img src={qrUrl} alt="Code for your phone to scan" width={220} height={220} style={{ background: '#fff', padding: '8px', borderRadius: '8px', margin: '0.4rem auto 0.8rem', display: 'block' }} />}
+          <PosButton icon={faXmark} label="Cancel" tone="quiet" full onClick={() => setRequest(null)} />
+        </div>
+      ) : (
+        <>
+          <p style={cardNote}>No password on a shared screen: show a code, and approve it on your own phone.</p>
+          <PosButton icon={faQrcode} label="Show a code to scan" tone="primary" full disabled={asking} onClick={() => { void ask() }} />
+        </>
+      )}
+      {problem && <div style={{ marginTop: '0.7rem' }}><ErrorNote message={problem} /></div>}
+    </section>
+  )
+}
+
 export default function PosLoginPage() {
   const router = useRouter()
   const isMobile = useIsMobile()
@@ -224,6 +312,10 @@ export default function PosLoginPage() {
   const counterSignedIn = useCallback((session: HubSession) => {
     setAdminSessionCookie()
     router.replace(session.scope === 'kds' ? '/pos/kds' : '/pos')
+  }, [router])
+  const onlineSignedIn = useCallback(() => {
+    setAdminSessionCookie()
+    router.replace('/pos')
   }, [router])
 
   // The staff app signed this phone in with its key and handed the session over
@@ -311,6 +403,7 @@ export default function PosLoginPage() {
         }}>Point of Sale</h1>
 
         <CounterSignIn onSignedIn={counterSignedIn} />
+        <OnlineScanSignIn onSignedIn={onlineSignedIn} />
 
         <form onSubmit={handleSubmit} aria-labelledby="with-email" style={{ ...card, display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
           <div>
