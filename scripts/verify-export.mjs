@@ -27,7 +27,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'export-verify-'))
 execSync(
-  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts shared/src/salesSummary.ts shared/src/tenderSummary.ts shared/src/vatReport.ts shared/src/cashUpReport.ts shared/src/receiptSequence.ts shared/src/purchasesReport.ts shared/src/journal.ts --outDir ${out} ` +
+  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts shared/src/salesSummary.ts shared/src/tenderSummary.ts shared/src/vatReport.ts shared/src/cashUpReport.ts shared/src/receiptSequence.ts shared/src/purchasesReport.ts shared/src/journal.ts shared/src/periodClose.ts --outDir ${out} ` +
   `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
@@ -46,6 +46,7 @@ const CU = await import(`file://${join(out, 'cashUpReport.js')}`)
 const RS = await import(`file://${join(out, 'receiptSequence.js')}`)
 const PR = await import(`file://${join(out, 'purchasesReport.js')}`)
 const J = await import(`file://${join(out, 'journal.js')}`)
+const PC = await import(`file://${join(out, 'periodClose.js')}`)
 const L = await import(`file://${join(out, 'loyaltyExport.js')}`)
 
 let pass = 0, fail = 0
@@ -411,6 +412,38 @@ console.log('\nthe journal: double entry per day and branch, and every one balan
   eq('...and saving one is refused, naming it', J.accountCodesProblem({ accounts: { ...J.DEFAULT_ACCOUNT_CODES.accounts, card: { code: '', name: 'x' } } }), 'Card clearing: a code is 1 to 20 letters, digits, dots or dashes.')
   const csvLine = built.lines[0]
   eq('each line: date, journal, branch, code, name, description, debit and credit in both, source', J.JOURNAL_COLUMNS.map(([k]) => typeof csvLine[k]), ['string', 'string', 'string', 'string', 'string', 'string', 'number', 'number', 'number', 'number', 'string'])
+}
+
+console.log('\nperiod close: issued figures kept, later changes shown as adjustments (UPGRADE.md T7.17)')
+{
+  const checks = [
+    check({ id: 'a', receiptNumber: '1', closedAt: '2026-09-10T18:00:00.000Z', lines: [line({ unitPrice: 11 })] }),
+    check({ id: 'b', receiptNumber: '2', closedAt: '2026-09-11T18:00:00.000Z', lines: [line({ unitPrice: 22 })] }),
+    check({ id: 'c', receiptNumber: '3', branch: 'Second', closedAt: '2026-09-11T18:00:00.000Z', lines: [line({ unitPrice: 5.5 })] }),
+  ]
+  const period = { ...OPTS, from: '2026-09-10', to: '2026-09-11' }
+  const issued = PC.dayFigures(X.buildExport(checks, period).checks, ['Main', 'Second'])
+  eq('each day and branch is kept as issued, from the sales summary', issued.map(d => [d.branch, d.day, d.checks, d.billed]), [['Main', '2026-09-10', 1, 11], ['Main', '2026-09-11', 1, 22], ['Second', '2026-09-11', 1, 5.5]])
+  eq('the totals are the sum of the days', PC.totalsOf(issued).billed, 38.5)
+  eq('nothing changed: no adjustments', PC.adjustments(issued, issued), [])
+
+  // A held hub sale applied afterwards, closing on the 10th.
+  const late = check({ id: 'd', receiptNumber: '4', closedAt: '2026-09-10T19:00:00.000Z', lines: [line({ unitPrice: 3.3 })] })
+  const now = PC.dayFigures(X.buildExport([...checks, late], period).checks, ['Main', 'Second'])
+  const adj = PC.adjustments(issued, now)
+  eq('THE POINT: a sale added to a closed day is an adjustment, issued against now', adj.filter(a => a.field === 'billed'), [{ branch: 'Main', day: '2026-09-10', field: 'billed', issued: 11, now: 14.3, difference: 3.3 }])
+  eq('...counted in checks, VAT and net sales too', adj.map(a => a.field).sort(), ['billed', 'checks', 'netSales', 'vatOutput'])
+  eq('a day that has gone counts down to zero', PC.adjustments(issued, issued.filter(d => d.branch === 'Main')).filter(a => a.field === 'billed'), [{ branch: 'Second', day: '2026-09-11', field: 'billed', issued: 5.5, now: 0, difference: -5.5 }])
+
+  // A refund given after the close is filed on its own day, outside the closed period.
+  const refundedLater = checks.map(c => (c.id === 'b' ? { ...c, status: 'refunded', refundedAt: '2026-09-20T10:00:00.000Z' } : c))
+  eq('a refund after the close changes nothing in the closed period', PC.adjustments(issued, PC.dayFigures(X.buildExport(refundedLater, period).checks, ['Main', 'Second'])), [])
+
+  const closes = [{ from: '2026-09-01', to: '2026-09-15' }]
+  eq('a period is closed only once its last day is over', PC.closeProblem('2026-09-16', '2026-09-21', '2026-09-21', closes), 'A period can be closed once its last day is over: choose a last day before today.')
+  eq('periods never overlap', PC.closeProblem('2026-09-15', '2026-09-20', '2026-09-21', closes), 'Those days overlap a period already closed, 2026-09-01 to 2026-09-15.')
+  eq('the next period can be closed', PC.closeProblem('2026-09-16', '2026-09-20', '2026-09-21', closes), null)
+  eq('a report says which closes cover its days', [PC.closesOverlapping(closes, '2026-09-14', '2026-09-30').length, PC.closesOverlapping(closes, '2026-09-16', '2026-09-30').length], [1, 0])
 }
 
 console.log('\nthe sheets are declared once, for the UI and the file both')

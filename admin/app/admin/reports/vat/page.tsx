@@ -13,9 +13,10 @@ import type { FileColumn } from '@big-cms/shared/reportFile'
 import { Page, PageHeader, Panel, DataTable, ErrorLine, Loading, CutShortNote } from '../../../components/ui'
 import { ReportRange, BranchTotals, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
 import { ReportDownloads, type ReportSheet } from '../../../components/ui/ReportDownloads'
+import { ClosedPeriodNote, type ClosedNote } from '../ClosedPeriodNote'
 import { reportHeader } from '../files'
 
-type Report = VatReport & { from: string; to: string; branches: string[]; cutShort?: CutShort | null }
+type Report = VatReport & { from: string; to: string; branches: string[]; cutShort?: CutShort | null; closed?: ClosedNote[] }
 
 const sheet = <T,>(name: string, columns: FileColumn<T>[], rows: readonly T[]) => ({ name, columns, rows }) as unknown as ReportSheet<never>
 
@@ -42,6 +43,7 @@ export default function VatReportPage() {
       <ReportRange onRun={run} busy={busy} />
       {error && <ErrorLine>{error}</ErrorLine>}
       <CutShortNote cut={report?.cutShort} />
+      <ClosedPeriodNote closed={report?.closed} />
       {busy && !report && <Loading label="Reading checks and deliveries…" />}
       {report && t && (
         <>

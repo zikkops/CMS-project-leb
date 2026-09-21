@@ -883,13 +883,14 @@ Principles for every task here:
   and show it at the top of the reports section, so a mismatch is seen before
   the accountant sees it.
   *Done: /admin/reports/reconcile (first in the reports) and npm run verify:reconcile: every report over one period, each pair compared to the cent (export days = sales summary; mix = summary on closed checks; VAT report = summary; payments = bills within lira rounding; drawers = payments taken into them per currency; journal debits = credits and its VAT = VAT report; closed checks with no receipt number = none). Verifier runs a generated 288-check history built with applyPayment/drawerTotals, and proves tampering is caught. Demo: found one closed check with no receipt number ($7.75) counted by the mix only; mix now counts numbered checks, the check is named.*
-- [ ] **T7.17 Period close.** An admin closes a period
+- [x] **T7.17 Period close.** An admin closes a period
   once it has been handed to the accountant:
   - its reports are stored as issued (the numbers and the definitions version)
   - anything that later changes a closed day (a late refund, a held hub sale
     applied) is shown against the closed figures as a post-close adjustment,
     never silently changing a report already sent
 
+  *Done: /admin/reports/periods: an admin closes a period (every branch); each café day and branch is stored as issued (sales summary figures) with REPORT_DEFINITIONS_VERSION in periodCloses (server-only). Not locked: adjustments() compares issued with now; Sales Summary and VAT report show post-close adjustments for closed days; 'Check for changes' per period. No overlap, today not closable, a late refund files on its own day. verify:export 201, verify:hub 227.*
 - [x] **T7.18 Staff pay panel: hourly rate and tip weight per person** (owner's
   request, 21 Sep 2026). An admin-only page (`/admin/settings/staff-pay`, in
   `ADMIN_NAV` under Administration) listing every staff member by first name,

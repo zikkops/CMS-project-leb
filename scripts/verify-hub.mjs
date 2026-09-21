@@ -33,7 +33,7 @@ rmSync(out, { recursive: true, force: true })
 try {
   execSync(
     'npx tsc shared/src/server/hubStore.ts shared/src/server/checks.ts shared/src/server/tickets.ts ' +
-    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts shared/src/server/soldOut.ts shared/src/server/receiptEmail.ts shared/src/server/supplyTransfer.ts shared/src/server/activityLog.ts shared/src/server/hubBackup.ts shared/src/server/staffPay.ts shared/src/server/endOfDay.ts shared/src/server/salesExport.ts shared/src/server/cashUp.ts ' +
+    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts shared/src/server/soldOut.ts shared/src/server/receiptEmail.ts shared/src/server/supplyTransfer.ts shared/src/server/activityLog.ts shared/src/server/hubBackup.ts shared/src/server/staffPay.ts shared/src/server/endOfDay.ts shared/src/server/salesExport.ts shared/src/server/cashUp.ts shared/src/server/periodClose.ts ' +
     `shared/src/server/drawer.ts --outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -499,6 +499,26 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
     eq('a day keeps the deduction it was first saved with, through a later edit', [eodDoc.tipsDeductionRate, eodDoc.tipsUsd], [0.2, 15])
     if (business) await db.doc('appSettings/business').set(business); else await db.doc('appSettings/business').delete()
     await db.doc(`endOfDayReports/${saved.id}`).delete()
+  }
+
+  // Period close (UPGRADE.md T7.17): issued figures kept; a sale reaching a
+  // closed day afterwards shows as an adjustment; periods never overlap.
+  {
+    const PCS = await import(url('server/periodClose.js'))
+    const past = (iso, id, price) => db.doc(`checks/${id}`).set({
+      branch, status: 'closed', receiptNumber: `R-${id}`, tableNumber: 9, guestCount: 1, vatRate: 0.11, billRate: 89_500, staffDiscount: null,
+      closedAt: Timestamp.fromMillis(Date.parse(iso)), payments: [],
+      lines: [{ id: 'l1', source: 'menu', refId: 'm-x', name: 'X', unitPrice: price, modifiers: [], quantity: 1, status: 'sent', sentAt: iso }],
+    })
+    await past('2025-03-10T12:00:00Z', 'pc-1', 11)
+    const closed = await PCS.closePeriod(staff, { from: '2025-03-01', to: '2025-03-31' })
+    eq('closing stores each day as issued, with the definitions version', [closed.days.length, closed.totals.billed, Boolean(closed.definitionsVersion)], [1, 11, true])
+    await rejects('the same days cannot be closed twice', () => PCS.closePeriod(staff, { from: '2025-03-15', to: '2025-04-15' }), e => e.status === 409)
+    await past('2025-03-12T12:00:00Z', 'pc-2', 4.4)
+    const checked = await PCS.checkClose(closed.id)
+    eq('a sale reaching a closed day later is an adjustment against what was issued', checked.adjustments.filter(a => a.field === 'billed').map(a => [a.day, a.issued, a.now]), [['2025-03-12', 0, 4.4]])
+    for (const id of ['pc-1', 'pc-2']) await db.doc(`checks/${id}`).delete()
+    await db.doc(`periodCloses/${closed.id}`).delete()
   }
 
   // Staff pay (UPGRADE.md T7.18): saved with history, listed with today's values.

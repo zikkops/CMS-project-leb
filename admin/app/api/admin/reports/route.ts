@@ -29,6 +29,7 @@ import { readPurchases, readReceivedDeliveries } from '@big-cms/shared/server/re
 import { purchasesReport } from '@big-cms/shared/purchasesReport'
 import { readJournal, readMenuCategories } from '@big-cms/shared/server/journal'
 import { readReconcile } from '@big-cms/shared/server/reconcile'
+import { closedNotes } from '@big-cms/shared/server/periodClose'
 import { TIME_ENTRIES, peopleOf, timesheet, type TimeEntry } from '@big-cms/shared/timeClock'
 import { timestampMs } from '@big-cms/shared/timestamps'
 import { dayBefore, hourlySales, productMix, voidDiscountReport } from '@big-cms/shared/salesReports'
@@ -65,8 +66,10 @@ export async function GET(request: Request): Promise<Response> {
       // and refunds by refund day, added up per branch and then across.
       const { exchangeRate } = await readSettings()
       const result = await readSalesExport(range, { timeZone, fallbackRate: exchangeRate, branches: own })
+      // Days in a closed period, and what has changed on them since (T7.17).
+      const closed = await closedNotes(result.checks, range.from, range.to, chosen)
       return Response.json(
-        { ok: true, from: range.from, to: range.to, branches: chosen, cutShort: result.cutShort, ...salesSummary(result.checks, chosen) },
+        { ok: true, from: range.from, to: range.to, branches: chosen, cutShort: result.cutShort, closed, ...salesSummary(result.checks, chosen) },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }
@@ -88,8 +91,9 @@ export async function GET(request: Request): Promise<Response> {
         readSalesExport(range, { timeZone, fallbackRate: exchangeRate, branches: own }),
         readReceivedDeliveries(range, { timeZone, branches: own }),
       ])
+      const closed = await closedNotes(result.checks, range.from, range.to, chosen)
       return Response.json(
-        { ok: true, from: range.from, to: range.to, branches: chosen, cutShort: result.cutShort ?? received.cutShort, ...vatReport(result.checks, received.deliveries, chosen) },
+        { ok: true, from: range.from, to: range.to, branches: chosen, cutShort: result.cutShort ?? received.cutShort, closed, ...vatReport(result.checks, received.deliveries, chosen) },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }

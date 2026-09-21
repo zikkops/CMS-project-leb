@@ -14,9 +14,10 @@ import type { FileColumn } from '@big-cms/shared/reportFile'
 import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
 import { ReportRange, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
 import { ReportDownloads, type ReportSheet } from '../../../components/ui/ReportDownloads'
+import { ClosedPeriodNote, type ClosedNote } from '../ClosedPeriodNote'
 import { reportHeader } from '../files'
 
-type Report = SalesSummary & { from: string; to: string; branches: string[]; cutShort?: CutShort | null }
+type Report = SalesSummary & { from: string; to: string; branches: string[]; cutShort?: CutShort | null; closed?: ClosedNote[] }
 
 const lbp = (n: number) => `${Math.round(n).toLocaleString('en-US')} LBP`
 
@@ -79,6 +80,7 @@ export default function SalesSummaryPage() {
       <ReportRange onRun={run} busy={busy} />
       {error && <ErrorLine>{error}</ErrorLine>}
       <CutShortNote cut={report?.cutShort} />
+      <ClosedPeriodNote closed={report?.closed} />
       {busy && !report && <Loading label="Reading the checks…" />}
       {report && (
         <>

@@ -431,8 +431,8 @@ in USD at the cost stored with the count (`countVariance()` in
     - Fix: **T7.3**, **T7.10**.
 23. **FIXED 21 Sep 2026 (T7.10). There was no receipt sequence audit.** Now: `receiptSequence()` in `shared/src/receiptSequence.ts` walks every number from the lowest to the highest seen in the period, per café year. Each is on a check or retail sale, at another branch (counted, not shown), on a wholesale invoice, issued with nothing carrying it (from the log, with what it was for), skipped in a hub block (named with the block), before the log began, or missing. Duplicates are listed. Numbers issued before 21 Sep 2026 were not logged, so a gap below the first logged number of a year reads "before the log", never "missing".
     - Fix: **T7.10**.
-24. **Applying a held hub sale changes a closed day**, with no adjustment
-    line.
+24. **FIXED 21 Sep 2026 (T7.17). Applying a held hub sale changed a closed day**, with no adjustment
+    line. Now an admin closes a period at `/admin/reports/periods`: every café day and branch is stored as issued in `periodCloses/{from}_{to}` (server-only) with the definitions version. Nothing is locked. `adjustments()` compares the issued figures with what the checks say now, and the Sales Summary and VAT report show any difference on a closed day as a post-close adjustment. Periods never overlap, and today cannot be closed. A refund given after a close is filed on its own day, so it never adjusts a closed period.
     - Fix: **T7.17**.
 25. **FIXED 21 Sep 2026 (T7.6): /admin/reports/vat shows output VAT by rate, the service charge's VAT apart, reversals on refunds in their period, input VAT from received deliveries, and the net position.** Was: there was no VAT report: no split by rate, no count of checks without a
     rate, and no input VAT beside output VAT.
