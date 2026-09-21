@@ -27,7 +27,7 @@ import {
 import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useTillAccess } from '../../lib/useTillAccess'
 import { BRAND } from '@big-cms/shared/brand'
-import { checkTotals, VOID_REASONS, type Check } from '@big-cms/shared/checks'
+import { checkTotals, VOID_REASONS, reversalRefusal, type Check } from '@big-cms/shared/checks'
 import { ymdInZone } from '@big-cms/shared/dates'
 import { useClosedChecks, refundCheck } from '../../lib/usePos'
 import { PosButton, StatusBadge, PosLoading } from '../../lib/posUi'
@@ -84,9 +84,11 @@ function stampOf(seconds: number | undefined): string {
 }
 
 /** One closed check. Module scope — see CONTRIBUTING.md gotcha #2. */
-function ClosedRow({ check, isMobile, onRefund, onReceipt }: {
+function ClosedRow({ check, isMobile, canRefund, onRefund, onReceipt }: {
   check: Check
   isMobile: boolean
+  /** A manager or an admin (UPGRADE.md T5.1); the server refuses anyone else. */
+  canRefund: boolean
   onRefund: () => void
   onReceipt: () => void
 }) {
@@ -217,9 +219,9 @@ function ClosedRow({ check, isMobile, onRefund, onReceipt }: {
             {/* Behind the expand, like every other destructive action in this
                 app — a Refund button on a collapsed row would sit under the
                 thumb of anybody scrolling the list. */}
-            {!refunded && (
-              <PosButton icon={faRotateLeft} label="Refund this check" tone="danger" onClick={onRefund} />
-            )}
+            {!refunded && (canRefund
+              ? <PosButton icon={faRotateLeft} label="Refund this check" tone="danger" onClick={onRefund} />
+              : <span style={{ color: 'rgba(var(--offwhite-rgb),0.6)', fontSize: '0.9rem', alignSelf: 'center' }}>A manager refunds a check, from their own phone.</span>)}
           </div>
         </div>
       )}
@@ -323,7 +325,8 @@ function RefundPanel({ check, busy, error, onConfirm, onCancel }: {
 }
 
 export default function ClosedChecksPage() {
-  const { checking, blocked } = useTillAccess(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
+  const { checking, blocked, role } = useTillAccess(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
+  const canRefund = reversalRefusal(role, 'refund') === null
   const isMobile = useIsMobile()
   const router = useRouter()
   const [branch] = useState(BRAND.branches[0] ?? '')
@@ -418,7 +421,7 @@ export default function ClosedChecksPage() {
                 <StatusBadge label={`${list.length} ${list.length === 1 ? 'check' : 'checks'} · ${money(dayNet)}`} />
               </div>
               {list.map(c => (
-                <ClosedRow key={c.id} check={c} isMobile={isMobile}
+                <ClosedRow key={c.id} check={c} isMobile={isMobile} canRefund={canRefund}
                   onRefund={() => handleRefund(c)}
                   onReceipt={() => router.push(`/pos/check/${c.id}/receipt`)} />
               ))}

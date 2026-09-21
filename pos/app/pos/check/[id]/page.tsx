@@ -35,7 +35,7 @@ import {
 import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useTillAccess } from '../../../lib/useTillAccess'
 import {
-  lineTotal, grossLineTotal, lineDiscount, checkTotals, serviceRate, stationForSection, VOID_REASONS, reconcilePendingBatch,
+  lineTotal, grossLineTotal, lineDiscount, checkTotals, serviceRate, stationForSection, VOID_REASONS, reversalRefusal, reconcilePendingBatch,
   type CheckLine, type StaffDiscount,
 } from '@big-cms/shared/checks'
 import { minutesWaiting, urgency } from '@big-cms/shared/tickets'
@@ -918,6 +918,13 @@ export default function CheckPage() {
 
           <SectionLabel icon={faBan} colour="var(--red)">Void — why?</SectionLabel>
 
+          {/* Food already sent is a manager's to void (UPGRADE.md T5.1). The
+              server refuses it anyway; this says so before anybody tries. */}
+          {reversalRefusal(role, lineMenu.status === 'sent' ? 'void-sent' : 'void-unsent') ? (
+            <p style={{ color: 'rgba(var(--offwhite-rgb),0.75)', fontSize: '0.95rem', lineHeight: 1.6, margin: '0.2rem 0 0.4rem' }}>
+              {reversalRefusal(role, 'void-sent')}
+            </p>
+          ) : (
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.5rem' }}>
             {VOID_REASONS.map(r => {
               // The consequence is spelled out only where stock actually
@@ -972,6 +979,7 @@ export default function CheckPage() {
               )
             })}
           </div>
+          )}
 
           <div style={{ marginTop: '1rem' }}>
             <PosButton icon={faXmark} label="Cancel" tone="quiet" full onClick={() => setLineMenu(null)} />

@@ -19,7 +19,7 @@ import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES, STOCKED_BRANCHES } from '../branches'
 import {
-  CHECK_LIMITS, stationForSection, voidReason, BATCH_KEY_PATTERN, batchAlreadyApplied,
+  CHECK_LIMITS, stationForSection, voidReason, reversalRefusal, BATCH_KEY_PATTERN, batchAlreadyApplied,
   checkTotals, closeBlockedReason, discountReason, serviceRate,
   type Check, type CheckLine, type LineSource, type LineDiscount, type CheckDiscount,
 } from '../checks'
@@ -716,6 +716,10 @@ export async function voidLine(
     if (target.status === 'void') throw new HttpError(409, 'That item is already voided.')
 
     const wasSent = target.status === 'sent'
+    // Food already sent needs a manager (UPGRADE.md T5.1); a line never sent
+    // is anyone's to correct. Judged here, from the stored line, not the request.
+    const refusal = reversalRefusal(caller.role, wasSent ? 'void-sent' : 'void-unsent')
+    if (refusal) throw new HttpError(403, refusal)
     const tickets = wasSent
       ? await tx.get(db.collection(TICKETS).where('checkId', '==', checkId))
       : null
@@ -1336,6 +1340,9 @@ export async function refundCheck(
   // goods back; already made is waste. It used to take free text and put
   // every piece of merchandise back whatever had happened to it — a
   // broken mug restocked as if it were still on the shelf.
+  // A manager or an admin, from their own session (UPGRADE.md T5.1).
+  const refusal = reversalRefusal(caller.role, 'refund')
+  if (refusal) throw new HttpError(403, refusal)
   const reason = voidReason(reasonKey)
   if (!reason) throw new HttpError(400, 'Choose a reason for the refund.')
   const trimmedNote = note.trim().slice(0, CHECK_LIMITS.noteLength)

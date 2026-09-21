@@ -350,6 +350,19 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
 
   const ticketId = sent.tickets[0].id
 
+  // Food already sent is a manager's to void, and a line never sent is
+  // anyone's (UPGRADE.md T5.1). Judged from the stored line, on the hub too.
+  {
+    const barista = { ...staff, role: 'barista' }
+    const afterSend = (await db.doc(`checks/${checkId}`).get()).data().lines
+    const sentLine = afterSend.find(l => l.status === 'sent')
+    await rejects('a barista cannot void food already sent to the kitchen', () => C.voidLine(barista, checkId, sentLine.id, 'rung-wrong', ''), e => e.status === 403)
+    eq('...and the line is still on the check, still sent', (await db.doc(`checks/${checkId}`).get()).data().lines.find(l => l.id === sentLine.id).status, 'sent')
+    const mistap = await C.addLines(staff, checkId, C.parseLineRequests({ lines: [{ source: 'menu', refId: 'm-toast', quantity: 1 }] }), 'batch-mistap-1')
+    const voided = await C.voidLine(barista, checkId, mistap.lines[0].id, 'rung-wrong', '')
+    eq('a barista can still strike off a line never sent', voided.wasSent, false)
+  }
+
   // Hold and fire (UPGRADE.md T3.11), on a table of its own.
   await db.doc('menuCategories/cat-drinks').set({ name: 'Drinks', section: 'Beverage' })
   await db.doc('menuItems/m-tea').set({ name: 'Tea', price: 2, categoryId: 'cat-drinks', available: true, modifierGroupIds: [] })
@@ -411,6 +424,8 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
     [closed.receiptNumber.endsWith('-0501'), (await db.doc('hubMeta/receipts').get()).data().blocks[0].next], [true, 502])
   eq('...and never keeps a counter of its own', (await db.doc('appSettings/invoiceCounter').get()).exists, false)
   await rejects('a closed check does not close twice', () => C.closeCheck(staff, checkId), e => e.status === 409)
+  await rejects('a barista cannot refund a check (T5.1)', () => C.refundCheck({ ...staff, role: 'barista' }, checkId, 'changed-mind', ''), e => e.status === 403)
+  eq('...and it stays closed', (await db.doc(`checks/${checkId}`).get()).data().status, 'closed')
 
   // Emailing the receipt (UPGRADE.md T3.7). No mail key here, ever: a test
   // must not be able to send a real email.

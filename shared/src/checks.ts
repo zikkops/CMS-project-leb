@@ -127,6 +127,33 @@ export function voidReason(key: string): VoidReasonDef | undefined {
   return VOID_REASONS.find(r => r.key === key)
 }
 
+// ── Who may take money or food back (UPGRADE.md T5.1) ──────────────────────
+// Voiding food the kitchen has already been sent, and refunding a closed
+// check, are the two ways a till gives value away after the fact: the
+// biggest cash-fraud gap while any till role could do both. They now need a
+// manager or an admin, applied the way discounts are, from their own session
+// (online their sign-in, on a hub their own phone's or the counter's
+// sign-in), so their login IS the approval, and it is on the line or check as
+// voidedBy / refundedBy.
+//
+// A line never sent is still anyone's to strike off: nothing was cooked or
+// handed over, and correcting a mis-tap must not need a manager.
+//
+// OWNER TO CONFIRM: the fingerprint approval of a barista's request, which a
+// hub already has for sign-in, is the natural next step; this is the safe
+// default until the owner chooses.
+
+export const REVERSAL_ROLES: readonly string[] = ['admin', 'manager']
+
+/** Why this caller may not make this reversal, or null when they may. */
+export function reversalRefusal(role: string | null | undefined, what: 'void-sent' | 'void-unsent' | 'refund'): string | null {
+  if (what === 'void-unsent') return null
+  if (role && REVERSAL_ROLES.includes(role)) return null
+  return what === 'refund'
+    ? 'Only a manager or an admin can refund a check. Ask one to do it from their own phone.'
+    : 'This item has gone to the kitchen, so only a manager or an admin can void it. Ask one to do it from their own phone.'
+}
+
 // ── Discounts (Phase 04, slice 6) ──────────────────────────────────────────
 // Owner's decisions, 12 Sep 2026: four kinds — % off the whole check, a fixed
 // amount off it, an item comped, % off one item. Managers and admins only; a

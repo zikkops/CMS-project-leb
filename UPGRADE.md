@@ -437,12 +437,13 @@ Do these after T0.1, which protects them.
 
 Each needs its own plan note in the vault first, and the owner's answers.
 
-- [ ] **T5.1 Manager approval for voids of sent food and for refunds**
+- [x] **T5.1 Manager approval for voids of sent food and for refunds**
   (owner). Today `voidLine()` and `refundCheck()` accept any till role,
   barista included. This is the biggest cash-fraud gap. The same fingerprint
   approval the hub already uses for sign-in is the natural fit on a hub. Online,
   it is a manager's session. Covered by `verify:checks` and `verify:hub-sync`
   cases.
+  *Done: Done 21 Sep 2026, safe default. OWNER TO CONFIRM. Voiding a line already sent to the kitchen, and refunding a closed check, now need a manager or an admin (`reversalRefusal()` in shared/src/checks.ts). They do it from their own session, as discounts already work: online that is their sign-in, and on a hub their phone's or the counter's sign-in. voidedBy and refundedBy record who. A line never sent can still be struck off by anyone, so a mis-tap needs no manager. voidLine() judges from the stored line, not the request. The till shows the reason in place of the void reasons and the Refund button. Not built: a barista asking and a manager approving by fingerprint on a hub, which is the natural next step (the approval flow already exists for sign-in). Covered by verify:checks (8 cases) and verify:hub (a barista's void of sent food and refund refused with 403, the line still sent, the check still closed, and an unsent line still voidable).*
 - [ ] **T5.2 Trim the hub's change log.** `changes` is never deleted from
   (`hubStore.ts`), so it grows forever. Keep what has not been sent up plus a
   window (e.g. 7 days). Watch that a change feed or `readyToLeaveHub()` never

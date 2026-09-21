@@ -449,5 +449,15 @@ console.log('\n86 from the till: sold out for the café day (UPGRADE.md T3.5)')
     [{}, {}, { Third: '2026-09-13' }])
 }
 
+console.log('\nWho may take food or money back (UPGRADE.md T5.1)')
+eq('a barista voids a line never sent', C.reversalRefusal('barista', 'void-unsent'), null)
+eq('a barista cannot void food already sent', typeof C.reversalRefusal('barista', 'void-sent'), 'string')
+eq('nor can kitchen crew', typeof C.reversalRefusal('kitchen_crew', 'void-sent'), 'string')
+eq('a manager voids food already sent', C.reversalRefusal('manager', 'void-sent'), null)
+eq('an admin refunds', C.reversalRefusal('admin', 'refund'), null)
+eq('a barista cannot refund', /refund/.test(C.reversalRefusal('barista', 'refund') ?? ''), true)
+eq('no role at all cannot refund', typeof C.reversalRefusal(null, 'refund'), 'string')
+eq('the void refusal says the food has gone to the kitchen', /kitchen/.test(C.reversalRefusal('retail', 'void-sent') ?? ''), true)
+
 console.log(`\n${pass} passed, ${fail} failed\n`)
 process.exit(fail === 0 ? 0 : 1)
