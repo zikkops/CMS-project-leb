@@ -25,7 +25,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'recipes-verify-'))
 execSync(
-  `npx tsc shared/src/recipes.ts --outDir ${out} --module esnext --target es2022 ` +
+  `npx tsc shared/src/recipes.ts shared/src/inventoryReport.ts --outDir ${out} --module esnext --target es2022 ` +
   `--skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
@@ -35,6 +35,7 @@ for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
 }
 
 const R = await import(`file://${join(out, 'recipes.js')}`)
+const INV = await import(`file://${join(out, 'inventoryReport.js')}`)
 
 let pass = 0, fail = 0
 const eq = (name, got, want) => {
@@ -407,6 +408,56 @@ console.log('\ncombos are costed on the line that carries the price (UPGRADE.md 
   eq('an uncosted supply in one part leaves that supply uncosted', R.foldComboParts([lines[0], lines[1], { ...lines[2], consumesPerServing: [{ ...oil, unitCostUsd: null }] }])[0].consumesPerServing[1].unitCostUsd, null)
   eq('a voided combo and its voided parts are left as they are', R.foldComboParts(lines.map(l => ({ ...l, status: 'void' }))).length, 3)
   eq('a part whose combo is not on the check is left alone', R.foldComboParts([lines[1]]).map(l => l.id), ['b'])
+}
+
+console.log('\ninventory between two counts, and cost of goods sold (UPGRADE.md T7.12)')
+{
+  const count = (day, lines, branch = 'Main') => ({ branch, day, lines })
+  const milk = (countedQty, unitCostUsd = 1) => ({ supplyId: 'milk', name: 'Milk', unit: 'L', countedQty, unitCostUsd })
+  const move = (day, kind, qty, unitCostUsd = 1, over = {}) => ({ branch: 'Main', day, supplyId: 'milk', kind, qty, unitCostUsd, ...over })
+  const input = {
+    counts: [
+      count('2026-08-20', [milk(99)]),              // an older count, not the opening
+      count('2026-08-31', [milk(10)]),              // the opening: the last one BEFORE the period
+      count('2026-09-20', [milk(12, 1.2)]),         // the closing: the last one IN it
+      count('2026-09-10', [milk(50)]),              // a count in the period, but not the last
+    ],
+    moves: [
+      move('2026-08-31', 'received', 100),          // on the opening day: already in the count
+      move('2026-09-05', 'received', 40, 1.1),
+      move('2026-09-06', 'transferIn', 5),
+      move('2026-09-07', 'transferOut', 3),
+      move('2026-09-08', 'used', 30),
+      move('2026-09-09', 'waste', 2),
+      move('2026-09-25', 'used', 7),                // after the closing count: not in this window
+      move('2026-09-05', 'received', 1000, 1, { branch: 'Second' }),
+    ],
+    supplies: [{ supplyId: 'milk', name: 'Milk', unit: 'L', qty: { Main: 5, Second: 1000 }, avgUnitCost: 1.2 }],
+    branches: ['Main'],
+    from: '2026-09-01',
+    to: '2026-09-30',
+  }
+  const r = INV.inventoryReport(input)
+  const row = r.rows[0]
+  eq('opening is the last count before the period, closing the last in it', [row.openingDay, row.closingDay, row.openingQty, row.closingQty], ['2026-08-31', '2026-09-20', 10, 12])
+  eq('movements between the two counts only, this branch only', [row.received, row.transfersIn, row.transfersOut, row.used, row.waste], [40, 5, 3, 30, 2])
+  eq('expected = opening + received ± transfers − used − waste', row.expectedQty, 20)
+  eq('THE POINT: the difference nothing explains', [row.varianceQty, row.varianceValue], [-8, -9.6])
+  eq('each figure at its own cost: opening $10, purchases $44, closing $14.40', [row.openingValue, row.purchasesValue, row.closingValue], [10, 44, 14.4])
+  eq('COGS = opening + purchases ± transfers − closing', row.cogs, 41.6)
+  eq('...and it is recipes used + waste + the difference, at their costs', [row.usedValue, row.wasteValue], [30, 2])
+  eq('stock value now: on hand × average cost, this branch', r.total.valueNow, 6)
+  eq('received in the period counts every delivery, reconciled or not', r.total.purchasesInPeriod, 44)
+
+  const noOpening = INV.inventoryReport({ ...input, counts: [count('2026-09-20', [milk(12)])] })
+  eq('with no count before the period, not reconciled, and says so', [noOpening.rows[0].status, noOpening.rows[0].cogs, noOpening.rows[0].expectedQty], ['no opening count', null, null])
+  eq('...its purchases in the period still show', noOpening.rows[0].received, 40)
+  const unknownCost = INV.inventoryReport({ ...input, moves: [...input.moves, move('2026-09-06', 'received', 1, null)] })
+  eq('THE TRAP: a delivery with no cost makes the value unknown, never $0', [unknownCost.rows[0].purchasesValue, unknownCost.rows[0].cogs, unknownCost.total.uncosted], [null, null, 1])
+  eq('...and the totals leave that supply out rather than guess', unknownCost.total.cogs, 0)
+  const gone = INV.inventoryReport({ ...input, supplies: [] })
+  eq('a supply since deleted keeps its row, named as counted', gone.rows.map(x => x.name), ['Milk'])
+  eq('the total is the sum of the branches', INV.inventoryReport({ ...input, branches: ['Main', 'Second'] }).byBranch.reduce((n, b) => n + b.totals.purchasesInPeriod, 0), 1044)
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

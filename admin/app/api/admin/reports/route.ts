@@ -23,6 +23,8 @@ import { readReceiptSequence } from '@big-cms/shared/server/receiptSequence'
 import { receiptSequence } from '@big-cms/shared/receiptSequence'
 import { readLabour } from '@big-cms/shared/server/labour'
 import { labourReport } from '@big-cms/shared/labourReport'
+import { readInventory } from '@big-cms/shared/server/inventoryReport'
+import { inventoryReport } from '@big-cms/shared/inventoryReport'
 import { readReceivedDeliveries } from '@big-cms/shared/server/receivedDeliveries'
 import { TIME_ENTRIES, peopleOf, timesheet, type TimeEntry } from '@big-cms/shared/timeClock'
 import { timestampMs } from '@big-cms/shared/timestamps'
@@ -119,6 +121,18 @@ export async function GET(request: Request): Promise<Response> {
       const read = await readLabour(range, { timeZone, branches: own })
       return Response.json(
         { ok: true, from: range.from, to: range.to, branches: read.branches, cutShort: read.cutShort, ...labourReport(read) },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+    if (report === 'inventory') {
+      // Inventory valuation and movement (T7.12): counts, deliveries,
+      // transfers and what sales took, reconciled between counts.
+      const read = await readInventory(range, { timeZone, branches: own })
+      return Response.json(
+        {
+          ok: true, from: range.from, to: range.to, branches: read.branches, cutShort: read.cutShort, lookbackFrom: read.lookbackFrom,
+          ...inventoryReport({ counts: read.counts, moves: read.moves, supplies: read.supplies, branches: read.branches, from: range.from, to: range.to }),
+        },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }

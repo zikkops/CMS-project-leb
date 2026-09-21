@@ -56,9 +56,12 @@ export async function transferSupplies(
 ): Promise<{ lines: { name: string; unit: string; quantity: number }[]; duplicate: boolean }> {
   const db = adminDb()
   const refs = input.items.map(i => db.doc(`supplies/${i.supplyId}`))
-  const markerRef = requestId ? db.doc(`stockTransfers/${requestId}`) : null
+  // Every transfer is written down (UPGRADE.md T7.12): the inventory report
+  // reads transfers from these records, so one made without a retry key must
+  // not go unrecorded. The key, when there is one, is still the record's id.
+  const markerRef = requestId ? db.doc(`stockTransfers/${requestId}`) : db.collection('stockTransfers').doc()
   return db.runTransaction(async tx => {
-    if (markerRef) {
+    if (requestId) {
       const marker = await tx.get(markerRef)
       if (marker.exists) {
         const lines = marker.data()?.lines
@@ -75,7 +78,9 @@ export async function transferSupplies(
       if (!(onHand >= line.quantity)) {
         throw new HttpError(409, `${name}: only ${r3(Number.isFinite(onHand) ? onHand : 0)} ${String(d.unit ?? '')} at ${input.fromBranch}, tried to move ${line.quantity}.`)
       }
-      return { name, unit: String(d.unit ?? ''), quantity: line.quantity }
+      const cost = Number(d.avgUnitCost)
+      // What a unit was worth when it moved, so the move is valued as it stood.
+      return { name, unit: String(d.unit ?? ''), quantity: line.quantity, supplyId: line.supplyId, unitCostUsd: Number.isFinite(cost) && cost > 0 ? cost : null }
     })
     snaps.forEach((snap, i) => {
       const q = input.items[i].quantity
@@ -85,9 +90,7 @@ export async function transferSupplies(
         updatedAt: FieldValue.serverTimestamp(),
       })
     })
-    if (markerRef) {
-      tx.set(markerRef, { kind: 'supplies', fromBranch: input.fromBranch, toBranch: input.toBranch, items: input.items, lines, createdAt: FieldValue.serverTimestamp() })
-    }
+    tx.set(markerRef, { kind: 'supplies', fromBranch: input.fromBranch, toBranch: input.toBranch, items: input.items, lines, createdAt: FieldValue.serverTimestamp() })
     return { lines, duplicate: false }
   })
 }

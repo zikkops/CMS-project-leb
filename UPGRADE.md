@@ -840,7 +840,7 @@ Principles for every task here:
   Tips per person from the tips split, and hours × rate + tips = what each
   person is owed for the period, for payroll.
   *Done: /admin/reports/labour (admin only): hours per person and total, open or over-16h shifts flagged, pay at each person's rate on the day worked (not priced, never $0; LBP rates in LBP), tips from the per-branch split at each day's weight, owed = pay + tips per currency, labour % of net sales per branch and day. Gap 16: EOD reports keep tipsDeductionRate from first save; distributeTipDays() uses each day's rate (tips page too). Gap 17: peopleOf() from in-range shifts. verify:tips 65, verify:hub 222.*
-- [ ] **T7.12 Inventory valuation and movement report.** Per branch, at a
+- [x] **T7.12 Inventory valuation and movement report.** Per branch, at a
   date:
   - stock on hand × weighted average cost = inventory value
   - over a period: opening + received (deliveries) − used (theoretical, from
@@ -849,6 +849,7 @@ Principles for every task here:
 
   This gives cost of goods sold for the period the way an accountant computes
   it: opening + purchases − closing.
+  *Done: /admin/reports/inventory: per supply and branch, opening = last submitted count before the period, closing = last in it; received (stockAppliedAt day), transfers (all now recorded in stockTransfers with unitCostUsd), used and waste from recipe snapshots; expected, difference and COGS (opening + purchases ± transfers − closing) at each snapshot's own cost, unknown never $0; stock value now. Per-branch average cost left as a data-model change (gap 20). verify:recipes 151.*
 - [ ] **T7.13 Purchases report.** Received deliveries per supplier, branch
   and period, with invoice number, net, input VAT, total, currency and rate.
   It reconciles with the weekly orders' fulfilment, and feeds T7.6's input VAT

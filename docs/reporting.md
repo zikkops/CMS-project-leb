@@ -420,8 +420,8 @@ in USD at the cost stored with the count (`countVariance()` in
     from its day, and the reversal shows on the original day. Net movement is
     understated, and there is no closing balance or value.
     - Fix: **T7.14**.
-20. **Weighted average cost is one figure across branches**, and there is no
-    inventory valuation.
+20. **Weighted average cost is one figure across branches**, and there was no
+    inventory valuation. **Valuation FIXED 21 Sep 2026 (T7.12):** `/admin/reports/inventory` reconciles each supply between its last submitted count before the period and its last in it (the periodic method). Movements in between are received (on the day stock moved, `stockAppliedAt`), transfers (every one recorded in `stockTransfers` with its unit cost from 21 Sep 2026), used (recipe snapshots of what sold) and waste. Expected closing, the difference nothing explains, and COGS = opening + purchases ± transfers − closing, each at its own snapshot cost; unknown cost is unknown, never $0. **Still open:** the stock value NOW uses the one cross-branch average; a per-branch average is a data-model change.
     - Fix: **T7.12**.
 21. **Purchases and input VAT have no report**, and there is no supplier
     invoice date.
