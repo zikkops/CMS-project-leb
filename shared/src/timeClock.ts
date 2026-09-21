@@ -27,6 +27,25 @@ export function nextDirection(last: { direction: string } | null | undefined): C
   return last?.direction === 'in' ? 'out' : 'in'
 }
 
+/**
+ * Whether a session starting or ending clocks its person (UPGRADE.md T6.6).
+ * Starting clocks in, unless already clocked in (a second device is not a
+ * second shift). Ending clocks out only when it was the person's last live
+ * session and they are clocked in. A kitchen screen is a device and never
+ * clocks anybody. A session that runs out at 05:00 is not a sign-out: the
+ * person stays clocked in, and the timesheet flags "no clock-out" rather than
+ * guessing when they left.
+ */
+export function sessionClockAction(
+  event: 'start' | 'end',
+  s: { kitchenScreen: boolean; lastDirection: string | null; otherLiveSessions: number },
+): ClockDirection | null {
+  if (s.kitchenScreen) return null
+  if (event === 'start') return s.lastDirection === 'in' ? null : 'in'
+  if (s.otherLiveSessions > 0) return null
+  return s.lastDirection === 'in' ? 'out' : null
+}
+
 export interface TimeEntry {
   uid: string
   name: string

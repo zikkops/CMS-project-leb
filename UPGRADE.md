@@ -610,7 +610,7 @@ mutations caught by name, and is checked on the emulator against a built hub.
     token stays hashed.
   - Ending a session is logged.
   *Done: Hub sessions carry a device label (Counter PC, the phone's name, Kitchen screen, Browser on the café wifi); listHubSessions()/endHubSessionById() by the token's hash. /api/hub/sessions: your own, or everyone's for a manager/admin or the counter PC; end by POST, logged. /pos/sessions page (also what the staff app shows), Sessions button on the hub floor, list with End on /pos/hub. Cloud: the hub reports sessions each sync (/api/hub-sync/sessions); Café Hubs shows them with End, which the hub carries out at its next sync. verify:hub-sync 470, 4 mutations caught. Not looked at signed in.*
-- [ ] **T6.6 Signing in clocks you in, signing out clocks you out** (owner's
+- [x] **T6.6 Signing in clocks you in, signing out clocks you out** (owner's
   answer, 21 Sep 2026). There is no separate step and no prompt. It writes the
   existing `timeEntries` through the same path as `clockWithKey()`, so the
   timesheet (T3.3) sees it:
@@ -622,6 +622,7 @@ mutations caught by name, and is checked on the emulator against a built hub.
     clocks anyone. The 05:00 expiry stays as the backstop. A person still clocked in
   at 05:00 is flagged on the timesheet as "no clock-out", never clocked out
   silently at a guessed time.
+  *Done: Every hub sign-in (startHubSession) clocks its person in unless already in; ending a session (sign-out, ended by id, ended from admin) clocks out only when it was the person's last live session; a kitchen screen never clocks. sessionClockAction() in timeClock.ts is the rule; sessionClock.ts writes the same timeEntries as clockWithKey() (via: sign-in / sign-out), never throwing into a sign-in. 05:00 expiry is not a sign-out: the open shift shows as 'no clock-out' on the timesheet and Labour. Hub only (the online till has no timeEntries). verify:hub-sync 476, 4 mutations caught.*
 - [ ] **T6.7 Idle sign-out on shared online devices.** A per-device "This is a
   shared device" switch on the online till (remembered in localStorage), with
   the idle rule the counter PC already has (S25, `followIdle()`), at the limit

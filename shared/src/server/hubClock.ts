@@ -14,17 +14,10 @@ import { consumeChallenge, hubFingerprintHex, pulledStaff, refused, verifiedKey 
 import { labelFor } from './hubApprovals'
 import { isKeyId, isNonce } from '../staffKeys'
 import { TIME_ENTRIES, clockMessage, nextDirection, type ClockDirection } from '../timeClock'
-import { timestampMs } from '../timestamps'
+import { lastClockEntry } from './sessionClock'
 
-async function lastEntry(db: Firestore, uid: string): Promise<{ direction: string; at: number } | null> {
-  const snap = await db.collection(TIME_ENTRIES).where('uid', '==', uid).get()
-  let last: { direction: string; at: number } | null = null
-  for (const d of snap.docs) {
-    const at = timestampMs(d.data().at, 0)
-    if (!last || at > last.at) last = { direction: String(d.data().direction), at }
-  }
-  return last
-}
+// One reading of the last entry, shared with the sign-in clock (T6.6).
+const lastEntry = lastClockEntry
 
 /** Whether a registered phone's owner is clocked in now, and since when. */
 export async function clockStatus(rawKeyId: unknown, { db = adminDb() }: { db?: Firestore } = {}): Promise<{ clockedIn: boolean; since: number | null }> {

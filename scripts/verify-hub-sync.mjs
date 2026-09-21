@@ -406,7 +406,10 @@ console.log('\na hub pairs and fetches receipt numbers through its own code')
   const listed = (await SESS.listHubSessions()).filter(s => s.uid === 'u-sess')
   eq('each session is listed with its device and the person\'s first name, never its token', [listed.map(s => s.device).sort(), listed[0].name, JSON.stringify(listed).includes(counterS.token)], [['Counter PC', 'Pixel 8'], 'Maya', false])
   eq('...under the hash of its token', listed.some(s => s.id === SESS.sessionIdOf(phoneS.token)), true)
+  const clocks = async () => (await db.collection('timeEntries').where('uid', '==', 'u-sess').get()).docs.map(d => d.data()).sort((a, b) => a.at.toMillis() - b.at.toMillis()).map(e => e.direction)
+  eq('two sign-ins on two devices clock in once (T6.6)', await clocks(), ['in'])
   eq('ending one by its id signs that one out, and only that one', [Boolean(await SESS.endHubSessionById(SESS.sessionIdOf(counterS.token))), await SESS.callerFromHubToken(counterS.token), Boolean(await SESS.callerFromHubToken(phoneS.token))], [true, null, true])
+  eq('THE TRAP (T6.6): signing out of one device while signed in on another does not clock you out', await clocks(), ['in'])
   eq('ending it twice ends nothing', await SESS.endHubSessionById(SESS.sessionIdOf(counterS.token)), null)
 
   // The cloud's side, through the hub's own sync code and the cloud's own functions.
@@ -425,6 +428,19 @@ console.log('\na hub pairs and fetches receipt numbers through its own code')
   await D.requestEndSession(hubId, SESS.sessionIdOf(phoneS.token))
   eq('an admin\'s end request waits for the next sync', (await row()).endSessions, [SESS.sessionIdOf(phoneS.token)])
   eq('THE POINT: at the next sync the hub ends it', [(await S.reportSessions(withSessions)).ended, await SESS.callerFromHubToken(phoneS.token)], [1, null])
+  eq('...and the last session ending clocks you out (T6.6)', await clocks(), ['in', 'out'])
+  const screen = await SESS.startHubSession({ uid: 'screen:abc', staff: true, role: 'kitchen_crew', scope: 'kds', device: 'Kitchen screen' })
+  await SESS.endHubSession(screen.token)
+  eq('THE TRAP (T6.6): a kitchen screen is a device, and never clocks anybody', (await db.collection('timeEntries').where('uid', '==', 'screen:abc').get()).size, 0)
+  const TCK = await import(url('timeClock.js'))
+  eq('the rule: start clocks in unless already in; end clocks out only from the last session', [
+    TCK.sessionClockAction('start', { kitchenScreen: false, lastDirection: null, otherLiveSessions: 0 }),
+    TCK.sessionClockAction('start', { kitchenScreen: false, lastDirection: 'in', otherLiveSessions: 0 }),
+    TCK.sessionClockAction('end', { kitchenScreen: false, lastDirection: 'in', otherLiveSessions: 1 }),
+    TCK.sessionClockAction('end', { kitchenScreen: false, lastDirection: 'in', otherLiveSessions: 0 }),
+    TCK.sessionClockAction('end', { kitchenScreen: false, lastDirection: 'out', otherLiveSessions: 0 }),
+    TCK.sessionClockAction('start', { kitchenScreen: true, lastDirection: null, otherLiveSessions: 0 }),
+  ], ['in', null, null, 'out', null, null])
   await S.reportSessions(withSessions)
   eq('...and once it is gone from the report, the request is done', (await row()).endSessions, [])
 }
@@ -1278,6 +1294,10 @@ console.log('\nstaff phones register a key, and sign in at the hub with it (S12â
   const TC = await import(url('timeClock.js'))
   const PU = await import(url('hubPush.js'))
   const clockAs = (p, nonce, direction, fp = fpHex) => ({ keyId: p.keyId, nonce, direction, signature: p.sign(TC.clockMessage(fp, p.keyId, nonce, direction)) })
+  // Signing in clocks you in (UPGRADE.md T6.6): the phone sign-ins above did, once.
+  const bySignIn = (await db.collection('timeEntries').where('uid', '==', 'u-phone').get()).docs.map(d => d.data())
+  eq('THE POINT (T6.6): signing in clocked you in, once, however many times you signed in', [bySignIn.filter(e => e.direction === 'in').length, bySignIn.length, bySignIn[0]?.via], [1, 1, 'sign-in'])
+  for (const d of (await db.collection('timeEntries').where('uid', '==', 'u-phone').get()).docs) await d.ref.delete()
   eq('not clocked in to begin with', await HC.clockStatus(p1.keyId, { db }), { clockedIn: false, since: null })
   const k1 = await KS.issueChallenge(p1.keyId, { db })
   const clockedIn = await HC.clockWithKey(clockAs(p1, k1.nonce, 'in'), hub)

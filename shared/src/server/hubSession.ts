@@ -26,6 +26,7 @@ import { BRAND } from '../brand'
 import { hubSessionExpiry } from '../hubSession'
 import { timestampMs } from '../timestamps'
 import { TOUCH_EVERY_MS, idleOver } from '../counterSignIn'
+import { clockForSession } from './sessionClock'
 
 const SESSIONS = 'hubSessions'
 const PREFIX = 'hub.'
@@ -107,6 +108,8 @@ export async function startHubSession(
     expiresAt: Timestamp.fromMillis(expiresAt),
     endedAt: null,
   })
+  // Signing in clocks you in (T6.6): a second device is not a second shift.
+  await clockForSession('start', { uid: caller.uid, scope: caller.scope, device: typeof claims.device === 'string' ? claims.device : '' }, { now })
   return { token, caller }
 }
 
@@ -245,8 +248,17 @@ export async function endHubSessionById(id: unknown): Promise<{ uid: string; dev
     const d = snap.data()
     if (!snap.exists || !d || d.endedAt) return null
     tx.update(ref, { endedAt: FieldValue.serverTimestamp() })
-    return { uid: String(d.uid ?? ''), device: typeof d.device === 'string' ? d.device : 'Till' }
+    return { uid: String(d.uid ?? ''), device: typeof d.device === 'string' ? d.device : 'Till', scope: readScope(d.scope) }
+  }).then(async ended => {
+    if (ended) await clockOutIfLast(ended)
+    return ended ? { uid: ended.uid, device: ended.device } : null
   })
+}
+
+/** Signing out clocks you out (T6.6), once your last live session has ended. */
+async function clockOutIfLast(ended: { uid: string; device: string; scope: HubScope | null }): Promise<void> {
+  const others = (await listHubSessions()).filter(s => s.uid === ended.uid).length
+  await clockForSession('end', ended, { otherLiveSessions: others })
 }
 
 /** Signs a session out. False when there was nothing live to end. */
@@ -254,10 +266,13 @@ export async function endHubSession(token: string): Promise<boolean> {
   if (!isHubToken(token)) return false
   const db = adminDb()
   const ref = db.doc(`${SESSIONS}/${hashOf(token)}`)
-  return db.runTransaction(async tx => {
+  const ended = await db.runTransaction(async tx => {
     const snap = await tx.get(ref)
-    if (!snap.exists || snap.data()?.endedAt) return false
+    const d = snap.data()
+    if (!snap.exists || !d || d.endedAt) return null
     tx.update(ref, { endedAt: FieldValue.serverTimestamp() })
-    return true
+    return { uid: String(d.uid ?? ''), device: typeof d.device === 'string' ? d.device : 'Till', scope: readScope(d.scope) }
   })
+  if (ended) await clockOutIfLast(ended)
+  return Boolean(ended)
 }
