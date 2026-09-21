@@ -354,12 +354,12 @@ console.log('\npurchases: per supplier and branch, both currencies, and the week
   const orders = [{ id: 'o1', branch: 'Main', weekStart: '2026-09-07', items: [{ templateId: 't-milk', quantity: 10 }, { templateId: 't-eggs', quantity: 30 }, { templateId: 't-cream', quantity: 4 }] }]
   // A second delivery for the same order, outside the period: split shipments count.
   const orderDeliveries = [...deliveries, d({ id: 'd9', day: '2026-09-20', lines: [{ templateId: 't-eggs', qtyOrdered: 30, qtyReceived: 12, qtyRejected: 0 }] })]
-  const r = PR.purchasesReport({ deliveries, orderDeliveries, orders, branches: ['Main', 'Second'], businessRate: 90_000 })
+  const r = PR.purchasesReport({ deliveries, orderDeliveries, orders, branches: ['Main', 'Second'], businessRate: 88_000 })
   const row = id => r.rows.find(x => x.id === id)
   eq('an LBP invoice is in dollars at the rate it was received at', [row('d2').net, row('d2').netUsd, row('d2').totalUsd], [1_000_000, 10, 11])
-  eq('a USD invoice is in lira at the business rate, and says so', [row('d1').totalLbp, row('d1').lbpAtBusinessRate, row('d2').lbpAtBusinessRate], [9_900_000, true, false])
+  eq('a USD invoice is in lira at the business rate, and says so', [row('d1').totalLbp, row('d1').lbpAtBusinessRate, row('d2').lbpAtBusinessRate], [9_680_000, true, false])
   eq('per supplier, across branches, largest first', r.bySupplier.map(s => [s.supplier, s.totals.deliveries, s.totals.totalUsd]), [['Dairy Co', 2, 165], ['Bakery', 1, 11]])
-  eq('each currency totalled on its own', [r.total.netUsd, r.total.vatUsd, r.total.totalUsd, r.total.totalLbp], [160, 16, 176, 9_900_000 + 1_100_000 + 4_950_000])
+  eq('each currency totalled on its own', [r.total.netUsd, r.total.vatUsd, r.total.totalUsd, r.total.totalLbp], [160, 16, 176, 9_680_000 + 1_100_000 + 4_840_000])
   eq('invoices with no date, and deliveries with no order, are counted', [r.total.withoutInvoiceDate, r.total.unplanned], [1, 2])
   eq('the total is the sum of the branches', r.byBranch.reduce((n, b) => n + b.totals.totalUsd, 0), r.total.totalUsd)
   eq('a weekly order: across every delivery booked against it, in full, in part, not yet', [r.orders[0].full, r.orders[0].part, r.orders[0].none, r.orders[0].deliveries], [1, 1, 1, 2])
@@ -378,7 +378,7 @@ console.log('\nthe journal: double entry per day and branch, and every one balan
   eq('a check balances to the cent and to the pound', bal(simple), [0, 0])
   // A discount, service and a card tip; half cash in lira.
   const busy = check({
-    vatRate: 0.11, billRate: 90_000, serviceCharge: { rate: 0.1 },
+    vatRate: 0.12, billRate: 88_000, serviceCharge: { rate: 0.1 },
     discount: { kind: 'amount', value: 3, reasonKey: 'wait', note: '', by: 'm', byEmail: 'x' },
     lines: [line({ unitPrice: 12.5 }), line({ id: 'l2', refId: 'm2', unitPrice: 20, quantity: 2 }), line({ id: 'l3', refId: 'mX', unitPrice: 7 })],
     payments: [pay({ tender: 'card', amount: 30, appliedLbp: 2_700_000, tipUsd: 4 }), pay({ key: 'p2', currency: 'LBP', amount: 3_000_000, appliedLbp: 2_988_900, changeLbp: 11_100 })],
@@ -394,8 +394,8 @@ console.log('\nthe journal: double entry per day and branch, and every one balan
   eq('a check closed without payments posts to till receipts not itemised, and balances', [of(unpaid, 'unitemised'), bal(unpaid)], [1100, [0, 0]])
   const refund = J.refundEntry(busy, cats, 1)
   eq('a refund reverses the sale exactly, the tip left with the staff', [bal(refund), refund.some(p => p.tip), of(refund, 'vat')], [[0, 0], false, -of(e, 'vat')])
-  // Two lines of $1.05 at 11%: each rounds to 95c without VAT, but the bill's $2.10 is $1.89.
-  const noDiscount = J.saleEntry(check({ vatRate: 0.11, lines: [line({ unitPrice: 1.05 }), line({ id: 'l2', unitPrice: 1.05 })], payments: [pay({ amount: 2.1 })] }), cats, 1)
+  // Two lines of $1.00 at 12%: each rounds to 89c without VAT, but the bill's $2.00 is $1.79.
+  const noDiscount = J.saleEntry(check({ vatRate: 0.12, lines: [line({ unitPrice: 1 }), line({ id: 'l2', unitPrice: 1 })], payments: [pay({ amount: 2 })] }), cats, 1)
   eq('THE TRAP: VAT rounding line by line is not a discount', [of(noDiscount, 'discounts'), bal(noDiscount)], [0, [0, 0]])
 
   const entries = [

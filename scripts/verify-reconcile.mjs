@@ -46,7 +46,7 @@ const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed
 const pick = list => list[Math.floor(rnd() * list.length)]
 
 const TZ = 'Asia/Beirut'
-const RATE = 89_500
+const RATE = 88_000
 const MENU = [
   { refId: 'm-latte', price: 4.5, cat: 'Coffee' }, { refId: 'm-espresso', price: 2.75, cat: 'Coffee' },
   { refId: 'm-club', price: 11, cat: 'Food' }, { refId: 'm-salad', price: 9.25, cat: 'Food' },
@@ -85,7 +85,7 @@ for (const day of DAYS) {
         id: `c${n}`, branch, tableId: 't', tableNumber: 1 + Math.floor(rnd() * 20), status: 'closed', guestCount: 2, lines,
         openedBy: 'u', openedByEmail: 'sam@example.com', closedAt, receiptNumber: `BC-Q3-092026-${String(receipt++).padStart(4, '0')}`,
         staffDiscount: rnd() < 0.05 ? { food: 0.5, drink: 0.5, appliedBy: 'm', appliedByEmail: 'rana@example.com' } : null,
-        vatRate: rnd() < 0.05 ? undefined : 0.11, billRate: RATE, shiftIds: [shiftId],
+        vatRate: rnd() < 0.05 ? undefined : 0.12, billRate: RATE, shiftIds: [shiftId],
       }
       if (rnd() < 0.1) check.discount = rnd() < 0.5
         ? { kind: 'amount', value: 2, reasonKey: 'wait', note: '', by: 'm', byEmail: 'rana@example.com' }

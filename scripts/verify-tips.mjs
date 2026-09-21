@@ -162,7 +162,7 @@ console.log('\neach day keeps the deduction it was saved with (UPGRADE.md T7.11,
   eq('each day comes off at its own rate: 90 + 80', [d.totalTipsUsd, d.netTipsUsd, d.deductedUsd], [200, 170, 30])
   eq('the rate shown is what came off overall', d.deductionRate, 0.15)
   eq('the split still adds up to the pot, to the cent', d.staff.reduce((s, x) => s + x.earned, 0), 170)
-  eq('one day is exactly distributeTips()', T.distributeTipDays([{ tipsUsd: 55.55, deductionRate: 0.11 }], att), T.distributeTips(55.55, 0.11, att))
+  eq('one day is exactly distributeTips()', T.distributeTipDays([{ tipsUsd: 55.55, deductionRate: 0.13 }], att), T.distributeTips(55.55, 0.13, att))
   eq('a nonsensical day rate takes nothing off that day', T.distributeTipDays([{ tipsUsd: 50, deductionRate: 1 }, { tipsUsd: 50, deductionRate: 0.1 }], att).netTipsUsd, 95)
 }
 

@@ -506,7 +506,7 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
   {
     const PCS = await import(url('server/periodClose.js'))
     const past = (iso, id, price) => db.doc(`checks/${id}`).set({
-      branch, status: 'closed', receiptNumber: `R-${id}`, tableNumber: 9, guestCount: 1, vatRate: 0.11, billRate: 89_500, staffDiscount: null,
+      branch, status: 'closed', receiptNumber: `R-${id}`, tableNumber: 9, guestCount: 1, vatRate: 0.12, billRate: 88_000, staffDiscount: null,
       closedAt: Timestamp.fromMillis(Date.parse(iso)), payments: [],
       lines: [{ id: 'l1', source: 'menu', refId: 'm-x', name: 'X', unitPrice: price, modifiers: [], quantity: 1, status: 'sent', sentAt: iso }],
     })
