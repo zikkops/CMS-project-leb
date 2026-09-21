@@ -23,6 +23,7 @@ import { enrolMessage, handoffHash, signInMessage } from '../../shared/src/staff
 import { approveMessage, denyMessage } from '../../shared/src/staffApprovals'
 import { counterSignInMessage, isCounterCode, readCounterCode } from '../../shared/src/counterSignIn'
 import { PHONE_MESSAGES, phoneMessage, scanWasCancelled, SCAN_FAILED } from '../../shared/src/phoneMessages'
+import { clockMessage, type ClockDirection } from '../../shared/src/timeClock'
 
 interface Reply { status: number; body: string }
 
@@ -130,6 +131,8 @@ async function show() {
   }
   $('signIn').hidden = !reg
   $('counterSignIn').hidden = !reg
+  $('clock').hidden = !reg
+  if (reg) void showClock(reg.keyId)
   $('counterForm').hidden = true
   // Approving needs the manager's own registered key; the hub checks they are a manager.
   $('managerTools').hidden = !reg
@@ -319,6 +322,56 @@ $('signIn').addEventListener('click', async () => {
     await HubPin.open({ hash: handoffHash(token) })
   } catch (err) {
     say(phoneMessage(err, 'The phone could not sign you in.'))
+  }
+})
+
+// ── Clocking in and out with the fingerprint (UPGRADE.md T3.12) ──────────
+
+let clockNext: ClockDirection = 'in'
+
+/** Asks the hub whether this phone's owner is clocked in, and labels the button. */
+async function showClock(keyId: string) {
+  const button = $<HTMLButtonElement>('clock')
+  try {
+    const reply = await HubPin.hubRequest({ method: 'GET', path: `/api/hub/clock?keyId=${encodeURIComponent(keyId)}` })
+    const { clockedIn, since } = json(reply) as { clockedIn?: boolean; since?: number | null }
+    if (reply.status !== 200) { button.textContent = 'Clock in'; clockNext = 'in'; return }
+    clockNext = clockedIn ? 'out' : 'in'
+    button.textContent = clockedIn
+      ? `Clock out (in since ${new Date(Number(since)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`
+      : 'Clock in'
+  } catch {
+    // The hub is not reachable: the button still works once it is, and says so then.
+    button.textContent = clockNext === 'out' ? 'Clock out' : 'Clock in'
+  }
+}
+
+$('clock').addEventListener('click', async () => {
+  const reg = registered()
+  const hub = await HubPin.get()
+  if (!reg || !hub.fingerprint) return
+  const direction = clockNext
+  const button = $<HTMLButtonElement>('clock')
+  button.disabled = true
+  say(direction === 'in' ? 'Clocking in…' : 'Clocking out…', true)
+  try {
+    const challengeReply = await HubPin.hubRequest({ method: 'POST', path: '/api/hub/clock', body: { action: 'challenge', keyId: reg.keyId } })
+    if (challengeReply.status !== 200) throw new Error(refusal(challengeReply, 'The hub did not answer.'))
+    const { nonce } = json(challengeReply) as { nonce?: string }
+    if (!nonce) throw new Error('The hub did not answer.')
+    const { signature } = await HubPin.sign({
+      message: clockMessage(hub.fingerprint, reg.keyId, nonce, direction),
+      title: direction === 'in' ? 'Clock in' : 'Clock out',
+      subtitle: reg.email,
+    })
+    const reply = await HubPin.hubRequest({ method: 'POST', path: '/api/hub/clock', body: { action: 'clock', keyId: reg.keyId, nonce, direction, signature } })
+    if (reply.status !== 200) throw new Error(refusal(reply, 'The clock did not go through.'))
+    say(direction === 'in' ? 'Clocked in. Have a good shift.' : 'Clocked out. Thank you.', true)
+  } catch (err) {
+    say(phoneMessage(err, 'The clock did not go through.'))
+  } finally {
+    button.disabled = false
+    void showClock(reg.keyId)
   }
 })
 

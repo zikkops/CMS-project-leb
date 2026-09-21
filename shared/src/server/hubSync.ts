@@ -262,7 +262,8 @@ export async function pairHub(rawCode: unknown, fetchImpl: Fetch = fetch, follow
  * The trading this hub was master for: checks, tickets, drawer shifts, the
  * drawer, and stock movements. Activity stays, as history.
  */
-const TRADING_COLLECTIONS = [...PUSHED_COLLECTIONS.filter(c => c !== 'activityLog'), MOVES_COLLECTION]
+// Clock-ins are kept too (UPGRADE.md T3.12): clearing them would forget who is still at work.
+const TRADING_COLLECTIONS = [...PUSHED_COLLECTIONS.filter(c => c !== 'activityLog' && c !== 'timeEntries'), MOVES_COLLECTION]
 
 /**
  * Removes this hub's trading, for a clean start when its branch is handed back

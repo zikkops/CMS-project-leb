@@ -37,7 +37,7 @@ try {
     'npx tsc shared/src/hubSync.ts shared/src/receiptBlocks.ts shared/src/server/hubDevices.ts shared/src/server/hubSync.ts ' +
     'shared/src/server/hubSession.ts shared/src/server/invoiceNumber.ts shared/src/server/hubLock.ts ' +
     'shared/src/server/staffKeys.ts shared/src/server/keyAttestation.ts shared/src/server/hubKeySignIn.ts shared/src/server/hubApprovals.ts ' +
-    'shared/src/server/hubCounterSignIn.ts shared/src/server/hubPrinting.ts ' +
+    'shared/src/server/hubCounterSignIn.ts shared/src/server/hubPrinting.ts shared/src/server/hubClock.ts ' +
     `--outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -1234,6 +1234,30 @@ console.log('\nstaff phones register a key, and sign in at the hub with it (S12â
   await rejects('a hub with no cafÃ©-wifi door signs no phone in', () => KS.signInWithKey(answer(p1, c7.nonce), { db, hubFingerprint: undefined }), e => e.status === 503)
   await rejects('a malformed request is refused before anything is looked up',
     () => KS.signInWithKey({ keyId: 'short', nonce: c7.nonce, signature: 'x' }, hub), e => e.status === 400)
+
+  // Clocking in and out with the fingerprint (UPGRADE.md T3.12).
+  const HC = await import(url('server/hubClock.js'))
+  const TC = await import(url('timeClock.js'))
+  const PU = await import(url('hubPush.js'))
+  const clockAs = (p, nonce, direction, fp = fpHex) => ({ keyId: p.keyId, nonce, direction, signature: p.sign(TC.clockMessage(fp, p.keyId, nonce, direction)) })
+  eq('not clocked in to begin with', await HC.clockStatus(p1.keyId, { db }), { clockedIn: false, since: null })
+  const k1 = await KS.issueChallenge(p1.keyId, { db })
+  const clockedIn = await HC.clockWithKey(clockAs(p1, k1.nonce, 'in'), hub)
+  eq('the phone signs "in" over the hub\'s challenge, and the hub records it for its branch',
+    [clockedIn.direction, (await HC.clockStatus(p1.keyId, { db })).clockedIn, (await db.collection('timeEntries').where('uid', '==', 'u-phone').get()).docs[0]?.data().branch], ['in', true, branch])
+  const k2 = await KS.issueChallenge(p1.keyId, { db })
+  await rejects('clocking in twice is a mistake, not a second shift', () => HC.clockWithKey(clockAs(p1, k2.nonce, 'in'), hub), e => e.status === 409)
+  const k3 = await KS.issueChallenge(p1.keyId, { db })
+  await rejects('THE TRAP: a sign-in signature is not a clock', () => HC.clockWithKey({ keyId: p1.keyId, nonce: k3.nonce, direction: 'out', signature: p1.sign(SK.signInMessage(fpHex, p1.keyId, k3.nonce)) }, hub), e => e.status === 401)
+  const k4 = await KS.issueChallenge(p1.keyId, { db })
+  await rejects('...nor is a clock-in signature a clock-out', () => HC.clockWithKey({ ...clockAs(p1, k4.nonce, 'in'), direction: 'out' }, hub), e => e.status === 401)
+  const k5 = await KS.issueChallenge(p1.keyId, { db })
+  await rejects('...nor one made for another hub', () => HC.clockWithKey(clockAs(p1, k5.nonce, 'out', 'cd'.repeat(32)), hub), e => e.status === 401)
+  const k6 = await KS.issueChallenge(p1.keyId, { db })
+  eq('clocking out closes the shift', [(await HC.clockWithKey(clockAs(p1, k6.nonce, 'out'), hub)).direction, (await HC.clockStatus(p1.keyId, { db })).clockedIn], ['out', false])
+  eq('a clock-in is sent up with the trading, and only as the hub\'s own branch',
+    [PU.PUSHED_COLLECTIONS.includes('timeEntries'), PU.pushProblem({ collection: 'timeEntries', id: 't1', data: { branch } }, branch), typeof PU.pushProblem({ collection: 'timeEntries', id: 't1', data: { branch: otherBranch } }, branch)],
+    [true, null, 'string'])
 
   const listed = (await K.listStaffKeys(db)).filter(r => r.uid === 'u-phone')
   const firstRow = listed.find(r => r.keyId === p1.keyId)

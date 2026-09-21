@@ -21,7 +21,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'reports-verify-'))
 execSync(
-  `npx tsc shared/src/salesReports.ts --outDir ${out} ` +
+  `npx tsc shared/src/salesReports.ts shared/src/timeClock.ts --outDir ${out} ` +
   `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
@@ -180,6 +180,28 @@ console.log('\nhourly sales, beside the same day last week (T3.4)')
   eq('24 hours, always, so the chart has a place for each', h.hours.length, 24)
   eq('a day with nothing has no busiest hour', R.hourlySales([], { timeZone: BEIRUT, day: '2026-09-12' }).peakHour, null)
   eq('THE TRAP: across a month end, a week before 3 Mar is 24 Feb, not a guess', R.dayBefore('2026-03-03', 7), '2026-02-24')
+}
+
+console.log('\nthe timesheet (UPGRADE.md T3.12)')
+{
+  const TC = await import(`file://${join(out, 'timeClock.js')}`)
+  const at = s => Date.parse(`2026-09-12T${s}:00.000Z`)
+  const e = (uid, direction, s, name = uid) => ({ uid, name, branch: 'Main', direction, at: at(s) })
+  const sheet = TC.timesheet([
+    e('rana', 'in', '05:00'), e('rana', 'out', '13:30'),
+    e('sam', 'out', '06:00'),
+    e('sam', 'in', '07:00'), e('sam', 'in', '08:00'), e('sam', 'out', '12:00'),
+    e('lea', 'in', '10:00'),
+  ], { timeZone: BEIRUT, now: at('14:00') })
+  eq('an in and the next out make a shift, in minutes', sheet.shifts.find(s => s.uid === 'rana').minutes, 510)
+  eq('THE TRAP: a clock-out with no clock-in before it is listed apart, never paired with a guess', sheet.unmatched.map(x => x.uid), ['sam'])
+  eq('a second clock-in leaves the first open and starts again', sheet.shifts.filter(s => s.uid === 'sam').map(s => s.minutes), [null, 240])
+  eq('someone still in has an open shift', sheet.people.find(p => p.uid === 'lea').open, true)
+  eq('hours by person, most first', sheet.people.map(p => [p.uid, p.minutes]), [['rana', 510], ['sam', 240], ['lea', 0]])
+  eq('the shift belongs to the café day it started on', sheet.shifts.find(s => s.uid === 'rana').day, '2026-09-12')
+  const long = TC.timesheet([e('x', 'in', '01:00'), e('x', 'out', '20:00')], { timeZone: BEIRUT, now: at('21:00') })
+  eq('over 16 hours is flagged to check, not hidden', long.shifts[0].long, true)
+  eq('which way the next clock goes', [TC.nextDirection(null), TC.nextDirection({ direction: 'in' }), TC.nextDirection({ direction: 'out' })], ['in', 'out', 'in'])
 }
 
 rmSync(out, { recursive: true, force: true })

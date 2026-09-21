@@ -11,7 +11,7 @@
 // shared/src/server/hubSync.ts; the cloud's is hubDevices.ts.
 
 /** The documents a hub is master for and sends up as they stand. */
-export const PUSHED_COLLECTIONS = ['checks', 'kitchenTickets', 'drawerShifts', 'branchDrawers', 'activityLog'] as const
+export const PUSHED_COLLECTIONS = ['checks', 'kitchenTickets', 'drawerShifts', 'branchDrawers', 'activityLog', 'timeEntries'] as const
 
 /** Where a hub records its stock movements until the cloud has them. */
 export const MOVES_COLLECTION = 'hubStockMoves'
@@ -97,6 +97,8 @@ export function pushProblem(raw: unknown, branch: string): string | null {
     case 'checks':
     case 'kitchenTickets':
     case 'drawerShifts':
+    // Clock-ins (UPGRADE.md T3.12): only the hub's own branch's staff clocking at it.
+    case 'timeEntries':
       return doc.data.branch === branch ? null : `A hub for ${branch} sends only ${branch}'s ${doc.collection}.`
     case 'branchDrawers':
       return doc.id === branch ? null : `A hub for ${branch} sends only ${branch}'s drawer.`

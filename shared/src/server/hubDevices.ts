@@ -410,6 +410,13 @@ async function holdPush(device: HubDevice, docs: PushedDoc[], moves: StockMove[]
         batch.set(db.doc(`${raw.collection}/${raw.id}`), { ...(decode(raw.data, reviver(db)) as Record<string, unknown>), hubId: device.id, branch: device.branch })
         continue
       }
+      // A clock-in (UPGRADE.md T3.12) is a record of who was at work, not
+      // trading: it moves no money and has no online version to disagree
+      // with, so it is written as it stands, never held for a manager.
+      if (raw.collection === 'timeEntries') {
+        batch.set(db.doc(`${raw.collection}/${raw.id}`), decode(raw.data, reviver(db)) as Record<string, unknown>)
+        continue
+      }
       batch.set(db.doc(`${HELD_ITEMS}/${heldDocId(device.id, raw.collection, raw.id)}`), {
         ...base, kind: 'doc', collection: raw.collection, docId: raw.id, data: raw.data, move: null,
         summary: heldSummary(raw.collection, raw.data), heldAt: FieldValue.serverTimestamp(),
