@@ -1438,7 +1438,7 @@ export async function closeCheck(
   // own and transactions do not nest. A number burnt on a close that then
   // fails leaves a gap in the sequence, which is normal in accounting and far
   // better than two checks sharing one.
-  const { invoiceNumber } = await issueInvoiceNumber()
+  const { invoiceNumber } = await issueInvoiceNumber(`check ${checkId}`)
 
   return db.runTransaction(async tx => {
     const check = await readCheck(tx, checkId)

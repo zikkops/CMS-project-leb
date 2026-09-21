@@ -124,7 +124,7 @@ export async function GET(request: Request): Promise<Response> {
   try {
     await requireWholesale(request)
 
-    const { invoiceNumber } = await issueInvoiceNumber()
+    const { invoiceNumber } = await issueInvoiceNumber('a wholesale invoice')
     return Response.json({ invoiceNumber })
   } catch (err) {
     return toResponse(err)

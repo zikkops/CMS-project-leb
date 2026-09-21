@@ -27,11 +27,29 @@
 // given out. With no block for this year, closing is refused with a reason,
 // and the check stays open until the hub is online long enough to fetch one.
 
+import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb, hubDbPath } from './firebaseAdmin'
 import { HttpError } from './auth'
 import { formatInvoiceNumber, invoicePeriod } from '../invoiceFormat'
 import { readInvoicePrefixSetting } from './settings'
 import { readBlocks, takeReceipt } from '../receiptBlocks'
+
+/**
+ * Where every issued number is written down (UPGRADE.md T7.10), in the SAME
+ * transaction that issues it, so the receipt sequence report can tell a number
+ * burnt on a failed close from one that was never issued at all.
+ * Server-only: no Firestore rule, so no rules deploy. One document per
+ * number, keyed by year and sequence, so a transaction that runs again writes
+ * the same document rather than a second one.
+ */
+export const RECEIPT_LOG = 'receiptLog'
+
+export function receiptLogEntry(year: number, sequence: number, invoiceNumber: string, purpose: string) {
+  return {
+    path: `${RECEIPT_LOG}/${year}-${sequence}`,
+    data: { year, sequence, number: invoiceNumber, purpose: purpose.slice(0, 120), issuedAt: FieldValue.serverTimestamp() },
+  }
+}
 
 /**
  * Issues the next invoice number and advances the counter atomically.
@@ -40,7 +58,7 @@ import { readBlocks, takeReceipt } from '../receiptBlocks'
  * accounting systems — a burnt number is far better than two invoices sharing
  * one.
  */
-export async function issueInvoiceNumber(): Promise<{ invoiceNumber: string; sequence: number; issuedAt: Date }> {
+export async function issueInvoiceNumber(purpose = 'a check'): Promise<{ invoiceNumber: string; sequence: number; issuedAt: Date }> {
   const db = adminDb()
   const issuedAt = new Date()
   // The café's year, not the host's. The counter resets on it, and a UTC host
@@ -61,6 +79,8 @@ export async function issueInvoiceNumber(): Promise<{ invoiceNumber: string; seq
       const taken = takeReceipt(readBlocks(snap.data()?.blocks), year)
       if (!taken.ok) throw new HttpError(409, taken.reason)
       tx.set(ref, { blocks: taken.blocks }, { merge: true })
+      const log = receiptLogEntry(year, taken.sequence, formatInvoiceNumber(taken.sequence, issuedAt, prefix), purpose)
+      tx.set(db.doc(log.path), log.data)
       return taken.sequence
     })
     return { invoiceNumber: formatInvoiceNumber(sequence, issuedAt, prefix), sequence, issuedAt }
@@ -74,6 +94,8 @@ export async function issueInvoiceNumber(): Promise<{ invoiceNumber: string; seq
     // is what makes that a reset rather than a collision.
     const next = data.year === year ? (data.nextNumber ?? 0) + 1 : 1
     tx.set(ref, { year, nextNumber: next }, { merge: true })
+    const log = receiptLogEntry(year, next, formatInvoiceNumber(next, issuedAt, prefix), purpose)
+    tx.set(db.doc(log.path), log.data)
     return next
   })
 

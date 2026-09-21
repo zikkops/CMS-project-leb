@@ -18,8 +18,8 @@ export const runtime = 'nodejs'
 
 export async function GET(request: Request): Promise<Response> {
   try {
-    await requireStaff(request)
-    const { invoiceNumber } = await issueInvoiceNumber()
+    const caller = await requireStaff(request)
+    const { invoiceNumber } = await issueInvoiceNumber(`an invoice drawn by ${caller.email ?? caller.uid}`)
     return Response.json({ ok: true, invoiceNumber })
   } catch (err) {
     return toResponse(err)

@@ -715,6 +715,8 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
   eq('closing takes the next number from the block the cloud reserved',
     [closed.receiptNumber.endsWith('-0501'), (await db.doc('hubMeta/receipts').get()).data().blocks[0].next], [true, 502])
   eq('...and never keeps a counter of its own', (await db.doc('appSettings/invoiceCounter').get()).exists, false)
+  const logged = (await db.doc(`receiptLog/${cafeYear}-501`).get()).data()
+  eq('the number issued is written down with it, for the sequence report (T7.10)', [logged?.number, logged?.purpose], [closed.receiptNumber, `check ${checkId}`])
   await rejects('a closed check does not close twice', () => C.closeCheck(staff, checkId), e => e.status === 409)
   await rejects('a barista cannot refund a check (T5.1)', () => C.refundCheck({ ...staff, role: 'barista' }, checkId, 'changed-mind', ''), e => e.status === 403)
   eq('...and it stays closed', (await db.doc(`checks/${checkId}`).get()).data().status, 'closed')

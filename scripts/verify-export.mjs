@@ -27,7 +27,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'export-verify-'))
 execSync(
-  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts shared/src/salesSummary.ts shared/src/tenderSummary.ts shared/src/vatReport.ts shared/src/cashUpReport.ts --outDir ${out} ` +
+  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts shared/src/salesSummary.ts shared/src/tenderSummary.ts shared/src/vatReport.ts shared/src/cashUpReport.ts shared/src/receiptSequence.ts --outDir ${out} ` +
   `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
@@ -43,6 +43,7 @@ const SS = await import(`file://${join(out, 'salesSummary.js')}`)
 const TS = await import(`file://${join(out, 'tenderSummary.js')}`)
 const VR = await import(`file://${join(out, 'vatReport.js')}`)
 const CU = await import(`file://${join(out, 'cashUpReport.js')}`)
+const RS = await import(`file://${join(out, 'receiptSequence.js')}`)
 const L = await import(`file://${join(out, 'loyaltyExport.js')}`)
 
 let pass = 0, fail = 0
@@ -306,6 +307,35 @@ console.log('\ncash-up and drawer: per shift, per currency, never netted (UPGRAD
   eq('card and card tips are shown, never in the drawer', [r.total.card, r.total.cardTips], [m(120, 0), 9])
   eq('each day\'s End of Day count sits beside its shifts', r.days.find(d => d.branch === 'Main' && d.cashUpDay === '2026-09-20').eodCounted, m(110, 1_500_000))
   eq('the total is the sum of the branches', r.byBranch.reduce((n, b) => n + b.totals.difference.lbp, 0), r.total.difference.lbp)
+}
+
+console.log('\nthe receipt sequence: gaps, duplicates and numbers with no record (UPGRADE.md T7.10)')
+{
+  const n = (seq, year = 2026) => `BC-Q3-09${year}-${String(seq).padStart(4, '0')}`
+  eq('a number is read from its end, whatever dashes the prefix holds', [RS.parseReceiptNumber('MY-CAFE-Q1-012026-12345'), RS.parseReceiptNumber('BC-0042'), RS.parseReceiptNumber('BC-Q3-132026-0001')],
+    [{ year: 2026, sequence: 12345 }, null, null])
+  const use = (seq, over = {}) => ({ number: n(seq), kind: 'check', id: `c${seq}`, branch: 'Main', day: '2026-09-20', ...over })
+  const r = RS.receiptSequence(
+    [use(10), use(11, { branch: 'Second' }), use(12, { kind: 'wholesale', branch: '' }), use(14, { kind: 'retail' }), use(14, { id: 'c14b' }),
+      use(30), use(31), use(40), { number: 'handwritten', kind: 'check', id: 'x', branch: 'Main', day: '2026-09-20' }],
+    [13, 14, 30, 31, 40].map(s => ({ year: 2026, sequence: s, number: n(s), purpose: s === 13 ? 'check c99' : 'x', day: '2026-09-20' })),
+    [{ year: 2026, first: 20, last: 29, branch: 'Main', name: 'Counter PC' }],
+    { branches: ['Main'] },
+  )
+  const row = seq => r.rows.find(x => x.sequence === seq)
+  eq('every number from the lowest to the highest is one row', [r.rows.length, r.years[0].first, r.years[0].last], [31, 10, 40])
+  eq('another branch\'s number is not a gap, and is counted, not shown', [row(11).status, row(11).id, row(11).number], ['used elsewhere', '', ''])
+  eq('a wholesale invoice takes a number from the same counter', row(12).status, 'wholesale')
+  eq('issued, and nothing carries it: listed with what it was for', [row(13).status, row(13).note], ['issued, no record', 'issued for check c99'])
+  eq('THE TRAP: one number on two records is a duplicate', [r.duplicates.length, r.duplicates[0].sequence, r.years[0].duplicates], [1, 14, 1])
+  eq('numbers a hub reserved and never used are expected, named with the block', r.gaps.find(g => g.from === 20), { year: 2026, from: 20, to: 29, count: 10, status: 'gap in hub block', note: 'Counter PC at Main, block 20–29' })
+  eq('never seen, above the first logged number (13): missing', r.gaps.find(g => g.to === 19), { year: 2026, from: 15, to: 19, count: 5, status: 'gap', note: '' })
+  eq('a gap inside the logged span is missing, and counted', [r.gaps.find(g => g.from === 32).status, r.years[0].missing], ['gap', 13])
+  eq('a number not in the format sits in no sequence, and is said', r.unreadable.map(u => u.number), ['handwritten'])
+  const early = RS.receiptSequence([use(1), use(5)], [{ year: 2026, sequence: 5, number: n(5), purpose: 'x', day: '2026-09-21' }], [], { branches: ['Main'] })
+  eq('never seen and below the first logged number: before the log', early.gaps.map(g => [g.from, g.to, g.status]), [[2, 4, 'gap before the log']])
+  const years = RS.receiptSequence([use(3), { ...use(1), number: n(1, 2027) }], [], [], { branches: ['Main'] })
+  eq('each year is its own sequence, since the counter restarts', years.years.map(y => [y.year, y.first, y.last]), [[2026, 3, 3], [2027, 1, 1]])
 }
 
 console.log('\nthe sheets are declared once, for the UI and the file both')

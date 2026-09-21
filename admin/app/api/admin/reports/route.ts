@@ -19,6 +19,8 @@ import { tenderSummary } from '@big-cms/shared/tenderSummary'
 import { vatReport } from '@big-cms/shared/vatReport'
 import { cashUpReport } from '@big-cms/shared/cashUpReport'
 import { readCashUp } from '@big-cms/shared/server/cashUp'
+import { readReceiptSequence } from '@big-cms/shared/server/receiptSequence'
+import { receiptSequence } from '@big-cms/shared/receiptSequence'
 import { readReceivedDeliveries } from '@big-cms/shared/server/receivedDeliveries'
 import { TIME_ENTRIES, timesheet, type TimeEntry } from '@big-cms/shared/timeClock'
 import { timestampMs } from '@big-cms/shared/timestamps'
@@ -104,6 +106,15 @@ export async function GET(request: Request): Promise<Response> {
       const read = await readCashUp(range, { timeZone, branches: own })
       return Response.json(
         { ok: true, from: range.from, to: range.to, branches: read.branches, ...cashUpReport(read.shifts, read.eod, read.branches) },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+    if (report === 'receipts') {
+      // The receipt sequence (T7.10): one counter across every branch, so it
+      // is read whole and judged whole; only the caller's branches are shown.
+      const read = await readReceiptSequence(range, { timeZone, branches: own })
+      return Response.json(
+        { ok: true, from: range.from, to: range.to, branches: read.branches, cutShort: read.cutShort, ...receiptSequence(read.uses, read.issues, read.blocks, { branches: read.branches }) },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }

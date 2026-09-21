@@ -33,6 +33,7 @@ import { HttpError, type Caller } from './auth'
 import { BRANCHES } from '../branches'
 import { formatInvoiceNumber, invoicePeriod } from '../invoiceFormat'
 import { readInvoicePrefixSetting } from './settings'
+import { receiptLogEntry } from './invoiceNumber'
 import { effectivePrice } from '../productPricing'
 
 export type PriceType = 'retail' | 'wholesale'
@@ -238,6 +239,9 @@ export async function createPurchaseOrder(
     const sequence = counter.year === year ? Number(counter.nextNumber ?? 0) + 1 : 1
     tx.set(counterRef, { year, nextNumber: sequence })
     const invoiceNumber = formatInvoiceNumber(sequence, issuedAt, prefix)
+    // Written down with the sale, for the receipt sequence report (T7.10).
+    const log = receiptLogEntry(year, sequence, invoiceNumber, `retail sale ${orderRef.id}`)
+    tx.set(db.doc(log.path), log.data)
 
     tx.set(orderRef, {
       invoiceNumber,

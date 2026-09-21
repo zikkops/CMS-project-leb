@@ -274,7 +274,7 @@ expected, counted and difference.
 - **There is no tip line.**
 - **One yearly receipt series** (`issueInvoiceNumber()`) is shared by checks,
   counter retail sales and wholesale orders. A hub draws its numbers in blocks.
-- **No report lists the numbers** (T7.10).
+- **`/admin/reports/receipts` lists every number** (T7.10, 21 Sep 2026), from checks, retail sales, wholesale orders and `receiptLog`, which `issueInvoiceNumber()` and `createPurchaseOrder()` now write in the same transaction as the number.
 
 ### 3.12 Daily Inventory History
 
@@ -418,9 +418,9 @@ in USD at the cost stored with the count (`countVariance()` in
     invoice date.
     - Fix: **T7.13**, **T7.6**.
 22. **Counter retail sales and wholesale orders** share the receipt series but
-    are in no export.
+    are in no export. Their numbers are in the receipt sequence report since T7.10; their money is still in no export.
     - Fix: **T7.3**, **T7.10**.
-23. **There is no receipt sequence audit.**
+23. **FIXED 21 Sep 2026 (T7.10). There was no receipt sequence audit.** Now: `receiptSequence()` in `shared/src/receiptSequence.ts` walks every number from the lowest to the highest seen in the period, per café year. Each is on a check or retail sale, at another branch (counted, not shown), on a wholesale invoice, issued with nothing carrying it (from the log, with what it was for), skipped in a hub block (named with the block), before the log began, or missing. Duplicates are listed. Numbers issued before 21 Sep 2026 were not logged, so a gap below the first logged number of a year reads "before the log", never "missing".
     - Fix: **T7.10**.
 24. **Applying a held hub sale changes a closed day**, with no adjustment
     line.

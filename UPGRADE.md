@@ -820,7 +820,7 @@ Principles for every task here:
   Totals per branch and period, and a download. This is the exception report
   auditors look at.
   *Done: Voids & Discounts is now the exception report: who rang each voided item up and who struck it off, approval (manager, not needed, not by a manager, not recorded) from voidedByRole/refundedByRole now stamped on the server, refunds given in the period on their refund day, sales at a price rule, an unapproved count, per branch and in the download. verify:reports 84, verify:hub 220.*
-- [ ] **T7.10 Receipt sequence report.** For a period and branch, every
+- [x] **T7.10 Receipt sequence report.** For a period and branch, every
   receipt number issued, in order:
   - **gaps** (on a hub, numbers skipped in a block are expected, and are named
     with the block)
@@ -828,6 +828,7 @@ Principles for every task here:
   - numbers issued with no check
 
   The audit trail that proves no sale went missing.
+  *Done: /admin/reports/receipts: every number in the period, per café year, across all branches (other branches counted, not shown): on a check or retail sale, wholesale, issued with no record, skipped in a hub block (named), before the log, missing; duplicates listed. issueInvoiceNumber() (cloud and hub) and createPurchaseOrder() now write receiptLog/{year}-{seq} in the same transaction, with what it was for. verify:export 155, verify:hub 221; mutations caught by name.*
 - [ ] **T7.11 Labour report.** From the timesheet (T3.12, T6.6), per branch
   and period:
   - hours per person and in total
