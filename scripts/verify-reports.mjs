@@ -227,6 +227,21 @@ console.log('\nthe waitlist (UPGRADE.md T3.13)')
     [true, false, false, false])
 }
 
+console.log('\nper-branch totals add up to the consolidated figure (UPGRADE.md T7.1)')
+{
+  const checks = [
+    check({ id: 'a1', branch: 'Main', lines: [line({ unitPrice: 4 }), voided({ unitPrice: 3 })] }),
+    check({ id: 'a2', branch: 'Main', lines: [line({ unitPrice: 6, quantity: 2 })] }),
+    check({ id: 'b1', branch: 'Second', lines: [line({ unitPrice: 5 }), voided({ id: 'v9', unitPrice: 2, voidWasWaste: false })] }),
+  ]
+  const add = rows => Object.fromEntries(Object.keys(rows[0]).map(k => [k, Math.round(rows.reduce((s, r) => s + r[k], 0) * 100) / 100]))
+  const per = b => checks.filter(c => c.branch === b)
+  const vAll = R.voidDiscountReport(checks, OPTS).totals
+  eq('voids and discounts: Main + Second = all', add(['Main', 'Second'].map(b => R.voidDiscountReport(per(b), OPTS).totals)), vAll)
+  const mixOpts = { categoryOf: () => ({ category: 'Drinks', section: 'Beverage' }) }
+  eq('product mix: Main + Second = all', add(['Main', 'Second'].map(b => R.productMix(per(b), mixOpts).totals)), R.productMix(checks, mixOpts).totals)
+}
+
 rmSync(out, { recursive: true, force: true })
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

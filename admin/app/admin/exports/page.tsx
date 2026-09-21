@@ -22,6 +22,7 @@ import { todayYmd } from '@big-cms/shared/dates'
 import { cutShortMessage, type SalesExport } from '@big-cms/shared/salesExport'
 import type { LoyaltyExport } from '@big-cms/shared/loyaltyExport'
 import { downloadSalesWorkbook, downloadLoyaltyWorkbook, downloadDaysCsv } from './workbook'
+import { ReportRange, type RangeChoice } from '../../components/ui/ReportRange'
 
 /** Two ledgers, one date range: what the till took, and what the points did. */
 type Report = 'sales' | 'loyalty'
@@ -63,9 +64,9 @@ export default function SalesExportPage() {
   const today = todayYmd(BRAND.locale.timezone)
   const monthStart = `${today.slice(0, 7)}-01`
 
+  // The period last read, for the download's name.
   const [from, setFrom] = useState(monthStart)
   const [to, setTo] = useState(today)
-  const [branch, setBranch] = useState('')
   const [report, setReport] = useState<Report>('sales')
   const [data, setData] = useState<SalesExport | null>(null)
   const [loyalty, setLoyalty] = useState<LoyaltyExport | null>(null)
@@ -106,10 +107,11 @@ export default function SalesExportPage() {
     )
   }, [loyalty])
 
-  async function fetchRange() {
+  async function fetchRange(range: RangeChoice) {
     setBusy('Reading…'); setError(''); setData(null); setLoyalty(null)
+    setFrom(range.from); setTo(range.to)
     try {
-      const params = new URLSearchParams({ from, to, ...(branch ? { branch } : {}) })
+      const params = new URLSearchParams({ from: range.from, to: range.to, ...(range.branch ? { branch: range.branch } : {}) })
       const result = await unwrap(await authedFetch(`/api/admin/exports/${report}?${params}`, 'GET'))
       if (report === 'sales') setData(result as unknown as SalesExport)
       else setLoyalty(result as unknown as LoyaltyExport)
@@ -157,47 +159,26 @@ export default function SalesExportPage() {
           marginBottom: '1.5rem', maxWidth: '62ch',
         }}>
           Closed checks for a date range, as your accountant needs them: what each day took, every
-          check, and how each was paid. Days are the café&apos;s, not the server&apos;s — a sale at
-          01:30 belongs to the night it was made. Each check carries the VAT rate and exchange rate
+          check, and how each was paid. Days are the café&apos;s calendar days, not the server&apos;s: a
+          sale at 01:30 is filed on the day it happened in the café. Each check carries the VAT rate and exchange rate
           it was actually closed at, so re-running this next year gives the same figures.
         </p>
 
-        {/* Controls, in one row above the results — the range IS the query. */}
-        <div style={{
-          display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-end',
-          paddingBottom: '1.2rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.08)',
-        }}>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <span style={{ fontSize: '0.64rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.4)' }}>From</span>
-            <input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} style={field} />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <span style={{ fontSize: '0.64rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.4)' }}>To</span>
-            <input type="date" value={to} min={from} max={today} onChange={e => setTo(e.target.value)} style={field} />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <span style={{ fontSize: '0.64rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.4)' }}>Branch</span>
-            <select value={branch} onChange={e => setBranch(e.target.value)} style={{ ...field, minWidth: '10rem' }}>
-              <option value="">All of mine</option>
-              {BRAND.branches.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <span style={{ fontSize: '0.64rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.4)' }}>Report</span>
-            <select
-              value={report}
-              onChange={e => { setReport(e.target.value as Report); setData(null); setLoyalty(null) }}
-              style={{ ...field, minWidth: '11rem' }}
-            >
-              <option value="sales">Sales &amp; VAT</option>
-              <option value="loyalty">Points &amp; redemptions</option>
-            </select>
-          </label>
-          <button
-            onClick={fetchRange}
-            disabled={Boolean(busy)}
-            style={{ ...button, border: 'none', backgroundColor: 'var(--teal)', color: '#fff' }}
-          >{busy || 'Read the range'}</button>
+        {/* The period and branches every report uses (UPGRADE.md T7.1). */}
+        <div style={{ paddingBottom: '0.4rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.08)' }}>
+          <ReportRange busy={Boolean(busy)} onRun={range => { void fetchRange(range) }} extra={
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginBottom: '1.1rem' }}>
+              <span style={{ fontSize: '0.64rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.4)' }}>Report</span>
+              <select
+                value={report}
+                onChange={e => { setReport(e.target.value as Report); setData(null); setLoyalty(null) }}
+                style={{ ...field, minWidth: '11rem' }}
+              >
+                <option value="sales">Sales &amp; VAT</option>
+                <option value="loyalty">Points &amp; redemptions</option>
+              </select>
+            </label>
+          } />
         </div>
 
         {data?.cutShort && (

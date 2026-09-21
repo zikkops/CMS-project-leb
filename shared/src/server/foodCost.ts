@@ -11,7 +11,7 @@
 // accounts, and the people reading a food cost report are neither.
 
 import { adminDb } from './firebaseAdmin'
-import { paddedWindow, type ExportRequest } from './salesExport'
+import { paddedWindow, type ExportRequest, requestedBranches } from './salesExport'
 import { closedAtParts, exportCutShort, EXPORT_CHECK_CAP, type CutShort } from '../salesExport'
 import { shareForLines } from '../splits'
 import {
@@ -36,7 +36,7 @@ export async function readTheoreticalFoodCost(
   const last = snap.docs[snap.docs.length - 1]
   const cutShort = last ? exportCutShort(snap.size, EXPORT_CHECK_CAP, closedAtParts(last.data().closedAt, opts.timeZone).day) : null
 
-  const wanted = new Set(range.branch ? [range.branch] : opts.branches)
+  const wanted = new Set(requestedBranches(range, opts.branches))
   const sold: SoldLine[] = []
   const wasteSources: WasteSource[] = []
   let checks = 0

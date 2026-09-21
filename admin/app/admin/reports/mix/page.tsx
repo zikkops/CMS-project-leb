@@ -14,9 +14,9 @@ import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import type { MixCategory, MixItem, ProductMix } from '@big-cms/shared/salesReports'
 import type { CutShort } from '@big-cms/shared/salesExport'
 import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
-import { ReportRange, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
+import { ReportRange, BranchTotals, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
 
-type Report = ProductMix & { from: string; to: string; cutShort?: CutShort | null }
+type Report = ProductMix & { from: string; to: string; cutShort?: CutShort | null; byBranch?: { branch: string; totals: Record<string, number> }[] }
 
 const pct = (share: number) => `${(share * 100).toFixed(1)}%`
 
@@ -72,6 +72,10 @@ export default function ProductMixPage() {
       {busy && !report && <Loading label="Reading the checks…" />}
       {report && (
         <>
+          <BranchTotals rows={report.byBranch ?? []} columns={[
+            { key: 'checks', label: 'Checks' }, { key: 'quantity', label: 'Items sold' },
+            { key: 'revenue', label: 'Item revenue', money: true }, { key: 'checkDiscounts', label: 'Check discounts', money: true },
+          ]} />
           <Panel title={`${report.from === report.to ? report.from : `${report.from} to ${report.to}`} · ${report.totals.checks} closed check${report.totals.checks === 1 ? '' : 's'}`}>
             <p style={{ fontFamily: 'var(--font-inter)', color: 'var(--offwhite)', fontSize: '1.05rem' }}>
               {report.totals.quantity} items sold for {usd(report.totals.revenue)}

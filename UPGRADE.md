@@ -712,7 +712,7 @@ Principles for every task here:
     behind a route, so the accountant can put their own numbers in without a
     code change.
   *Done: Done 21 Sep 2026: docs/reporting.md. It lists every reported figure with where it is computed, its definition, how it is dated and which currency and branch it covers. It also sets out 30 gaps against the definitions, each with its evidence and the task that fixes it, and 14 reconciliations marked holds, breaks or cannot be checked. The owner's answers and the defaults are recorded above. The audit found a real bug, now fixed (commit 736da7a): End of Day saves threw away expense and income lines (no name, $0) and every attendee's shift, so an Off day earned a tips share. The demo project's 7 reports were scanned read-only and none was affected; reports in any other project saved since 29 Aug should be checked. Other findings for the tasks: Food Cost 'Till sales' is drawer cash, and a day saved from the form counts twice; card taken in lira drops out of the export; there are two day rules (midnight for sales, 10:00 for drawers and End of Day); and combos push theoretical food cost up.*
-- [ ] **T7.1 One period and branch picker for every report.** Promote
+- [x] **T7.1 One period and branch picker for every report.** Promote
   `ReportRange` (`admin/app/admin/reports/ReportRange.tsx`) to the admin UI
   kit:
   - one day or a from–to range
@@ -725,6 +725,19 @@ Principles for every task here:
   the columns, never a separate calculation. Move EOD History, Daily Summary,
   Tips and Daily Inventory History onto it. "Today" and every day boundary is
   the café's day in `BRAND.locale.timezone`.
+  *Done: Done 21 Sep 2026 for the reports and the export; the End of Day pages and downloads are split into T7.1b. The picker is now admin/app/components/ui/ReportRange.tsx: quick periods (today, yesterday, this and last week, month and quarter, year to date, last year), one day or a range, and one branch, several (chips) or all. The rules are in shared/src/reportPeriods.ts: quickRange, sameRangeLastYear and dayCount, with ISO weeks starting Monday and the calendar fiscal year, plus readBranchList. The server reads a branch list through requestedBranches(), where one branch that is not the caller's refuses the request with 403; the export, loyalty export, food cost and every report use it. With several branches, each report returns a total per branch, and BranchTotals shows them with an 'All' row that is their sum. That is on Voids & Discounts, Product Mix, Hourly and Timesheet; the Sales Export page uses the picker too. The export page's claim that a 01:30 sale belongs to the night before was wrong (docs/reporting.md, gap 5) and now says the calendar day. Covered by verify:export (14 period and branch cases) and verify:reports (Main + Second = all, for voids and the mix). Not looked at signed in.*
+- [ ] **T7.1b The End of Day pages and downloads onto the picker** (split from
+  T7.1, 21 Sep 2026).
+  - Move EOD History, Daily Summary, Tips and Daily Inventory History onto
+    `ReportRange` (`admin/app/components/ui/ReportRange.tsx`), with one
+    branch, several or all, and `BranchTotals` under each.
+  - Give Product Mix, Voids & Discounts, Hourly and Timesheet a CSV and XLSX
+    download with the header block (business, branches, period, currencies,
+    generated at, definitions version).
+  - Decide the café day (docs/reporting.md, gap 5): sales use the calendar
+    day and drawers and End of Day the 10:00 cash-up day. Record the choice
+    here, show it on every report, and make the reports that sit side by side
+    use the same one.
 - [ ] **T7.2 Longer ranges without a silent cut.** `MAX_RANGE_DAYS` (100) and
   the 20,000-check read cap stop a year's report. Read the range in café-day
   chunks and add them up, so a fiscal year (or last year for comparison) works

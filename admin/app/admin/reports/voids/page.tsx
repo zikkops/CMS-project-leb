@@ -12,9 +12,9 @@ import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { DISCOUNT_KIND_LABELS, type DiscountRow, type Tally, type VoidDiscountReport, type VoidRow } from '@big-cms/shared/salesReports'
 import type { CutShort } from '@big-cms/shared/salesExport'
 import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
-import { ReportRange, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
+import { ReportRange, BranchTotals, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
 
-type Report = VoidDiscountReport & { from: string; to: string; checks: number; cutShort?: CutShort | null }
+type Report = VoidDiscountReport & { from: string; to: string; checks: number; cutShort?: CutShort | null; byBranch?: { branch: string; totals: Record<string, number> }[] }
 
 const tallyColumns: Column<Tally>[] = [
   { key: 'label', label: '', render: t => t.label, sort: (a, b) => a.label.localeCompare(b.label) },
@@ -66,6 +66,10 @@ export default function VoidsReportPage() {
       {busy && !report && <Loading label="Reading the checks…" />}
       {report && (
         <>
+          <BranchTotals rows={report.byBranch ?? []} columns={[
+            { key: 'voids', label: 'Voids' }, { key: 'voidValue', label: 'Voided', money: true }, { key: 'wasteValue', label: 'Waste', money: true },
+            { key: 'discounts', label: 'Discounts' }, { key: 'discountValue', label: 'Took off', money: true },
+          ]} />
           <Panel title={`${report.from === report.to ? report.from : `${report.from} to ${report.to}`} · ${report.checks} closed check${report.checks === 1 ? '' : 's'}`}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', fontFamily: 'var(--font-inter)' }}>
               {[

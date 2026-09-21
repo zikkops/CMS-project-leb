@@ -7,8 +7,8 @@
 // browser names a range and a branch; the rates and the costs come from the
 // checks themselves.
 
-import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
-import { parseExportRange } from '@big-cms/shared/server/salesExport'
+import { requireSection, toResponse, type Caller } from '@big-cms/shared/server/auth'
+import { parseExportRange, requestedBranches } from '@big-cms/shared/server/salesExport'
 import { readTheoreticalFoodCost } from '@big-cms/shared/server/foodCost'
 import { STOCKED_BRANCHES } from '@big-cms/shared/branches'
 import { BRAND } from '@big-cms/shared/brand'
@@ -27,9 +27,8 @@ export async function GET(request: Request): Promise<Response> {
     const own = caller.role === 'admin' || caller.branchIds.length === 0
       ? [...STOCKED_BRANCHES]
       : STOCKED_BRANCHES.filter(b => caller.branchIds.includes(b))
-    if (range.branch && !own.includes(range.branch)) {
-      throw new HttpError(403, 'That branch is not one of yours.')
-    }
+    // One branch, several (a comma list) or all of theirs (UPGRADE.md T7.1).
+    requestedBranches(range, own)
 
     const result = await readTheoreticalFoodCost(range, {
       timeZone: BRAND.locale.timezone,

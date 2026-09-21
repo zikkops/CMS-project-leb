@@ -27,7 +27,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'export-verify-'))
 execSync(
-  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts --outDir ${out} ` +
+  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts --outDir ${out} ` +
   `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
@@ -37,6 +37,7 @@ for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
 }
 
 const X = await import(`file://${join(out, 'salesExport.js')}`)
+const RP = await import(`file://${join(out, 'reportPeriods.js')}`)
 const L = await import(`file://${join(out, 'loyaltyExport.js')}`)
 
 let pass = 0, fail = 0
@@ -270,6 +271,27 @@ console.log('\nthe loyalty sheets are declared once')
   eq('every points column names a real field', L.LOYALTY_SHEETS.points.every(([k]) => k in p), true)
   eq('every redemption column names a real field', L.LOYALTY_SHEETS.redemptions.every(([k]) => k in r), true)
   eq('every day column names a real field', L.LOYALTY_SHEETS.days.every(([k]) => k in d), true)
+}
+
+console.log('\nthe periods and branches a report is asked for (UPGRADE.md T7.1)')
+{
+  // 21 Sep 2026 is a Monday.
+  const T = '2026-09-21'
+  eq('today and yesterday', [RP.quickRange('today', T), RP.quickRange('yesterday', T)], [{ from: T, to: T }, { from: '2026-09-20', to: '2026-09-20' }])
+  eq('this week starts on Monday (ISO 8601) and ends today', RP.quickRange('thisWeek', T), { from: '2026-09-21', to: T })
+  eq('this week from a Sunday still starts on the Monday before', RP.quickRange('thisWeek', '2026-09-27'), { from: '2026-09-21', to: '2026-09-27' })
+  eq('last week is Monday to Sunday', RP.quickRange('lastWeek', T), { from: '2026-09-14', to: '2026-09-20' })
+  eq('last month, across a year end', RP.quickRange('lastMonth', '2026-01-10'), { from: '2025-12-01', to: '2025-12-31' })
+  eq('last month ends on its real last day (February)', RP.quickRange('lastMonth', '2028-03-05'), { from: '2028-02-01', to: '2028-02-29' })
+  eq('this quarter', RP.quickRange('thisQuarter', T), { from: '2026-07-01', to: T })
+  eq('last quarter, from the first quarter', RP.quickRange('lastQuarter', '2026-02-10'), { from: '2025-10-01', to: '2025-12-31' })
+  eq('year to date and last year (calendar fiscal year)', [RP.quickRange('yearToDate', T), RP.quickRange('lastYear', T)], [{ from: '2026-01-01', to: T }, { from: '2025-01-01', to: '2025-12-31' }])
+  eq('the same days a year earlier; 29 February becomes the 28th', RP.sameRangeLastYear('2028-02-01', '2028-02-29'), { from: '2027-02-01', to: '2027-02-28' })
+  eq('days counted, both ends included', [RP.dayCount('2026-09-01', '2026-09-30'), RP.dayCount(T, T)], [30, 1])
+  const own = ['Main', 'Second', 'Third']
+  eq('no branch, or all, is every branch of theirs', [RP.readBranchList('', own), RP.readBranchList('all', own)], [own, own])
+  eq('several branches, in the café\'s order, without repeats', RP.readBranchList('Third, Main,Main', own), ['Main', 'Third'])
+  eq('a branch that is not theirs refuses the request', typeof RP.readBranchList('Main,Elsewhere', ['Main']), 'string')
 }
 
 console.log('\na read that hit its ceiling says so (UPGRADE.md T5.8)')

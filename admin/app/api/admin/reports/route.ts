@@ -12,12 +12,13 @@
 // a branch, never a figure.
 
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
-import { paddedWindow, parseExportRange, readClosedChecks } from '@big-cms/shared/server/salesExport'
+import { paddedWindow, parseExportRange, readClosedChecks, requestedBranches } from '@big-cms/shared/server/salesExport'
 import { TIME_ENTRIES, timesheet, type TimeEntry } from '@big-cms/shared/timeClock'
 import { timestampMs } from '@big-cms/shared/timestamps'
 import { dayBefore, hourlySales, productMix, voidDiscountReport } from '@big-cms/shared/salesReports'
 import { adminDb } from '@big-cms/shared/server/firebaseAdmin'
 import { BRAND } from '@big-cms/shared/brand'
+import type { Check } from '@big-cms/shared/checks'
 
 export const runtime = 'nodejs'
 
@@ -47,14 +48,23 @@ export async function GET(request: Request): Promise<Response> {
     // Branch scoping, as the export does it: an admin sees every branch,
     // anyone else the ones they are assigned to.
     const own = caller.role === 'admin' || caller.branchIds.length === 0 ? BRAND.branches : caller.branchIds
-    if (range.branch && !own.includes(range.branch)) throw new HttpError(403, 'That branch is not one of yours.')
+    // One branch, several (a comma list) or all of theirs (UPGRADE.md T7.1).
+    const chosen = requestedBranches(range, own)
 
     const timeZone = BRAND.locale.timezone
     const report = params.get('report')
+    // With several branches, each report answers per branch as well
+    // (T7.1): the same function over each branch's own checks, so the
+    // screen's "All" row, the sum of these, is the same figure.
+    const perBranch = <T,>(checks: Check[], build: (list: Check[]) => T) =>
+      chosen.length > 1 ? chosen.map(branch => ({ branch, report: build(checks.filter(c => c.branch === branch)) })) : []
     if (report === 'voids') {
       const { checks, branches, cutShort } = await readClosedChecks(range, { timeZone, branches: own })
       return Response.json(
-        { ok: true, from: range.from, to: range.to, branches, cutShort, checks: checks.length, ...voidDiscountReport(checks, { timeZone }) },
+        {
+          ok: true, from: range.from, to: range.to, branches, cutShort, checks: checks.length, ...voidDiscountReport(checks, { timeZone }),
+          byBranch: perBranch(checks, list => voidDiscountReport(list, { timeZone }).totals).map(b => ({ branch: b.branch, totals: b.report })),
+        },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }
@@ -64,7 +74,10 @@ export async function GET(request: Request): Promise<Response> {
         menuCategories(),
       ])
       return Response.json(
-        { ok: true, from: range.from, to: range.to, branches, cutShort, ...productMix(checks, { categoryOf }) },
+        {
+          ok: true, from: range.from, to: range.to, branches, cutShort, ...productMix(checks, { categoryOf }),
+          byBranch: perBranch(checks, list => productMix(list, { categoryOf }).totals).map(b => ({ branch: b.branch, totals: b.report })),
+        },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }
@@ -73,14 +86,20 @@ export async function GET(request: Request): Promise<Response> {
       // with the export's padded window, then narrowed to the café days asked for.
       const { start, end } = paddedWindow(range.from, range.to)
       const snap = await adminDb().collection(TIME_ENTRIES).where('at', '>=', start).where('at', '<=', end).limit(20_000).get()
-      const wanted = new Set(range.branch ? [range.branch] : own)
+      const wanted = new Set(chosen)
       const entries: TimeEntry[] = snap.docs.map(d => d.data()).filter(e => wanted.has(String(e.branch))).map(e => ({
         uid: String(e.uid), name: String(e.name ?? ''), branch: String(e.branch), direction: e.direction === 'out' ? 'out' : 'in', at: timestampMs(e.at, 0),
       }))
       const sheet = timesheet(entries, { timeZone, now: Date.now() })
       const shifts = sheet.shifts.filter(s => s.day >= range.from && s.day <= range.to)
+      const byBranch = chosen.length > 1
+        ? chosen.map(branch => {
+            const own = shifts.filter(s => s.branch === branch)
+            return { branch, totals: { shifts: own.length, minutes: own.reduce((m, s) => m + (s.minutes ?? 0), 0) } }
+          })
+        : []
       return Response.json(
-        { ok: true, from: range.from, to: range.to, branches: [...wanted], ...sheet, shifts },
+        { ok: true, from: range.from, to: range.to, branches: [...wanted], ...sheet, shifts, byBranch },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }
@@ -90,7 +109,10 @@ export async function GET(request: Request): Promise<Response> {
       const week = { ...range, from: dayBefore(range.to, 7) }
       const { checks, branches, cutShort } = await readClosedChecks(week, { timeZone, branches: own })
       return Response.json(
-        { ok: true, branches, cutShort, ...hourlySales(checks, { timeZone, day: range.to }) },
+        {
+          ok: true, branches, cutShort, ...hourlySales(checks, { timeZone, day: range.to }),
+          byBranch: perBranch(checks, list => hourlySales(list, { timeZone, day: range.to }).totals).map(b => ({ branch: b.branch, totals: b.report })),
+        },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }

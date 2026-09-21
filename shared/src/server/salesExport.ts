@@ -18,6 +18,7 @@ import { adminDb } from './firebaseAdmin'
 import { HttpError } from './auth'
 import { buildExport, closedAtParts, exportCutShort, EXPORT_CHECK_CAP, type CutShort, type SalesExport } from '../salesExport'
 import type { Check } from '../checks'
+import { readBranchList } from '../reportPeriods'
 
 /**
  * The widest range one request may ask for.
@@ -50,6 +51,17 @@ export function parseExportRange(params: URLSearchParams): ExportRequest {
     throw new HttpError(400, `That is ${days} days. Export ${MAX_RANGE_DAYS} at a time or fewer.`)
   }
   return { from, to, branch: params.get('branch') ?? '' }
+}
+
+/**
+ * The branches a request names, among the caller's own (UPGRADE.md T7.1): one,
+ * a comma list, or '' / 'all' for every one of theirs. A branch that is not
+ * theirs refuses the request with 403, never quietly dropped.
+ */
+export function requestedBranches(range: Pick<ExportRequest, 'branch'>, own: readonly string[]): string[] {
+  const list = readBranchList(range.branch, own)
+  if (typeof list === 'string') throw new HttpError(403, list)
+  return list
 }
 
 /** One day either side, as instants, so no café day can fall outside the query. */
@@ -100,7 +112,7 @@ export async function readClosedChecks(
   const last = snap.docs[snap.docs.length - 1]
   const cutShort = last ? exportCutShort(snap.size, EXPORT_CHECK_CAP, closedAtParts(last.data().closedAt, opts.timeZone).day) : null
 
-  const wanted = new Set(range.branch ? [range.branch] : opts.branches)
+  const wanted = new Set(requestedBranches(range, opts.branches))
   const checks: Check[] = []
   for (const doc of snap.docs) {
     const check = { id: doc.id, ...doc.data() } as Check

@@ -10,6 +10,7 @@
 // owner is asking about. So it queries both fields and unions by id. Both are
 // single-field ranges, so neither needs a composite index.
 
+import { requestedBranches } from './salesExport'
 import { adminDb } from './firebaseAdmin'
 import { buildLoyaltyExport, dayOf, type LoyaltyExport } from '../loyaltyExport'
 import type { ExportRequest } from './salesExport'
@@ -37,7 +38,7 @@ export async function readLoyaltyExport(
   opts: { timeZone: string; branches: string[] },
 ): Promise<LoyaltyExport & { from: string; to: string; branches: string[] }> {
   const { start, end } = paddedWindow(range.from, range.to)
-  const wanted = new Set(range.branch ? [range.branch] : opts.branches)
+  const wanted = new Set(requestedBranches(range, opts.branches))
 
   const txDocs = await rangeOn('transactions', 'createdAt', start, end)
 

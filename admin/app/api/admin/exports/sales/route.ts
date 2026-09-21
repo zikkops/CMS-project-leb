@@ -12,8 +12,8 @@
 // from anything the browser sends. A browser names a date range and a branch;
 // it never names a rate, a VAT percentage or a total.
 
-import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
-import { parseExportRange, readSalesExport } from '@big-cms/shared/server/salesExport'
+import { requireSection, toResponse, type Caller } from '@big-cms/shared/server/auth'
+import { parseExportRange, readSalesExport, requestedBranches } from '@big-cms/shared/server/salesExport'
 import { readSettings } from '@big-cms/shared/server/settings'
 import { BRAND } from '@big-cms/shared/brand'
 
@@ -29,9 +29,8 @@ export async function GET(request: Request): Promise<Response> {
     const own = caller.role === 'admin' || caller.branchIds.length === 0
       ? BRAND.branches
       : caller.branchIds
-    if (range.branch && !own.includes(range.branch)) {
-      throw new HttpError(403, 'That branch is not one of yours.')
-    }
+    // One branch, several (a comma list) or all of theirs (UPGRADE.md T7.1).
+    requestedBranches(range, own)
 
     const { exchangeRate } = await readSettings()
     const result = await readSalesExport(range, {

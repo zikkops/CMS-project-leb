@@ -13,7 +13,7 @@ import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import type { HourRow, HourlySales } from '@big-cms/shared/salesReports'
 import type { CutShort } from '@big-cms/shared/salesExport'
 import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
-import { ReportRange, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
+import { ReportRange, BranchTotals, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
 import { HourChart, hourLabel } from './HourChart'
 
 const change = (now: number, before: number) =>
@@ -28,13 +28,13 @@ const columns: Column<HourRow>[] = [
 
 export default function HourlySalesPage() {
   const { checking } = useRequireRole(SECTION_ACCESS.endOfDay)
-  const [report, setReport] = useState<(HourlySales & { cutShort?: CutShort | null }) | null>(null)
+  const [report, setReport] = useState<(HourlySales & { cutShort?: CutShort | null; byBranch?: { branch: string; totals: Record<string, number> }[] }) | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   async function run(range: RangeChoice) {
     setBusy(true); setError('')
-    try { setReport(await fetchReport<HourlySales & { cutShort?: CutShort | null }>('hourly', range)) }
+    try { setReport(await fetchReport<HourlySales & { cutShort?: CutShort | null; byBranch?: { branch: string; totals: Record<string, number> }[] }>('hourly', range)) }
     catch (err) { setError(reportError(err)) }
     finally { setBusy(false) }
   }
@@ -50,6 +50,10 @@ export default function HourlySalesPage() {
       {busy && !report && <Loading label="Reading the checks…" />}
       {report && (
         <>
+          <BranchTotals rows={report.byBranch ?? []} columns={[
+            { key: 'checks', label: 'Checks' }, { key: 'net', label: 'Takings', money: true },
+            { key: 'compareChecks', label: 'Week before, checks' }, { key: 'compareNet', label: 'Week before', money: true },
+          ]} />
           <Panel title={`${report.day} · ${usd(report.totals.net)} from ${report.totals.checks} checks · a week before ${usd(report.totals.compareNet)} (${change(report.totals.net, report.totals.compareNet)})`}>
             {report.peakHour !== null && (
               <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.9rem', color: 'rgba(var(--offwhite-rgb),0.75)', marginBottom: '0.8rem' }}>
