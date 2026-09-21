@@ -302,7 +302,7 @@ in USD at the cost stored with the count (`countVariance()` in
    - The seeded reports store the two fields as halves, which is why the demo
      figure looked right.
    - Fix: **T7.12**, **T7.3**, **T7.16**.
-4. **Card tips appear in no export, on no admin sales page, and not on the Z.**
+4. **FIXED for the export and admin reports, 21 Sep 2026 (T7.3, T7.5). Card tips appeared in no export and on no admin sales page.** Export rows and payment rows now carry them, and the Sales Summary and Payments & Tenders show them apart. The Z screen on the till still does not (T7.7). Was:
    - The only place they show is End of Day's `cardTipsUsd`, taken when the
      report is saved, so a report saved before its shift closes misses later
      tips.
@@ -329,10 +329,13 @@ in USD at the cost stored with the count (`countVariance()` in
    - Fix: **T7.3**, with `reportDefinitions.ts`; **T7.8**.
 7. **Service charge sits inside sales, and its share of VAT is never shown.**
    - Fix: **T7.3**, **T7.6**.
-8. **A card payment taken in lira drops out of the export's check and day
-   columns.** `tenders()` counts card in USD only.
+8. **FIXED 21 Sep 2026 (T7.5). A card payment taken in lira dropped out of the
+   export's check columns.** It now has its own Card LBP column, and Payments &
+   Tenders shows it. Was: `tenders()` counted card in USD only.
    - Fix: **T7.5**.
-9. **The export's cash columns are what was tendered, not kept.** Change
+9. **Answered by Payments & Tenders (T7.5), which shows cash handed over, change
+   and kept, per currency.** The export's cash columns are still what was
+   tendered, as their name says. Change
    appears only on the payments sheet, so the day's cash never matches the
    drawer.
    - Fix: **T7.5**, **T7.7**.

@@ -15,6 +15,7 @@ import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/sha
 import { parseExportRange, readClosedChecks, readInChunks, readSalesExport, requestedBranches } from '@big-cms/shared/server/salesExport'
 import { readSettings } from '@big-cms/shared/server/settings'
 import { salesSummary } from '@big-cms/shared/salesSummary'
+import { tenderSummary } from '@big-cms/shared/tenderSummary'
 import { TIME_ENTRIES, timesheet, type TimeEntry } from '@big-cms/shared/timeClock'
 import { timestampMs } from '@big-cms/shared/timestamps'
 import { dayBefore, hourlySales, productMix, voidDiscountReport } from '@big-cms/shared/salesReports'
@@ -67,6 +68,16 @@ export async function GET(request: Request): Promise<Response> {
       const result = await readSalesExport(range, { timeZone, fallbackRate: exchangeRate, branches: own })
       return Response.json(
         { ok: true, from: range.from, to: range.to, branches: chosen, cutShort: result.cutShort, ...salesSummary(result.checks, chosen) },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+    if (report === 'payments') {
+      // Payments and tenders (T7.5), from the export's own payment and refund rows.
+      const { exchangeRate } = await readSettings()
+      const result = await readSalesExport(range, { timeZone, fallbackRate: exchangeRate, branches: own })
+      const paidChecks = new Set(result.payments.map(p => p.receipt)).size
+      return Response.json(
+        { ok: true, from: range.from, to: range.to, branches: chosen, cutShort: result.cutShort, paidChecks, ...tenderSummary(result.payments, result.checks, chosen) },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }

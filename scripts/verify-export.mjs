@@ -27,7 +27,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'export-verify-'))
 execSync(
-  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts shared/src/salesSummary.ts --outDir ${out} ` +
+  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts shared/src/salesSummary.ts shared/src/tenderSummary.ts --outDir ${out} ` +
   `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
@@ -40,6 +40,7 @@ const X = await import(`file://${join(out, 'salesExport.js')}`)
 const RP = await import(`file://${join(out, 'reportPeriods.js')}`)
 const RF = await import(`file://${join(out, 'reportFile.js')}`)
 const SS = await import(`file://${join(out, 'salesSummary.js')}`)
+const TS = await import(`file://${join(out, 'tenderSummary.js')}`)
 const L = await import(`file://${join(out, 'loyaltyExport.js')}`)
 
 let pass = 0, fail = 0
@@ -229,6 +230,30 @@ console.log('\nthe sales summary adds up the way an accountant reads it (UPGRADE
   eq('the average check is billed ÷ checks', s.averageCheck, Math.round(t.billed / t.checks * 100) / 100)
   const refundDay = SS.salesSummary(X.buildExport(checks, { ...OPTS, from: '2026-09-13', to: '2026-09-13' }).checks, ['Main', 'Second']).total
   eq('the refund\'s day shows the refund and no sale', [refundDay.checks, refundDay.refundsGiven, refundDay.netSalesAfterRefunds], [0, 1, -10])
+}
+
+console.log('\npayments and tenders, each currency on its own (UPGRADE.md T7.5)')
+{
+  const checks = [
+    check({ id: 't1', receiptNumber: '11', payments: [pay({ tender: 'cash', currency: 'USD', amount: 20, changeUsd: 10, appliedLbp: 910_000 })] }),
+    check({ id: 't2', receiptNumber: '12', payments: [pay({ tender: 'card', currency: 'LBP', amount: 910_000, appliedLbp: 910_000 })] }),
+    check({ id: 't3', receiptNumber: '13', branch: 'Second', payments: [pay({ tender: 'card', currency: 'USD', amount: 10, tipUsd: 2, appliedLbp: 910_000 })] }),
+    check({ id: 't4', receiptNumber: '14', status: 'refunded', payments: [pay({ tender: 'cash', currency: 'USD', amount: 10, appliedLbp: 910_000 })] }),
+    check({ id: 't5', receiptNumber: '15' }),
+  ]
+  const built = X.buildExport(checks, OPTS)
+  eq('the export keeps card taken in lira in its own column, never dropped', built.checks.find(r => r.receipt === '12').cardLbp, 910_000)
+  eq('...and a card tip on its payment row', built.payments.find(p => p.receipt === '13').tipUsd, 2)
+  const s = TS.tenderSummary(built.payments, built.checks, ['Main', 'Second'])
+  const t = s.total
+  eq('cash handed over, change and kept, in dollars', [t.cashUsdTendered, t.changeUsd, t.cashUsdKept], [30, 10, 20])
+  eq('card in each currency, never converted', [t.cardUsd, t.cardLbp], [10, 910_000])
+  eq('card tips apart, owed to staff', t.cardTips, 2)
+  eq('the refund went back in cash, on its day', t.refundCashUsd, 10)
+  eq('a check with no payment is counted, not guessed', t.checksWithoutPayment, 1)
+  eq('applied to bills = billed on the paid checks, tips left out', [t.appliedUsd, t.billedPaid, TS.tendersReconcile(t, 4)], [40, 40, true])
+  eq('the total is the sum of the branches', Object.keys(t).every(k => Math.abs(s.byBranch.reduce((n, b) => n + b.figures[k], 0) - t[k]) < 0.005), true)
+  eq('a tip counted as a sale would not reconcile', TS.tendersReconcile({ ...t, appliedUsd: t.appliedUsd + t.cardTips }, 1), false)
 }
 
 console.log('\nthe sheets are declared once, for the UI and the file both')

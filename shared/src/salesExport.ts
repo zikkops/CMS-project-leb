@@ -78,6 +78,8 @@ export interface CheckRow {
   cashUsd: number
   cashLbp: number
   card: number
+  /** Card taken in lira (docs/reporting.md, gap 8): kept in its own currency, never folded into the dollar column. */
+  cardLbp: number
   /**
    * Card tips on this check (T3.9), in USD: owed to staff, never a sale
    * (docs/reporting.md, gap 4). A refund row carries 0: a tip on a refunded
@@ -97,6 +99,8 @@ export interface PaymentRow {
   appliedLbp: number
   changeUsd: number
   changeLbp: number
+  /** A card tip on top of the amount (T3.9), owed to staff; 0 on cash. */
+  tipUsd: number
   rate: number
 }
 
@@ -152,19 +156,22 @@ export function closedAtParts(
 }
 
 /** What was taken on this check, split the way a drawer is counted. */
-function tenders(check: Check): { cashUsd: number; cashLbp: number; card: number } {
+function tenders(check: Check): { cashUsd: number; cashLbp: number; card: number; cardLbp: number } {
   let cashUsd = 0
   let cashLbp = 0
   let card = 0
+  let cardLbp = 0
   for (const p of check.payments ?? []) {
-    if (p.tender === 'card') card += p.currency === 'USD' ? p.amount : 0
-    else if (p.currency === 'USD') cashUsd += p.amount
+    if (p.tender === 'card') {
+      if (p.currency === 'USD') card += p.amount
+      else cardLbp += p.amount
+    } else if (p.currency === 'USD') cashUsd += p.amount
     else cashLbp += p.amount
   }
   // Card in lira is recorded on its payment row rather than folded into a
   // dollar column at some rate — the two currencies are never netted, the
   // same rule the drawer count follows.
-  return { cashUsd: r2(cashUsd), cashLbp: Math.round(cashLbp), card: r2(card) }
+  return { cashUsd: r2(cashUsd), cashLbp: Math.round(cashLbp), card: r2(card), cardLbp: Math.round(cardLbp) }
 }
 
 /**
@@ -201,6 +208,7 @@ export function refundRow(check: Check, opts: ExportOptions): CheckRow {
     cashUsd: neg(back.cash.usd),
     cashLbp: neg(back.cash.lbp),
     card: neg(back.card.usd),
+    cardLbp: neg(back.card.lbp),
     cardTips: 0,
   }
 }
@@ -254,6 +262,7 @@ export function paymentRows(check: Check, opts: ExportOptions): PaymentRow[] {
     appliedLbp: Math.round(p.appliedLbp ?? 0),
     changeUsd: r2(p.changeUsd ?? 0),
     changeLbp: Math.round(p.changeLbp ?? 0),
+    tipUsd: p.tender === 'card' && typeof p.tipUsd === 'number' && p.tipUsd > 0 ? r2(p.tipUsd) : 0,
     rate,
   }))
 }
@@ -370,13 +379,13 @@ export const SHEETS = {
     ['checkDiscount', 'Check discount'], ['service', 'Service'], ['net', 'Net USD'],
     ['vatRate', 'VAT rate'], ['vat', 'VAT incl. USD'],
     ['rate', 'Rate'], ['netLbp', 'Net LBP'],
-    ['cashUsd', 'Cash USD'], ['cashLbp', 'Cash LBP'], ['card', 'Card USD'], ['cardTips', 'Card tips USD'],
+    ['cashUsd', 'Cash USD'], ['cashLbp', 'Cash LBP'], ['card', 'Card USD'], ['cardLbp', 'Card LBP'], ['cardTips', 'Card tips USD'],
     ['server', 'Opened by'],
   ],
   payments: [
     ['receipt', 'Receipt'], ['day', 'Day'], ['branch', 'Branch'],
     ['tender', 'Tender'], ['currency', 'Currency'], ['amount', 'Amount'],
-    ['appliedLbp', 'Applied LBP'], ['changeUsd', 'Change USD'], ['changeLbp', 'Change LBP'],
+    ['appliedLbp', 'Applied LBP'], ['changeUsd', 'Change USD'], ['changeLbp', 'Change LBP'], ['tipUsd', 'Card tip USD'],
     ['rate', 'Rate'],
   ],
   days: [
