@@ -9,72 +9,21 @@ import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { BRANCHES } from '@big-cms/shared/branches'
 import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
 import { useFeature } from '@big-cms/shared/useFeatures'
-import type { DaySystem } from '@big-cms/shared/drawer'
-import { BRAND } from '@big-cms/shared/brand'
 import {
-  LBP_DENOMS, USD_DENOMS, SHIFT_LABELS,
+  LBP_DENOMS, USD_DENOMS,
   computeTotals, emptyReport, getEndOfDayReport, saveEndOfDayReport, getPosSystem,
   getBranchStaff, listAllStaff, defaultEodDateStr, formatLbp, formatUsd,
   type AttendanceEntry, type EndOfDayReport, type StaffUser,
 } from '@big-cms/shared/endOfDay'
-import { ROLE_LABELS } from '@big-cms/shared/adminAuth'
 import { startLoad } from '@big-cms/shared/startLoad'
-
-const inp: React.CSSProperties = {
-  backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
-  border: '1px solid rgba(var(--overlay-rgb),0.1)',
-  color: 'var(--offwhite)',
-  padding: '0.6rem 0.8rem',
-  borderRadius: '2px',
-  fontSize: '0.88rem',
-  outline: 'none',
-  fontFamily: 'var(--font-inter)',
-  width: '100%',
-}
-
-const numInp: React.CSSProperties = { ...inp, textAlign: 'right', width: '90px' }
-
-// Selects need a solid dark background — rgba on a native <select> leaves the
-// OS-rendered dropdown options with white text on a white background.
-const selStyle: React.CSSProperties = { ...inp, backgroundColor: '#1a1a1a', cursor: 'pointer' }
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: '0.68rem',
-  letterSpacing: '0.12em',
-  textTransform: 'uppercase',
-  color: 'rgba(var(--offwhite-rgb),0.35)',
-  marginBottom: '0.4rem',
-  fontFamily: 'var(--font-inter)',
-}
-
-const sectionHeader = (color: string): React.CSSProperties => ({
-  display: 'flex', alignItems: 'center', gap: '0.6rem',
-  paddingBottom: '0.6rem',
-  borderBottom: `1px solid ${color}40`,
-  marginBottom: '1.25rem',
-})
-
-function SectionTitle({ label, color }: { label: string; color: string }) {
-  return (
-    <div style={sectionHeader(color)}>
-      <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />
-      <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', color, letterSpacing: '0.12em' }}>
-        {label}
-      </p>
-    </div>
-  )
-}
-
-// ─── helpers ────────────────────────────────────────────────────────────────
-
-function parseCash(vals: Record<string, string>): Record<string, number> {
-  return Object.fromEntries(Object.entries(vals).map(([k, v]) => [k, Number(v) || 0]))
-}
-
-function cashToStr(vals: Record<string, number>): Record<string, string> {
-  return Object.fromEntries(Object.entries(vals).map(([k, v]) => [k, v === 0 ? '' : String(v)]))
-}
+import { inp, selStyle, labelStyle } from './_components/styles'
+import { parseCash, cashToStr } from './_components/cash'
+import { SectionTitle, SumCell, DiffBlock, HintBox } from './_components/parts'
+import { LineItemList } from './_components/LineItemList'
+import { CashCountSection } from './_components/CashCountSection'
+import { PosSystemSection, type PosState } from './_components/PosSystemSection'
+import { TipsSection } from './_components/TipsSection'
+import { AttendanceSection } from './_components/AttendanceSection'
 
 function EndOfDayInner() {
   const params = useSearchParams()
@@ -87,7 +36,7 @@ function EndOfDayInner() {
   // — the day's drawer shifts (daySystem() in drawer.ts) — not a number typed
   // from the old till. Off, this form is exactly what it was.
   const { on: fromPos } = useFeature('payments')
-  const [posState, setPosState] = useState<{ key: string; data: DaySystem | null; err: string } | null>(null)
+  const [posState, setPosState] = useState<PosState | null>(null)
 
   const branchOptions = role === 'admin' ? [...BRANCHES] : branchIds
 
@@ -228,14 +177,6 @@ function EndOfDayInner() {
     setter(prev => prev.map((e, i) => i === idx ? { ...e, [field]: val } : e))
   }
 
-  // ── attendance helpers ───────────────────────────────────────────────────
-  function setShift(idx: number, shift: AttendanceEntry['shift']) {
-    setAttendance(prev => prev.map((a, i) => i === idx ? { ...a, shift } : a))
-  }
-  function removeAttendee(idx: number) {
-    setAttendance(prev => prev.filter((_, i) => i !== idx))
-  }
-
   // ── submit ───────────────────────────────────────────────────────────────
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -353,159 +294,24 @@ function EndOfDayInner() {
             </div>
 
             {/* ── Cash Count ───────────────────────────────────────────────── */}
-            <div style={{ marginBottom: '2.5rem' }}>
-              <SectionTitle label="CASH COUNT" color="var(--teal)" />
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem' }}>
-
-                {/* LBP */}
-                <div>
-                  <p style={{ ...labelStyle, color: 'var(--teal)', marginBottom: '0.75rem' }}>Lebanese Pound (LBP)</p>
-                  <div style={{ background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.07)', borderRadius: '4px', overflow: 'hidden' }}>
-                    {LBP_DENOMS.map((denom, i) => (
-                      <div key={denom} style={{
-                        display: 'grid', gridTemplateColumns: '1fr auto',
-                        alignItems: 'center', gap: '0.75rem',
-                        padding: '0.65rem 1rem',
-                        borderTop: i > 0 ? '1px solid rgba(var(--overlay-rgb),0.04)' : 'none',
-                      }}>
-                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.7)' }}>
-                          {denom.toLocaleString()}
-                        </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <input
-                            type="number" min="0" step="1"
-                            value={cashLbp[String(denom)] ?? ''}
-                            onChange={e => setCashLbp(prev => ({ ...prev, [String(denom)]: e.target.value }))}
-                            placeholder="0"
-                            style={{ ...numInp, width: '80px' }}
-                          />
-                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)', minWidth: '28px' }}>pcs</span>
-                        </div>
-                      </div>
-                    ))}
-                    <div style={{
-                      padding: '0.65rem 1rem',
-                      borderTop: '1px solid rgba(var(--overlay-rgb),0.08)',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    }}>
-                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)', letterSpacing: '0.05em' }}>TOTAL</span>
-                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'var(--teal)', fontWeight: 600 }}>
-                        {totals.totalCashLbp.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* USD */}
-                <div>
-                  <p style={{ ...labelStyle, color: 'var(--brand-secondary)', marginBottom: '0.75rem' }}>US Dollar (USD)</p>
-                  <div style={{ background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.07)', borderRadius: '4px', overflow: 'hidden' }}>
-                    {USD_DENOMS.map((denom, i) => (
-                      <div key={denom} style={{
-                        display: 'grid', gridTemplateColumns: '1fr auto',
-                        alignItems: 'center', gap: '0.75rem',
-                        padding: '0.65rem 1rem',
-                        borderTop: i > 0 ? '1px solid rgba(var(--overlay-rgb),0.04)' : 'none',
-                      }}>
-                        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.7)' }}>
-                          ${denom}
-                        </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <input
-                            type="number" min="0" step="1"
-                            value={cashUsd[String(denom)] ?? ''}
-                            onChange={e => setCashUsd(prev => ({ ...prev, [String(denom)]: e.target.value }))}
-                            placeholder="0"
-                            style={{ ...numInp, width: '80px' }}
-                          />
-                          <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)', minWidth: '28px' }}>pcs</span>
-                        </div>
-                      </div>
-                    ))}
-                    <div style={{
-                      padding: '0.65rem 1rem',
-                      borderTop: '1px solid rgba(var(--overlay-rgb),0.08)',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    }}>
-                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)', letterSpacing: '0.05em' }}>TOTAL</span>
-                      <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', color: 'var(--brand-secondary)', fontWeight: 600 }}>
-                        ${totals.totalCashUsd.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Grand total row */}
-              <div style={{
-                marginTop: '1rem',
-                background: 'rgba(var(--overlay-rgb),0.03)',
-                border: '1px solid rgba(var(--overlay-rgb),0.08)',
-                borderRadius: '4px',
-                padding: '0.9rem 1.25rem',
-                display: 'flex', justifyContent: 'space-around', gap: '1rem', flexWrap: 'wrap',
-              }}>
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.3rem' }}>Grand Total LBP</p>
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '1rem', color: 'var(--offwhite)', fontWeight: 600 }}>{formatLbp(totals.grandTotalLbp)}</p>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.3rem' }}>Grand Total USD</p>
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '1rem', color: 'var(--offwhite)', fontWeight: 600 }}>{formatUsd(totals.grandTotalUsd)}</p>
-                </div>
-                <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.2)', fontFamily: 'var(--font-inter)', alignSelf: 'center' }}>
-                  Rate: {exchangeRate.toLocaleString('en-US')} {BRAND.locale.secondaryCurrency} = 1 {BRAND.locale.currency}
-                </div>
-              </div>
-            </div>
+            <CashCountSection
+              isMobile={isMobile}
+              cashLbp={cashLbp}
+              cashUsd={cashUsd}
+              setCashLbp={setCashLbp}
+              setCashUsd={setCashUsd}
+              totals={totals}
+              exchangeRate={exchangeRate}
+            />
 
             {/* ── The POS system's own figure ──────────────────────────────── */}
-            {/* Was labelled "SYSTEM (OMEGA)" — Omega being the incumbent POS
-                this platform replaces. A product should not name a competitor
-                in a section header of its own admin panel. */}
-            <div style={{ marginBottom: '2.5rem' }}>
-              <SectionTitle label="POS SYSTEM" color="var(--purple)" />
-              <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                <div style={{ flex: '0 0 280px' }}>
-                  <label style={labelStyle}>System LBP</label>
-                  <input
-                    type="number" min="0" step="1"
-                    value={fromPos ? (posNow?.data ? String(posNow.data.systemLbp) : '') : systemLbp}
-                    onChange={e => setSystemLbp(e.target.value)}
-                    readOnly={fromPos}
-                    placeholder={fromPos ? 'From the POS…' : '0'}
-                    style={{ ...inp, ...(fromPos ? { opacity: 0.8, cursor: 'default' } : {}) }}
-                  />
-                </div>
-                <div style={{ paddingBottom: '0.6rem' }}>
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '0.25rem', letterSpacing: '0.05em' }}>
-                    Auto-converted
-                  </p>
-                  <p style={{ fontFamily: 'var(--font-inter)', fontSize: '1rem', color: 'var(--purple)', fontWeight: 600 }}>
-                    {formatUsd(systemUsdDerived)}
-                  </p>
-                </div>
-              </div>
-              {fromPos && (
-                <p style={{
-                  fontFamily: 'var(--font-inter)', fontSize: '0.75rem', lineHeight: 1.6, maxWidth: '62ch',
-                  marginTop: '0.7rem', color: posNow?.err ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.45)',
-                }}>
-                  {!posNow
-                    ? 'Reading the day’s drawer shifts…'
-                    : posNow.err
-                      ? posNow.err
-                      : !posNow.data || posNow.data.shifts === 0
-                        ? 'No drawer shift was opened at this branch for this day, so the POS figure is zero.'
-                        : `From the POS: ${posNow.data.shifts} drawer shift${posNow.data.shifts === 1 ? '' : 's'} should hold ` +
-                          `${formatUsd(posNow.data.expected.usd)} and ${formatLbp(posNow.data.expected.lbp)} — cash sales with ` +
-                          'the float, the way the drawer is counted. Card takings are not in it.' +
-                          (posNow.data.open > 0
-                            ? ` ${posNow.data.open} shift${posNow.data.open === 1 ? ' is' : 's are'} still open, so this will still move — close ${posNow.data.open === 1 ? 'it' : 'them'} before submitting.`
-                            : '')}
-                </p>
-              )}
-            </div>
+            <PosSystemSection
+              fromPos={fromPos}
+              posNow={posNow}
+              systemLbp={systemLbp}
+              setSystemLbp={setSystemLbp}
+              systemUsdDerived={systemUsdDerived}
+            />
 
             {/* ── Expenses ─────────────────────────────────────────────────── */}
             <div style={{ marginBottom: '2.5rem' }}>
@@ -543,44 +349,13 @@ function EndOfDayInner() {
             </div>
 
             {/* ── Tips ────────────────────────────────────────────────────── */}
-            <div style={{ marginBottom: '2.5rem' }}>
-              <SectionTitle label="TIPS" color="var(--brand-secondary)" />
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1.5rem', flexWrap: 'wrap' }}>
-                <div style={{ flex: '0 0 220px' }}>
-                  <label style={labelStyle}>Tips collected (USD)</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span style={{ color: 'rgba(var(--offwhite-rgb),0.5)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem', flexShrink: 0 }}>$</span>
-                    <input
-                      type="number" min="0" step="0.01"
-                      value={tipsUsd}
-                      onChange={e => setTipsUsd(e.target.value)}
-                      placeholder="0.00"
-                      style={{ ...inp, textAlign: 'right' }}
-                    />
-                  </div>
-                </div>
-                {Number(tipsUsd) > 0 && (
-                  <div style={{ paddingBottom: '0.6rem' }}>
-                    {/* The deduction in Business Settings, not a constant: this said 11% whatever the setting was. */}
-                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.35)', marginBottom: '0.2rem', letterSpacing: '0.05em' }}>
-                      After {+(tipsDeductionRate * 100).toFixed(2)}% deduction
-                    </p>
-                    <p style={{ fontFamily: 'var(--font-inter)', fontSize: '1rem', color: 'var(--brand-secondary)', fontWeight: 600 }}>
-                      {formatUsd(Number(tipsUsd) * (1 - tipsDeductionRate))}
-                    </p>
-                  </div>
-                )}
-              </div>
-              {/* Card tips from the till (UPGRADE.md T3.9): shown, not typed, and saved with the report by the server. */}
-              {fromPos && (posNow?.data?.cardTipsUsd ?? 0) > 0 && (
-                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'rgba(var(--offwhite-rgb),0.7)', marginTop: '0.7rem' }}>
-                  Plus {formatUsd(posNow?.data?.cardTipsUsd ?? 0)} tipped on cards at the till, added to the pot when you submit.
-                </p>
-              )}
-              <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: 'rgba(var(--offwhite-rgb),0.2)', marginTop: '0.5rem' }}>
-                The tips in the jar. Used in the tips calculator to distribute among staff by shift
-              </p>
-            </div>
+            <TipsSection
+              tipsUsd={tipsUsd}
+              setTipsUsd={setTipsUsd}
+              tipsDeductionRate={tipsDeductionRate}
+              fromPos={fromPos}
+              posNow={posNow}
+            />
 
             {/* ── Difference ───────────────────────────────────────────────── */}
             <div style={{
@@ -601,111 +376,12 @@ function EndOfDayInner() {
             </div>
 
             {/* ── Attendance ───────────────────────────────────────────────── */}
-            <div style={{ marginBottom: '2.5rem' }}>
-              <SectionTitle label="ATTENDANCE" color="rgba(var(--offwhite-rgb),0.6)" />
-
-              {attendance.length === 0 && (
-                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.25)', marginBottom: '1rem' }}>
-                  No staff roster set.{' '}
-                  <a href="/admin/end-of-day/staff" style={{ color: 'var(--teal)', textDecoration: 'none' }}>Set up the roster →</a>
-                </p>
-              )}
-
-              {attendance.length > 0 && (
-                <div style={{ background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)', borderRadius: '4px', overflow: 'hidden', marginBottom: '1rem' }}>
-                  {attendance.map((entry, idx) => {
-                    const present = entry.shift !== 'none'
-                    return (
-                      <div key={`${entry.name}-${idx}`} style={{
-                        display: 'flex', alignItems: 'center', gap: '0.75rem',
-                        padding: '0.75rem 1rem',
-                        borderTop: idx > 0 ? '1px solid rgba(var(--overlay-rgb),0.04)' : 'none',
-                      }}>
-                        {/* Present checkbox */}
-                        <button
-                          type="button"
-                          onClick={() => setShift(idx, present ? 'none' : 'pm')}
-                          title={present ? 'Mark absent' : 'Mark present'}
-                          style={{
-                            width: 22, height: 22, flexShrink: 0,
-                            borderRadius: '3px',
-                            border: `2px solid ${present ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.2)'}`,
-                            backgroundColor: present ? 'var(--teal)' : 'transparent',
-                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}
-                        >
-                          {present && <span style={{ color: '#fff', fontSize: '0.7rem', lineHeight: 1, fontWeight: 700 }}>✓</span>}
-                        </button>
-
-                        {/* Name */}
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{
-                            fontFamily: 'var(--font-inter)', fontSize: '0.88rem',
-                            color: present ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.35)',
-                            transition: 'color 0.15s',
-                          }}>
-                            {entry.name}
-                          </span>
-                          {entry.isGuest && (
-                            <span style={{
-                              fontSize: '0.6rem', letterSpacing: '0.08em',
-                              background: 'rgba(var(--brand-secondary-rgb),0.15)', color: 'var(--brand-secondary)',
-                              border: '1px solid rgba(var(--brand-secondary-rgb),0.3)',
-                              borderRadius: '3px', padding: '0.15rem 0.4rem',
-                              fontFamily: 'var(--font-inter)', textTransform: 'uppercase',
-                            }}>Guest</span>
-                          )}
-                        </div>
-
-                        {/* Shift selector — only visible when present */}
-                        <div style={{ display: 'flex', gap: '0.35rem', opacity: present ? 1 : 0.25, pointerEvents: present ? 'auto' : 'none' }}>
-                          {(['am', 'pm', 'double'] as const).map(s => (
-                            <button
-                              key={s} type="button"
-                              onClick={() => setShift(idx, s)}
-                              style={{
-                                padding: '0.3rem 0.65rem',
-                                borderRadius: '2px', border: 'none', cursor: 'pointer',
-                                fontSize: '0.72rem', fontFamily: 'var(--font-inter)', fontWeight: 600,
-                                backgroundColor: entry.shift === s ? 'var(--teal)' : 'rgba(var(--overlay-rgb),0.06)',
-                                color: entry.shift === s ? '#fff' : 'rgba(var(--offwhite-rgb),0.4)',
-                              }}
-                            >
-                              {SHIFT_LABELS[s]}
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Remove guest */}
-                        {entry.isGuest ? (
-                          <button
-                            type="button"
-                            onClick={() => removeAttendee(idx)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(var(--offwhite-rgb),0.25)', fontSize: '1rem', padding: '0.2rem 0.4rem', flexShrink: 0 }}
-                          >×</button>
-                        ) : <span style={{ width: 24, flexShrink: 0 }} />}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-
-              {/* Add guest — search existing accounts or type a name */}
-              <div>
-                <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '0.5rem' }}>
-                  Add guest / cross-branch staff
-                </p>
-                <StaffSearchCombobox
-                  staffList={staffList}
-                  staffListErr={staffListErr}
-                  attendance={attendance}
-                  onSelect={name => {
-                    setAttendance(prev => [...prev, { name, shift: 'none', isGuest: true }])
-                  }}
-                  inp={inp}
-                />
-              </div>
-            </div>
+            <AttendanceSection
+              attendance={attendance}
+              setAttendance={setAttendance}
+              staffList={staffList}
+              staffListErr={staffListErr}
+            />
 
             {/* ── Notes ────────────────────────────────────────────────────── */}
             <div style={{ marginBottom: '2rem' }}>
@@ -773,272 +449,5 @@ export default function EndOfDayPage() {
     <Suspense fallback={null}>
       <EndOfDayInner />
     </Suspense>
-  )
-}
-
-// ─── Staff search combobox ───────────────────────────────────────────────────
-
-function StaffSearchCombobox({
-  staffList, staffListErr, attendance, onSelect, inp,
-}: {
-  staffList:    StaffUser[]
-  staffListErr: boolean
-  attendance:   AttendanceEntry[]
-  onSelect:     (name: string) => void
-  inp:          React.CSSProperties
-}) {
-  const [searchText, setSearchText] = useState('')
-  const [freeText,   setFreeText]   = useState('')
-
-  const alreadyAdded = new Set(attendance.map(a => a.name))
-
-  const matches = searchText.trim().length >= 1
-    ? staffList.filter(s =>
-        s.email.toLowerCase().includes(searchText.toLowerCase()) &&
-        !alreadyAdded.has(s.email)
-      ).slice(0, 8)
-    : []
-
-  const showResults = searchText.trim().length >= 1
-
-  function addFreeText() {
-    const name = freeText.trim()
-    if (!name || alreadyAdded.has(name)) return
-    onSelect(name)
-    setFreeText('')
-  }
-
-  const hintText = staffListErr
-    ? 'Could not load staff accounts'
-    : staffList.length === 0
-      ? 'Loading staff accounts…'
-      : `${staffList.length} staff account${staffList.length !== 1 ? 's' : ''} · type to search`
-
-  const hintColor = staffListErr ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.25)'
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-
-      {/* Account search */}
-      <div>
-        <input
-          type="text"
-          value={searchText}
-          onChange={e => setSearchText(e.target.value)}
-          placeholder="Search by email…"
-          autoComplete="off"
-          style={inp}
-        />
-        {/* Hint / count */}
-        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', color: hintColor, marginTop: '0.3rem' }}>
-          {hintText}
-        </p>
-
-        {/* Results list — inline (no absolute positioning) */}
-        {showResults && (
-          <div style={{
-            marginTop: '0.4rem',
-            backgroundColor: '#1a1a1a',
-            border: '1px solid rgba(var(--overlay-rgb),0.12)',
-            borderRadius: '4px',
-            overflow: 'hidden',
-          }}>
-            {matches.length === 0 ? (
-              <p style={{ padding: '0.65rem 1rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.3)' }}>
-                No matching accounts found
-              </p>
-            ) : matches.map(s => (
-              <button
-                key={s.uid}
-                type="button"
-                onClick={() => { onSelect(s.email); setSearchText('') }}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  width: '100%', padding: '0.7rem 1rem', textAlign: 'left',
-                  background: 'none', border: 'none', borderBottom: '1px solid rgba(var(--overlay-rgb),0.05)',
-                  cursor: 'pointer', gap: '0.75rem',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(var(--overlay-rgb),0.07)')}
-                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-              >
-                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.85rem', color: 'var(--offwhite)' }}>
-                  {s.email}
-                </span>
-                <span style={{
-                  fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.08em',
-                  color: 'rgba(var(--offwhite-rgb),0.35)', textTransform: 'uppercase', flexShrink: 0,
-                }}>
-                  {s.role ? (ROLE_LABELS as Record<string, string>)[s.role] ?? s.role : ''}
-                  {s.branchIds.length > 0 ? ` · ${s.branchIds.join(', ')}` : ''}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Free-form fallback for staff without accounts */}
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-        <input
-          type="text"
-          placeholder="Or type a name (no account yet)…"
-          value={freeText}
-          onChange={e => setFreeText(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addFreeText() } }}
-          style={{ ...inp, fontSize: '0.82rem' }}
-        />
-        <button
-          type="button" onClick={addFreeText}
-          style={{
-            backgroundColor: 'rgba(var(--overlay-rgb),0.06)',
-            border: '1px solid rgba(var(--overlay-rgb),0.1)',
-            color: 'rgba(var(--offwhite-rgb),0.5)',
-            padding: '0.6rem 0.9rem',
-            borderRadius: '2px', fontSize: '0.75rem',
-            cursor: 'pointer', fontFamily: 'var(--font-inter)',
-            whiteSpace: 'nowrap',
-          }}
-        >+ Add</button>
-      </div>
-    </div>
-  )
-}
-
-// ─── sub-components ─────────────────────────────────────────────────────────
-
-function SumCell({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div>
-      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '0.25rem' }}>{label}</p>
-      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.95rem', fontWeight: 600, color }}>{value}</p>
-    </div>
-  )
-}
-
-function DiffBlock({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div style={{
-      textAlign: 'center',
-      background: `${color}12`,
-      border: `1px solid ${color}30`,
-      borderRadius: '4px',
-      padding: '1rem',
-    }}>
-      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.4)', marginBottom: '0.4rem' }}>{label}</p>
-      <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem', color, fontWeight: 700 }}>{value}</p>
-    </div>
-  )
-}
-
-function HintBox({ hints, color }: { hints: string[]; color: string }) {
-  return (
-    <div style={{
-      marginTop: '0.75rem',
-      padding: '0.75rem 1rem',
-      background: 'rgba(var(--overlay-rgb),0.02)',
-      border: '1px solid rgba(var(--overlay-rgb),0.06)',
-      borderLeft: `3px solid ${color}50`,
-      borderRadius: '2px',
-    }}>
-      <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '0.45rem' }}>
-        What to include
-      </p>
-      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-        {hints.map((h, i) => (
-          <li key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: color, flexShrink: 0, marginTop: '0.35em' }} />
-            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>{h}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-function LineItemList({
-  items,
-  addLine,
-  removeLine,
-  updateLine,
-  totalUsd,
-  color,
-}: {
-  items: { name: string; amountUsd: string }[]
-  addLine: () => void
-  removeLine: (i: number) => void
-  updateLine: (i: number, f: 'name' | 'amountUsd', v: string) => void
-  totalUsd: number
-  color: string
-}) {
-  const isMobile = useIsMobile()
-  const inp2: React.CSSProperties = {
-    backgroundColor: 'rgba(var(--overlay-rgb),0.04)',
-    border: '1px solid rgba(var(--overlay-rgb),0.1)',
-    color: 'var(--offwhite)',
-    padding: '0.55rem 0.75rem',
-    borderRadius: '2px',
-    fontSize: '0.85rem',
-    outline: 'none',
-    fontFamily: 'var(--font-inter)',
-  }
-
-  return (
-    <div>
-      {items.length > 0 && (
-        <div style={{ background: 'rgba(var(--overlay-rgb),0.02)', border: '1px solid rgba(var(--overlay-rgb),0.06)', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.75rem' }}>
-          {items.map((item, idx) => (
-            <div key={idx} style={{
-              display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto',
-              gap: '0.6rem', alignItems: 'center',
-              padding: '0.65rem 1rem',
-              borderTop: idx > 0 ? '1px solid rgba(var(--overlay-rgb),0.04)' : 'none',
-            }}>
-              <input
-                type="text"
-                placeholder="Description"
-                value={item.name}
-                onChange={e => updateLine(idx, 'name', e.target.value)}
-                style={{ ...inp2, width: '100%' }}
-              />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', width: isMobile ? '100%' : '110px', flex: isMobile ? 1 : 'initial' }}>
-                  <span style={{ color: 'rgba(var(--offwhite-rgb),0.3)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>$</span>
-                  <input
-                    type="number" min="0" step="0.01"
-                    placeholder="0.00"
-                    value={item.amountUsd}
-                    onChange={e => updateLine(idx, 'amountUsd', e.target.value)}
-                    style={{ ...inp2, textAlign: 'right', width: '100%' }}
-                  />
-                </div>
-                <button
-                  type="button" onClick={() => removeLine(idx)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(var(--offwhite-rgb),0.25)', fontSize: '1rem', padding: '0.2rem 0.4rem', flexShrink: 0 }}
-                >×</button>
-              </div>
-            </div>
-          ))}
-          <div style={{
-            padding: '0.65rem 1rem',
-            borderTop: '1px solid rgba(var(--overlay-rgb),0.08)',
-            display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', alignItems: 'center',
-          }}>
-            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.72rem', color: 'rgba(var(--offwhite-rgb),0.4)', letterSpacing: '0.05em' }}>TOTAL USD</span>
-            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.9rem', color, fontWeight: 600 }}>{formatUsd(totalUsd)}</span>
-          </div>
-        </div>
-      )}
-      <button
-        type="button" onClick={addLine}
-        style={{
-          backgroundColor: 'transparent',
-          border: `1px dashed ${color}50`,
-          color: color,
-          padding: '0.5rem 1rem',
-          borderRadius: '2px', fontSize: '0.75rem',
-          cursor: 'pointer', fontFamily: 'var(--font-inter)',
-        }}
-      >+ Add line</button>
-    </div>
   )
 }
