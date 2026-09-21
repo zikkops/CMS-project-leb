@@ -12,6 +12,8 @@ import { SUPPLY_CATEGORY_COLOR as CAT_COLOR, type SupplyCategory as Category } f
 import { suggestedFactor, describeQty, normalizeUnit } from '@big-cms/shared/recipes'
 import { ALLERGENS_EU14 } from '@big-cms/shared/foodSafety'
 import { startLoad } from '@big-cms/shared/startLoad'
+import { useClientValue } from '@big-cms/shared/useClientValue'
+import { levelFor, stockStatus, type StockStatus } from '@big-cms/shared/stockLevels'
 
 
 // The branches that hold consumable stock, from configuration. This was a
@@ -32,6 +34,8 @@ interface Supply {
   quantity: BranchQtys
   unit: string
   threshold: number
+  /** Branch → its own level (UPGRADE.md T3.10); a branch without one uses the threshold. */
+  par?: Record<string, number>
   category: Category
   provider?: string
   // Absent on every item created before VAT moved onto the item. Undefined
@@ -60,10 +64,9 @@ const BRANCH_COLOR = branchColor
 
 const EMPTY_QTY: BranchQtys = emptyStock()
 
-function branchStatus(qty: number, threshold: number): 'ok' | 'low' | 'out' {
-  if (qty <= 0) return 'out'
-  if (qty < threshold) return 'low'
-  return 'ok'
+/** Low or out at this branch, against its own level or the minimum (shared/src/stockLevels.ts). */
+function statusAt(s: Supply, branch: string): StockStatus {
+  return stockStatus(s.quantity[branch] ?? 0, levelFor(s, branch))
 }
 
 
@@ -143,6 +146,10 @@ export default function SuppliesPage() {
 
   const [branch, setBranch]   = useState<SupplyBranch>(PRIMARY_BRANCH)
   const [search, setSearch]   = useState('')
+  // "Low stock only" (UPGRADE.md T3.10): the dashboard's Low stock tile opens this page with ?low=1.
+  const lowFromLink = useClientValue(() => new URLSearchParams(window.location.search).get('low') === '1', false)
+  const [lowChoice, setLowChoice] = useState<boolean | null>(null)
+  const lowOnly = lowChoice ?? lowFromLink
   const [groupBy, setGroupBy] = useState<'category' | 'provider'>('category')
 
   // Inline threshold edit
@@ -250,11 +257,21 @@ export default function SuppliesPage() {
     }
   }
 
+  // The level at the branch being looked at (UPGRADE.md T3.10). Blank goes
+  // back to the minimum every branch uses (set on the item's form).
   async function commitThrEdit(s: Supply) {
-    const v = parseInt(thrVal)
-    if (!isNaN(v) && v >= 1 && v !== s.threshold) {
-      setSupplies(prev => prev.map(x => x.id === s.id ? { ...x, threshold: v } : x))
-      await unwrap(await authedFetch('/api/admin/inventory', 'PATCH', { action: 'threshold', id: s.id, threshold: v }))
+    const raw = thrVal.trim()
+    const v = raw === '' ? null : parseInt(raw)
+    const current = s.par?.[branch]
+    if ((v === null && current !== undefined) || (v !== null && !isNaN(v) && v >= 0 && v !== levelFor(s, branch))) {
+      setSupplies(prev => prev.map(x => {
+        if (x.id !== s.id) return x
+        const par = { ...(x.par ?? {}) }
+        if (v === null) delete par[branch]
+        else par[branch] = v
+        return { ...x, par }
+      }))
+      await unwrap(await authedFetch('/api/admin/inventory', 'PATCH', { action: 'par', id: s.id, branch, par: v }))
     }
     setThrEditId(null); setThrVal('')
   }
@@ -284,12 +301,13 @@ export default function SuppliesPage() {
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return q
+    const found = q
       ? supplies.filter(s => s.name.toLowerCase().includes(q) || s.provider?.toLowerCase().includes(q))
       : supplies
-  }, [supplies, search])
+    return lowOnly ? found.filter(s => statusAt(s, branch) !== 'ok') : found
+  }, [supplies, search, lowOnly, branch])
 
-  const alertCount = supplies.filter(s => branchStatus(s.quantity[branch] ?? 0, s.threshold) !== 'ok').length
+  const alertCount = supplies.filter(s => statusAt(s, branch) !== 'ok').length
 
   const groups = useMemo(() => {
     if (groupBy === 'category') {
@@ -363,6 +381,11 @@ export default function SuppliesPage() {
         <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.75rem', flexWrap: 'wrap' }}>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search items or provider…"
             style={{ ...inp, flex: 1, minWidth: '180px', padding: '0.6rem 0.9rem' }} />
+          <button type="button" onClick={() => setLowChoice(!lowOnly)} aria-pressed={lowOnly} style={{
+            background: lowOnly ? 'rgba(var(--red-rgb),0.15)' : 'transparent', color: lowOnly ? 'var(--red)' : 'rgba(var(--offwhite-rgb),0.55)',
+            border: `1px solid ${lowOnly ? 'rgba(var(--red-rgb),0.4)' : 'rgba(255,255,255,0.12)'}`, borderRadius: '6px', padding: '0 1rem', minHeight: '40px',
+            fontSize: '0.78rem', letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
+          }}>Low stock only{alertCount > 0 ? ` · ${alertCount}` : ''}</button>
           <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '6px', overflow: 'hidden' }}>
             {(['category', 'provider'] as const).map(g => (
               <button key={g} onClick={() => setGroupBy(g)} style={{
@@ -417,7 +440,7 @@ export default function SuppliesPage() {
                   <span style={{ fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.25)' }}>({group.items.length})</span>
                   <span style={{ flex: 1, height: '1px', background: `${group.color}25` }} />
                   {(() => {
-                    const n = group.items.filter(s => branchStatus(s.quantity[branch] ?? 0, s.threshold) !== 'ok').length
+                    const n = group.items.filter(s => statusAt(s, branch) !== 'ok').length
                     return n > 0 ? <span style={{ background: 'var(--red)', color: '#fff', borderRadius: '3px', padding: '0.05rem 0.4rem', fontSize: '0.6rem', fontWeight: 700 }}>{n} low</span> : null
                   })()}
                 </div>
@@ -425,7 +448,8 @@ export default function SuppliesPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.6rem' }}>
                   {group.items.map(s => {
                     const qty = s.quantity[branch] ?? 0
-                    const st  = branchStatus(qty, s.threshold)
+                    const st  = statusAt(s, branch)
+                    const own = s.par?.[branch] !== undefined
                     return (
                       <div key={s.id} style={{ background: S_BG[st], border: `1px solid ${S_BORDER[st]}`, borderRadius: '8px', padding: '1rem 1.1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
 
@@ -459,17 +483,19 @@ export default function SuppliesPage() {
 
                           {/* Threshold inline edit */}
                           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            <span style={{ fontSize: '0.6rem', color: 'rgba(var(--offwhite-rgb),0.25)' }}>min</span>
+                            <span style={{ fontSize: '0.6rem', color: 'rgba(var(--offwhite-rgb),0.25)' }} title={own ? `${branch}'s own level; blank goes back to ${s.threshold}` : 'The minimum for every branch; type a number for this branch only'}>
+                              {own ? `${branch} min` : 'min'}
+                            </span>
                             {thrEditId === s.id ? (
-                              <input type="number" value={thrVal} min={1} autoFocus
+                              <input type="number" value={thrVal} min={0} autoFocus aria-label={`Level for ${s.name} at ${branch}`}
                                 onChange={e => setThrVal(e.target.value)}
                                 onBlur={() => commitThrEdit(s)}
                                 onKeyDown={e => { if (e.key === 'Enter') commitThrEdit(s); if (e.key === 'Escape') { setThrEditId(null); setThrVal('') } }}
                                 style={{ ...inp, width: '48px', fontSize: '0.78rem', padding: '0.15rem 0.25rem', textAlign: 'center', color: S_COLOR[st] }}
                               />
                             ) : (
-                              <button onClick={() => { setThrEditId(s.id); setThrVal(String(s.threshold)) }} title="Click to change minimum" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.1rem 0.25rem', borderRadius: '3px' }}>
-                                <span style={{ fontSize: '0.78rem', color: 'rgba(var(--offwhite-rgb),0.35)', fontWeight: 600 }}>{s.threshold}</span>
+                              <button onClick={() => { setThrEditId(s.id); setThrVal(String(levelFor(s, branch))) }} title={`Change the level at ${branch}`} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.1rem 0.25rem', borderRadius: '3px' }}>
+                                <span style={{ fontSize: '0.78rem', color: own ? 'var(--offwhite)' : 'rgba(var(--offwhite-rgb),0.35)', fontWeight: 600 }}>{levelFor(s, branch)}</span>
                                 <span style={{ fontSize: '0.55rem', color: 'rgba(var(--offwhite-rgb),0.18)', marginLeft: '0.15rem' }}>✎</span>
                               </button>
                             )}

@@ -25,7 +25,7 @@ import { join } from 'node:path'
 // pure calculations live in their own module.
 const out = mkdtempSync(join(tmpdir(), 'delivery-verify-'))
 execSync(
-  `npx tsc shared/src/deliveryMath.ts --outDir ${out} --module esnext --target es2022 ` +
+  `npx tsc shared/src/deliveryMath.ts shared/src/stockLevels.ts --outDir ${out} --module esnext --target es2022 ` +
   `--skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' }
 )
@@ -159,6 +159,27 @@ eq('no supplier leaves no gap',
 eq('neither supplier nor invoice',
   deliveryDocLabel({ branch: 'Main', department: 'Bar', providerName: '', invoiceNumber: '' }),
   'Main — Bar')
+
+console.log('\npar levels and low stock (UPGRADE.md T3.10)')
+{
+  const L = await import(`file://${join(out, 'stockLevels.js')}`)
+  const j = v => JSON.stringify(v)
+  const milk = { id: 's1', name: 'Milk', unit: 'L', threshold: 10, par: { Second: 4 }, quantity: { Main: 6, Second: 5 } }
+  eq('a branch with its own level uses it', L.levelFor(milk, 'Second'), 4)
+  eq('...one without uses the minimum for every branch', L.levelFor(milk, 'Main'), 10)
+  eq('THE TRAP: a level of 0 is a level (low only when it runs out), not "use the minimum"', L.levelFor({ ...milk, par: { Main: 0 } }, 'Main'), 0)
+  eq('below the level is low, at or above it is fine', j([L.stockStatus(6, 10), L.stockStatus(5, 4), L.stockStatus(10, 10)]), j(['low', 'ok', 'ok']))
+  eq('nothing left, or a count gone negative, is out', j([L.stockStatus(0, 10), L.stockStatus(-2, 0)]), j(['out', 'out']))
+  eq('a legacy single number is the first branch\'s', j([L.qtyAt({ quantity: 7 }, 'Main', 'Main'), L.qtyAt({ quantity: 7 }, 'Second', 'Main')]), j([7, 0]))
+  const rows = L.lowStock([
+    milk,
+    { id: 's2', name: 'Beans', unit: 'kg', threshold: 5, quantity: { Main: 0, Second: 9 } },
+    { id: 's3', name: 'Cups', unit: 'box', threshold: 3, quantity: { Main: 2, Second: 1 } },
+  ], ['Main', 'Second'], 'Main')
+  eq('low stock lists what is out first, then furthest below its level',
+    j(rows.map(r => `${r.name}@${r.branch}:${r.status}:${r.toLevel}`)), j(['Beans@Main:out:5', 'Milk@Main:low:4', 'Cups@Second:low:2', 'Cups@Main:low:1']))
+  eq('only the branches asked about', L.lowStock([milk], ['Second'], 'Main').length, 0)
+}
 
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

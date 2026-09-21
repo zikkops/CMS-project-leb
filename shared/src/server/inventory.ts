@@ -250,6 +250,22 @@ export async function setThreshold(id: string, threshold: number): Promise<void>
   })
 }
 
+/**
+ * One branch's own level for a supply (UPGRADE.md T3.10), or null to go back
+ * to the minimum every branch uses. A whole number, 0 up: 0 means this branch
+ * only runs low when it runs out.
+ */
+export async function setPar(id: string, branch: string, par: number | null): Promise<void> {
+  if (!(BRANCHES as readonly string[]).includes(branch) || branch.includes('.')) throw new HttpError(400, 'Unknown branch.')
+  if (par !== null && (!Number.isInteger(par) || par < 0 || par > 1_000_000)) {
+    throw new HttpError(400, 'A level must be a whole number of 0 or more.')
+  }
+  await adminDb().doc(`supplies/${id}`).update({
+    [`par.${branch}`]: par === null ? FieldValue.delete() : par,
+    updatedAt: FieldValue.serverTimestamp(),
+  })
+}
+
 export async function deleteSupply(id: string): Promise<{ name: string }> {
   const db = adminDb()
   const ref = db.doc(`supplies/${id}`)

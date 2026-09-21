@@ -17,7 +17,7 @@
 
 import { requireSection, requireRole, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import {
-  parseSupplyInput, createSupply, updateSupply, setThreshold, deleteSupply, decideSupplyAllergens,
+  parseSupplyInput, createSupply, updateSupply, setThreshold, setPar, deleteSupply, decideSupplyAllergens,
   seedSuppliesFromTemplates, parseCountInput, saveCount, type AllergenChange,
 } from '@big-cms/shared/server/inventory'
 import { logCreate, logUpdate, logDelete, logActivity } from '@big-cms/shared/server/activityLog'
@@ -111,6 +111,14 @@ export async function PATCH(request: Request): Promise<Response> {
     const caller: Caller = await requireSection(request, 'supplies')
     const id = typeof body.id === 'string' ? body.id.trim() : ''
     if (!id) throw new HttpError(400, 'Missing item id.')
+
+    // One branch's own level (UPGRADE.md T3.10); null goes back to the minimum.
+    // Not logged, for the reason thresholds are not.
+    if (body.action === 'par') {
+      const par = body.par === null || body.par === '' ? null : Number(body.par)
+      await setPar(id, typeof body.branch === 'string' ? body.branch : '', par)
+      return Response.json({ ok: true })
+    }
 
     if (body.action === 'threshold') {
       await setThreshold(id, Number(body.threshold))

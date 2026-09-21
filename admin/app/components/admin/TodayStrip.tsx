@@ -10,10 +10,10 @@
 //   - Held hub sales      /api/admin/hub-held (endOfDay), shown only when some wait
 //   - New error reports   errorReports first seen in the last 24 hours (admin)
 //   - Food safety         days nobody signed this past week, per branch (foodSafetyReview)
+//   - Low stock           supplies below their level at my branches, as the supplies page reads them (supplies)
 //
 // A tile the person may not open, or whose module is off, is not drawn at all.
 // One that could not be read says so rather than showing a reassuring zero.
-// Low stock joins when par levels exist (T3.10).
 //
 // Module-scope components (CONTRIBUTING.md gotcha #2).
 
@@ -22,7 +22,7 @@ import Link from 'next/link'
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faSackDollar, faCashRegister, faServer, faBug, faShieldHalved, type IconDefinition,
+  faSackDollar, faCashRegister, faServer, faBug, faShieldHalved, faBoxOpen, type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
 import { db } from '@big-cms/shared/firebase'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
@@ -34,6 +34,8 @@ import { todayYmd, cashUpDay } from '@big-cms/shared/dates'
 import { getEndOfDayReport } from '@big-cms/shared/endOfDay'
 import { timestampMs } from '@big-cms/shared/timestamps'
 import { startLoad } from '@big-cms/shared/startLoad'
+import { lowStock, type StockedSupply } from '@big-cms/shared/stockLevels'
+import { STOCKED_BRANCHES, PRIMARY_BRANCH } from '@big-cms/shared/branches'
 
 type Tone = 'good' | 'attention' | 'neutral' | 'unknown'
 
@@ -83,6 +85,9 @@ function tilesFor(viewer: TodayViewer, flags: FeatureFlags): Tile[] {
   }
   if (can('foodSafetyReview') && isFeatureOn('foodSafety', flags)) {
     out.push(blank({ key: 'food', label: 'Food safety', href: '/admin/food-safety/history', icon: faShieldHalved }))
+  }
+  if (can('supplies') && isFeatureOn('supplies', flags)) {
+    out.push(blank({ key: 'low', label: 'Low stock', href: '/admin/supplies?low=1', icon: faBoxOpen }))
   }
   if (viewer.role === 'admin') {
     out.push(blank({ key: 'errors', label: 'New error reports', href: '/admin/errors', icon: faBug }))
@@ -148,6 +153,22 @@ async function readTile(key: string, viewer: TodayViewer): Promise<Pick<Tile, 'v
     if (total === 0) return { value: 'All signed', detail: 'Every day this past week was signed by a manager.', tone: 'good' }
     const where = results.filter(r => r.missed > 0).map(r => `${r.branch} ${r.missed}`)
     return { value: `${total} unsigned`, detail: `Days this past week nobody signed: ${where.join(', ')}.`, tone: 'attention' }
+  }
+
+  if (key === 'low') {
+    // Par levels (UPGRADE.md T3.10): each branch's own level, or the minimum.
+    const snap = await getDocs(collection(db, 'supplies'))
+    const supplies = snap.docs.map(d => ({ id: d.id, ...d.data() }) as StockedSupply)
+    const mine = branches.filter(b => (STOCKED_BRANCHES as readonly string[]).includes(b))
+    const low = lowStock(supplies, mine, PRIMARY_BRANCH)
+    if (low.length === 0) return { value: 'All stocked', detail: 'Nothing is below its level at your branches.', tone: 'good' }
+    const out = low.filter(r => r.status === 'out').length
+    const names = low.slice(0, 3).map(r => r.name).join(', ')
+    return {
+      value: `${low.length} low`,
+      detail: `${out > 0 ? `${out} out. ` : ''}${names}${low.length > 3 ? `, and ${low.length - 3} more` : ''}.`,
+      tone: 'attention',
+    }
   }
 
   if (key === 'errors') {
