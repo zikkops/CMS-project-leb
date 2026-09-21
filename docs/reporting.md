@@ -385,7 +385,10 @@ in USD at the cost stored with the count (`countVariance()` in
     - Fix: a dated deduction, alongside **T7.11**.
 17. **Timesheet hours include days outside the range** (section 3.6).
     - Fix: **T7.11**.
-18. **Combos distort the product mix and theoretical food cost.**
+18. **FIXED, 21 Sep 2026 (T7.8). Combos distorted the product mix and theoretical food cost.**
+    - Now: `foldComboParts()` in `recipes.ts` puts each part's per-serving snapshot on the combo line, and drops the $0 parts. It is used by both the Food Cost Report and the Product Mix. A combo with a part nobody costed is incomplete, never costed on the parts that were. The mix counts parts as "made in combos", not as sold. Food cost and the mix's net sales now leave out the service charge too (`goodsShareForLines()` in `splits.ts`).
+    - Checked read-only on the demo's last 60 days: recipe cost $1,168.74 in both reports, and the Food Cost Report still reads 16.3% on $7,177.48 of costed sales. The mix reads $7,177.72 because it rounds each line to the cent, so branches and items add up exactly.
+    - Was:
     - A part with a costed recipe adds its cost against $0 of costed sales.
     - The combo line carries the sales but has no recipe.
     - So the cost percentage comes out **higher** than the truth.

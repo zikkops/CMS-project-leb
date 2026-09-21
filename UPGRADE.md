@@ -802,7 +802,7 @@ Principles for every task here:
   Z closes listed with their number and who closed them. Moved to admin from
   the till, where it is today only as a single shift.
   *Done: Done 21 Sep 2026. /admin/reports/cash-up (in ADMIN_NAV under End of Day). The rules are in shared/src/cashUpReport.ts and the read in shared/src/server/cashUp.ts: drawer shifts and End of Day reports by cash-up day, each a single-field string range, so no index is needed. Every shift shows its float, cash in, change, cash refunds, paid out, paid in, to the safe, should hold, counted and difference, in dollars and lira separately and never netted. It also shows card and card tips (not in the drawer), who opened and closed it, and its note. A shift still open shows its live figure (shiftTotals) and no count. A Z is named by branch, cash-up day and opening time ('Main 2026-09-20 17:02'). That is unique because one shift is open per branch, and it needs no counter, which a hub handed back and cleared would restart. By cash-up day, the shifts' should-hold and counted sit beside that day's End of Day count, worked out from its stored note counts with countedCash(). Per-branch totals with 'All' as their sum, and a CSV and Excel download (shifts, days). Cash reconciles per shift, as decided in T7.1b. verify:export: 7 cases; verify:hub: a real shift opened, counted and closed is read back with its count, for the branch asked. Not looked at signed in.*
-- [ ] **T7.8 Product and category sales with cost and margin.** Extend
+- [x] **T7.8 Product and category sales with cost and margin.** Extend
   Product Mix with:
   - net sales excluding VAT per item and per category, and quantity
   - theoretical cost from the recipe snapshots, with gross margin and margin %
@@ -811,6 +811,7 @@ Principles for every task here:
   An item with no costed recipe shows its sales, a blank cost and "not
   costed", never $0 cost and 100% margin. Coverage is shown, as the food cost
   report does.
+  *Done: Product Mix now has net sales before VAT and service, recipe cost from each line's snapshot, gross margin and coverage, by item and category; an item nobody could cost reads 'not costed', never $0. Combos: foldComboParts() costs parts on the combo line (gap 18), used by the mix and the Food Cost Report. verify:reports 72, verify:recipes 136. Demo reconciled: cost $1,168.74 in both.*
 - [ ] **T7.9 Discounts, comps, voids and refunds, with who approved.** Extend
   Voids & Discounts:
   - by reason, by staff member, and by approver (T5.1's manager)

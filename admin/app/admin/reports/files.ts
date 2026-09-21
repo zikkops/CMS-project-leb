@@ -37,15 +37,34 @@ export function voidSheets(r: { voids: VoidRow[]; discounts: DiscountRow[]; void
   ]
 }
 
+type Costed = { netSales: number; costedSales: number; cost: number | null; margin: number | null; marginPercent: number | null; coverage: number | null }
+
+/** Cost and margin (T7.8): blank, never 0, where nothing could be costed. */
+function costColumns<T extends Costed>(): FileColumn<T>[] {
+  const p = (v: number | null) => (v === null ? null : Math.round(v * 10000) / 100)
+  return [
+    { label: 'Net sales USD (excl. VAT and service, after all discounts)', value: r => r.netSales },
+    { label: 'Costed sales USD', value: r => r.costedSales },
+    { label: 'Recipe cost USD', value: r => r.cost },
+    { label: 'Gross margin USD', value: r => r.margin },
+    { label: 'Gross margin %', value: r => p(r.marginPercent) },
+    { label: 'Costed share of net sales %', value: r => p(r.coverage) },
+  ]
+}
+
 export function mixSheets(r: { items: MixItem[]; categories: MixCategory[] }): ReportSheet<never>[] {
   return [
     sheet<MixItem>('Items', [
       { label: 'Item', value: i => i.name }, { label: 'Category', value: i => i.category }, { label: 'Quantity', value: i => i.quantity },
       { label: 'Revenue USD (incl. VAT, before check discounts)', value: i => i.revenue }, { label: 'Share %', value: i => Math.round(i.share * 10000) / 100 },
+      { label: 'Made in combos', value: i => i.inCombos },
+      ...costColumns<MixItem>(),
+      { label: 'Lines with an uncosted ingredient', value: i => i.uncostedLines }, { label: 'Lines with no recipe', value: i => i.noRecipeLines },
     ], r.items),
     sheet<MixCategory>('Categories', [
       { label: 'Category', value: c => c.category }, { label: 'Items', value: c => c.items }, { label: 'Quantity', value: c => c.quantity },
       { label: 'Revenue USD', value: c => c.revenue }, { label: 'Share %', value: c => Math.round(c.share * 10000) / 100 },
+      ...costColumns<MixCategory>(),
     ], r.categories),
   ]
 }

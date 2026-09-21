@@ -12,9 +12,9 @@
 
 import { type ExportRequest, requestedBranches, readInChunks } from './salesExport'
 import { closedAtParts, type CutShort } from '../salesExport'
-import { shareForLines } from '../splits'
+import { goodsShareForLines } from '../splits'
 import {
-  theoreticalFoodCost, wasteSummary,
+  foldComboParts, theoreticalFoodCost, wasteSummary,
   type SoldLine, type TheoreticalFoodCost, type WasteSource, type WasteSummary,
 } from '../recipes'
 import type { Check } from '../checks'
@@ -53,7 +53,8 @@ export async function readTheoreticalFoodCost(
     checks++
 
     const vatRate = typeof check.vatRate === 'number' ? check.vatRate : null
-    for (const line of check.lines ?? []) {
+    // A combo's $0 parts are costed on the combo line that carries the price (T7.8).
+    for (const line of foldComboParts(check.lines ?? [])) {
       if (line.status === 'void') continue
       sold.push({
         status: line.status,
@@ -61,10 +62,10 @@ export async function readTheoreticalFoodCost(
         consumesPerServing: line.consumesPerServing,
         consumesUnknown: line.consumesUnknown,
         source: line.source,
-        // The line's share of what the check actually charged — staff meal,
-        // item discount and its part of any whole-check discount taken off —
-        // from the same function a split bill uses.
-        salesUsd: shareForLines(check, [line.id]),
+        // The line's share of what the check charged for goods — staff meal,
+        // item discount and its part of any whole-check discount taken off,
+        // and no service charge, which is not the food's price (T7.8).
+        salesUsd: goodsShareForLines(check, [line.id]),
         vatRate,
       })
     }

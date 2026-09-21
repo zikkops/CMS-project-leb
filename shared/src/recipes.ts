@@ -655,6 +655,71 @@ export function theoreticalFoodCost(lines: readonly SoldLine[]): TheoreticalFood
   }
 }
 
+/** A check line as the combo fold reads it. */
+export interface FoldableLine extends ConsumingLine {
+  id: string
+  refId?: string
+  comboOf?: string
+}
+
+/**
+ * Each combo's parts folded into the combo line, for costing (UPGRADE.md T7.8,
+ * reporting gap 18). A combo is written as one line carrying the whole price
+ * and a $0 line per part, and each part snapshots its own recipe. Costed as
+ * they stand, a part's ingredients are set against $0 of sales while the combo
+ * line carries the sales and no recipe, so food cost reads HIGHER than the
+ * truth. Here the combo line takes, per serving of the combo, what all its
+ * parts took, and the parts are dropped.
+ *
+ * A part with no snapshot beside parts that have one makes the combo
+ * incomplete (its menu id is named as unknown), never costed on the parts it
+ * could cost: that would print a flattering margin. With no snapshot on any
+ * part, the combo has no recipe, as a dish without one. Voided lines stay as
+ * they are; a combo is voided whole. A part whose combo line is not in the
+ * list is left alone.
+ */
+export function foldComboParts<L extends FoldableLine>(lines: readonly L[]): L[] {
+  const partsOf = new Map<string, L[]>()
+  const ids = new Set(lines.map(l => l.id))
+  for (const l of lines) {
+    if (l.comboOf && ids.has(l.comboOf) && l.status !== 'void') {
+      partsOf.set(l.comboOf, [...(partsOf.get(l.comboOf) ?? []), l])
+    }
+  }
+  const out: L[] = []
+  for (const l of lines) {
+    if (l.comboOf && ids.has(l.comboOf) && l.status !== 'void') continue
+    const parts = partsOf.get(l.id)
+    if (!parts || l.status === 'void') { out.push(l); continue }
+    const servings = l.quantity > 0 ? l.quantity : 1
+    const per = new Map<string, Consumption>()
+    const add = (c: Consumption, times: number) => {
+      const had = per.get(c.supplyId)
+      per.set(c.supplyId, {
+        supplyId: c.supplyId,
+        qty: roundQty((had?.qty ?? 0) + c.qty * times),
+        // One unknown cost leaves the supply uncosted.
+        unitCostUsd: had && had.unitCostUsd === null ? null : c.unitCostUsd,
+      })
+    }
+    const unknown = new Set(l.consumesUnknown ?? [])
+    for (const c of l.consumesPerServing ?? []) add(c, 1)
+    const withSnapshot = parts.filter(p => (p.consumesPerServing?.length ?? 0) > 0 || (p.consumesUnknown?.length ?? 0) > 0)
+    for (const p of parts) {
+      for (const c of p.consumesPerServing ?? []) add(c, p.quantity / servings)
+      for (const u of p.consumesUnknown ?? []) unknown.add(u)
+      if (withSnapshot.length > 0 && !withSnapshot.includes(p)) unknown.add(p.refId || p.id)
+    }
+    const consumes = [...per.values()].sort(bySupplyId)
+    out.push({
+      ...l,
+      consumesPerServing: consumes.length > 0 ? consumes : l.consumesPerServing,
+      consumesUnknown: unknown.size > 0 ? [...unknown].sort() : l.consumesUnknown,
+    })
+  }
+  return out
+}
+
 // ── The daily count ───────────────────────────────────────────────────────
 
 /**

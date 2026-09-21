@@ -134,6 +134,25 @@ export function sharesByPerson(
   return spread.map((c, i) => ({ person: i + 1, usd: c / 100, lineIds: lineIds[i] }))
 }
 
+/**
+ * What a chosen set of lines sold for as GOODS: after the staff meal, the
+ * item's own discount and its share of any whole-check discount, but without
+ * the service charge, which is not the food's price (UPGRADE.md T7.8). VAT is
+ * still inside it. Sales by item and food cost divide by this, so a check with
+ * service does not flatter either.
+ */
+export function goodsShareForLines(check: Priced, lineIds: readonly string[]): number {
+  const chosen = new Set(lineIds)
+  const cents = check.lines
+    .filter(l => chosen.has(l.id) && l.status !== 'void')
+    .reduce((c, l) => c + toCents(lineTotal(l, check.staffDiscount)), 0)
+  const t = checkTotals(check)
+  const goods = t.subtotal - t.checkDiscount
+  return t.subtotal > 0 && goods !== t.subtotal
+    ? Math.round(cents * (goods / t.subtotal)) / 100
+    : cents / 100
+}
+
 /** What a chosen set of lines comes to, after any staff discount. Voided and unknown lines count for nothing. */
 export function shareForLines(check: Priced, lineIds: readonly string[]): number {
   const chosen = new Set(lineIds)

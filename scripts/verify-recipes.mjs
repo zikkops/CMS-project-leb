@@ -385,5 +385,29 @@ console.log('\nwhat stops a recipe being saved')
     ['An ingredient is no longer in the supplies list (ghost).'])
 }
 
+console.log('\ncombos are costed on the line that carries the price (UPGRADE.md T7.8, gap 18)')
+{
+  const beef = { supplyId: 'beef', qty: 0.2, unitCostUsd: 10 }
+  const oil = { supplyId: 'oil', qty: 0.1, unitCostUsd: 3 }
+  const lines = [
+    { id: 'k', refId: 'deal', quantity: 2, status: 'sent' },
+    { id: 'b', refId: 'burger', quantity: 2, status: 'sent', comboOf: 'k', consumesPerServing: [beef, oil] },
+    { id: 'f', refId: 'fries', quantity: 2, status: 'sent', comboOf: 'k', consumesPerServing: [{ ...oil, qty: 0.05 }] },
+  ]
+  const folded = R.foldComboParts(lines)
+  eq('the parts are dropped and the combo line stays', folded.map(l => l.id), ['k'])
+  eq('...carrying per serving what all its parts took', folded[0].consumesPerServing, [beef, { ...oil, qty: 0.15 }])
+  const sold = folded.map(l => ({ ...l, salesUsd: 22, vatRate: 0.1 }))
+  eq('THE TRAP: food cost sets the parts\' cost against the combo\'s sales', R.theoreticalFoodCost(sold).costPercent, 4.9 / 20)
+  const unfolded = lines.map(l => ({ ...l, salesUsd: l.comboOf ? 0 : 22, vatRate: 0.1 }))
+  eq('...where unfolded it read no costed sales at all', R.theoreticalFoodCost(unfolded).costedSalesExVatUsd, 0)
+  eq('a part with no recipe beside one with a recipe leaves the combo incomplete, naming it',
+    R.foldComboParts([lines[0], lines[1], { ...lines[2], consumesPerServing: undefined }])[0].consumesUnknown, ['fries'])
+  eq('no part with a recipe: the combo has none either', R.foldComboParts([lines[0], { ...lines[1], consumesPerServing: undefined }])[0].consumesPerServing, undefined)
+  eq('an uncosted supply in one part leaves that supply uncosted', R.foldComboParts([lines[0], lines[1], { ...lines[2], consumesPerServing: [{ ...oil, unitCostUsd: null }] }])[0].consumesPerServing[1].unitCostUsd, null)
+  eq('a voided combo and its voided parts are left as they are', R.foldComboParts(lines.map(l => ({ ...l, status: 'void' }))).length, 3)
+  eq('a part whose combo is not on the check is left alone', R.foldComboParts([lines[1]]).map(l => l.id), ['b'])
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail > 0 ? 1 : 0)

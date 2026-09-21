@@ -12,6 +12,8 @@ import {
   type Check, type CheckLine,
 } from './checks'
 import { lineUnitPrice } from './modifiers'
+import { consumptionCost, foldComboParts, lineTaken } from './recipes'
+import { goodsShareForLines } from './splits'
 import { closedAtParts } from './salesExport'
 import { timestampMs } from './timestamps'
 
@@ -235,9 +237,30 @@ export interface MixItem {
   revenue: number
   /** Share of all item revenue in the range, 0–1. */
   share: number
+  /** Made as a part of a combo, at $0: counted apart, never as sold (T7.8). */
+  inCombos: number
+  /** Sold for as goods before VAT: after every discount, whole-check ones included, without service (T7.8). */
+  netSales: number
+  /** The part of netSales whose recipes could be fully costed. */
+  costedSales: number
+  /** What those lines' ingredients cost, from each line's own snapshot. Null when nothing could be costed. */
+  cost: number | null
+  /** costedSales − cost. Null when nothing could be costed. */
+  margin: number | null
+  /** margin ÷ costedSales. Null when nothing could be costed. */
+  marginPercent: number | null
+  /** costedSales ÷ netSales: how much of the item the margin speaks for. */
+  coverage: number | null
+  /** Lines with a recipe where an ingredient has no cost or no conversion. */
+  uncostedLines: number
+  /** Lines with no recipe snapshot at all: retail, a dish with no recipe, or sold while the switch was off. */
+  noRecipeLines: number
 }
 
-export interface MixCategory { category: string; quantity: number; revenue: number; share: number; items: number }
+export interface MixCategory {
+  category: string; quantity: number; revenue: number; share: number; items: number
+  netSales: number; costedSales: number; cost: number | null; margin: number | null; marginPercent: number | null; coverage: number | null
+}
 
 export interface ProductMix {
   items: MixItem[]
@@ -248,6 +271,14 @@ export interface ProductMix {
     revenue: number
     /** Whole-check discounts, which belong to no item: why item revenue is more than the checks' net. */
     checkDiscounts: number
+    netSales: number
+    costedSales: number
+    cost: number | null
+    margin: number | null
+    marginPercent: number | null
+    coverage: number | null
+    /** Lines on checks that recorded no VAT rate: counted at full price, no VAT taken out. */
+    linesWithoutVatRate: number
   }
 }
 
@@ -255,34 +286,92 @@ export interface ProductMix {
 export const RETAIL = 'Retail'
 export const OFF_MENU = 'No longer on the menu'
 
+interface CostSums { netSales: number; costedSales: number; costSum: number; costedAny: boolean }
+
+/** Margin figures from the sums: null, never 0, when nothing could be costed. */
+function marginOf(s: CostSums) {
+  const cost = s.costedAny ? r2(s.costSum) : null
+  const margin = cost === null ? null : r2(s.costedSales - cost)
+  return {
+    netSales: r2(s.netSales),
+    costedSales: r2(s.costedSales),
+    cost,
+    margin,
+    marginPercent: margin !== null && s.costedSales > 0 ? Math.round((margin / s.costedSales) * 10_000) / 10_000 : null,
+    coverage: s.netSales > 0 ? Math.round((s.costedSales / s.netSales) * 10_000) / 10_000 : null,
+  }
+}
+
+const sumCosts = (rows: readonly CostSums[]): CostSums => ({
+  netSales: rows.reduce((s, r) => s + r.netSales, 0),
+  costedSales: rows.reduce((s, r) => s + r.costedSales, 0),
+  costSum: rows.reduce((s, r) => s + r.costSum, 0),
+  costedAny: rows.some(r => r.costedAny),
+})
+
 /**
- * What sold, by item and by category, over closed checks. Refunded and
- * cancelled checks are left out: what was given back was not sold. Voided
- * lines are not sales either. An item is grouped by what it is (its menu or
- * product id), and named as it was most recently sold.
+ * What sold, by item and by category, over closed checks, with what it cost
+ * and the margin it made (UPGRADE.md T7.8). Refunded and cancelled checks are
+ * left out: what was given back was not sold. Voided lines are not sales
+ * either. An item is grouped by what it is (its menu or product id), and named
+ * as it was most recently sold.
+ *
+ * Cost is the recipe snapshot each line carried when it was sold, never
+ * today's recipe, and a combo's $0 parts are costed on the combo line
+ * (foldComboParts(), gap 18) and counted as `inCombos`, not as sold. Margin is
+ * on sales before VAT, at each check's own rate, and only over the lines that
+ * could be fully costed; `coverage` says how much that is. An item nobody
+ * could cost reads null, never a cost of $0 and a margin of 100%.
  */
 export function productMix(
   checks: readonly Check[],
   opts: { categoryOf: Readonly<Record<string, string>> },
 ): ProductMix {
-  const items = new Map<string, MixItem & { lastSeen: number }>()
+  type Row = MixItem & CostSums & { lastSeen: number }
+  const items = new Map<string, Row>()
   let checkCount = 0
   let checkDiscounts = 0
+  let linesWithoutVatRate = 0
 
   checks.forEach((check, order) => {
     if (check.status !== 'closed') return
     checkCount++
     checkDiscounts += checkTotals(check).checkDiscount
     const staff = check.staffDiscount ?? null
-    for (const line of check.lines ?? []) {
-      if (line.status === 'void') continue
+    const rate = check.vatRate
+    const hasRate = typeof rate === 'number' && Number.isFinite(rate) && rate >= 0 && rate < 1
+    const lines = check.lines ?? []
+    const rowFor = (line: CheckLine): Row => {
       const key = `${line.source}:${line.refId}`
       const category = line.source === 'product' ? RETAIL : (opts.categoryOf[line.refId] ?? OFF_MENU)
-      const row = items.get(key) ?? { key, name: line.name, category, quantity: 0, revenue: 0, share: 0, lastSeen: -1 }
-      row.quantity += line.quantity
-      row.revenue = r2(row.revenue + lineTotal(line, staff))
+      const row: Row = items.get(key) ?? {
+        key, name: line.name, category, quantity: 0, revenue: 0, share: 0, inCombos: 0,
+        netSales: 0, costedSales: 0, cost: null, margin: null, marginPercent: null, coverage: null,
+        uncostedLines: 0, noRecipeLines: 0, costSum: 0, costedAny: false, lastSeen: -1,
+      }
       if (order >= row.lastSeen) { row.name = line.name; row.lastSeen = order }
       items.set(key, row)
+      return row
+    }
+    const ids = new Set(lines.map(l => l.id))
+    for (const line of lines) {
+      if (line.status === 'void' || !line.comboOf || !ids.has(line.comboOf)) continue
+      rowFor(line).inCombos += line.quantity
+    }
+    for (const line of foldComboParts(lines)) {
+      if (line.status === 'void') continue
+      const row = rowFor(line)
+      row.quantity += line.quantity
+      row.revenue = r2(row.revenue + lineTotal(line, staff))
+      if (!hasRate) linesWithoutVatRate++
+      const goods = goodsShareForLines(check, [line.id])
+      // Each line to the cent, so branches and items add up to the total exactly.
+      const exVat = r2(hasRate ? goods / (1 + (rate as number)) : goods)
+      row.netSales += exVat
+      const c = consumptionCost({ consumes: lineTaken(line), unknown: [...(line.consumesUnknown ?? [])] })
+      if (c.reason === 'ok') { row.costedAny = true; row.costedSales += exVat; row.costSum += c.costUsd as number }
+      else if (c.reason === 'incomplete') row.uncostedLines++
+      else row.noRecipeLines++
     }
   })
 
@@ -290,25 +379,31 @@ export function productMix(
   const revenue = r2(all.reduce((s, i) => s + i.revenue, 0))
   const shareOf = (v: number) => (revenue > 0 ? Math.round((v / revenue) * 10_000) / 10_000 : 0)
   const outItems: MixItem[] = all
-    .map(({ lastSeen: _lastSeen, ...i }) => ({ ...i, share: shareOf(i.revenue) }))
+    .map(row => {
+      const { lastSeen: _lastSeen, costSum: _costSum, costedAny: _costedAny, ...i } = row
+      return { ...i, share: shareOf(i.revenue), ...marginOf(row) }
+    })
     .sort((a, b) => b.revenue - a.revenue || b.quantity - a.quantity || a.name.localeCompare(b.name))
 
-  const byCategory = new Map<string, MixCategory>()
-  for (const i of outItems) {
-    const c = byCategory.get(i.category) ?? { category: i.category, quantity: 0, revenue: 0, share: 0, items: 0 }
-    c.quantity += i.quantity
-    c.revenue = r2(c.revenue + i.revenue)
-    c.items++
-    byCategory.set(i.category, c)
-  }
-  const categories = [...byCategory.values()]
-    .map(c => ({ ...c, share: shareOf(c.revenue) }))
+  const byCategory = new Map<string, Row[]>()
+  for (const i of all) byCategory.set(i.category, [...(byCategory.get(i.category) ?? []), i])
+  const categories: MixCategory[] = [...byCategory.entries()]
+    .map(([category, rows]) => {
+      const rev = r2(rows.reduce((s, r) => s + r.revenue, 0))
+      return {
+        category, quantity: rows.reduce((s, r) => s + r.quantity, 0), revenue: rev, share: shareOf(rev), items: rows.length,
+        ...marginOf(sumCosts(rows)),
+      }
+    })
     .sort((a, b) => b.revenue - a.revenue || a.category.localeCompare(b.category))
 
   return {
     items: outItems,
     categories,
-    totals: { checks: checkCount, quantity: outItems.reduce((s, i) => s + i.quantity, 0), revenue, checkDiscounts: r2(checkDiscounts) },
+    totals: {
+      checks: checkCount, quantity: outItems.reduce((s, i) => s + i.quantity, 0), revenue, checkDiscounts: r2(checkDiscounts),
+      ...marginOf(sumCosts(all)), linesWithoutVatRate,
+    },
   }
 }
 

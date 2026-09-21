@@ -152,7 +152,52 @@ console.log('\nproduct mix — what sold, by item and by category (T3.3)')
   })], { categoryOf })
   eq('an item\'s revenue is after its own discount: $10 at half is $5', discounted.items[0].revenue, 5)
   eq('...and a whole-check discount belongs to no item, so it is shown apart', discounted.totals.checkDiscounts, 2)
-  eq('nothing sold: nothing to share, and no division by zero', R.productMix([], { categoryOf }).totals, { checks: 0, quantity: 0, revenue: 0, checkDiscounts: 0 })
+  eq('nothing sold: nothing to share, and no division by zero', R.productMix([], { categoryOf }).totals,
+    { checks: 0, quantity: 0, revenue: 0, checkDiscounts: 0, netSales: 0, costedSales: 0, cost: null, margin: null, marginPercent: null, coverage: null, linesWithoutVatRate: 0 })
+}
+
+console.log('\nproduct mix: cost and margin, and combos costed whole (UPGRADE.md T7.8)')
+{
+  const categoryOf = { m1: 'Coffee', m2: 'Food', burger: 'Food', fries: 'Food', combo: 'Deals' }
+  const milk = (qty, unitCostUsd = 2) => ({ supplyId: 'milk', qty, unitCostUsd })
+  // $5.50 incl. 10% VAT is $5 before VAT; the recipe costs $1.
+  const costed = line({ unitPrice: 5.5, consumesPerServing: [milk(0.5)] })
+  const mix = R.productMix([
+    check({ id: 'a', vatRate: 0.1, lines: [costed, line({ id: 'l2', unitPrice: 5.5, quantity: 2, consumesPerServing: [milk(0.5)] })] }),
+    // A second flat white with an uncosted ingredient: in sales, never in the margin.
+    check({ id: 'b', vatRate: 0.1, lines: [line({ unitPrice: 5.5, consumesPerServing: [milk(0.5, null)] })] }),
+    // Toast with no recipe at all.
+    check({ id: 'c', vatRate: 0.1, lines: [line({ id: 't', refId: 'm2', name: 'Toast', unitPrice: 11 })] }),
+  ], { categoryOf })
+  const fw = mix.items.find(i => i.key === 'menu:m1')
+  eq('net sales are before VAT, at the check\'s own rate', fw.netSales, 20)
+  eq('cost is the snapshot times the quantity, over the costed lines only', [fw.cost, fw.costedSales], [3, 15])
+  eq('margin is on the costed sales: $15 − $3 = $12, 80%', [fw.margin, fw.marginPercent], [12, 0.8])
+  eq('coverage says how much of the item the margin speaks for', [fw.coverage, fw.uncostedLines], [0.75, 1])
+  const toast = mix.items.find(i => i.key === 'menu:m2')
+  eq('THE TRAP: an item nobody could cost reads null, never $0 cost at 100%', [toast.cost, toast.margin, toast.marginPercent, toast.noRecipeLines], [null, null, null, 1])
+  eq('the category and the total add their items\' costs', [mix.categories.find(c => c.category === 'Coffee').cost, mix.totals.cost, mix.totals.netSales], [3, 3, 30])
+
+  const svc = R.productMix([check({ vatRate: 0.1, serviceCharge: { rate: 0.1 }, lines: [line({ unitPrice: 11, consumesPerServing: [milk(1)] })] })], { categoryOf })
+  eq('the service charge is not the food\'s price: net sales leave it out', svc.items[0].netSales, 10)
+  const disc = R.productMix([check({ vatRate: 0.1, discount: { kind: 'amount', value: 5.5, reasonKey: 'wait', note: '', by: 'm', byEmail: 'x' },
+    lines: [line({ unitPrice: 11 }), line({ id: 'l2', refId: 'm2', unitPrice: 11 })] })], { categoryOf })
+  eq('a whole-check discount comes off each item\'s net sales in proportion', disc.items.map(i => i.netSales), [7.5, 7.5])
+  eq('a check with no VAT rate is counted at full price, and said', R.productMix([check({ vatRate: undefined, lines: [line({ unitPrice: 4 })] })], { categoryOf }).totals.linesWithoutVatRate, 1)
+
+  // Gap 18: a combo at $11 with a burger ($2 of beef) and fries ($0.50) at $0.
+  const combo = [
+    line({ id: 'k', refId: 'combo', name: 'Burger Deal', unitPrice: 11, station: null }),
+    line({ id: 'kb', refId: 'burger', name: 'Burger', unitPrice: 0, comboOf: 'k', consumesPerServing: [{ supplyId: 'beef', qty: 1, unitCostUsd: 2 }] }),
+    line({ id: 'kf', refId: 'fries', name: 'Fries', unitPrice: 0, comboOf: 'k', consumesPerServing: [{ supplyId: 'potato', qty: 1, unitCostUsd: 0.5 }] }),
+  ]
+  const cm = R.productMix([check({ vatRate: 0.1, lines: combo })], { categoryOf })
+  const deal = cm.items.find(i => i.key === 'menu:combo')
+  eq('THE TRAP (gap 18): the combo line carries its parts\' cost against its own sales', [deal.netSales, deal.cost, deal.margin], [10, 2.5, 7.5])
+  eq('...and the parts are counted as made in combos, not sold at $0', cm.items.filter(i => i.key !== 'menu:combo').map(i => [i.name, i.quantity, i.inCombos, i.cost]), [['Burger', 0, 1, null], ['Fries', 0, 1, null]])
+  eq('...so the total cost is counted once', cm.totals.cost, 2.5)
+  const halfCosted = R.productMix([check({ vatRate: 0.1, lines: [combo[0], combo[1], line({ id: 'kf', refId: 'fries', name: 'Fries', unitPrice: 0, comboOf: 'k' })] })], { categoryOf })
+  eq('a combo with a part nobody costed is not costed on the parts that were', halfCosted.items.find(i => i.key === 'menu:combo').cost, null)
 }
 
 console.log('\nhourly sales, beside the same day last week (T3.4)')
@@ -234,12 +279,14 @@ console.log('\nper-branch totals add up to the consolidated figure (UPGRADE.md T
     check({ id: 'a2', branch: 'Main', lines: [line({ unitPrice: 6, quantity: 2 })] }),
     check({ id: 'b1', branch: 'Second', lines: [line({ unitPrice: 5 }), voided({ id: 'v9', unitPrice: 2, voidWasWaste: false })] }),
   ]
-  const add = rows => Object.fromEntries(Object.keys(rows[0]).map(k => [k, Math.round(rows.reduce((s, r) => s + r[k], 0) * 100) / 100]))
+  const add = rows => Object.fromEntries(Object.keys(rows[0]).filter(k => !['coverage', 'marginPercent'].includes(k) && rows.every(r => typeof r[k] === 'number')).map(k => [k, Math.round(rows.reduce((s, r) => s + r[k], 0) * 100) / 100]))
+  const summed = (t, like) => Object.fromEntries(Object.keys(like).map(k => [k, t[k]]))
   const per = b => checks.filter(c => c.branch === b)
   const vAll = R.voidDiscountReport(checks, OPTS).totals
   eq('voids and discounts: Main + Second = all', add(['Main', 'Second'].map(b => R.voidDiscountReport(per(b), OPTS).totals)), vAll)
   const mixOpts = { categoryOf: () => ({ category: 'Drinks', section: 'Beverage' }) }
-  eq('product mix: Main + Second = all', add(['Main', 'Second'].map(b => R.productMix(per(b), mixOpts).totals)), R.productMix(checks, mixOpts).totals)
+  const mixSum = add(['Main', 'Second'].map(b => R.productMix(per(b), mixOpts).totals))
+  eq('product mix: Main + Second = all', mixSum, summed(R.productMix(checks, mixOpts).totals, mixSum))
 }
 
 rmSync(out, { recursive: true, force: true })
