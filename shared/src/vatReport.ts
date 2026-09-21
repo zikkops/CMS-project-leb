@@ -19,6 +19,14 @@ import { vatIncluded } from './money'
 
 /** A received delivery, as the VAT report needs it. Totals in the delivery's own currency. */
 export interface DeliveryVatRow {
+  /** The delivery's id, and what the purchases report shows beside it (T7.13). Optional for callers that build rows by hand. */
+  id?: string
+  department?: string
+  invoiceDate?: string | null
+  status?: string
+  orderReportId?: string | null
+  /** Ordered and received per weekly-order line, for the fulfilment check. */
+  lines?: { templateId: string | null; qtyOrdered: number; qtyReceived: number; qtyRejected: number }[]
   branch: string
   day: string
   supplier: string

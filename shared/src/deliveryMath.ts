@@ -119,6 +119,8 @@ export interface Delivery {
   receivedBy: { uid: string; email: string }
 
   invoiceNumber: string
+  /** The date on the supplier's invoice, 'YYYY-MM-DD' (UPGRADE.md T7.13). Absent on deliveries from before, or left blank. */
+  invoiceDate?: string | null
   invoiceImageUrl: string | null
 
   currency: Currency
@@ -148,6 +150,18 @@ export const DEFAULT_VAT_RATE = 0.11
 // Variance is computed from qtyOrdered and qtyReceived every time it's shown.
 // Storing it would create a second source of truth that silently drifts the
 // first time someone edits a line.
+
+/**
+ * The supplier's invoice date (UPGRADE.md T7.13): a real calendar day, or
+ * blank. Returns the day, null for blank, or false for something that is not
+ * a date, which the server refuses rather than guesses at.
+ */
+export function readInvoiceDay(raw: unknown): string | null | false {
+  if (raw === undefined || raw === null || raw === '') return null
+  if (typeof raw !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false
+  const d = new Date(`${raw}T12:00:00Z`)
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === raw ? raw : false
+}
 
 export function shortfall(line: DeliveryLine): number {
   return Math.max(0, line.qtyOrdered - line.qtyReceived)

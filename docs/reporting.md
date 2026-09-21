@@ -423,8 +423,8 @@ in USD at the cost stored with the count (`countVariance()` in
 20. **Weighted average cost is one figure across branches**, and there was no
     inventory valuation. **Valuation FIXED 21 Sep 2026 (T7.12):** `/admin/reports/inventory` reconciles each supply between its last submitted count before the period and its last in it (the periodic method). Movements in between are received (on the day stock moved, `stockAppliedAt`), transfers (every one recorded in `stockTransfers` with its unit cost from 21 Sep 2026), used (recipe snapshots of what sold) and waste. Expected closing, the difference nothing explains, and COGS = opening + purchases ± transfers − closing, each at its own snapshot cost; unknown cost is unknown, never $0. **Still open:** the stock value NOW uses the one cross-branch average; a per-branch average is a data-model change.
     - Fix: **T7.12**.
-21. **Purchases and input VAT have no report**, and there is no supplier
-    invoice date.
+21. **FIXED 21 Sep 2026 (T7.13, T7.6). Purchases and input VAT had no report**, and there was no supplier
+    invoice date. Now: receiving asks for the invoice date (optional, stored as `invoiceDate`, refused when not a date). `/admin/reports/purchases` lists every received delivery from the VAT report's own rows, per supplier and branch. It shows net, VAT and total in the invoice's currency and in the other: LBP at the rate received at, USD in lira at the business rate, marked. It shows how much of each weekly order the deliveries were booked against has arrived, across every delivery for that order, counted as the weekly order's own bar counts.
     - Fix: **T7.13**, **T7.6**.
 22. **Counter retail sales and wholesale orders** share the receipt series but
     are in no export. Their numbers are in the receipt sequence report since T7.10; their money is still in no export.

@@ -123,6 +123,7 @@ function ReceivingInner() {
   const [orderId,       setOrderId]       = useState('')
   const [providerId,    setProviderId]    = useState('')
   const [invoiceNumber, setInvoiceNumber] = useState('')
+  const [invoiceDate,   setInvoiceDate]   = useState('')
   const [currency,      setCurrency]      = useState<Currency>('USD')
   // Seeded from the configured rate rather than a hardcoded 90000, which
   // ignored /admin/settings entirely and quietly disagreed with it.
@@ -369,6 +370,7 @@ function ReceivingInner() {
         providerName: provider?.name ?? '',
         orderReportId: orderId || null,
         invoiceNumber,
+        invoiceDate: invoiceDate || null,
         currency,
         rateUsed: currency === 'LBP' ? Number(rateUsed) : 0,
         // The rate the totals on screen were computed with. The server stores
@@ -386,7 +388,7 @@ function ReceivingInner() {
       setDone(status === 'draft'
         ? 'Draft saved — nothing has moved yet.'
         : `Delivery received — stock updated for ${branch}.`)
-      if (status === 'received') { setLines([]); setOrderId(''); setInvoiceNumber('') }
+      if (status === 'received') { setLines([]); setOrderId(''); setInvoiceNumber(''); setInvoiceDate('') }
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not save the delivery.')
     } finally {
@@ -449,6 +451,8 @@ function ReceivingInner() {
               hiddenCount={hiddenCount}
               invoiceNumber={invoiceNumber}
               onInvoiceNumber={setInvoiceNumber}
+              invoiceDate={invoiceDate}
+              onInvoiceDate={setInvoiceDate}
               currency={currency}
               onCurrency={changeCurrency}
               rateUsed={rateUsed}

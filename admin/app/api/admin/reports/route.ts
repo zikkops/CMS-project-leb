@@ -25,7 +25,8 @@ import { readLabour } from '@big-cms/shared/server/labour'
 import { labourReport } from '@big-cms/shared/labourReport'
 import { readInventory } from '@big-cms/shared/server/inventoryReport'
 import { inventoryReport } from '@big-cms/shared/inventoryReport'
-import { readReceivedDeliveries } from '@big-cms/shared/server/receivedDeliveries'
+import { readPurchases, readReceivedDeliveries } from '@big-cms/shared/server/receivedDeliveries'
+import { purchasesReport } from '@big-cms/shared/purchasesReport'
 import { TIME_ENTRIES, peopleOf, timesheet, type TimeEntry } from '@big-cms/shared/timeClock'
 import { timestampMs } from '@big-cms/shared/timestamps'
 import { dayBefore, hourlySales, productMix, voidDiscountReport } from '@big-cms/shared/salesReports'
@@ -132,6 +133,18 @@ export async function GET(request: Request): Promise<Response> {
         {
           ok: true, from: range.from, to: range.to, branches: read.branches, cutShort: read.cutShort, lookbackFrom: read.lookbackFrom,
           ...inventoryReport({ counts: read.counts, moves: read.moves, supplies: read.supplies, branches: read.branches, from: range.from, to: range.to }),
+        },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+    if (report === 'purchases') {
+      // Purchases (T7.13): the VAT report's own delivery rows, per supplier and
+      // branch, with the weekly orders they were booked against.
+      const [read, { exchangeRate }] = await Promise.all([readPurchases(range, { timeZone, branches: own }), readSettings()])
+      return Response.json(
+        {
+          ok: true, from: range.from, to: range.to, branches: read.branches, cutShort: read.cutShort,
+          ...purchasesReport({ deliveries: read.deliveries, orderDeliveries: read.orderDeliveries, orders: read.orders, branches: read.branches, businessRate: exchangeRate }),
         },
         { headers: { 'Cache-Control': 'no-store' } },
       )

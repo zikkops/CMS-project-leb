@@ -46,7 +46,7 @@ for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
 
 const {
   weightedAverageCost, computeTotals, shortfall, isShort, priceChange, unplannedLine,
-  seedLinesFromOrder, costOfGoodsUsd, foodCostPercent, fulfilmentByTemplateId, deliveryDocLabel,
+  seedLinesFromOrder, costOfGoodsUsd, foodCostPercent, fulfilmentByTemplateId, deliveryDocLabel, readInvoiceDay,
 } = await import(`file://${join(out, 'deliveryMath.js')}`)
 
 let pass = 0, fail = 0
@@ -179,6 +179,12 @@ console.log('\npar levels and low stock (UPGRADE.md T3.10)')
   eq('low stock lists what is out first, then furthest below its level',
     j(rows.map(r => `${r.name}@${r.branch}:${r.status}:${r.toLevel}`)), j(['Beans@Main:out:5', 'Milk@Main:low:4', 'Cups@Second:low:2', 'Cups@Main:low:1']))
   eq('only the branches asked about', L.lowStock([milk], ['Second'], 'Main').length, 0)
+}
+
+console.log('\nthe supplier\'s invoice date (UPGRADE.md T7.13)')
+{
+  eq('a real day is kept, blank is nothing', JSON.stringify([readInvoiceDay('2026-09-11'), readInvoiceDay(''), readInvoiceDay(undefined)]), JSON.stringify(['2026-09-11', null, null]))
+  eq('something that is not a day is refused, never guessed', JSON.stringify([readInvoiceDay('2026-02-30'), readInvoiceDay('11/09/2026'), readInvoiceDay(20260911)]), JSON.stringify([false, false, false]))
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

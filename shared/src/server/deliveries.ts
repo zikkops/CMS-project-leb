@@ -16,7 +16,7 @@ import { FieldValue, type Transaction } from 'firebase-admin/firestore'
 import { adminDb } from './firebaseAdmin'
 import { HttpError } from './auth'
 import {
-  computeTotals, round2, weightedAverageCost,
+  computeTotals, readInvoiceDay, round2, weightedAverageCost,
   DEFAULT_VAT_RATE, DELIVERY_BRANCHES,
   DELIVERY_DEPARTMENTS,
   type Currency, type Delivery, type DeliveryDepartment, type DeliveryLine,
@@ -58,6 +58,8 @@ export interface ParsedDelivery {
   providerName: string
   orderReportId: string | null
   invoiceNumber: string
+  /** The supplier's invoice date, or null when not given (T7.13). */
+  invoiceDate: string | null
   invoiceImageUrl: string | null
   currency: Currency
   rateUsed: number
@@ -80,6 +82,17 @@ function readTemp(l: Record<string, unknown>, i: number): { tempC?: number; temp
   const tempC = typeof l.tempC === 'number' && Number.isFinite(l.tempC) ? l.tempC : undefined
   const tempNote = str(l.tempNote, `Line ${i + 1} temperature note`, { maxLen: 300 })
   return { ...(tempC !== undefined ? { tempC } : {}), ...(tempNote ? { tempNote } : {}) }
+}
+
+/**
+ * The supplier's invoice date (UPGRADE.md T7.13, reporting gap 21): a real
+ * calendar day, or nothing. Refused when it is not a date, never guessed; a
+ * blank is allowed, since the day it was received is still known.
+ */
+export function readInvoiceDate(raw: unknown): string | null {
+  const day = readInvoiceDay(raw)
+  if (day === false) throw new HttpError(400, 'The invoice date must be a date.')
+  return day
 }
 
 export function parseDelivery(body: Record<string, unknown>): ParsedDelivery {
@@ -174,6 +187,7 @@ export function parseDelivery(body: Record<string, unknown>): ParsedDelivery {
     providerName: str(body.providerName, 'Provider'),
     orderReportId: typeof body.orderReportId === 'string' && body.orderReportId ? body.orderReportId : null,
     invoiceNumber: str(body.invoiceNumber, 'Invoice number', { maxLen: 60 }),
+    invoiceDate: readInvoiceDate(body.invoiceDate),
     invoiceImageUrl: typeof body.invoiceImageUrl === 'string' && body.invoiceImageUrl ? body.invoiceImageUrl : null,
     currency,
     rateUsed,
@@ -303,6 +317,7 @@ export async function postDelivery(
       providerName: parsed.providerName,
       orderReportId: parsed.orderReportId,
       invoiceNumber: parsed.invoiceNumber,
+      invoiceDate: parsed.invoiceDate,
       invoiceImageUrl: parsed.invoiceImageUrl,
       currency: parsed.currency,
       rateUsed: parsed.rateUsed,

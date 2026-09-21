@@ -7,7 +7,7 @@ import { inp, labelStyle } from './styles'
 // Supplier, invoice number, currency, and the exchange rate for an LBP invoice.
 export function InvoiceFields({
   isMobile, providers, providerId, onProvider, onOrderByProvider, hiddenCount,
-  invoiceNumber, onInvoiceNumber, currency, onCurrency, rateUsed, onRateUsed,
+  invoiceNumber, onInvoiceNumber, invoiceDate, onInvoiceDate, currency, onCurrency, rateUsed, onRateUsed,
 }: {
   isMobile: boolean
   providers: OrderProvider[]
@@ -17,6 +17,8 @@ export function InvoiceFields({
   hiddenCount: number
   invoiceNumber: string
   onInvoiceNumber: (value: string) => void
+  invoiceDate: string
+  onInvoiceDate: (value: string) => void
   currency: Currency
   onCurrency: (next: Currency) => void
   rateUsed: string
@@ -47,6 +49,8 @@ export function InvoiceFields({
         <div>
           <label style={labelStyle}>Invoice number</label>
           <input value={invoiceNumber} onChange={e => onInvoiceNumber(e.target.value)} placeholder="F-20481" style={{ ...inp, width: '100%' }} />
+          <label style={{ ...labelStyle, marginTop: '0.6rem' }}>Invoice date</label>
+          <input type="date" value={invoiceDate} onChange={e => onInvoiceDate(e.target.value)} style={{ ...inp, width: '100%' }} />
         </div>
         <div>
           <label style={labelStyle}>Currency</label>

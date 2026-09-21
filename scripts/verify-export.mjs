@@ -27,7 +27,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'export-verify-'))
 execSync(
-  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts shared/src/salesSummary.ts shared/src/tenderSummary.ts shared/src/vatReport.ts shared/src/cashUpReport.ts shared/src/receiptSequence.ts --outDir ${out} ` +
+  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts shared/src/salesSummary.ts shared/src/tenderSummary.ts shared/src/vatReport.ts shared/src/cashUpReport.ts shared/src/receiptSequence.ts shared/src/purchasesReport.ts --outDir ${out} ` +
   `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
@@ -44,6 +44,7 @@ const TS = await import(`file://${join(out, 'tenderSummary.js')}`)
 const VR = await import(`file://${join(out, 'vatReport.js')}`)
 const CU = await import(`file://${join(out, 'cashUpReport.js')}`)
 const RS = await import(`file://${join(out, 'receiptSequence.js')}`)
+const PR = await import(`file://${join(out, 'purchasesReport.js')}`)
 const L = await import(`file://${join(out, 'loyaltyExport.js')}`)
 
 let pass = 0, fail = 0
@@ -336,6 +337,32 @@ console.log('\nthe receipt sequence: gaps, duplicates and numbers with no record
   eq('never seen and below the first logged number: before the log', early.gaps.map(g => [g.from, g.to, g.status]), [[2, 4, 'gap before the log']])
   const years = RS.receiptSequence([use(3), { ...use(1), number: n(1, 2027) }], [], [], { branches: ['Main'] })
   eq('each year is its own sequence, since the counter restarts', years.years.map(y => [y.year, y.first, y.last]), [[2026, 3, 3], [2027, 1, 1]])
+}
+
+console.log('\npurchases: per supplier and branch, both currencies, and the weekly orders (UPGRADE.md T7.13)')
+{
+  const d = (over = {}) => ({ id: 'd1', branch: 'Main', day: '2026-09-12', supplier: 'Dairy Co', invoiceNumber: 'F-1', currency: 'USD', rateUsed: 0, vatRate: 0.1,
+    taxableSubtotal: 100, subtotal: 100, vat: 10, grand: 110, status: 'received', orderReportId: 'o1', invoiceDate: '2026-09-11',
+    lines: [{ templateId: 't-milk', qtyOrdered: 10, qtyReceived: 10, qtyRejected: 0 }], ...over })
+  const deliveries = [
+    d(),
+    d({ id: 'd2', supplier: 'Bakery', currency: 'LBP', rateUsed: 100_000, subtotal: 1_000_000, vat: 100_000, grand: 1_100_000, orderReportId: null, invoiceDate: null, lines: [] }),
+    d({ id: 'd3', branch: 'Second', supplier: 'Dairy Co', subtotal: 50, vat: 5, grand: 55, orderReportId: null }),
+  ]
+  const orders = [{ id: 'o1', branch: 'Main', weekStart: '2026-09-07', items: [{ templateId: 't-milk', quantity: 10 }, { templateId: 't-eggs', quantity: 30 }, { templateId: 't-cream', quantity: 4 }] }]
+  // A second delivery for the same order, outside the period: split shipments count.
+  const orderDeliveries = [...deliveries, d({ id: 'd9', day: '2026-09-20', lines: [{ templateId: 't-eggs', qtyOrdered: 30, qtyReceived: 12, qtyRejected: 0 }] })]
+  const r = PR.purchasesReport({ deliveries, orderDeliveries, orders, branches: ['Main', 'Second'], businessRate: 90_000 })
+  const row = id => r.rows.find(x => x.id === id)
+  eq('an LBP invoice is in dollars at the rate it was received at', [row('d2').net, row('d2').netUsd, row('d2').totalUsd], [1_000_000, 10, 11])
+  eq('a USD invoice is in lira at the business rate, and says so', [row('d1').totalLbp, row('d1').lbpAtBusinessRate, row('d2').lbpAtBusinessRate], [9_900_000, true, false])
+  eq('per supplier, across branches, largest first', r.bySupplier.map(s => [s.supplier, s.totals.deliveries, s.totals.totalUsd]), [['Dairy Co', 2, 165], ['Bakery', 1, 11]])
+  eq('each currency totalled on its own', [r.total.netUsd, r.total.vatUsd, r.total.totalUsd, r.total.totalLbp], [160, 16, 176, 9_900_000 + 1_100_000 + 4_950_000])
+  eq('invoices with no date, and deliveries with no order, are counted', [r.total.withoutInvoiceDate, r.total.unplanned], [1, 2])
+  eq('the total is the sum of the branches', r.byBranch.reduce((n, b) => n + b.totals.totalUsd, 0), r.total.totalUsd)
+  eq('a weekly order: across every delivery booked against it, in full, in part, not yet', [r.orders[0].full, r.orders[0].part, r.orders[0].none, r.orders[0].deliveries], [1, 1, 1, 2])
+  eq('a draft booked against an order has not arrived', PR.orderFulfilment(orders[0], [d({ status: 'draft' })]).full, 0)
+  eq('the VAT here is the VAT report\'s input VAT, same rows', r.total.vatUsd, VR.vatReport([], deliveries, ['Main', 'Second']).total.inputVat)
 }
 
 console.log('\nthe sheets are declared once, for the UI and the file both')
