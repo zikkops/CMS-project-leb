@@ -17,6 +17,8 @@ import { readSettings } from '@big-cms/shared/server/settings'
 import { salesSummary } from '@big-cms/shared/salesSummary'
 import { tenderSummary } from '@big-cms/shared/tenderSummary'
 import { vatReport } from '@big-cms/shared/vatReport'
+import { cashUpReport } from '@big-cms/shared/cashUpReport'
+import { readCashUp } from '@big-cms/shared/server/cashUp'
 import { readReceivedDeliveries } from '@big-cms/shared/server/receivedDeliveries'
 import { TIME_ENTRIES, timesheet, type TimeEntry } from '@big-cms/shared/timeClock'
 import { timestampMs } from '@big-cms/shared/timestamps'
@@ -93,6 +95,15 @@ export async function GET(request: Request): Promise<Response> {
       ])
       return Response.json(
         { ok: true, from: range.from, to: range.to, branches: chosen, cutShort: result.cutShort ?? received.cutShort, ...vatReport(result.checks, received.deliveries, chosen) },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+    if (report === 'cashup') {
+      // Cash-up and drawer (T7.7): every shift by cash-up day, per currency,
+      // with that day's End of Day count beside it.
+      const read = await readCashUp(range, { timeZone, branches: own })
+      return Response.json(
+        { ok: true, from: range.from, to: range.to, branches: read.branches, ...cashUpReport(read.shifts, read.eod, read.branches) },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }

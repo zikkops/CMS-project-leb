@@ -793,7 +793,7 @@ Principles for every task here:
   A check from before rates were recorded contributes nothing and is counted
   in a "no rate recorded" line, never guessed.
   *Done: Done 21 Sep 2026. /admin/reports/vat (in ADMIN_NAV under End of Day). The rules are in shared/src/vatReport.ts. Output VAT is one line per rate the checks closed at, so a mid-period change shows as two lines, with net sales, VAT on sales, service net and VAT on service (VAT-able by default). Checks with no rate recorded get their own line: billed with no VAT, never guessed. Refunds reverse VAT at their own rate, in the period they were given. Input VAT comes from received and disputed deliveries, not drafts, at each delivery's own rate; one invoiced in lira is converted at its own exchange rate (readReceivedDeliveries() in shared/src/server/receivedDeliveries.ts). Net VAT = output − reversed − input. Per-branch totals and 'All' as their sum, and a CSV and Excel download (position, output, refunds, input). verify:export: 9 cases, including that output VAT equals the sales summary's. Read-only on the demo project's last 60 days: 419 checks at 11% with $936.36 output VAT, 2 checks with no rate recorded, $29.29 reversed on refunds, 3 received deliveries with $114.10 input VAT, net $792.97; output matches the sales summary. Not looked at signed in.*
-- [ ] **T7.7 Cash-up and drawer report.** Per branch and period:
+- [x] **T7.7 Cash-up and drawer report.** Per branch and period:
   - every shift: float, cash in, change, cash refunds, paid outs and pay ins
     (T3.1), safe drops, expected, counted, and over/short, in each currency
     and never netted at a rate
@@ -801,6 +801,7 @@ Principles for every task here:
 
   Z closes listed with their number and who closed them. Moved to admin from
   the till, where it is today only as a single shift.
+  *Done: Done 21 Sep 2026. /admin/reports/cash-up (in ADMIN_NAV under End of Day). The rules are in shared/src/cashUpReport.ts and the read in shared/src/server/cashUp.ts: drawer shifts and End of Day reports by cash-up day, each a single-field string range, so no index is needed. Every shift shows its float, cash in, change, cash refunds, paid out, paid in, to the safe, should hold, counted and difference, in dollars and lira separately and never netted. It also shows card and card tips (not in the drawer), who opened and closed it, and its note. A shift still open shows its live figure (shiftTotals) and no count. A Z is named by branch, cash-up day and opening time ('Main 2026-09-20 17:02'). That is unique because one shift is open per branch, and it needs no counter, which a hub handed back and cleared would restart. By cash-up day, the shifts' should-hold and counted sit beside that day's End of Day count, worked out from its stored note counts with countedCash(). Per-branch totals with 'All' as their sum, and a CSV and Excel download (shifts, days). Cash reconciles per shift, as decided in T7.1b. verify:export: 7 cases; verify:hub: a real shift opened, counted and closed is read back with its count, for the branch asked. Not looked at signed in.*
 - [ ] **T7.8 Product and category sales with cost and margin.** Extend
   Product Mix with:
   - net sales excluding VAT per item and per category, and quantity

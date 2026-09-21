@@ -27,7 +27,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'export-verify-'))
 execSync(
-  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts shared/src/salesSummary.ts shared/src/tenderSummary.ts shared/src/vatReport.ts --outDir ${out} ` +
+  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts shared/src/salesSummary.ts shared/src/tenderSummary.ts shared/src/vatReport.ts shared/src/cashUpReport.ts --outDir ${out} ` +
   `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
@@ -42,6 +42,7 @@ const RF = await import(`file://${join(out, 'reportFile.js')}`)
 const SS = await import(`file://${join(out, 'salesSummary.js')}`)
 const TS = await import(`file://${join(out, 'tenderSummary.js')}`)
 const VR = await import(`file://${join(out, 'vatReport.js')}`)
+const CU = await import(`file://${join(out, 'cashUpReport.js')}`)
 const L = await import(`file://${join(out, 'loyaltyExport.js')}`)
 
 let pass = 0, fail = 0
@@ -284,6 +285,27 @@ console.log('\nthe VAT report: by rate, reversals in their period, input VAT (UP
   eq('net VAT = output − reversed − input', t.netVat, Math.round((t.outputVat - t.refundVat - t.inputVat) * 100) / 100)
   eq('output VAT here = the sales summary\'s VAT output', t.outputVat, SS.salesSummary(built.checks, ['Main', 'Second']).total.vatOutput)
   eq('the total is the sum of the branches', r.byBranch.reduce((n, b) => n + b.figures.netVat, 0).toFixed(2), t.netVat.toFixed(2))
+}
+
+console.log('\ncash-up and drawer: per shift, per currency, never netted (UPGRADE.md T7.7)')
+{
+  const m = (usd, lbp) => ({ usd, lbp })
+  const totals = (over = {}) => ({ float: m(50, 500_000), cashIn: m(100, 1_000_000), change: m(10, 0), refunds: m(0, 0), card: m(40, 0), cardTips: 3,
+    paidOuts: m(5, 0), payIns: m(0, 0), safeDrops: m(20, 0), expected: m(115, 1_500_000), payments: 8, ...over })
+  const shifts = [
+    { id: 's1', branch: 'Main', cashUpDay: '2026-09-20', status: 'closed', openedTime: '17:02', openedByEmail: 'rana@example.com', closedByEmail: 'sam@example.com', totals: totals(), counted: m(110, 1_500_000), note: 'one $5 short' },
+    { id: 's2', branch: 'Main', cashUpDay: '2026-09-21', status: 'open', openedTime: '09:40', openedByEmail: 'rana@example.com', closedByEmail: '', totals: totals({ expected: m(80, 0) }), counted: null, note: '' },
+    { id: 's3', branch: 'Second', cashUpDay: '2026-09-20', status: 'closed', openedTime: '18:00', openedByEmail: 'lea@example.com', closedByEmail: 'lea@example.com', totals: totals({ expected: m(60, 200_000) }), counted: m(60, 250_000), note: '' },
+  ]
+  const eod = [{ branch: 'Main', date: '2026-09-20', countedUsd: 110, countedLbp: 1_500_000 }]
+  const r = CU.cashUpReport(shifts, eod, ['Main', 'Second'])
+  eq('a Z is named by branch, cash-up day and opening time', r.shifts[0].z, 'Main 2026-09-20 17:02')
+  eq('the difference is per currency, never netted at a rate', [r.shifts.find(s => s.id === 's1').difference, r.shifts.find(s => s.id === 's3').difference], [m(-5, 0), m(0, 50_000)])
+  eq('an open shift shows what it should hold and no count', [r.shifts.find(s => s.id === 's2').counted, r.shifts.find(s => s.id === 's2').difference], [null, null])
+  eq('totals count closed shifts only for counted and difference', [r.total.counted, r.total.difference, r.total.openShifts], [m(170, 1_750_000), m(-5, 50_000), 1])
+  eq('card and card tips are shown, never in the drawer', [r.total.card, r.total.cardTips], [m(120, 0), 9])
+  eq('each day\'s End of Day count sits beside its shifts', r.days.find(d => d.branch === 'Main' && d.cashUpDay === '2026-09-20').eodCounted, m(110, 1_500_000))
+  eq('the total is the sum of the branches', r.byBranch.reduce((n, b) => n + b.totals.difference.lbp, 0), r.total.difference.lbp)
 }
 
 console.log('\nthe sheets are declared once, for the UI and the file both')

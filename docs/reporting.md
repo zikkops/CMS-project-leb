@@ -365,7 +365,7 @@ in USD at the cost stored with the count (`countVariance()` in
     - A check with no `billRate` uses the current business rate.
     - End of Day's system figure is converted at the current rate when read.
     - Fix: **T7.3**, **T7.5**, **T7.17**.
-14. **End of Day nets the two currencies into one figure.** The drawer refuses
+14. **Answered by Cash-up & Drawer (T7.7, 21 Sep 2026), which shows every shift and each day per currency, never netted, with the End of Day count beside it.** The End of Day form itself still nets its Difference into one figure. The drawer refuses
     to do that (`drawerDifference()`).
     - Fix: **T7.7**.
 15. **FIXED 21 Sep 2026. End of Day threw away expense and income lines, and

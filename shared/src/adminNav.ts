@@ -185,6 +185,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
       { label: 'Sales Summary', href: '/admin/reports/sales', access: SECTION_ACCESS.endOfDay, icon: faReceipt, kind: 'use', desc: 'Gross, discounts, net sales without VAT, VAT, service, refunds and card tips, per branch.' },
       { label: 'Payments & Tenders', href: '/admin/reports/payments', access: SECTION_ACCESS.endOfDay, icon: faCashRegister, kind: 'use', desc: 'Cash, change and card in each currency, card tips, and refunds by tender, per branch.' },
       { label: 'VAT', href: '/admin/reports/vat', access: SECTION_ACCESS.endOfDay, icon: faFileExport, kind: 'use', desc: 'Output VAT by rate, reversals on refunds, input VAT from deliveries, and the net owed.' },
+      { label: 'Cash-up & Drawer', href: '/admin/reports/cash-up', access: SECTION_ACCESS.endOfDay, icon: faMoneyBill, kind: 'use', desc: 'Every drawer shift: should hold, counted and difference per currency, beside End of Day.' },
       { label: 'Product Mix', href: '/admin/reports/mix', access: SECTION_ACCESS.endOfDay, icon: faChartPie, kind: 'use', desc: 'Best sellers by count and by revenue, and each category’s share.' },
       { label: 'Hourly Sales', href: '/admin/reports/hourly', access: SECTION_ACCESS.endOfDay, icon: faChartColumn, kind: 'use', desc: 'Takings hour by hour, beside the same day a week before.' },
       { label: 'Timesheet', href: '/admin/reports/timesheet', access: SECTION_ACCESS.endOfDay, icon: faUserClock, kind: 'use', desc: 'Who clocked in and out with the staff app, and their hours.' },
