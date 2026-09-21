@@ -317,10 +317,10 @@ console.log('\nthe receipt sequence: gaps, duplicates and numbers with no record
   const n = (seq, year = 2026) => `BC-Q3-09${year}-${String(seq).padStart(4, '0')}`
   eq('a number is read from its end, whatever dashes the prefix holds', [RS.parseReceiptNumber('MY-CAFE-Q1-012026-12345'), RS.parseReceiptNumber('BC-0042'), RS.parseReceiptNumber('BC-Q3-132026-0001')],
     [{ year: 2026, sequence: 12345 }, null, null])
-  const use = (seq, over = {}) => ({ number: n(seq), kind: 'check', id: `c${seq}`, branch: 'Main', day: '2026-09-20', ...over })
+  const sold = (seq, over = {}) => ({ number: n(seq), kind: 'check', id: `c${seq}`, branch: 'Main', day: '2026-09-20', ...over })
   const r = RS.receiptSequence(
-    [use(10), use(11, { branch: 'Second' }), use(12, { kind: 'wholesale', branch: '' }), use(14, { kind: 'retail' }), use(14, { id: 'c14b' }),
-      use(30), use(31), use(40), { number: 'handwritten', kind: 'check', id: 'x', branch: 'Main', day: '2026-09-20' }],
+    [sold(10), sold(11, { branch: 'Second' }), sold(12, { kind: 'wholesale', branch: '' }), sold(14, { kind: 'retail' }), sold(14, { id: 'c14b' }),
+      sold(30), sold(31), sold(40), { number: 'handwritten', kind: 'check', id: 'x', branch: 'Main', day: '2026-09-20' }],
     [13, 14, 30, 31, 40].map(s => ({ year: 2026, sequence: s, number: n(s), purpose: s === 13 ? 'check c99' : 'x', day: '2026-09-20' })),
     [{ year: 2026, first: 20, last: 29, branch: 'Main', name: 'Counter PC' }],
     { branches: ['Main'] },
@@ -335,9 +335,9 @@ console.log('\nthe receipt sequence: gaps, duplicates and numbers with no record
   eq('never seen, above the first logged number (13): missing', r.gaps.find(g => g.to === 19), { year: 2026, from: 15, to: 19, count: 5, status: 'gap', note: '' })
   eq('a gap inside the logged span is missing, and counted', [r.gaps.find(g => g.from === 32).status, r.years[0].missing], ['gap', 13])
   eq('a number not in the format sits in no sequence, and is said', r.unreadable.map(u => u.number), ['handwritten'])
-  const early = RS.receiptSequence([use(1), use(5)], [{ year: 2026, sequence: 5, number: n(5), purpose: 'x', day: '2026-09-21' }], [], { branches: ['Main'] })
+  const early = RS.receiptSequence([sold(1), sold(5)], [{ year: 2026, sequence: 5, number: n(5), purpose: 'x', day: '2026-09-21' }], [], { branches: ['Main'] })
   eq('never seen and below the first logged number: before the log', early.gaps.map(g => [g.from, g.to, g.status]), [[2, 4, 'gap before the log']])
-  const years = RS.receiptSequence([use(3), { ...use(1), number: n(1, 2027) }], [], [], { branches: ['Main'] })
+  const years = RS.receiptSequence([sold(3), { ...sold(1), number: n(1, 2027) }], [], [], { branches: ['Main'] })
   eq('each year is its own sequence, since the counter restarts', years.years.map(y => [y.year, y.first, y.last]), [[2026, 3, 3], [2027, 1, 1]])
 }
 

@@ -175,7 +175,6 @@ console.log('\nthe timesheet counts the range only (gap 17)')
 
 console.log('\nthe labour report: hours, cost at the day\'s rate, tips and what is owed (UPGRADE.md T7.11)')
 {
-  const H = 60 * 60_000
   const shift = (uid, name, day, minutes, over = {}) => ({ uid, name, branch: 'Main', day, inAt: Date.parse(day + 'T08:00:00Z'), outAt: Date.parse(day + 'T08:00:00Z') + minutes * 60_000, minutes, long: false, ...over })
   const staff = [
     // A raise on the 15th: the 10th is paid at the old rate.
