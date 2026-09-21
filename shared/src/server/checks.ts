@@ -35,6 +35,7 @@ import { refundOf } from '../drawer'
 import { vatRateOn } from '../businessSettings'
 import { todayYmd, zonedParts } from '../dates'
 import { describeWindow, priceAt, servedAt, storedHours, storedPriceRules } from '../timePricing'
+import { readComboOf, withComboParts, partWithoutCombo } from '../combos'
 import { BRAND } from '../brand'
 import { isSoldOut, soldOutDay } from '../soldOut'
 import { validateSelection, toSelections, type ModifierGroup } from '../modifiers'
@@ -151,10 +152,17 @@ async function buildLines(
   const menuIds = [...new Set(requests.filter(r => r.source === 'menu').map(r => r.refId))]
   const productIds = [...new Set(requests.filter(r => r.source === 'product').map(r => r.refId))]
 
-  const [menuSnaps, productSnaps] = await Promise.all([
+  const [askedSnaps, productSnaps] = await Promise.all([
     menuIds.length ? db.getAll(...menuIds.map(id => db.doc(`menuItems/${id}`))) : [],
     productIds.length ? db.getAll(...productIds.map(id => db.doc(`products/${id}`))) : [],
   ])
+  // A combo's components, read now with everything else (UPGRADE.md T5.13):
+  // their stations, options and recipes are needed like any dish's.
+  const partIds = [...new Set(askedSnaps.filter(s => s.exists).flatMap(s => readComboOf(s.data()?.comboOf, s.id)))]
+    .filter(id => !menuIds.includes(id))
+  const partSnaps = partIds.length ? await db.getAll(...partIds.map(id => db.doc(`menuItems/${id}`))) : []
+  const menuSnaps = [...askedSnaps, ...partSnaps]
+  const allMenuIds = [...menuIds, ...partIds]
   const menuById = new Map(menuSnaps.map(s => [s.id, s]))
   const productById = new Map(productSnaps.map(s => [s.id, s]))
 
@@ -187,8 +195,8 @@ async function buildLines(
   // snapshot, so a recipe edited between adding and sending changes nothing
   // already on a check. Off, there are no extra reads and no new fields:
   // Send behaves exactly as it did before recipes existed.
-  const recipesOn = menuIds.length > 0 && await serverFeatureOn('recipes')
-  const recipeSnaps = recipesOn ? await db.getAll(...menuIds.map(id => db.doc(`recipes/${id}`))) : []
+  const recipesOn = allMenuIds.length > 0 && await serverFeatureOn('recipes')
+  const recipeSnaps = recipesOn ? await db.getAll(...allMenuIds.map(id => db.doc(`recipes/${id}`))) : []
   const recipeById = new Map<string, Recipe>(recipeSnaps.filter(s => s.exists).map((s): [string, Recipe] => {
     const d = s.data() ?? {}
     return [s.id, {
@@ -206,7 +214,7 @@ async function buildLines(
   const recipeSupplies: Record<string, RecipeSupply> = Object.fromEntries(
     recipeSupplySnaps.filter(s => s.exists).map(s => [s.id, toRecipeSupply(s.id, s.data() ?? {})]))
 
-  const lines = requests.map((req, i) => {
+  const lines = requests.flatMap((req, i): CheckLine[] => {
     const where = `Item ${i + 1}`
 
     if (req.source === 'product') {
@@ -217,7 +225,7 @@ async function buildLines(
       if (req.modifierOptionIds.length > 0) {
         throw new HttpError(400, `${where}: merchandise does not take modifiers.`)
       }
-      return line(caller, req, {
+      return [line(caller, req, {
         name: String(data.name ?? ''),
         // effectivePrice, not price: a product on sale rings up at the sale
         // price, and a till that ignored that would charge more than the shelf.
@@ -229,7 +237,7 @@ async function buildLines(
         // Nobody cooks a board game.
         station: null,
         modifiers: [],
-      })
+      })]
     }
 
     const snap = menuById.get(req.refId)
@@ -271,7 +279,8 @@ async function buildLines(
       ? lineConsumption(recipe, selections.map(s => s.optionId), 1, recipeSupplies)
       : null
 
-    return line(caller, req, {
+    const parts = readComboOf(data.comboOf, req.refId)
+    const main = line(caller, req, {
       name: String(data.name ?? ''),
       unitPrice: priced.price,
       // Named on the line when a rule set the price, so the check and the
@@ -282,6 +291,33 @@ async function buildLines(
       ...(consumption && consumption.consumes.length > 0 ? { consumesPerServing: consumption.consumes } : {}),
       ...(consumption && consumption.unknown.length > 0 ? { consumesUnknown: consumption.unknown } : {}),
     })
+    if (parts.length === 0) return [main]
+    // A combo (T5.13): its own line carries the price and fires nowhere; each
+    // component is a $0 line of its own, to its own station, with its own
+    // recipe, pointing back at the combo's line.
+    return [{ ...main, station: null }, ...parts.map(partId => {
+      const part = menuById.get(partId)
+      if (!part?.exists) throw new HttpError(400, `${data.name ?? where}: an item in this combo is no longer on the menu.`)
+      const p = part.data() ?? {}
+      if (p.available === false) throw new HttpError(400, `${data.name ?? where}: "${p.name ?? partId}" is marked unavailable.`)
+      const partGroups = ((p.modifierGroupIds ?? []) as string[]).map(id => groups.get(id)).filter((g): g is ModifierGroup => Boolean(g))
+      if (partGroups.some(g => validateSelection(g, []) !== null)) {
+        throw new HttpError(400, `${data.name ?? where}: "${p.name ?? partId}" needs a choice, so it cannot be served in a combo yet.`)
+      }
+      const partRecipe = recipeById.get(partId)
+      const partConsumption = partRecipe ? lineConsumption(partRecipe, [], 1, recipeSupplies) : null
+      return {
+        ...line(caller, { ...req, refId: partId, modifierOptionIds: [], note: '' }, {
+          name: String(p.name ?? ''),
+          unitPrice: 0,
+          station: stationForSection(sectionByCategory.get(String(p.categoryId ?? ''))),
+          modifiers: [],
+          ...(partConsumption && partConsumption.consumes.length > 0 ? { consumesPerServing: partConsumption.consumes } : {}),
+          ...(partConsumption && partConsumption.unknown.length > 0 ? { consumesUnknown: partConsumption.unknown } : {}),
+        }),
+        comboOf: main.id,
+      }
+    })]
   })
   // What each menu item says about being sold out, for addLines() to judge
   // against the check's branch (UPGRADE.md T3.5).
@@ -746,6 +782,10 @@ export async function voidLine(
     if (target.status === 'void') throw new HttpError(409, 'That item is already voided.')
 
     const wasSent = target.status === 'sent'
+    // A combo is voided whole: its components go with it, for the same reason
+    // (UPGRADE.md T5.13). A component on its own may be struck off; it cost $0.
+    const voiding = new Set(withComboParts(check.lines, [lineId]).filter(id => check.lines.find(l => l.id === id)?.status !== 'void'))
+    const targets = check.lines.filter(l => voiding.has(l.id))
     // Food already sent needs a manager (UPGRADE.md T5.1); a line never sent
     // is anyone's to correct. Judged here, from the stored line, not the request.
     const refusal = reversalRefusal(caller.role, wasSent ? 'void-sent' : 'void-unsent')
@@ -757,7 +797,7 @@ export async function voidLine(
     // What the void does to ingredients, decided by the pure plan: never
     // sent took nothing, not made goes back, made and lost is waste, valued
     // from the line's own snapshot. Supplies are read now, before any write.
-    const plan = reversalPlan([target], wasSent, reason)
+    const plan = reversalPlan(targets, wasSent, reason)
     const returnMoves = (STOCKED_BRANCHES as readonly string[]).includes(check.branch) ? plan.returns : []
     const returnSnaps = returnMoves.length
       ? await tx.getAll(...returnMoves.map(m => db.doc(`supplies/${m.supplyId}`)))
@@ -783,7 +823,7 @@ export async function voidLine(
 
     tx.update(db.doc(`${CHECKS}/${checkId}`), {
       lines: check.lines.map(l =>
-        l.id === lineId
+        voiding.has(l.id)
           ? {
               ...l,
               status: 'void',
@@ -806,8 +846,8 @@ export async function voidLine(
     if (tickets) {
       for (const doc of tickets.docs) {
         const lines = (doc.data().lines ?? []) as { lineId: string; voided: boolean }[]
-        if (!lines.some(tl => tl.lineId === lineId)) continue
-        const next = lines.map(tl => tl.lineId === lineId ? { ...tl, voided: true } : tl)
+        if (!lines.some(tl => voiding.has(tl.lineId))) continue
+        const next = lines.map(tl => voiding.has(tl.lineId) ? { ...tl, voided: true } : tl)
         tx.update(doc.ref, {
           lines: next,
           // A ticket whose every line is struck off has nothing left to cook.
@@ -944,9 +984,11 @@ export async function moveLines(
     if (moveAlreadyApplied(to.lines, moveKey)) {
       return { moved: 0, duplicate: true, from: checkLabel(from), to: checkLabel(to) }
     }
-    const problem = moveProblem(from, to, lineIds)
+    if (partWithoutCombo(from.lines, lineIds)) throw new HttpError(409, 'That item is part of a combo: move the combo, and it comes too.')
+    const whole = withComboParts(from.lines, lineIds)
+    const problem = moveProblem(from, to, whole)
     if (problem) throw new HttpError(409, problem)
-    const moving = new Set(lineIds)
+    const moving = new Set(whole)
     const stamp = { movedFrom: fromId, movedBy: caller.uid, movedAt: new Date().toISOString(), ...(moveKey ? { movedKey: moveKey } : {}) }
     tx.update(db.doc(`${CHECKS}/${fromId}`), {
       lines: from.lines.filter(l => !moving.has(l.id)),

@@ -359,5 +359,21 @@ console.log('\nemailing a receipt (UPGRADE.md T3.7)')
   eq('a mistyped address, the right one, and one spare', E.RECEIPT_EMAILS_PER_CHECK, 3)
 }
 
+console.log('\na combo and an order with no table (UPGRADE.md T5.5, T5.13)')
+{
+  const combo = check({ lines: [
+    line({ id: 'm', name: 'Breakfast deal', unitPrice: 6, station: null }),
+    line({ id: 'p1', name: 'Toast', unitPrice: 0, station: 'Kitchen', comboOf: 'm' }),
+    line({ id: 'p2', name: 'Tea', unitPrice: 0, comboOf: 'm', quantity: 2 }),
+  ] })
+  const rows = R.buildReceipt(combo, opts)
+  eq('the combo is priced once, its parts listed under it with no price',
+    [find(rows, '1 x Breakfast deal')?.right, rows.filter(r => r.kind === 'left' && /^ {2}\+ /.test(r.text)).map(r => r.text)],
+    ['6.00', ['  + Toast', '  + 2 x Tea']])
+  eq('no part appears as a priced line', rows.some(r => r.kind === 'pair' && /Toast|Tea/.test(r.left)), false)
+  const takeaway = R.buildReceipt(check({ orderType: 'takeaway', orderName: 'Rana', tableNumber: 0 }), opts)
+  eq('a takeaway prints its order, never "Table 0"', [find(takeaway, 'Order')?.right, find(takeaway, 'Table')], ['Takeaway: Rana', undefined])
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

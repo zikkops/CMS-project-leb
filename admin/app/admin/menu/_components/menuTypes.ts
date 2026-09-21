@@ -27,6 +27,8 @@ export interface MenuItem {
   /** Serving hours and happy-hour prices (UPGRADE.md T5.12), as stored; read with storedHours()/storedPriceRules(). */
   hours?: unknown
   priceRules?: unknown
+  /** The items this combo is made of (UPGRADE.md T5.13). */
+  comboOf?: unknown
 }
 
 export const EMPTY_ITEM = {
@@ -40,6 +42,7 @@ export const EMPTY_ITEM = {
   image: '',
   hours: null as TimeWindow | null,
   priceRules: [] as PriceRule[],
+  comboOf: [] as string[],
 }
 
 export type ItemForm = typeof EMPTY_ITEM

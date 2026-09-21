@@ -17,7 +17,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'checks-verify-'))
 execSync(
-  `npx tsc shared/src/checks.ts shared/src/tickets.ts shared/src/money.ts shared/src/netErrors.ts shared/src/requestKey.ts shared/src/soldOut.ts shared/src/timePricing.ts --outDir ${out} --module esnext ` +
+  `npx tsc shared/src/checks.ts shared/src/tickets.ts shared/src/money.ts shared/src/netErrors.ts shared/src/requestKey.ts shared/src/soldOut.ts shared/src/timePricing.ts shared/src/combos.ts --outDir ${out} --module esnext ` +
   `--target es2022 --skipLibCheck --moduleResolution bundler`,
   { stdio: 'pipe' }
 )
@@ -30,6 +30,7 @@ const C = await import(`file://${join(out, 'checks.js')}`)
 const T = await import(`file://${join(out, 'tickets.js')}`)
 const SO = await import(`file://${join(out, 'soldOut.js')}`)
 const TP = await import(`file://${join(out, 'timePricing.js')}`)
+const CB = await import(`file://${join(out, 'combos.js')}`)
 const M = await import(`file://${join(out, 'money.js')}`)
 
 let pass = 0, fail = 0
@@ -448,6 +449,30 @@ console.log('\n86 from the till: sold out for the café day (UPGRADE.md T3.5)')
     [true, false, false])
   eq('anything that is not branch → day is read as nothing sold out', [SO.readSoldOut(null), SO.readSoldOut(['Main']), SO.readSoldOut({ Main: 7, Second: 'soon', Third: '2026-09-13' })],
     [{}, {}, { Third: '2026-09-13' }])
+}
+
+console.log('\nCombos (UPGRADE.md T5.13)')
+{
+  eq('a combo is two to six distinct items, never itself', CB.readComboOf(['a', 'b', 'a', 'self'], 'self'), ['a', 'b'])
+  eq('one item is no combo', CB.readComboOf(['a']), [])
+  eq('seven is too many, so no combo', CB.readComboOf(['a', 'b', 'c', 'd', 'e', 'f', 'g']), [])
+  eq('an id with a slash is dropped', CB.readComboOf(['a', 'b/c', 'd']), ['a', 'd'])
+  const menu = new Map([
+    ['burger', { name: 'Burger', requiresChoice: true }],
+    ['fries', { name: 'Fries', requiresChoice: false }],
+    ['cola', { name: 'Cola', requiresChoice: false }],
+    ['meal', { name: 'Meal', requiresChoice: false, comboOf: ['fries', 'cola'] }],
+    ['gone', null],
+  ])
+  eq('fries and a cola make a combo', CB.comboProblem('deal', ['fries', 'cola'], menu), null)
+  eq('an empty list is an ordinary item', CB.comboProblem('deal', [], menu), null)
+  eq('a combo cannot contain itself', typeof CB.comboProblem('fries', ['fries', 'cola'], menu), 'string')
+  eq('an item needing a choice cannot be in one yet', /needs a choice/.test(CB.comboProblem('deal', ['burger', 'cola'], menu) ?? ''), true)
+  eq('combos do not nest', /do not nest/.test(CB.comboProblem('deal', ['meal', 'cola'], menu) ?? ''), true)
+  eq('an item no longer on the menu is refused', typeof CB.comboProblem('deal', ['gone', 'cola'], menu), 'string')
+  const lines = [{ id: 'm' }, { id: 'p1', comboOf: 'm' }, { id: 'p2', comboOf: 'm' }, { id: 'x' }]
+  eq('a combo moves and is voided with its parts', CB.withComboParts(lines, ['m']).sort(), ['m', 'p1', 'p2'])
+  eq('a part chosen alone is caught', [CB.partWithoutCombo(lines, ['p1']), CB.partWithoutCombo(lines, ['m', 'p1'])], [true, false])
 }
 
 console.log('\nMenus by time of day and happy hour (UPGRADE.md T5.12)')

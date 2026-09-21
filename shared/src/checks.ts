@@ -379,6 +379,8 @@ export interface CheckLine {
   consumesUnknown?: string[]
   /** The price rule that set unitPrice when it was added, e.g. "Happy hour" (UPGRADE.md T5.12). Absent: the item's own price. */
   priceRule?: string
+  /** A component of a combo (UPGRADE.md T5.13): the id of the combo's line. Priced at $0; the combo carries the price. */
+  comboOf?: string
   /** What a wasted void cost, from the snapshot; null when it could not be costed. */
   voidWasteUsd?: number | null
 }

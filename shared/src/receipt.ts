@@ -189,6 +189,11 @@ export function buildReceipt(check: Check, opts: ReceiptOptions): ReceiptRow[] {
   // which is where an audit looks.
   for (const line of check.lines) {
     if (line.status === 'void') continue
+    // A combo's parts are listed under it, with no price: the combo carries it (T5.13).
+    if (line.comboOf) {
+      rows.push({ kind: 'left', text: `  + ${line.quantity > 1 ? `${line.quantity} x ` : ''}${line.name}` })
+      continue
+    }
     rows.push({
       kind: 'pair',
       left: `${line.quantity} x ${line.name}`,

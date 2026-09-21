@@ -9,9 +9,11 @@ import TimeRulesEditor from './TimeRulesEditor'
 // The Add / Edit Item modal. The page owns the form and the save; this only
 // draws it.
 export default function ItemModal({
-  isMobile, isEditing, form, setForm, activeSection, uploadingItem,
+  allItems, isMobile, isEditing, form, setForm, activeSection, uploadingItem,
   onImageUpload, onPickMedia, editSuggestion, saving, onClose, onSubmit,
 }: {
+  /** Every other item that is not itself a combo, to build a combo from (T5.13). */
+  allItems: { id: string; name: string }[]
   isMobile: boolean
   isEditing: boolean
   form: ItemForm
@@ -159,6 +161,28 @@ export default function ItemModal({
           </div>
 
           <TimeRulesEditor form={form} setForm={setForm} colour={sectionColors[activeSection]} />
+
+          {/* A combo (UPGRADE.md T5.13): made of two to six other items, at this item's price. */}
+          <div>
+            <label style={{ ...labelStyle, marginBottom: '0.6rem' }}>Combo of (optional)</label>
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', maxHeight: '9rem', overflowY: 'auto' }}>
+              {allItems.map(i => {
+                const on = form.comboOf.includes(i.id)
+                return (
+                  <button key={i.id} type="button" aria-pressed={on}
+                    onClick={() => setForm(f => ({ ...f, comboOf: on ? f.comboOf.filter(x => x !== i.id) : [...f.comboOf, i.id] }))}
+                    style={{ ...smallButton, borderColor: on ? sectionColors[activeSection] : undefined, color: on ? sectionColors[activeSection] : undefined }}>
+                    {i.name}
+                  </button>
+                )
+              })}
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'rgba(var(--offwhite-rgb),0.5)', marginTop: '0.4rem', lineHeight: 1.5 }}>
+              {form.comboOf.length > 0
+                ? `${form.comboOf.length} items. Each goes to its own station and takes its own ingredients; the combo carries the price.`
+                : 'Leave empty for an ordinary item. An item that needs a choice from its options cannot be in a combo yet.'}
+            </p>
+          </div>
 
           <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
             <button type="button" onClick={onClose} style={{

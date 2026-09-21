@@ -481,6 +481,31 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
   // Loyalty on a hub (UPGRADE.md T5.7): refused plainly, whatever the switch says.
   await rejects('a hub collects no loyalty points, and says so', () => C.setLoyaltyCustomer(staff, checkId, 'ABCD2345'), e => e.status === 409 && /café hub/.test(e.message))
 
+  // Combos (UPGRADE.md T5.13): the combo carries the price, each part fires to its station.
+  {
+    await db.doc('menuCategories/cat-drinks').set({ name: 'Drinks', section: 'Beverage' })
+    await db.doc('menuItems/m-tea').set({ name: 'Tea', price: 2, categoryId: 'cat-drinks', available: true, modifierGroupIds: [] })
+    await db.doc('menuItems/m-deal').set({ name: 'Breakfast deal', price: 6, categoryId: 'cat-drinks', available: true, modifierGroupIds: [], comboOf: ['m-toast', 'm-tea'] })
+    const dc = await C.openCheck(staff, { branch, tableNumber: 65, guestCount: 1 })
+    const deal = await C.addLines(staff, dc.id, C.parseLineRequests({ lines: [{ source: 'menu', refId: 'm-deal', quantity: 2 }] }), 'batch-deal-1')
+    const [combo, ...parts] = deal.lines
+    eq('a combo is its line and a $0 line per part, pointing back', [deal.added, combo.unitPrice, combo.station, parts.map(p => [p.name, p.unitPrice, p.comboOf === combo.id, p.quantity])],
+      [3, 6, null, [['Toast', 0, true, 2], ['Tea', 0, true, 2]]])
+    const { checkTotals } = await import(url('checks.js'))
+    eq('...the bill is the combo\'s price, once per combo', checkTotals((await db.doc(`checks/${dc.id}`).get()).data()).net, 12)
+    const fired = await C.sendCheck(staff, dc.id)
+    eq('each part fires to its own station; the combo itself makes no ticket', fired.tickets.map(t => t.station).sort(), ['Bar', 'Kitchen'])
+    await rejects('a part does not move without its combo', () => C.moveLines(staff, dc.id, dc.id, [parts[0].id], 'move-part-0001'), e => e.status === 409 && /combo/.test(e.message))
+    await C.voidLine(staff, dc.id, combo.id, 'rung-wrong', '')
+    eq('voiding the combo voids its parts', (await db.doc(`checks/${dc.id}`).get()).data().lines.map(l => l.status), ['void', 'void', 'void'])
+    await db.doc('modifierGroups/g-doneness').set({ name: 'Doneness', minSelections: 1, maxSelections: 1, options: [{ id: 'o-rare', name: 'Rare', priceDelta: 0 }] })
+    await db.doc('menuItems/m-steak').set({ name: 'Steak', price: 20, categoryId: 'cat-drinks', available: true, modifierGroupIds: ['g-doneness'] })
+    await db.doc('menuItems/m-steakdeal').set({ name: 'Steak deal', price: 22, categoryId: 'cat-drinks', available: true, modifierGroupIds: [], comboOf: ['m-steak', 'm-tea'] })
+    await rejects('a combo whose part needs a choice is refused at the till', () => C.addLines(staff, dc.id, C.parseLineRequests({ lines: [{ source: 'menu', refId: 'm-steakdeal', quantity: 1 }] }), 'batch-deal-2'), e => e.status === 400 && /needs a choice/.test(e.message))
+    await db.doc(`checks/${dc.id}`).delete()
+    for (const t of fired.tickets) await db.doc(`kitchenTickets/${t.id}`).delete()
+  }
+
   // Serving hours and happy hour, judged on the café's clock (UPGRADE.md T5.12).
   {
     const { zonedParts } = await import(url('dates.js'))

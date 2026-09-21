@@ -19,6 +19,7 @@ import ItemList from './_components/ItemList'
 import EditCategoryModal from './_components/EditCategoryModal'
 import ItemModal from './_components/ItemModal'
 import { storedHours, storedPriceRules } from '@big-cms/shared/timePricing'
+import { readComboOf } from '@big-cms/shared/combos'
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false)
@@ -210,6 +211,7 @@ export default function AdminMenuPage() {
       image:       item.image ?? '',
       hours:       storedHours(item.hours),
       priceRules:  storedPriceRules(item.priceRules),
+      comboOf:     readComboOf(item.comboOf, item.id),
     })
     setOpen(true)
   }
@@ -400,6 +402,7 @@ export default function AdminMenuPage() {
       {/* Item Modal */}
       {open && (
         <ItemModal
+          allItems={items.filter(i => i.id !== editing?.id && readComboOf(i.comboOf, i.id).length === 0).map(i => ({ id: i.id, name: i.name }))}
           isMobile={isMobile}
           isEditing={!!editing}
           form={form}

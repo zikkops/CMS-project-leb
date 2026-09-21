@@ -8,6 +8,7 @@
 // into Firestore with nothing between.
 
 import { readHours, readPriceRules, type PriceRule, type TimeWindow } from '../timePricing'
+import { comboProblem, COMBO_MAX } from '../combos'
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from './firebaseAdmin'
 import { HttpError } from './auth'
@@ -120,6 +121,8 @@ export interface MenuItemInput {
   hours?: TimeWindow | null
   /** Happy-hour prices; absent when not sent, for the same reason. */
   priceRules?: PriceRule[]
+  /** The menu items this combo is made of (UPGRADE.md T5.13); [] for none; absent when not sent. */
+  comboOf?: string[]
 }
 
 export function parseMenuItemInput(body: Record<string, unknown>): MenuItemInput {
@@ -140,7 +143,30 @@ export function parseMenuItemInput(body: Record<string, unknown>): MenuItemInput
     ...(body.image !== undefined ? { image: text(body.image, 'Image', { maxLen: 2000 }) } : {}),
     ...(body.hours !== undefined ? { hours: checked(readHours(body.hours)) } : {}),
     ...(body.priceRules !== undefined ? { priceRules: checked(readPriceRules(body.priceRules)) } : {}),
+    ...(body.comboOf !== undefined ? { comboOf: Array.isArray(body.comboOf) ? [...new Set(body.comboOf.map(String))] : [] } : {}),
   }
+}
+
+/**
+ * Refuses a combo that names an item that is gone, a combo, itself, or an
+ * item needing a choice (comboProblem() in combos.ts), reading the named
+ * items and their option groups (UPGRADE.md T5.13).
+ */
+async function checkCombo(selfId: string | null, comboOf: string[] | undefined): Promise<void> {
+  if (!comboOf || comboOf.length === 0) return
+  const db = adminDb()
+  const ids = comboOf.filter(id => id && !id.includes('/')).slice(0, COMBO_MAX + 1)
+  const snaps = ids.length ? await db.getAll(...ids.map(id => db.doc(`menuItems/${id}`))) : []
+  const groupIds = [...new Set(snaps.filter(s => s.exists).flatMap(s => (s.data()?.modifierGroupIds ?? []) as string[]))]
+  const groupSnaps = groupIds.length ? await db.getAll(...groupIds.map(id => db.doc(`modifierGroups/${id}`))) : []
+  const required = new Set(groupSnaps.filter(s => s.exists && Number(s.data()?.minSelections ?? 0) > 0).map(s => s.id))
+  const components = new Map(snaps.map(s => [s.id, s.exists ? {
+    name: String(s.data()?.name ?? s.id),
+    comboOf: s.data()?.comboOf,
+    requiresChoice: ((s.data()?.modifierGroupIds ?? []) as string[]).some(g => required.has(g)),
+  } : null]))
+  const problem = comboProblem(selfId, comboOf, components)
+  if (problem) throw new HttpError(400, problem)
 }
 
 /** A reader's answer, or its reason as a 400 — refused, never quietly saved as something else. */
@@ -151,6 +177,7 @@ function checked<T>(v: T | string): T {
 
 export async function createMenuItem(input: MenuItemInput): Promise<{ id: string }> {
   const db = adminDb()
+  await checkCombo(null, input.comboOf)
   // An item whose category does not exist renders nowhere — the menu groups
   // strictly by category — so it would be invisible and unreported.
   if (!(await db.doc(`menuCategories/${input.categoryId}`).get()).exists) {
@@ -170,6 +197,7 @@ export async function updateMenuItem(id: string, input: MenuItemInput): Promise<
   const ref = adminDb().doc(`menuItems/${id}`)
   const snap = await ref.get()
   if (!snap.exists) throw new HttpError(404, 'That item no longer exists.')
+  await checkCombo(id, input.comboOf)
   await ref.update({ ...input, updatedAt: FieldValue.serverTimestamp() })
   return { before: snap.data() ?? {} }
 }

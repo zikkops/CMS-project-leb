@@ -156,7 +156,8 @@ function LineRow({ line, now, discount, onMore }: {
   return (
     <div style={{
       display: 'flex', gap: '0.8rem', alignItems: 'flex-start',
-      padding: '0.85rem 0.2rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.07)',
+      // A combo's part sits under its combo, indented, with no price of its own (T5.13).
+      padding: line.comboOf ? '0.45rem 0.2rem 0.45rem 1.6rem' : '0.85rem 0.2rem', borderBottom: '1px solid rgba(var(--overlay-rgb),0.07)',
       opacity: voided ? 0.5 : 1,
     }}>
       <span style={{
@@ -193,8 +194,8 @@ function LineRow({ line, now, discount, onMore }: {
       </div>
 
       <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem' }}>
-        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '1.02rem', fontWeight: 600, color: 'var(--offwhite)' }}>
-          {money(lineTotal(line, discount))}
+        <p style={{ fontFamily: 'var(--font-inter)', fontSize: '1.02rem', fontWeight: 600, color: line.comboOf ? 'rgba(var(--offwhite-rgb),0.5)' : 'var(--offwhite)' }}>
+          {line.comboOf ? 'in combo' : money(lineTotal(line, discount))}
         </p>
         {off > 0 && (
           <p style={{ fontSize: '0.78rem', color: 'var(--teal)' }}>was {money(grossLineTotal(line))}</p>
