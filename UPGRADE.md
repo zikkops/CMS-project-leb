@@ -678,20 +678,39 @@ Principles for every task here:
   `verify:accounting`), with mutations caught by name. The run on
   `npm run seed:pos` data is part of the check, not optional.
 
-- [ ] **T7.0 The reporting audit, written down** (owner, for the answers).
+- [ ] **T7.0 The reporting audit, written down.**
   Produce `docs/reporting.md`:
   - every figure the system reports: where it is computed, its definition,
     which reports show it, and whether it reconciles
   - every gap against the standards above
 
-  Then record the owner's answers here:
-  - The **fiscal year's start**, and whether a period ever **locks**.
-  - Is the **service charge** subject to VAT in Lebanon?
-  - Which **journal format** the accountant imports (plain CSV journal, Xero,
-    QuickBooks or another).
-  - The **chart of accounts** names and numbers to map to.
-  - Whether reports show **LBP beside USD** at each check's own rate (the
-    export already does), or USD only.
+  *Owner's answers, 21 Sep 2026:*
+  - **Journal format: plain CSV.** One row per line, with these columns:
+    - date, journal number, branch
+    - account code, account name, description
+    - debit USD, credit USD, debit LBP, credit LBP
+    - the source (receipt, shift, delivery)
+  - **Both lira and dollars** on every report and download. LBP is shown at
+    each check's own `billRate`, and at the business rate only where no check
+    rate exists (a delivery keeps its own rate). Totals are summed in each
+    currency, never converted after the fact.
+  - **Labour cost: yes.** An admin panel sets each person's hourly rate and
+    tip weight (T7.18).
+
+  *Defaults, to be corrected by the owner or the accountant:*
+  - **Fiscal year:** the calendar year (1 January). A period locks by being
+    closed (T7.17): later changes show as post-close adjustments and never
+    rewrite what was sent.
+  - **Service charge is subject to VAT.** VAT is worked out of the check total
+    including the service charge, and the VAT report shows the service
+    charge's share on its own line, so a different ruling is one switch.
+  - **Chart of accounts:** a default set of generic codes, for example 1000
+    cash, 1010 card clearing, 1200 inventory, 2100 VAT output, 1400 VAT input,
+    2200 tips payable, 2300 loyalty liability, 4000 sales by category, 4500
+    service charge, 4900 discounts, 5000 cost of goods sold. They are editable
+    on an admin "Accounting codes" page, stored in `appSettings/accounting`
+    behind a route, so the accountant can put their own numbers in without a
+    code change.
 - [ ] **T7.1 One period and branch picker for every report.** Promote
   `ReportRange` (`admin/app/admin/reports/ReportRange.tsx`) to the admin UI
   kit:
@@ -790,11 +809,12 @@ Principles for every task here:
   and period:
   - hours per person and in total
   - shifts with no clock-out, flagged
-  - labour cost if an hourly rate is stored (T7.0 decides where; a rate is
-    personal data, so admin only)
-  - labour cost as a share of net sales
+  - labour cost, from each person's hourly rate as it stood on the day
+    worked (T7.18)
+  - labour cost as a share of net sales, per branch and day
 
-  Tips per person from the tips split, for payroll.
+  Tips per person from the tips split, and hours × rate + tips = what each
+  person is owed for the period, for payroll.
 - [ ] **T7.12 Inventory valuation and movement report.** Per branch, at a
   date:
   - stock on hand × weighted average cost = inventory value
@@ -812,7 +832,7 @@ Principles for every task here:
   report with the picker: points issued, reversed and redeemed, and the
   outstanding balance at the period's end, valued at the redemption rate if
   the owner sets one (T7.0). Points are a liability, like tips.
-- [ ] **T7.15 The accountant's journal export** (owner, format from T7.0). One
+- [ ] **T7.15 The accountant's journal export** (plain CSV, T7.0). One
   download per period and branch, as double-entry journal lines mapped to the
   chart of accounts:
   - debit cash, card clearing and tips payable
@@ -833,12 +853,44 @@ Principles for every task here:
   Any difference is listed, never rounded away. Run it on seeded data in CI,
   and show it at the top of the reports section, so a mismatch is seen before
   the accountant sees it.
-- [ ] **T7.17 Period close** (owner, from T7.0). An admin closes a period
+- [ ] **T7.17 Period close.** An admin closes a period
   once it has been handed to the accountant:
   - its reports are stored as issued (the numbers and the definitions version)
   - anything that later changes a closed day (a late refund, a held hub sale
     applied) is shown against the closed figures as a post-close adjustment,
     never silently changing a report already sent
+
+- [ ] **T7.18 Staff pay panel: hourly rate and tip weight per person** (owner's
+  request, 21 Sep 2026). An admin-only page (`/admin/staff/pay`, in
+  `ADMIN_NAV` under Administration) listing every staff member by first name,
+  where an admin sets:
+  - **Hourly rate**, with its currency (USD or LBP), used by the labour report
+    (T7.11).
+  - **Tip weight**, how much one shift of theirs counts in the tips split:
+    1.0 by default, 0.5 for a trainee, 1.25 for a supervisor. `tips.ts` then
+    splits the pot by shift points × weight, still to the cent by largest
+    remainder.
+
+  Rules:
+  - **Every change takes effect from a date and keeps its history.** Last
+    month's labour cost and tips are computed with last month's rate and
+    weight: the VAT rule again. A period already worked out keeps the numbers
+    it was worked out with.
+  - **Stored server-only** in `staffPay/{uid}` (a list of `{ from, hourlyRate,
+    currency, tipWeight, setBy }`), behind `/api/admin/staff-pay`, with no
+    Firestore rule and so no rules deploy. Never on `users/{uid}`, which its
+    owner can edit, and never pulled to a hub: pay is not the till's business.
+  - Admin only (`useRequireRole(['admin'])`), not a section key, because pay
+    is not a permission handed out for a shift. Every change is logged with
+    before and after, under "Staff pay".
+  - A weight of 0 takes that person out of the tips. A missing or nonsensical
+    value is 1.0 for the weight and "no rate" for pay, never $0, so the labour
+    report says "rate not set" rather than showing free labour.
+  - The tips page shows each person's weight beside their points, and the
+    period keeps the weights it used.
+
+  Covered by `verify:tips` (weights, history, sums to the pot) and the labour
+  cases in `verify:export`.
 
 ---
 
