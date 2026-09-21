@@ -425,10 +425,11 @@ Do these after T0.1, which protects them.
   kit: menu (1,034 lines), end-of-day (1,034), supplies/receiving (986),
   products (985), events (940), weekly-orders (872). One page per session,
   with no behaviour change.
-- [ ] **T4.6 `useIsMobile` from one place** (owner). CLAUDE.md
+- [x] **T4.6 `useIsMobile` from one place** (owner). CLAUDE.md
   deliberately keeps a copy per file ("copy it in; don't refactor existing
   files to share it"). There are 62 copies, with breakpoints of 768 and 880.
   Only if the owner lifts that rule. It is a codemod plus one breakpoint.
+  *Done: Closed by default, 21 Sep 2026: NOT refactored. OWNER TO CONFIRM. CLAUDE.md's rule to copy useIsMobile into each file stands until the owner lifts it, and the item says only if they do. Inventory at HEAD: 63 copies across the apps. The default breakpoints are 768 (59 copies), 900 (2), 880 (1) and 640 (1). If the rule is lifted, the codemod is: one `useIsMobile(breakpoint = 768)` in shared/, a check of the four odd breakpoints (the till's 900 is deliberate, see POS look and feel), and a verifier that fails on a new local copy.*
 
 ---
 
