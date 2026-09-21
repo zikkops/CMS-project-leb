@@ -9,6 +9,21 @@ import { todayYmd } from '@big-cms/shared/dates'
 import { BRAND } from '@big-cms/shared/brand'
 import { useBusinessSettings } from '@big-cms/shared/useBusinessSettings'
 import { distributeTips } from '@big-cms/shared/tips'
+import { matchStaffName, readPayHistory, tipWeightOn } from '@big-cms/shared/staffPay'
+import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
+import { startLoad } from '@big-cms/shared/startLoad'
+
+/** Tip weights by date, as set on Staff Pay (UPGRADE.md T7.18); no rates come with them. */
+interface WeightRow { uid: string; email: string; firstName: string; weights: { from: string; tipWeight: number }[] }
+
+/** A person's weight on a day: the attendance name matched to a staff member, else 1 (a guest). */
+function weightLookup(rows: readonly WeightRow[]): (name: string, day: string) => number {
+  const byUid = new Map(rows.map(r => [r.uid, readPayHistory(r.weights.map(w => ({ ...w, hourlyRate: null, currency: 'USD' })))]))
+  return (name, day) => {
+    const uid = matchStaffName(name, rows)
+    return uid ? tipWeightOn(byUid.get(uid) ?? [], day) : 1
+  }
+}
 
 // The deduction is a SETTING. It used to be `const DEDUCTION = 0.11` right
 // here, which meant the rate on the Business Settings form did nothing at all:
@@ -36,7 +51,7 @@ const labelStyle: React.CSSProperties = {
 
 // ─── computation ─────────────────────────────────────────────────────────────
 
-interface StaffTip { name: string; shiftPoints: number; earned: number }
+interface StaffTip { name: string; shiftPoints: number; weightedPoints: number; earned: number }
 
 interface PeriodResult {
   label: string
@@ -58,6 +73,7 @@ function buildPeriod(
   dateRange: string,
   reports: EndOfDayReport[],
   deductionRate: number,
+  weightOn: (name: string, day: string) => number,
 ): PeriodResult {
   // The arithmetic is shared/src/tips.ts, asserted by npm run verify:tips —
   // including that the shares add up to the pot to the cent, which this page's
@@ -67,7 +83,8 @@ function buildPeriod(
     // The jar, and what was tipped on cards at the till (UPGRADE.md T3.9).
     reports.reduce((s, r) => s + (Number(r.tipsUsd) || 0) + (Number(r.cardTipsUsd) || 0), 0),
     deductionRate,
-    reports.flatMap(r => r.attendance.map(a => ({ name: a.name, shift: a.shift }))),
+    // Each shift at that day's weight (T7.18), so a raise counts from its day.
+    reports.flatMap(r => r.attendance.map(a => ({ name: a.name, shift: a.shift, weight: weightOn(a.name, r.date) }))),
   )
 
   return {
@@ -107,6 +124,8 @@ export default function TipsCalculatorPage() {
   const [month,   setMonth]   = useState(defaultMonth)
   const [reports, setReports] = useState<EndOfDayReport[]>([])
   const [loading, setLoading] = useState(false)
+  const [weights, setWeights] = useState<WeightRow[]>([])
+  const [weightsErr, setWeightsErr] = useState('')
   const [err,     setErr]     = useState('')
 
   // Derived, not seeded by an effect. Setting state during an effect to supply
@@ -139,7 +158,22 @@ export default function TipsCalculatorPage() {
     return () => { alive = false }
   }, [branch])
 
+  // Tip weights, once. If they cannot be read, everybody counts at 1 and the
+  // page says so, rather than splitting by weights it does not have.
+  useEffect(() => {
+    if (checking) return
+    startLoad(async () => {
+      try {
+        const data = await unwrap(await authedFetch('/api/admin/staff-pay?weights=1', 'GET')) as { staff: WeightRow[] }
+        setWeights(data.staff)
+      } catch {
+        setWeightsErr('Tip weights could not be read, so everybody counts at 1 this time.')
+      }
+    })
+  }, [checking])
+
   if (checking) return null
+  const weightOn = weightLookup(weights)
 
   // Filter to the selected month and split into two periods
   const monthStr  = month  // 'YYYY-MM'
@@ -154,8 +188,8 @@ export default function TipsCalculatorPage() {
 
   const lastDay = new Date(parseInt(yearStr), parseInt(monthNumStr), 0).getDate()
 
-  const p1 = buildPeriod('Period 1', `1–15 ${monthLabel}`, period1Reports, deductionRate)
-  const p2 = buildPeriod('Period 2', `16–${lastDay} ${monthLabel}`, period2Reports, deductionRate)
+  const p1 = buildPeriod('Period 1', `1–15 ${monthLabel}`, period1Reports, deductionRate, weightOn)
+  const p2 = buildPeriod('Period 2', `16–${lastDay} ${monthLabel}`, period2Reports, deductionRate, weightOn)
 
   const hasTipsData = monthReports.some(r => (r.tipsUsd || 0) > 0)
 
@@ -207,6 +241,9 @@ export default function TipsCalculatorPage() {
         )}
         {err && (
           <p style={{ color: 'var(--red)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>{err}</p>
+        )}
+        {weightsErr && (
+          <p style={{ color: 'var(--red)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem' }}>{weightsErr}</p>
         )}
 
         {!loading && branch && monthReports.length === 0 && (
@@ -310,7 +347,7 @@ function PeriodCard({ period }: { period: PeriodResult }) {
           }}>
             <span>Staff member</span>
             {!isMobile && <span style={{ textAlign: 'center' }}>AM/PM shifts</span>}
-            {!isMobile && <span style={{ textAlign: 'center' }}>Points</span>}
+            {!isMobile && <span style={{ textAlign: 'center' }} title="Shift points times the person's tip weight, set on Staff Pay">Weighted points</span>}
             <span style={{ textAlign: 'right' }}>Tips earned</span>
           </div>
 
@@ -342,7 +379,8 @@ function PeriodCard({ period }: { period: PeriodResult }) {
                     fontFamily: 'var(--font-inter)', fontSize: '0.88rem', fontWeight: 600,
                     color: 'var(--brand-secondary)', textAlign: 'center',
                   }}>
-                    {s.shiftPoints}
+                    {/* Points × weight (T7.18): what the pot is split by. */}
+                    {s.weightedPoints}
                   </span>
                 )}
                 <span style={{

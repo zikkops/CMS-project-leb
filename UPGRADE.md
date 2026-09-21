@@ -860,8 +860,8 @@ Principles for every task here:
     applied) is shown against the closed figures as a post-close adjustment,
     never silently changing a report already sent
 
-- [ ] **T7.18 Staff pay panel: hourly rate and tip weight per person** (owner's
-  request, 21 Sep 2026). An admin-only page (`/admin/staff/pay`, in
+- [x] **T7.18 Staff pay panel: hourly rate and tip weight per person** (owner's
+  request, 21 Sep 2026). An admin-only page (`/admin/settings/staff-pay`, in
   `ADMIN_NAV` under Administration) listing every staff member by first name,
   where an admin sets:
   - **Hourly rate**, with its currency (USD or LBP), used by the labour report
@@ -891,6 +891,7 @@ Principles for every task here:
 
   Covered by `verify:tips` (weights, history, sums to the pot) and the labour
   cases in `verify:export`.
+  *Done: Done 21 Sep 2026. Staff Pay (`/admin/settings/staff-pay`, admin only, in ADMIN_NAV under Administration beside Staff Phones) lists every staff account by first name, with today's hourly rate (USD or LBP) and tip weight. An admin changes them from a chosen day, and the history is kept and shown. The rules are in shared/src/staffPay.ts: readPayEntry refuses a bad value instead of saving a default, and payOn, hourlyRateOn and tipWeightOn read what was in force on a day. An empty rate is 'not set', never $0. Stored server-only in `staffPay/{uid}` behind /api/admin/staff-pay, with no Firestore rule (so no rules deploy), never on users/{uid} and never pulled to a hub. Changes are logged with before and after, under 'Staff pay'. The tips split (tips.ts) now uses shift points × weight, taking each day at that day's weight, still summing to the pot to the cent. Weight 0 is out of the tips and gets no leftover cent, and a nonsense weight counts as 1. The tips page reads the weights (without rates, via ?weights=1 gated on endOfDay) and matches attendance names to staff by email or a unique first name; a guest counts at 1. It shows 'Weighted points', and if the weights cannot be read it says everybody counts at 1. Covered by verify:tips (20 new cases, 46 in all; removing the weighting was caught) and verify:hub (history, the log's before value, weights without rates, refusals). The pages were not looked at signed in.*
 
 ---
 

@@ -33,7 +33,7 @@ rmSync(out, { recursive: true, force: true })
 try {
   execSync(
     'npx tsc shared/src/server/hubStore.ts shared/src/server/checks.ts shared/src/server/tickets.ts ' +
-    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts shared/src/server/soldOut.ts shared/src/server/receiptEmail.ts shared/src/server/supplyTransfer.ts shared/src/server/activityLog.ts shared/src/server/hubBackup.ts ' +
+    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts shared/src/server/soldOut.ts shared/src/server/receiptEmail.ts shared/src/server/supplyTransfer.ts shared/src/server/activityLog.ts shared/src/server/hubBackup.ts shared/src/server/staffPay.ts ' +
     `shared/src/server/drawer.ts --outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -444,6 +444,22 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
     [['products', 'p-mug', branch, -1]])
 
   const ticketId = sent.tickets[0].id
+
+  // Staff pay (UPGRADE.md T7.18): saved with history, listed with today's values.
+  {
+    const PAY = await import(url('server/staffPay.js'))
+    await db.doc('users/u-pay').set({ isStaff: true, role: 'barista', email: 'pay@example.com' })
+    await db.doc('staffProfiles/u-pay').set({ firstName: 'Nour' })
+    const first = await PAY.setStaffPay(staff, 'u-pay', { from: '2020-01-01', hourlyRate: 4, currency: 'USD', tipWeight: 1 })
+    const second = await PAY.setStaffPay(staff, 'u-pay', { from: '2021-01-01', hourlyRate: 5, currency: 'USD', tipWeight: 1.25 })
+    eq('a pay change keeps what was in force before, for the log', [first.before, second.before?.hourlyRate, second.label], [null, 4, 'Nour'])
+    const row = (await PAY.listStaffPay()).find(r => r.uid === 'u-pay')
+    eq('...and the history is kept, with today\'s values as current', [row.history.map(e => e.hourlyRate), row.current.tipWeight, row.firstName], [[4, 5], 1.25, 'Nour'])
+    const w = (await PAY.listTipWeights()).find(r => r.uid === 'u-pay')
+    eq('the tips page gets weights by date and no rates', [w.weights, 'hourlyRate' in w], [[{ from: '2020-01-01', tipWeight: 1 }, { from: '2021-01-01', tipWeight: 1.25 }], false])
+    await rejects('pay is refused for an account that is not staff', () => PAY.setStaffPay(staff, 'u-nobody', { from: '2021-01-01', tipWeight: 1 }), e => e.status === 404)
+    await rejects('a bad weight is refused, never saved as a default', () => PAY.setStaffPay(staff, 'u-pay', { from: '2021-01-01', tipWeight: 50 }), e => e.status === 400)
+  }
 
   // The nightly copy (UPGRADE.md T5.11): the plan, then a real copy of this hub.
   {

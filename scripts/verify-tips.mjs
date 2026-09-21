@@ -21,7 +21,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'tips-verify-'))
 execSync(
-  `npx tsc shared/src/tips.ts --outDir ${out} --module esnext --target es2022 ` +
+  `npx tsc shared/src/tips.ts shared/src/staffPay.ts --outDir ${out} --module esnext --target es2022 ` +
   `--skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
@@ -31,6 +31,7 @@ for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
 }
 
 const T = await import(`file://${join(out, 'tips.js')}`)
+const SP = await import(`file://${join(out, 'staffPay.js')}`)
 
 let pass = 0, fail = 0
 const eq = (name, got, want) => {
@@ -113,6 +114,43 @@ console.log('\nnothing to split')
   const noTips = T.distributeTips(0, RATE, shifts([['Sara', 'single']]))
   eq('no tips: everybody gets nothing', noTips.staff[0].earned, 0)
   eq('a negative pot is treated as none', T.distributeTips(-50, 0, shifts([['Sara', 'single']])).netTipsUsd, 0)
+}
+
+console.log('\ntip weights (UPGRADE.md T7.18)')
+{
+  const sum = d => Math.round(d.staff.reduce((s, x) => s + x.earned, 0) * 100) / 100
+  const plain = T.distributeTips(100, 0, [{ name: 'Rana', shift: 'single' }, { name: 'Sam', shift: 'single' }])
+  eq('no weights: an even split, as before', plain.staff.map(s => s.earned), [50, 50])
+  const weighted = T.distributeTips(100, 0, [{ name: 'Rana', shift: 'single', weight: 1.5 }, { name: 'Sam', shift: 'single', weight: 0.5 }])
+  eq('weights split the pot by points × weight', weighted.staff.map(s => [s.name, s.earned]), [['Rana', 75], ['Sam', 25]])
+  eq('...and say what they split by', [weighted.totalShiftPoints, weighted.totalWeightedPoints], [2, 2])
+  const thirds = T.distributeTips(100, 0, [{ name: 'A', shift: 'single', weight: 1.25 }, { name: 'B', shift: 'double', weight: 1 }, { name: 'C', shift: 'single', weight: 0.75 }])
+  eq('awkward weights still add up to the pot, to the cent', sum(thirds), 100)
+  const out = T.distributeTips(90, 0, [{ name: 'A', shift: 'single' }, { name: 'B', shift: 'single', weight: 0 }, { name: 'C', shift: 'single' }])
+  eq('weight 0 is out of the tips, and gets no leftover cent', out.staff.find(s => s.name === 'B').earned, 0)
+  eq('...the others share the whole pot', sum(out), 90)
+  const bad = T.distributeTips(100, 0, [{ name: 'A', shift: 'single', weight: Number.NaN }, { name: 'B', shift: 'single', weight: 99 }])
+  eq('a nonsense weight counts as 1, never 0 or a fortune', bad.staff.map(s => s.earned), [50, 50])
+  const raise = T.distributeTips(100, 0, [{ name: 'A', shift: 'single', weight: 1 }, { name: 'A', shift: 'single', weight: 2 }, { name: 'B', shift: 'double', weight: 1 }])
+  eq('each day at its own weight: a raise mid-period counts from its day', raise.staff.map(s => [s.name, s.earned]), [['A', 60], ['B', 40]])
+
+  const h = [
+    { from: '2026-09-01', hourlyRate: 5, currency: 'USD', tipWeight: 1 },
+    { from: '2026-09-16', hourlyRate: 6, currency: 'USD', tipWeight: 1.25 },
+  ]
+  eq('the rate in force on a day, not today', [SP.hourlyRateOn(h, '2026-09-10'), SP.hourlyRateOn(h, '2026-09-20')], [{ rate: 5, currency: 'USD' }, { rate: 6, currency: 'USD' }])
+  eq('before the first entry: rate not set, weight 1', [SP.hourlyRateOn(h, '2026-08-31'), SP.tipWeightOn(h, '2026-08-31')], [null, 1])
+  eq('a rate left empty is not set, never $0', SP.hourlyRateOn([{ from: '2026-09-01', hourlyRate: null, currency: 'USD', tipWeight: 1 }], '2026-09-02'), null)
+  eq('an entry on the same day replaces the old one', SP.withPayEntry(h, { from: '2026-09-16', hourlyRate: 7, currency: 'USD', tipWeight: 1 }).map(e => e.hourlyRate), [5, 7])
+  eq('a later change leaves earlier days as they were', SP.tipWeightOn(SP.withPayEntry(h, { from: '2026-10-01', hourlyRate: 8, currency: 'USD', tipWeight: 2 }), '2026-09-20'), 1.25)
+  eq('an admin\'s entry is read and cleaned', SP.readPayEntry({ from: '2026-09-21', hourlyRate: '5.456', currency: 'USD', tipWeight: '1.2' }), { from: '2026-09-21', hourlyRate: 5.46, currency: 'USD', tipWeight: 1.2 })
+  eq('a weight over the limit is refused, not capped', typeof SP.readPayEntry({ from: '2026-09-21', tipWeight: 9 }), 'string')
+  eq('a day that does not exist is refused', typeof SP.readPayEntry({ from: '2026-02-30', tipWeight: 1 }), 'string')
+  eq('a negative rate is refused', typeof SP.readPayEntry({ from: '2026-09-21', hourlyRate: -1 }), 'string')
+  const staff = [{ uid: 'u1', email: 'rana@example.com', firstName: 'Rana' }, { uid: 'u2', email: 'sam@example.com', firstName: 'Sam' }, { uid: 'u3', email: 'sam2@example.com', firstName: 'Sam' }]
+  eq('an attendance name matches by email or first name', [SP.matchStaffName('RANA@example.com', staff), SP.matchStaffName(' rana ', staff)], ['u1', 'u1'])
+  eq('an ambiguous first name matches nobody (weight 1)', SP.matchStaffName('Sam', staff), null)
+  eq('...but the email still does', SP.matchStaffName('sam2@example.com', staff), 'u3')
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)
