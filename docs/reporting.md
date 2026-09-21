@@ -280,7 +280,10 @@ in USD at the cost stored with the count (`countVariance()` in
 
 ## 4. Gaps against the definitions
 
-1. **Refunds are filed on the day the check closed, not the refund day.**
+1. **FIXED for the Sales Export, 21 Sep 2026 (T7.4). Refunds were filed on the day the check closed, not the refund day.**
+   - Now: the export reads checks refunded in the period (`readRefundedChecks()`, ranged on `refundedAt`) beside those closed in it. A refunded check stays a sale on its close day. Its refund is a credit row (`refundRow()`, kind `refund`) on the day it was given, naming the sale's day, with what went back by tender. The day sheet counts refunds given and their VAT (`refundVat`). A refund from before `refundedAt` was read is credited on its close day.
+   - Still by close day: floor "Refunds today" on the till, and the food cost report's waste (decision in gap 28).
+   - Was:
    - `dayRows()` drops a refunded check from its close day.
    - `readClosedChecks()` ranges on `closedAt`, so a refund given today on
      last quarter's check is in no export for today.

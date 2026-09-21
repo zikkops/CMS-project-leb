@@ -24,6 +24,7 @@
 import { checkTotals, orderTypeOf, ORDER_TYPES, type Check } from './checks'
 import { vatIncluded } from './money'
 import { ymdInZone } from './dates'
+import { refundOf } from './drawer'
 import { timestampMs } from './timestamps'
 
 export interface ExportOptions {
@@ -35,9 +36,21 @@ export interface ExportOptions {
    * is never consulted for it.
    */
   fallbackRate: number
+  /** The period, when there is one (T7.4): a sale is in it by close day, a refund by refund day. */
+  from?: string
+  to?: string
 }
 
 export interface CheckRow {
+  /**
+   * A sale, on the day the check closed, or its refund, a credit on the day
+   * the money went back (UPGRADE.md T7.4). A refund row carries the sale's
+   * figures negated and names the original day, so the original day is never
+   * rewritten and each period shows what happened in it.
+   */
+  kind: 'sale' | 'refund'
+  /** For a refund, the day of the sale it reverses; '' for a sale. */
+  originalDay: string
   receipt: string
   /** Café-local calendar day, 'YYYY-MM-DD'. */
   day: string
@@ -90,9 +103,15 @@ export interface DayRow {
   service: number
   net: number
   vat: number
-  /** Refunded checks, kept apart from sales rather than netted into them. */
+  /**
+   * Refunds GIVEN this day (T7.4), whatever day their sale was: a positive
+   * figure, kept apart from sales rather than netted into them. The sale itself
+   * stays in its own day's figures.
+   */
   refunds: number
   refundedChecks: number
+  /** The VAT inside those refunds: output VAT reversed in the period of the refund. */
+  refundVat: number
   cashUsd: number
   cashLbp: number
   card: number
@@ -141,6 +160,43 @@ function tenders(check: Check): { cashUsd: number; cashLbp: number; card: number
   return { cashUsd: r2(cashUsd), cashLbp: Math.round(cashLbp), card: r2(card) }
 }
 
+/**
+ * The café day and time a check was refunded (T7.4). A refunded check from
+ * before `refundedAt` was read has none, and is credited on its own close day,
+ * which is where these exports used to file every refund.
+ */
+export function refundedAtParts(check: Pick<Check, 'closedAt'> & { refundedAt?: unknown }, timeZone: string): { day: string; time: string } {
+  const at = closedAtParts(check.refundedAt, timeZone)
+  return at.day ? at : closedAtParts(check.closedAt, timeZone)
+}
+
+/** The refund as a credit row: the sale's figures negated, on the refund's day, with what went back by tender. */
+export function refundRow(check: Check, opts: ExportOptions): CheckRow {
+  const sale = checkRow(check, opts)
+  const { day, time } = refundedAtParts(check as Check & { refundedAt?: unknown }, opts.timeZone)
+  const back = refundOf(check.payments ?? [])
+  const neg = (n: number) => (n === 0 ? 0 : -n)
+  return {
+    ...sale,
+    kind: 'refund',
+    originalDay: sale.day,
+    day,
+    time,
+    gross: neg(sale.gross),
+    staffMeal: neg(sale.staffMeal),
+    itemDiscounts: neg(sale.itemDiscounts),
+    checkDiscount: neg(sale.checkDiscount),
+    service: neg(sale.service),
+    net: neg(sale.net),
+    vat: neg(sale.vat),
+    netLbp: neg(sale.netLbp),
+    // What was handed back: cash less the change that went with it, and card.
+    cashUsd: neg(back.cash.usd),
+    cashLbp: neg(back.cash.lbp),
+    card: neg(back.card.usd),
+  }
+}
+
 export function checkRow(check: Check, opts: ExportOptions): CheckRow {
   const totals = checkTotals(check)
   const { day, time } = closedAtParts(check.closedAt, opts.timeZone)
@@ -149,6 +205,8 @@ export function checkRow(check: Check, opts: ExportOptions): CheckRow {
   const t = tenders(check)
 
   return {
+    kind: 'sale',
+    originalDay: '',
     receipt: check.receiptNumber ?? '',
     day,
     time,
@@ -208,13 +266,16 @@ export function dayRows(rows: readonly CheckRow[]): DayRow[] {
     if (!d) {
       d = {
         day: row.day, branch: row.branch, checks: 0, gross: 0, discounts: 0, service: 0,
-        net: 0, vat: 0, refunds: 0, refundedChecks: 0, cashUsd: 0, cashLbp: 0, card: 0,
+        net: 0, vat: 0, refunds: 0, refundedChecks: 0, refundVat: 0, cashUsd: 0, cashLbp: 0, card: 0,
       }
       byKey.set(key, d)
     }
-    if (row.status === 'refunded') {
+    // A refund is a credit on its own day (T7.4); its sale, even though the
+    // check now reads "refunded", stays counted on the day it was made.
+    if (row.kind === 'refund') {
       d.refundedChecks += 1
-      d.refunds = r2(d.refunds + row.net)
+      d.refunds = r2(d.refunds - row.net)
+      d.refundVat = r2(d.refundVat - row.vat)
       continue
     }
     d.checks += 1
@@ -273,14 +334,20 @@ export function cutShortMessage(cut: CutShort): string {
 
 export function buildExport(checks: readonly Check[], opts: ExportOptions): SalesExport {
   const exportable = checks.filter(isExportable)
-  const rows = exportable.map(c => checkRow(c, opts))
+  // With a period, a sale is in it by the day it closed and a refund by the
+  // day it was given (T7.4); the read supplies both kinds of check.
+  const inRange = (day: string) => !opts.from || !opts.to || (day >= opts.from && day <= opts.to)
+  const sales = exportable.map(c => checkRow(c, opts)).filter(r => inRange(r.day))
+  const refunds = exportable.filter(c => c.status === 'refunded').map(c => refundRow(c, opts)).filter(r => inRange(r.day))
+  const soldIn = new Set(sales.map(r => r.receipt))
+  const rows = [...sales, ...refunds]
   // Sorted by when it happened rather than by document id: an export is read
   // down the page, and a receipt sequence is not a chronology once two
   // branches are trading at once.
   rows.sort((a, b) => (a.day === b.day ? a.time.localeCompare(b.time) : a.day.localeCompare(b.day)))
   return {
     checks: rows,
-    payments: exportable.flatMap(c => paymentRows(c, opts)),
+    payments: exportable.filter(c => soldIn.has(c.receiptNumber ?? '')).flatMap(c => paymentRows(c, opts)),
     days: dayRows(rows),
   }
 }
@@ -288,7 +355,7 @@ export function buildExport(checks: readonly Check[], opts: ExportOptions): Sale
 /** Column headings, in the order the sheets are written. Shared with the UI. */
 export const SHEETS = {
   checks: [
-    ['receipt', 'Receipt'], ['day', 'Day'], ['time', 'Time'], ['branch', 'Branch'],
+    ['kind', 'Type'], ['receipt', 'Receipt'], ['day', 'Day'], ['time', 'Time'], ['branch', 'Branch'], ['originalDay', 'Sale day'],
     ['table', 'Table'], ['order', 'Order'], ['guests', 'Guests'], ['status', 'Status'],
     ['gross', 'Gross USD'], ['staffMeal', 'Staff meal'], ['itemDiscounts', 'Item discounts'],
     ['checkDiscount', 'Check discount'], ['service', 'Service'], ['net', 'Net USD'],
@@ -306,7 +373,7 @@ export const SHEETS = {
   days: [
     ['day', 'Day'], ['branch', 'Branch'], ['checks', 'Checks'],
     ['gross', 'Gross USD'], ['discounts', 'Discounts'], ['service', 'Service'], ['net', 'Net USD'], ['vat', 'VAT incl. USD'],
-    ['refundedChecks', 'Refunded checks'], ['refunds', 'Refunded USD'],
+    ['refundedChecks', 'Refunds given'], ['refunds', 'Refunded USD'], ['refundVat', 'Refund VAT USD'],
     ['cashUsd', 'Cash USD'], ['cashLbp', 'Cash LBP'], ['card', 'Card USD'],
   ],
 } as const

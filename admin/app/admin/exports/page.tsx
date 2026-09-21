@@ -210,7 +210,7 @@ export default function SalesExportPage() {
                 ['VAT included', usd(totals.vat)],
                 ['Cash', `${usd(totals.cashUsd)} · ${lbp(totals.cashLbp)}`],
                 ['Card', usd(totals.card)],
-                ['Refunded', `${usd(totals.refunds)} · ${totals.refundedChecks}`],
+                ['Refunds given', `${usd(totals.refunds)} · ${totals.refundedChecks}`],
               ].map(([label, value]) => (
                 <div key={label} style={{ background: 'var(--black)', padding: '0.8rem 0.9rem' }}>
                   <p style={{ fontSize: '1.05rem', fontWeight: 600 }}>{value}</p>

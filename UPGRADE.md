@@ -756,7 +756,7 @@ Principles for every task here:
   Each line's definition comes from `reportDefinitions.ts` and is shown on
   hover. This page must reconcile with the payments report (T7.5) and the
   drawer (T7.7) to the cent, and the verifier asserts that it does.
-- [ ] **T7.4 Refunds in the period they happen** (a correction to today's
+- [x] **T7.4 Refunds in the period they happen** (a correction to today's
   behaviour).
   - The export and the food cost report file a refund under the day its check
     CLOSED (`salesExport.ts` counts a refunded check's net against its close
@@ -768,6 +768,7 @@ Principles for every task here:
     refund in April.
   - Waste stays filed with the check, as the food cost report explains, or
     moves too; T7.0 decides and the reason is recorded.
+  *Done: Done 21 Sep 2026 for the Sales Export. A refunded check stays a sale on the day it closed: that day's checks, gross, net, VAT and tenders count it, and nothing about the original day changes afterwards. Its refund is a credit row on the day it was given (refundRow(), kind 'refund'). The row carries the sale's figures negated, names the sale's day, and shows what went back by tender (cash less its change, card, from refundOf()). The server reads checks refunded in the period (readRefundedChecks(), ranged on refundedAt alone with the padded window, so no index is needed) beside those closed in it, and buildExport() files each by its own day. The day sheet shows refunds given, their count and 'Refund VAT USD', output VAT reversed in the refund's period; the Checks sheet gains Type and Sale day. A refund from before refundedAt was read is credited on its close day. Decided and recorded in docs/reporting.md: the food cost report's waste stays filed by close day, so it keeps one window with its theoretical cost, and the till's 'Refunds today' reading is unchanged. verify:export: 8 new cases (August keeps the sale, September has the credit and its VAT, payments stay with the sale), and the old expectations were corrected (99 passed).*
 - [ ] **T7.5 Payments and tenders report.** Per branch and period:
   - cash USD, cash LBP (and its USD value at each check's rate), card, and
     change given

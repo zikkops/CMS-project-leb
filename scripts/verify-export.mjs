@@ -161,19 +161,40 @@ console.log('\nthe day summary')
     check({ id: 'f', receiptNumber: null, status: 'open' }),
   ], OPTS)
 
-  eq('the open check is left out', built.checks.length, 5)
-  eq('rows read in the order they happened', built.checks.map(c => c.receipt), ['1', '5', '2', '3', '4'])
+  eq('the open check is left out; the refunded one is a sale and a refund', built.checks.length, 6)
+  eq('rows read in the order they happened', built.checks.map(c => c.receipt), ['1', '5', '5', '2', '3', '4'])
   eq('three day-and-branch rows', built.days.map(d => `${d.day} ${d.branch}`),
     ['2026-09-12 Main', '2026-09-13 Main', '2026-09-13 Second'])
 
   const main12 = built.days[0]
-  eq('one sale on the 12th — the refund is not one', main12.checks, 1)
-  eq('...its net', main12.net, 10)
-  eq('...its VAT', main12.vat, 0.91)
+  eq('two sales on the 12th: a refunded check still happened (T7.4)', main12.checks, 2)
+  eq('...their net', main12.net, 20)
+  eq('...their VAT', main12.vat, 1.82)
   eq('THE TRAP: the refund is its own column, not netted off', [main12.refunds, main12.refundedChecks], [10, 1])
 
   eq('THE TRAP: sales after midnight land on the next café day', built.days[1].checks, 2)
   eq('...and the other branch keeps its own row', built.days[2].branch, 'Second')
+}
+
+console.log('\na refund is a credit in the period it is given (UPGRADE.md T7.4)')
+{
+  const refunded = check({
+    id: 'r', receiptNumber: '77', status: 'refunded',
+    closedAt: '2026-08-30T12:00:00.000Z', refundedAt: '2026-09-02T09:00:00.000Z',
+    payments: [pay({ tender: 'cash', currency: 'USD', amount: 20, changeUsd: 10, changeLbp: 0 })],
+  })
+  const august = X.buildExport([refunded], { ...OPTS, from: '2026-08-01', to: '2026-08-31' })
+  eq('August keeps the sale, untouched by a refund in September', [august.days[0]?.checks, august.days[0]?.net, august.days[0]?.refunds], [1, 10, 0])
+  eq('...with its payment', august.payments.length, 1)
+  const september = X.buildExport([refunded], { ...OPTS, from: '2026-09-01', to: '2026-09-30' })
+  const credit = september.checks[0]
+  eq('September has the refund as a credit row, naming the sale\'s day', [september.checks.length, credit.kind, credit.day, credit.originalDay, credit.receipt], [1, 'refund', '2026-09-02', '2026-08-30', '77'])
+  eq('...its figures are the sale\'s, negated', [credit.net, credit.vat], [-10, -0.91])
+  eq('...and what went back: cash less its change', credit.cashUsd, -10)
+  eq('September\'s day shows no sale, one refund given, and its VAT reversed', [september.days[0].checks, september.days[0].refundedChecks, september.days[0].refunds, september.days[0].refundVat], [0, 1, 10, 0.91])
+  eq('...and none of the sale\'s payments', september.payments.length, 0)
+  const old = X.buildExport([check({ id: 'o', receiptNumber: '78', status: 'refunded', closedAt: '2026-09-05T12:00:00.000Z' })], OPTS)
+  eq('a refund from before refundedAt was read is credited on its close day', old.checks.map(r => [r.kind, r.day]), [['sale', '2026-09-05'], ['refund', '2026-09-05']])
 }
 
 console.log('\nthe sheets are declared once, for the UI and the file both')

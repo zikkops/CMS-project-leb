@@ -16,7 +16,7 @@
 
 import { adminDb } from './firebaseAdmin'
 import { HttpError } from './auth'
-import { buildExport, closedAtParts, exportCutShort, EXPORT_CHECK_CAP, type CutShort, type SalesExport } from '../salesExport'
+import { buildExport, closedAtParts, exportCutShort, refundedAtParts, EXPORT_CHECK_CAP, type CutShort, type SalesExport } from '../salesExport'
 import type { Check } from '../checks'
 import { readBranchList } from '../reportPeriods'
 
@@ -76,14 +76,47 @@ export async function readSalesExport(
   range: ExportRequest,
   opts: { timeZone: string; fallbackRate: number; branches: string[] },
 ): Promise<SalesExport & { from: string; to: string; branches: string[] }> {
-  const { checks, branches, cutShort } = await readClosedChecks(range, opts)
+  // Sales by the day they closed, and refunds by the day they were given
+  // (T7.4): a check closed last month and refunded this month is read for its
+  // refund, and appears here as a credit, not as a sale.
+  const [{ checks, branches, cutShort }, refunded] = await Promise.all([
+    readClosedChecks(range, opts),
+    readRefundedChecks(range, opts),
+  ])
+  const byId = new Map(checks.map(c => [c.id, c]))
+  for (const c of refunded) if (!byId.has(c.id)) byId.set(c.id, c)
   return {
-    ...buildExport(checks, { timeZone: opts.timeZone, fallbackRate: opts.fallbackRate }),
+    ...buildExport([...byId.values()], { timeZone: opts.timeZone, fallbackRate: opts.fallbackRate, from: range.from, to: range.to }),
     cutShort,
     from: range.from,
     to: range.to,
     branches,
   }
+}
+
+/**
+ * Checks REFUNDED on the café days asked for (T7.4), whenever they closed.
+ * Ranged on `refundedAt` alone with the same padded window, so it needs no
+ * composite index, then narrowed to the branches and the café days.
+ */
+export async function readRefundedChecks(
+  range: ExportRequest,
+  opts: { timeZone: string; branches: string[] },
+): Promise<Check[]> {
+  const { start, end } = paddedWindow(range.from, range.to)
+  const snap = await adminDb().collection('checks')
+    .where('refundedAt', '>=', start)
+    .where('refundedAt', '<=', end)
+    .limit(EXPORT_CHECK_CAP)
+    .get()
+  const wanted = new Set(requestedBranches(range, opts.branches))
+  return snap.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }) as Check)
+    .filter(c => c.status === 'refunded' && wanted.has(c.branch))
+    .filter(c => {
+      const { day } = refundedAtParts(c as Check & { refundedAt?: unknown }, opts.timeZone)
+      return Boolean(day) && day >= range.from && day <= range.to
+    })
 }
 
 /**
