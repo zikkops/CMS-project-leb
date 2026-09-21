@@ -157,23 +157,37 @@ at 20,000 **with no cut-short warning**.
 
 ### 3.3 Product Mix, `/admin/reports/mix`
 
-`productMix()` in `shared/src/salesReports.ts`. Covers closed checks only; it
-has a range but no download.
+`productMix()` in `shared/src/salesReports.ts`. Covers closed checks only, with
+the range picker, per-branch totals and a download (T7.1).
 
 - **Revenue** is `lineTotal()`: VAT included, before the check discount,
   service left out.
+- **Net sales** (T7.8) are the line's goods share after every discount,
+  whole-check ones included, without service (`goodsShareForLines()`), before
+  VAT at the check's own rate, each line to the cent.
+- **Cost** is each line's recipe snapshot; **margin** is costed sales − cost,
+  over the lines that could be fully costed only, with **coverage** beside it.
+  An item nobody could cost reads "not costed", never $0.
 - **Category** is the item's category now, not when it sold.
-- **Combos:** a combo's parts share a row with the same item sold alone, at
-  $0 (gap 18).
+- **Combos** (T7.8): a combo's parts are costed on the combo line
+  (`foldComboParts()`) and counted as "made in combos", not sold.
 
 ### 3.4 Voids & Discounts, `/admin/reports/voids`
 
 `voidDiscountReport()` reads every check except open ones, **refunded and
-cancelled included**. It has a range but no download.
+cancelled included**, for voids and discounts. With the range picker,
+per-branch totals and a download. Since T7.9 it is the exception report.
 
 - **Void value** is the line's price before the void, VAT included.
-- **"By"** is `voidedByEmail`. Since T5.1, voids of sent food and refunds need
-  a manager's own session, so the person recorded is also the approver.
+- **"Voided by"** is `voidedByEmail`. **"Rung up by"** is the line's
+  `addedByEmail`.
+- **Approval** (T7.9): since T5.1, voids of sent food and refunds need a
+  manager's own session, so the person recorded is the approver. The role they
+  held is stamped with it (`voidedByRole`, `refundedByRole`) from 21 Sep 2026,
+  and `approvalOf()` reads it. Older ones read "Not recorded", never a guess.
+- **Refunds** are the checks refunded in the period (`readRefundedChecks()`,
+  on `refundedAt`), filed on the day they were given, with the sale's day.
+- **Price rules**: what sold at each price rule (T5.12), from closed checks.
 
 ### 3.5 Hourly Sales, `/admin/reports/hourly`
 
