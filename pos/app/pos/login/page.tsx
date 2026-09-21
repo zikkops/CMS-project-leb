@@ -28,7 +28,8 @@ import { useClientValue } from '@big-cms/shared/useClientValue'
 import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import { PosButton, ErrorNote } from '../../lib/posUi'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faMobileScreen, faEnvelope, faUser, faXmark, faRightToBracket } from '@fortawesome/free-solid-svg-icons'
+import { faMobileScreen, faEnvelope, faUser, faXmark, faRightToBracket, faQrcode } from '@fortawesome/free-solid-svg-icons'
+import QRCode from 'qrcode'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -107,6 +108,14 @@ function CounterSignIn({ onSignedIn }: { onSignedIn: (session: HubSession) => vo
   const [request, setRequest] = useState<CounterRequest | null>(null)
   const [problem, setProblem] = useState('')
   const [asking, setAsking] = useState(false)
+  // The QR for the staff app to scan (T6.3), drawn from the request's link.
+  const [qr, setQr] = useState<{ link: string; url: string } | null>(null)
+  useEffect(() => {
+    if (!request?.link) return
+    const link = request.link
+    QRCode.toDataURL(link, { margin: 1, width: 220 }).then(url => setQr({ link, url })).catch(() => setQr(null))
+  }, [request])
+  const qrUrl = request?.link && qr?.link === request.link ? qr.url : null
 
   const [peopleLoaded, setPeopleLoaded] = useState(false)
   useEffect(() => {
@@ -146,7 +155,7 @@ function CounterSignIn({ onSignedIn }: { onSignedIn: (session: HubSession) => vo
     return () => { live = false; clearTimeout(timer) }
   }, [request, onSignedIn])
 
-  async function ask(uid: string) {
+  async function ask(uid: string | null) {
     setAsking(true)
     setProblem('')
     try {
@@ -162,13 +171,16 @@ function CounterSignIn({ onSignedIn }: { onSignedIn: (session: HubSession) => vo
   return (
     <section aria-labelledby="with-phone" style={{ ...card, marginBottom: '1rem' }}>
       <h2 id="with-phone" style={cardTitle}><FontAwesomeIcon icon={faMobileScreen} />With your phone</h2>
-      <p style={cardNote}>Tap your name, then confirm on your phone. Works without the internet.</p>
+      <p style={cardNote}>Scan with the staff app, or tap your name and type the code. Works without the internet.</p>
       {request ? (
         <div style={{ textAlign: 'center' }}>
           <p style={{ color: 'rgba(var(--overlay-rgb),0.75)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-            {request.label.charAt(0).toUpperCase() + request.label.slice(1)}: in the staff app on your phone, tap
-            <strong> Sign in the counter PC</strong>, type this code, and confirm with your fingerprint.
+            {request.label === 'whoever scans' ? 'In the staff app on your phone' : `${request.label.charAt(0).toUpperCase() + request.label.slice(1)}: in the staff app on your phone`}, tap
+            <strong> Scan the counter</strong> and confirm with your fingerprint. No camera? Tap <strong>Sign in the counter PC</strong> and type the code.
           </p>
+          {qrUrl && (
+            <img src={qrUrl} alt="Code for the staff app to scan" width={220} height={220} style={{ background: '#fff', padding: '8px', borderRadius: '8px', margin: '0.4rem auto 0', display: 'block' }} />
+          )}
           <p aria-label="Code for your phone" style={{
             fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: '3rem', letterSpacing: '0.3em',
             color: 'var(--offwhite)', margin: '0.6rem 0 0.8rem',
@@ -183,6 +195,8 @@ function CounterSignIn({ onSignedIn }: { onSignedIn: (session: HubSession) => vo
         </p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.6rem' }}>
+          {/* No name needed: the scan and the fingerprint say who you are (T6.3). */}
+          <PosButton icon={faQrcode} tone="primary" disabled={asking} onClick={() => { void ask(null) }} label="Scan to sign in" />
           {people.map(person => (
             <PosButton key={person.uid} icon={faUser} disabled={asking} onClick={() => { void ask(person.uid) }}
               label={person.label.charAt(0).toUpperCase() + person.label.slice(1)} />

@@ -570,7 +570,7 @@ mutations caught by name, and is checked on the emulator against a built hub.
   (T6.3). A screen that says who is signed in, large, on every page of a
   shared device, so nobody takes an order under someone else's name.
   *Done: SignedInStrip in a new /pos layout: on a shared device (hub counter PC, or an online browser with the new 'Shared device' switch on the floor, sharedDevice.ts) every till page says 'Signed in: <first name>' large with Switch user (= signOutHere, warning first). Hub session routes now return the pulled first name; backend().signedInAs() on both backends; personLabel() names nobody for a kitchen screen. Switch user lands on the counter's name list (hub) or the scan sign-in (online, T6.4); staff names are never listed to a signed-out online browser. verify:counter 55. Not looked at signed in.*
-- [ ] **T6.3 Scan to sign in at the counter PC** (hub). The counter's sign-in
+- [x] **T6.3 Scan to sign in at the counter PC** (hub). The counter's sign-in
   screen shows a QR beside the four-digit code.
   - The QR encodes the hub's fingerprint, the request id and the code
     (`bigcms-signin:…`).
@@ -582,6 +582,7 @@ mutations caught by name, and is checked on the emulator against a built hub.
     `parseSignInLink()` refuses anything but this hub's fingerprint.
   - Also a **"scan to sign in" start from the phone**: tapping your name
     becomes optional, because the scan says who you are.
+  *Done: Counter sign-in screen: 'Scan to sign in' (no name needed) and a QR beside the four-digit code (bigcms-signin:v1:<hub fp>:<request>:<code>, signInLink()/parseSignInLink() in counterSignIn.ts). Hub: open requests (one at a time) claimed by the approving key's owner; a scanned approval names its request and must be this person's own or open. Staff app: 'Scan the counter' signs the existing counterSignInMessage(); the typed code stays the fallback. verify:hub-sync 444, 4 mutations caught. Not run on the emulator or a real phone.*
 - [ ] **T6.4 Scan to sign in on the online till** (owner, from T6.0). For
   cafés without a hub, a shared browser device shows a QR instead of an email
   and password.

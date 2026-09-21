@@ -45,8 +45,8 @@ export async function POST(request: Request): Promise<Response> {
 
     switch (body.action) {
       case 'ask': {
-        const { id, secret, code, expiresAt, label } = await askCounterSignIn(body, { host: request.headers.get('host') })
-        return Response.json({ ok: true, id, secret, code, expiresAt, label }, { headers: noStore })
+        const { id, secret, code, expiresAt, label, link } = await askCounterSignIn(body, { host: request.headers.get('host') })
+        return Response.json({ ok: true, id, secret, code, expiresAt, label, link }, { headers: noStore })
       }
       case 'challenge':
         return Response.json({ ok: true, ...(await issueChallenge(body.keyId)) }, { headers: noStore })

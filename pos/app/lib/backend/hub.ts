@@ -183,6 +183,8 @@ export interface CounterRequest {
   code: string
   expiresAt: number
   label: string
+  /** The QR text for the staff app to scan (T6.3); null when the hub has no café-wifi certificate. */
+  link: string | null
 }
 
 async function counterCall(method: 'GET' | 'POST', path: string, body?: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -209,11 +211,13 @@ export async function counterPeople(): Promise<{ uid: string; label: string }[]>
 }
 
 /** The counter PC asks to sign this person in, and gets the code to show (S24). */
-export async function askCounterSignIn(uid: string): Promise<CounterRequest> {
-  const data = await counterCall('POST', '/api/hub/counter-signin', { action: 'ask', uid })
+/** A counter request for this person, or, with null, an open one that whoever scans it claims (T6.3). */
+export async function askCounterSignIn(uid: string | null): Promise<CounterRequest> {
+  const data = await counterCall('POST', '/api/hub/counter-signin', uid ? { action: 'ask', uid } : { action: 'ask', open: true })
   return {
     id: String(data.id ?? ''), secret: String(data.secret ?? ''), code: String(data.code ?? ''),
     expiresAt: Number(data.expiresAt ?? 0), label: String(data.label ?? ''),
+    link: typeof data.link === 'string' && data.link ? data.link : null,
   }
 }
 

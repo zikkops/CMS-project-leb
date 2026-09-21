@@ -21,7 +21,7 @@ import { CapacitorBarcodeScanner, CapacitorBarcodeScannerTypeHint } from '@capac
 import { parseHubLink } from '../../shared/src/hubNetwork'
 import { enrolMessage, handoffHash, signInMessage } from '../../shared/src/staffKeys'
 import { approveMessage, denyMessage } from '../../shared/src/staffApprovals'
-import { counterSignInMessage, isCounterCode, readCounterCode } from '../../shared/src/counterSignIn'
+import { counterSignInMessage, isCounterCode, parseSignInLink, readCounterCode } from '../../shared/src/counterSignIn'
 import { PHONE_MESSAGES, phoneMessage, scanWasCancelled, SCAN_FAILED } from '../../shared/src/phoneMessages'
 import { clockMessage, type ClockDirection } from '../../shared/src/timeClock'
 
@@ -131,6 +131,7 @@ async function show() {
   }
   $('signIn').hidden = !reg
   $('counterSignIn').hidden = !reg
+  $('counterScan').hidden = !reg
   $('clock').hidden = !reg
   if (reg) void showClock(reg.keyId)
   $('counterForm').hidden = true
@@ -384,17 +385,15 @@ $('counterSignIn').addEventListener('click', () => {
   $<HTMLInputElement>('counterCode').focus()
 })
 
-$('counterForm').addEventListener('submit', async e => {
-  e.preventDefault()
+/**
+ * Signs the counter in as this phone's owner: a challenge, the fingerprint over
+ * counterSignInMessage(), and the approval. From a scan (T6.3) the request is
+ * named too, so an open "Scan to sign in" on the counter becomes this person's.
+ */
+async function approveCounter(code: string, requestId: string | null, button: HTMLButtonElement) {
   const reg = registered()
   const hub = await HubPin.get()
   if (!reg || !hub.fingerprint) return
-  const code = readCounterCode($<HTMLInputElement>('counterCode').value)
-  if (!isCounterCode(code)) {
-    say('Type the four digits the counter shows.')
-    return
-  }
-  const button = $<HTMLButtonElement>('counterSubmit')
   button.disabled = true
   say('Signing the counter in…', true)
   try {
@@ -408,7 +407,8 @@ $('counterForm').addEventListener('submit', async e => {
       title: 'Sign in on the counter PC',
       subtitle: `Code ${code}`,
     })
-    const reply = await HubPin.hubRequest({ method: 'POST', path: '/api/hub/counter-signin', body: { action: 'approve', code, keyId: reg.keyId, nonce, signature } })
+    const body = { action: 'approve', code, keyId: reg.keyId, nonce, signature, ...(requestId ? { requestId } : {}) }
+    const reply = await HubPin.hubRequest({ method: 'POST', path: '/api/hub/counter-signin', body })
     if (reply.status !== 200) throw new Error(refusal(reply, 'The counter was not signed in.'))
     $('counterForm').hidden = true
     say('The counter PC signs in as you in a moment. It signs out after 15 minutes without a tap.', true)
@@ -417,6 +417,41 @@ $('counterForm').addEventListener('submit', async e => {
   } finally {
     button.disabled = false
   }
+}
+
+$('counterForm').addEventListener('submit', async e => {
+  e.preventDefault()
+  const code = readCounterCode($<HTMLInputElement>('counterCode').value)
+  if (!isCounterCode(code)) {
+    say('Type the four digits the counter shows.')
+    return
+  }
+  await approveCounter(code, null, $<HTMLButtonElement>('counterSubmit'))
+})
+
+// Scan the code on the counter PC's sign-in screen (T6.3): nothing to type,
+// and no name to tap there first. Only this hub's code is taken.
+$('counterScan').addEventListener('click', async () => {
+  say(null)
+  const hub = await HubPin.get()
+  if (!hub.fingerprint) return
+  let scanned: string
+  try {
+    const result = await CapacitorBarcodeScanner.scanBarcode({
+      hint: CapacitorBarcodeScannerTypeHint.QR_CODE,
+      scanInstructions: 'Point the camera at the code on the counter PC',
+    })
+    scanned = result.ScanResult ?? ''
+  } catch (err) {
+    if (!scanWasCancelled(err)) say(SCAN_FAILED)
+    return
+  }
+  const read = parseSignInLink(scanned, hub.fingerprint)
+  if (!read) {
+    say('That is not this café\'s counter code. On the counter PC, tap Scan to sign in, and scan the code it shows.')
+    return
+  }
+  await approveCounter(read.code, read.requestId, $<HTMLButtonElement>('counterScan'))
 })
 
 // ── No fingerprint on this phone: ask a manager (S6, S15, S17) ────────────

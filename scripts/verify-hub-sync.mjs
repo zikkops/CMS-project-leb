@@ -1525,6 +1525,30 @@ console.log('\nthe counter PC signs in with the person\'s own phone, and signs o
   await rejects('THE TRAP: somebody no longer staff by collection time gets no session', () => HC.collectCounterSignIn({ id: second.id, secret: second.secret }, { db }), e => e.status === 403)
   await db.doc('users/u-counter').update({ isStaff: true })
 
+  // ── Scanning the counter's code (UPGRADE.md T6.3) ──
+  const link = CS.signInLink(fpHex, 'R'.repeat(22), '0421')
+  eq('the QR carries this hub, the request and the code', CS.parseSignInLink(link, FP), { requestId: 'R'.repeat(22), code: '0421' })
+  eq('THE TRAP: another hub\'s code is refused before anything is signed', CS.parseSignInLink(link, 'cd'.repeat(32)), null)
+  eq('...and anything that is not a counter code', [CS.parseSignInLink('bigcms-hub:https://x', FP), CS.parseSignInLink(`${link}:extra`, FP), CS.parseSignInLink(CS.signInLink(fpHex, 'short', '0421'), FP), CS.parseSignInLink(CS.signInLink(fpHex, 'R'.repeat(22), '42'), FP), CS.parseSignInLink(null, FP)], [null, null, null, null, null])
+  const approveScan = async (p, scanned, { fp = fpHex } = {}) => {
+    const { nonce } = await KS.issueChallenge(p.keyId, { db })
+    return HC.approveCounterSignIn({ code: scanned.code, requestId: scanned.id, keyId: p.keyId, nonce, signature: p.sign(CS.counterSignInMessage(fp, scanned.code, p.keyId, nonce)) }, hub)
+  }
+  const open = await HC.askCounterSignIn({ open: true }, { ...hub, host: COUNTER })
+  eq('Scan to sign in needs no name, and the counter gets the QR text', [open.label, CS.parseSignInLink(open.link, FP)], ['whoever scans', { requestId: open.id, code: open.code }])
+  eq('with no café-wifi certificate there is no QR, only the code', (await HC.askCounterSignIn({ open: true }, { db, host: COUNTER, hubFingerprint: '' })).link, null)
+  const open2 = await HC.askCounterSignIn({ open: true }, { ...hub, host: COUNTER })
+  await rejects('one open request waits at a time: the last replaces the one before', () => approveScan(joe, open), e => e.status === 404)
+  await rejects('a scanned code with the wrong code approves nothing', () => approveScan(joe, { ...open2, code: open2.code === '0000' ? '0001' : '0000' }), e => e.status === 404)
+  await approveScan(joe, open2)
+  const claimed = await HC.collectCounterSignIn({ id: open2.id, secret: open2.secret }, { db })
+  eq('THE POINT: whoever scanned and gave a fingerprint is the one signed in', [claimed.status, claimed.caller?.uid, claimed.caller?.idleMs], ['approved', 'u-counter-2', CS.COUNTER_IDLE_MS])
+  await rejects('a claimed request cannot be claimed again by someone else', () => approveScan(nour, open2), e => e.status === 404)
+  const named = await HC.askCounterSignIn({ uid: 'u-counter' }, { ...hub, host: COUNTER })
+  await rejects('THE TRAP: scanning someone else\'s named request signs nobody in', () => approveScan(joe, named), e => e.status === 404)
+  await approveScan(nour, named)
+  eq('...and its own person can scan it', (await HC.collectCounterSignIn({ id: named.id, secret: named.secret }, { db })).caller?.uid, 'u-counter')
+
   // ── Idle (S25) ──
   const t0 = Date.now()
   const idleSession = await HS.startHubSession({ uid: 'u-counter', staff: true, role: 'barista', idleMs: CS.COUNTER_IDLE_MS }, t0)

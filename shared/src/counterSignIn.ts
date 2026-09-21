@@ -49,6 +49,38 @@ export function counterSignInMessage(hubFingerprintHex: string, code: string, ke
   return `bigcms-hub-counter:v1\n${hubFingerprintHex}\n${code}\n${keyId}\n${nonce}`
 }
 
+// ── Scanning the counter's code (UPGRADE.md T6.3) ─────────────────────────
+// The counter screen shows a QR beside its four-digit code. It carries this
+// hub's certificate fingerprint, the request and the code, so the phone signs
+// the same counterSignInMessage() with nothing typed. A request started with
+// no name ("Scan to sign in") is claimed by whoever's key approves it: the
+// scan, and the fingerprint, say who you are. The code stays as the fallback.
+
+export const SIGNIN_LINK_PREFIX = 'bigcms-signin:v1:'
+const HEX64 = /^[0-9a-f]{64}$/
+const REQUEST_ID = /^[A-Za-z0-9_-]{16,64}$/
+
+/** The QR text for one counter request. */
+export function signInLink(hubFingerprintHex: string, requestId: string, code: string): string {
+  return `${SIGNIN_LINK_PREFIX}${hubFingerprintHex.toLowerCase()}:${requestId}:${code}`
+}
+
+/**
+ * The phone's reading of a scanned counter code: this hub's, well formed, or
+ * nothing. A code from another hub (another café, or a machine pretending to
+ * be this one) is refused before anything is signed.
+ */
+export function parseSignInLink(raw: unknown, pinnedFingerprintHex: string): { requestId: string; code: string } | null {
+  if (typeof raw !== 'string' || !raw.startsWith(SIGNIN_LINK_PREFIX)) return null
+  const parts = raw.slice(SIGNIN_LINK_PREFIX.length).trim().split(':')
+  if (parts.length !== 3) return null
+  const [fingerprint, requestId, code] = parts
+  const pinned = String(pinnedFingerprintHex ?? '').toLowerCase().replace(/:/g, '')
+  if (!HEX64.test(fingerprint) || !HEX64.test(pinned) || fingerprint !== pinned) return null
+  if (!REQUEST_ID.test(requestId) || !isCounterCode(code)) return null
+  return { requestId, code }
+}
+
 /**
  * Whether a request's Host names the counter PC itself. The Windows app opens the
  * till at localhost; phones reach the hub through its café-wifi door at the PC's

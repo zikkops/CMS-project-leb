@@ -154,10 +154,11 @@
         <h2>Sign in</h2>
         <p id="whoIsRegistered"></p>
         <button id="signIn" class="primary" type="button" hidden>Sign in with your fingerprint</button>
+        <button id="counterScan" type="button" hidden>Scan the counter</button>
         <button id="counterSignIn" type="button" hidden>Sign in the counter PC</button>
         <button id="clock" type="button" hidden>Clock in</button>
         <form id="counterForm" hidden>
-          <p>On the counter PC, tap your name. Type the code it shows, then confirm with your fingerprint. The counter signs out after 15 minutes without a tap.</p>
+          <p>On the counter PC, tap your name, or Scan to sign in. Type the code it shows, then confirm with your fingerprint. The counter signs out after 15 minutes without a tap.</p>
           <label for="counterCode">Code on the counter</label>
           <input id="counterCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4" pattern="[0-9]{4}" required>
           <button id="counterSubmit" class="primary" type="submit">Sign the counter in with my fingerprint</button>

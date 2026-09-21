@@ -18,7 +18,7 @@ import { isKeyId, isNonce } from '../staffKeys'
 import { approvalState, isApprovalId, isApprovalSecret } from '../staffApprovals'
 import { timestampMs } from '../timestamps'
 import {
-  COUNTER_IDLE_MS, COUNTER_REQUESTS, COUNTER_REQUEST_MS, counterCodeFromBytes, counterSignInMessage, isCounterCode, isCounterHost,
+  COUNTER_IDLE_MS, COUNTER_REQUESTS, COUNTER_REQUEST_MS, counterCodeFromBytes, counterSignInMessage, isCounterCode, isCounterHost, signInLink,
 } from '../counterSignIn'
 
 const hashOf = (value: string) => createHash('sha256').update(value).digest('hex')
@@ -36,18 +36,24 @@ const sameHash = (a: string, b: string) => {
  * The counter PC asks to sign somebody in (S24). One waiting request per person:
  * tapping your name again replaces the last. The screen gets the code to show and
  * a secret to collect the session with; the hub keeps only hashes of both.
+ *
+ * With no name (T6.3, "Scan to sign in"), the request is open: whoever's key
+ * approves it, having scanned the QR on this screen, is the person signed in.
+ * One open request waits at a time. The QR text comes back only when the hub
+ * has its café-wifi certificate, since the phone checks that fingerprint.
  */
 export async function askCounterSignIn(
   body: unknown,
-  { db = adminDb(), now = Date.now(), host }: { db?: Firestore; now?: number; host: unknown },
-): Promise<{ id: string; secret: string; code: string; expiresAt: number; label: string }> {
+  { db = adminDb(), now = Date.now(), host, hubFingerprint = process.env.BIG_CMS_HUB_CERT_SHA256 }: { db?: Firestore; now?: number; host: unknown; hubFingerprint?: string },
+): Promise<{ id: string; secret: string; code: string; expiresAt: number; label: string; link: string | null }> {
   if (!isCounterHost(host)) {
     throw new HttpError(403, 'Signing in by phone is for the counter PC itself. On a phone, sign in with your fingerprint in the staff app.')
   }
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>
-  const uid = typeof b.uid === 'string' && b.uid && !b.uid.includes('/') ? b.uid : ''
+  const open = b.open === true
+  const uid = !open && typeof b.uid === 'string' && b.uid && !b.uid.includes('/') ? b.uid : ''
   const staff = uid ? await pulledStaff(db, uid) : null
-  if (!staff) throw new HttpError(400, 'Choose who you are from the list.')
+  if (!open && !staff) throw new HttpError(400, 'Choose who you are from the list.')
 
   const id = randomBytes(16).toString('base64url')
   const secret = randomBytes(32).toString('base64url')
@@ -66,7 +72,9 @@ export async function askCounterSignIn(
     approvedAt: null,
   })
   await batch.commit()
-  return { id, secret, code, expiresAt, label: labelFor(staff) }
+  let link: string | null = null
+  try { link = signInLink(hubFingerprintHex(hubFingerprint), id, code) } catch { link = null }
+  return { id, secret, code, expiresAt, label: staff ? labelFor(staff) : 'whoever scans', link }
 }
 
 /**
@@ -84,6 +92,8 @@ export async function approveCounterSignIn(
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>
   if (!isCounterCode(b.code) || !isKeyId(b.keyId) || !isNonce(b.nonce)) throw new HttpError(400, 'Not a counter sign-in.')
   const { code, keyId, nonce } = b as { code: string; keyId: string; nonce: string }
+  // Scanned (T6.3): the QR named the request, so it is that one or none.
+  const requestId = isApprovalId(b.requestId) ? b.requestId : null
 
   if (!(await consumeChallenge(db, keyId, nonce, now))) throw refused()
   const key = await verifiedKey(db, keyId, counterSignInMessage(fingerprint, code, keyId, nonce), b.signature)
@@ -92,6 +102,17 @@ export async function approveCounterSignIn(
   if (!staff) throw new HttpError(403, 'This account cannot sign in to the till.')
 
   const matched = await db.runTransaction(async tx => {
+    if (requestId) {
+      // The request scanned: waiting, in time, its code, and either this person's
+      // own or open, in which case the key's owner claims it.
+      const doc = await tx.get(db.doc(`${COUNTER_REQUESTS}/${requestId}`))
+      const d = doc.data() ?? {}
+      const ok = doc.exists && d.status === 'waiting' && timestampMs(d.expiresAt, 0) > now
+        && sameHash(codeHash(doc.id, code), String(d.codeHash ?? '')) && (d.uid === key.uid || d.uid === '')
+      if (!ok) return false
+      tx.update(doc.ref, { status: 'approved', approvedAt: FieldValue.serverTimestamp(), keyId, uid: key.uid })
+      return true
+    }
     const snap = await tx.get(db.collection(COUNTER_REQUESTS).where('uid', '==', key.uid))
     const found = snap.docs.find(doc => {
       const d = doc.data() ?? {}
