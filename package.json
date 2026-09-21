@@ -40,6 +40,7 @@
     "verify:offline": "node scripts/verify-offline.mjs",
     "verify:errors": "node scripts/verify-errors.mjs",
     "verify:counter": "node scripts/verify-counter.mjs",
+    "rules:generate": "node scripts/generate-rules.mjs",
     "rules:live": "node --env-file=.env.local scripts/check-rules.mjs",
     "verify:export": "node scripts/verify-export.mjs",
     "verify:reports": "node scripts/verify-reports.mjs",

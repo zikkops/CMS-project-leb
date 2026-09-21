@@ -1667,8 +1667,11 @@ answer to the only question being asked.
 
 **The claims rewrite is done and deployed.** Rules read
 `request.auth.token.role` via `hasRole()` and `can()`, one helper per section,
-mirroring `SECTION_ACCESS` in `shared/src/roles.ts` — so a rule and the page
-that writes through it can't disagree about who is allowed. `isStaff()` still
+generated from `SECTIONS` in `shared/src/roles.ts` by `npm run rules:generate`
+into a marked block (since 21 Sep 2026; a helper exists only while a rule calls
+it) — so a rule and the page that writes through it can't disagree about who is
+allowed. `verify:sections` fails when the block is not what the generator
+writes. Generating is not deploying. `isStaff()` still
 exists but is now just "signed in and staff", with a document-read fallback for
 any token issued before the claims backfill.
 

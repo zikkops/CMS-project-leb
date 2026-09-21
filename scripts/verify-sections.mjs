@@ -113,6 +113,14 @@ const sameRoles = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([..
     }
   }
   check(`every can() role list in firestore.rules matches SECTION_ACCESS (${helpers} helpers)`, problems)
+
+  // And the block is exactly what SECTIONS writes (UPGRADE.md T5.10): an edit
+  // by hand, or a section whose roles changed without a regenerate, fails here.
+  const { generateRulesBlock } = await import(`file://${join(root, 'scripts', 'rules-helpers.mjs')}`)
+  let generated = null
+  try { generated = generateRulesBlock(rules, R.SECTION_ACCESS) } catch (err) { generated = err }
+  check('the rules\' section helpers are what npm run rules:generate writes',
+    generated instanceof Error ? [generated.message] : generated === rules ? [] : ['firestore.rules differs: run npm run rules:generate (writing is not deploying)'])
 }
 
 // ── 3. Nav access is the section's own array ───────────────────────────────

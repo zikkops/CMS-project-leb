@@ -484,10 +484,11 @@ Each needs its own plan note in the vault first, and the owner's answers.
   runs after the transaction. If it throws, the till shows an error for a sale
   that happened. Catch it, and report it through `reportError()`.
   *Done: Done 21 Sep 2026. The fix is in the server logger itself (shared/src/server/activityLog.ts), so every caller is covered: writeLog() never throws. Every route logs after its write has committed, so an entry that fails to write no longer turns a closed sale into an error on the till. The failure is filed through recordError(), the server side of reportError(), into /admin/errors as 'Activity log entry not written (<section>)': one report per kind, counted, redacted as always. If that fails too, it goes to the server log. Each app's next.config sets BIG_CMS_APP so the report is filed under the right app. Covered by verify:hub (an entry that cannot be written does not throw, is filed once, and a repeat counts on the same report); verify:errors still passes.*
-- [ ] **T5.10 Generate the rules' role lists from `SECTIONS`.** The role
+- [x] **T5.10 Generate the rules' role lists from `SECTIONS`.** The role
   arrays in `firestore.rules` are written by hand. Generate the helper block
   between marker comments. **A rules deploy goes out one collection at a time
   with approval** (CLAUDE.md, Firestore rules).
+  *Done: Done 21 Sep 2026, NOT deployed. `npm run rules:generate` (scripts/generate-rules.mjs, with the pure generateRulesBlock() in scripts/rules-helpers.mjs) writes the section helpers in firestore.rules from SECTION_ACCESS, into a block between BEGIN and END GENERATED markers. A helper is generated only for a section a rule actually calls (comments ignored), so an uncalled helper cannot come back. `--check` exits 1 when the file is stale. verify:sections fails when the block is not what the generator writes; this was checked by hand-adding a role, which failed both rules checks. The regenerated file has the same 8 helpers with the same role lists (compared line by line), only reordered to SECTIONS order, and every rule outside the block is unchanged. rules:live will show that textual difference until the next approved deploy, which changes no permission. docs/adding-a-section.md step 7 and CLAUDE.md updated.*
 - [ ] **T5.11 Scheduled backups of the cloud and the hub.** A managed daily
   `gcloud firestore export` (needs billing and a bucket, set up by the owner),
   and a nightly copy of `pos.db` on the counter PC (SQLite `VACUUM INTO`),

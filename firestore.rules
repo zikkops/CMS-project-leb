@@ -122,8 +122,11 @@ service cloud.firestore {
       );
     }
 
-    // One helper per section, mirroring SECTION_ACCESS in shared/src/roles.ts.
-    // Keep these in the same order as that file so a drift is easy to spot.
+    // One helper per section the rules call, GENERATED from SECTIONS in
+    // shared/src/roles.ts (UPGRADE.md T5.10) into the block below, so a rule
+    // and the page that writes through it cannot disagree about who is
+    // allowed. A helper appears when something calls it and goes when nothing
+    // does. Why the others are gone:
     // canProducts() was here and is gone the same way the others were. Every
     // collection it governed is now `write: if false`: products and
     // productCategories behind /api/admin/products, and wholesaleOrders
@@ -135,9 +138,6 @@ service cloud.firestore {
     // eventTypes are both `write: if false` behind /api/admin/events, so it
     // governed nothing. The compiler said so on the deploy that added the POS
     // rules — which is exactly what that warning is for.
-    function canLoyalty()           { return can('loyalty',           ['admin', 'manager']); }
-    function canPos()               { return can('pos',               ['admin', 'manager', 'barista']); }
-    function canKds()               { return can('kds',               ['admin', 'manager', 'kitchen_crew', 'barista']); }
     // canBranchTables() was here and is gone the same way: branchTableLayouts
     // moved to `write: if false` when floor plans went behind
     // PUT /api/admin/branch-tables, leaving it governing nothing.
@@ -153,11 +153,16 @@ service cloud.firestore {
     // Removed for the same reason there is deliberately no isSuperadmin()
     // helper below: a defined-but-uncalled function in a security file reads
     // as though something enforces it.
-    function canWeeklyOrders()      { return can('weeklyOrders',      ['admin', 'manager']); }
-    function canEndOfDay()          { return can('endOfDay',          ['admin', 'manager']); }
-    function canSupplies()          { return can('supplies',          ['admin', 'manager', 'kitchen_crew', 'barista']); }
-    function canDailyInventory()    { return can('dailyInventory',    ['admin', 'manager', 'kitchen_crew', 'barista']); }
-    function canDeliveries()        { return can('deliveries',        ['admin', 'manager', 'kitchen_crew', 'barista']); }
+    // BEGIN GENERATED section helpers: npm run rules:generate writes this from SECTIONS in shared/src/roles.ts. Do not edit by hand.
+    function canLoyalty()        { return can('loyalty',        ['admin', 'manager']); }
+    function canWeeklyOrders()   { return can('weeklyOrders',   ['admin', 'manager']); }
+    function canPos()            { return can('pos',            ['admin', 'manager', 'barista']); }
+    function canKds()            { return can('kds',            ['admin', 'manager', 'kitchen_crew', 'barista']); }
+    function canEndOfDay()       { return can('endOfDay',       ['admin', 'manager']); }
+    function canSupplies()       { return can('supplies',       ['admin', 'manager', 'kitchen_crew', 'barista']); }
+    function canDailyInventory() { return can('dailyInventory', ['admin', 'manager', 'kitchen_crew', 'barista']); }
+    function canDeliveries()     { return can('deliveries',     ['admin', 'manager', 'kitchen_crew', 'barista']); }
+    // END GENERATED section helpers
 
     // NOT YET ENFORCED, and left here on purpose so the next person doesn't
     // have to re-derive it. branchIds is in the claim, so per-branch scoping
