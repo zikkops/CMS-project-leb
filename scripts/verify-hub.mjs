@@ -33,7 +33,7 @@ rmSync(out, { recursive: true, force: true })
 try {
   execSync(
     'npx tsc shared/src/server/hubStore.ts shared/src/server/checks.ts shared/src/server/tickets.ts ' +
-    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts shared/src/server/soldOut.ts shared/src/server/receiptEmail.ts shared/src/server/supplyTransfer.ts shared/src/server/activityLog.ts shared/src/server/hubBackup.ts shared/src/server/staffPay.ts ' +
+    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts shared/src/server/soldOut.ts shared/src/server/receiptEmail.ts shared/src/server/supplyTransfer.ts shared/src/server/activityLog.ts shared/src/server/hubBackup.ts shared/src/server/staffPay.ts shared/src/server/endOfDay.ts ' +
     `shared/src/server/drawer.ts --outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -444,6 +444,25 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
     [['products', 'p-mug', branch, -1]])
 
   const ticketId = sent.tickets[0].id
+
+  // End of Day keeps what the form sends (docs/reporting.md, gap 15): the
+  // lines' names and amounts, and each attendee's shift. It used to store
+  // every line as no name and $0, and drop every shift.
+  {
+    const EOD = await import(url('server/endOfDay.js'))
+    const parsed = EOD.parseEodInput({
+      branch, date: '2026-09-21', exchangeRate: 89000, cashLbp: {}, cashUsd: { 20: 2 }, systemLbp: 0, systemUsd: 0, tipsUsd: 12,
+      expenses: [{ name: 'Ice', amountUsd: 7.5 }], income: [{ name: 'Event deposit', amountUsd: 40 }],
+      attendance: [{ name: 'Rana', shift: 'double', isGuest: false }, { name: 'Sam', shift: 'none', isGuest: false }, { name: 'Lea', shift: 'pm', isGuest: true }],
+      notes: '',
+    })
+    eq('an expense and an income line keep their name and amount', [parsed.expenses, parsed.income], [[{ name: 'Ice', amountUsd: 7.5 }], [{ name: 'Event deposit', amountUsd: 40 }]])
+    eq('each attendee keeps their shift, and a guest stays a guest', parsed.attendance, [
+      { name: 'Rana', shift: 'double', isGuest: false }, { name: 'Sam', shift: 'none', isGuest: false }, { name: 'Lea', shift: 'pm', isGuest: true }])
+    await rejects('a shift that is not am, pm, double or none is refused, never guessed', async () => EOD.parseEodInput({
+      branch, date: '2026-09-21', exchangeRate: 89000, attendance: [{ name: 'X', shift: 'triple' }] }), e => e.status === 400)
+    eq('an old caller sending label and amount is still read', EOD.parseEodInput({ branch, date: '2026-09-21', exchangeRate: 1, expenses: [{ label: 'Gas', amount: 3 }] }).expenses, [{ name: 'Gas', amountUsd: 3 }])
+  }
 
   // Staff pay (UPGRADE.md T7.18): saved with history, listed with today's values.
   {

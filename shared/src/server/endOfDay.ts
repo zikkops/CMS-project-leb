@@ -33,8 +33,19 @@ export function reportDocId(branch: string, date: string): string {
   return `${branch}_${date}`
 }
 
-interface LineEntry { label: string; amount: number; currency?: string }
-interface AttendanceEntry { name: string; hours?: number; present?: boolean }
+// The shapes the form sends and every reader expects (shared/src/endOfDay.ts):
+// a line is { name, amountUsd }, and an attendee { name, shift, isGuest }.
+//
+// Until 21 Sep 2026 this file read a line as { label, amount } and an attendee
+// as { name, hours, present }, which the form has never sent. So every saved
+// expense and income line was stored with no name and $0, and every attendee
+// lost their shift: the tips split then gave an Off day a share and a double
+// shift one point. Found by the reporting audit (docs/reporting.md, gap 15).
+// The old keys are still read, so a caller that sent them keeps working.
+interface LineEntry { name: string; amountUsd: number }
+// am and pm count one tips point each, double two, none nothing (tips.ts).
+type ShiftType = 'none' | 'am' | 'pm' | 'double'
+interface AttendanceEntry { name: string; shift: ShiftType; isGuest: boolean }
 
 export interface EodInput {
   branch: string
@@ -81,9 +92,8 @@ function lines(v: unknown, label: string): LineEntry[] {
   return v.map((row, i) => {
     const r = (row ?? {}) as Record<string, unknown>
     return {
-      label: String(r.label ?? '').slice(0, 200),
-      amount: money(r.amount, `${label} line ${i + 1}`),
-      ...(typeof r.currency === 'string' ? { currency: r.currency } : {}),
+      name: String(r.name ?? r.label ?? '').slice(0, 200),
+      amountUsd: money(r.amountUsd ?? r.amount, `${label} line ${i + 1}`),
     }
   })
 }
@@ -112,12 +122,18 @@ export function parseEodInput(body: Record<string, unknown>): EodInput {
     tipsUsd: money(body.tipsUsd, 'Tips'),
     expenses: lines(body.expenses, 'Expenses'),
     income: lines(body.income, 'Income'),
-    attendance: attendanceRaw.map(row => {
+    attendance: attendanceRaw.map((row, i) => {
       const r = (row ?? {}) as Record<string, unknown>
+      // A shift the form did not send is refused, never guessed: a guessed
+      // shift is somebody's tips.
+      const shift = r.shift === undefined ? (r.present === false ? 'none' : 'am') : r.shift
+      if (shift !== 'am' && shift !== 'pm' && shift !== 'double' && shift !== 'none') {
+        throw new HttpError(400, `Attendance line ${i + 1}: the shift is am, pm, double or none.`)
+      }
       return {
         name: String(r.name ?? '').slice(0, 120),
-        ...(r.hours != null ? { hours: money(r.hours, 'Hours', 24) } : {}),
-        ...(typeof r.present === 'boolean' ? { present: r.present } : {}),
+        shift,
+        isGuest: r.isGuest === true,
       }
     }),
     notes: String(body.notes ?? '').slice(0, 5000),
