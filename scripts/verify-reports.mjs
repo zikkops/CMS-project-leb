@@ -73,7 +73,7 @@ console.log('\nvoids — what was struck off, worth what it was rung up at')
   eq('the reason is the list\'s words', r.voids.map(v => v.reason), ['Made wrong', 'Customer changed their mind'])
   eq('waste and "after it was sent" come from the line', r.voids.map(v => [v.waste, v.afterSending]), [[true, true], [false, false]])
   eq('who voided it is named', r.voids.map(v => v.by), ['rana@example.com', 'sam@example.com'])
-  eq('totals: count, value, and what of it was waste', r.totals, { voids: 2, voidValue: 14, wasteValue: 11, discounts: 0, discountValue: 0 })
+  eq('totals: count, value, and what of it was waste', r.totals, { voids: 2, voidValue: 14, wasteValue: 11, discounts: 0, discountValue: 0, refunds: 0, refundValue: 0, unapproved: 1, priceRuleValue: 0 })
   eq('by reason, the biggest first', r.voidsByReason.map(t => [t.label, t.count, t.value]), [['Made wrong', 1, 11], ['Customer changed their mind', 1, 3]])
 
   const old = R.voidDiscountReport([check({ lines: [voided({ voidedBy: undefined, voidedByEmail: undefined, voidReasonKey: null, voidReason: 'dropped it' })] })], OPTS)
@@ -120,6 +120,42 @@ console.log('\nthe day is the café\'s')
   ], OPTS)
   eq('THE TRAP: a void on a check closed after midnight belongs to the next café day', r.voids.map(v => v.day), ['2026-09-12', '2026-09-13'])
   eq('...and by day adds each day up apart', r.byDay.map(d => [d.day, d.voids, d.voidValue]), [['2026-09-12', 1, 2], ['2026-09-13', 1, 4]])
+}
+
+console.log('\nthe exception report: who rang it up, who approved it, refunds in their period (UPGRADE.md T7.9)')
+{
+  const r = R.voidDiscountReport([
+    check({ id: 'e1', lines: [
+      line({ id: 'ok', priceRule: 'Happy hour', unitPrice: 3, quantity: 2 }),
+      voided({ id: 'va', addedByEmail: 'sam@example.com', voidedByEmail: 'rana@example.com', voidedByRole: 'manager', unitPrice: 4 }),
+      voided({ id: 'vb', addedByEmail: 'sam@example.com', voidedByEmail: 'sam@example.com', sentAt: null, voidedByRole: 'barista', unitPrice: 2 }),
+      voided({ id: 'vc', addedByEmail: 'lea@example.com', unitPrice: 5 }),
+    ] }),
+    // A refunded check among the closed ones sold nothing at a price rule.
+    check({ id: 'e2', status: 'refunded', lines: [line({ id: 'x', priceRule: 'Happy hour', unitPrice: 3 })] }),
+  ], {
+    ...OPTS,
+    refunded: [
+      // Sold on the 10th, refunded at 20:00 UTC on the 12th, which is 23:00 in Beirut: still the 12th.
+      check({ id: 'r1', status: 'refunded', closedAt: '2026-09-10T18:00:00.000Z', refundedAt: '2026-09-12T20:00:00.000Z', refundedBy: 'rana@example.com',
+        refundedByRole: 'manager', refundReasonKey: 'made-wrong', refundWasWaste: true, receiptNumber: '1000', lines: [line({ unitPrice: 9 })] }),
+      check({ id: 'r2', status: 'refunded', refundedAt: '2026-09-12T21:30:00.000Z', refundedBy: 'old@example.com', lines: [line({ unitPrice: 6 })] }),
+      check({ id: 'r3', status: 'closed', lines: [line({ unitPrice: 99 })] }),
+    ],
+  })
+  const v = id => r.voids.find(x => x.id === `e1:${id}`)
+  eq('a void names who rang the item up and who struck it off', [v('va').rungUpBy, v('va').by], ['sam@example.com', 'rana@example.com'])
+  eq('approval: a manager after sending, nobody needed before sending, and never a guess', [v('va').approval, v('vb').approval, v('vc').approval], ['manager', 'not needed', 'not recorded'])
+  eq('voids by who rang them up', r.voidsByRungUp.map(t => [t.label, t.count]), [['sam@example.com', 2], ['lea@example.com', 1]])
+  eq('a refund is filed on the day it was given, naming the sale\'s day', [r.refunds[0].day, r.refunds[0].originalDay], ['2026-09-12', '2026-09-10'])
+  eq('...only refunded checks count, one after midnight on the next café day', r.refunds.map(x => [x.id, x.day]), [['r1', '2026-09-12'], ['r2', '2026-09-13']])
+  eq('a refund carries what was given back, its reason and waste', [r.refunds[0].amount, r.refunds[0].waste, r.totals.refundValue], [9, true, 15])
+  eq('a refund with no role stamped is not recorded, never approved', r.refunds[1].approval, 'not recorded')
+  eq('reversals needing approval, by approval: voids after sending and refunds', r.byApproval.map(t => [t.key, t.count]), [['manager', 2], ['not recorded', 2]])
+  eq('the unapproved count is what an auditor asks about', r.totals.unapproved, 2)
+  eq('sales at a price rule, from closed checks only', [r.priceRules.map(t => [t.label, t.count, t.value]), r.totals.priceRuleValue], [[['Happy hour', 2, 6]], 6])
+  eq('refunds go into the day they were given', r.byDay.map(d => [d.day, d.refunds]), [['2026-09-12', 1], ['2026-09-13', 1]])
+  eq('a stamped role that is not a manager\'s reads as not approved', R.approvalOf(true, 'barista'), 'not approved')
 }
 
 console.log('\nproduct mix — what sold, by item and by category (T3.3)')

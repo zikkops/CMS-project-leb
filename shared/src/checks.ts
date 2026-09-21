@@ -355,6 +355,8 @@ export interface CheckLine {
   voidedBy?: string
   voidedByEmail?: string
   voidedAt?: string
+  /** The role the person who voided it held then: the approval (T5.1, T7.9). Absent before 21 Sep 2026. */
+  voidedByRole?: string
   /** Copied from the reason, so a later change to the list cannot re-classify
    *  a void that already happened. */
   voidWasWaste: boolean | null
@@ -459,6 +461,8 @@ export interface Check {
   /** Why it was refunded: the VOID_REASONS label and key, stamped by refundCheck(). */
   refundReason?: string
   refundReasonKey?: string
+  /** The role the person who refunded it held then: the approval (T5.1, T7.9). Absent before 21 Sep 2026. */
+  refundedByRole?: string
   /** Set when this check was merged into another (UPGRADE.md T5.6); it is then cancelled. */
   mergedInto?: string
   /** Copied from the reason when the refund happened, so a later change to the list cannot re-classify it. */

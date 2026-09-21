@@ -6,7 +6,7 @@ import { BRAND } from '@big-cms/shared/brand'
 import type { FileColumn, ReportHeader } from '@big-cms/shared/reportFile'
 import type { DayRule } from '@big-cms/shared/reportDefinitions'
 import {
-  DISCOUNT_KIND_LABELS, type DiscountRow, type HourRow, type MixCategory, type MixItem, type Tally, type VoidRow,
+  APPROVAL_LABELS, DISCOUNT_KIND_LABELS, type DiscountRow, type HourRow, type MixCategory, type MixItem, type RefundRow, type Tally, type VoidRow,
 } from '@big-cms/shared/salesReports'
 import type { PersonHours, Shift } from '@big-cms/shared/timeClock'
 import type { ReportSheet } from '../../components/ui/ReportDownloads'
@@ -17,14 +17,20 @@ export function reportHeader(report: string, from: string, to: string, branches:
 
 const sheet = <T,>(name: string, columns: FileColumn<T>[], rows: readonly T[]) => ({ name, columns, rows }) as unknown as ReportSheet<never>
 
-export function voidSheets(r: { voids: VoidRow[]; discounts: DiscountRow[]; voidsByReason: Tally[]; discountsByReason: Tally[] }): ReportSheet<never>[] {
+export function voidSheets(r: {
+  voids: VoidRow[]; discounts: DiscountRow[]; refunds: RefundRow[]; voidsByReason: Tally[]; discountsByReason: Tally[]
+  refundsByReason: Tally[]; byApproval: Tally[]; priceRules: Tally[]
+}): ReportSheet<never>[] {
+  const tallySheet = (name: string, key: string, rows: Tally[]) =>
+    sheet<Tally>(name, [{ label: key, value: t => t.label }, { label: 'Count', value: t => t.count }, { label: 'Value USD', value: t => t.value }], rows)
   return [
     sheet<VoidRow>('Voids', [
       { label: 'Day', value: v => v.day }, { label: 'Time', value: v => v.time }, { label: 'Branch', value: v => v.branch },
       { label: 'Receipt', value: v => v.receipt }, { label: 'Table or order', value: v => v.table }, { label: 'Item', value: v => v.item },
       { label: 'Quantity', value: v => v.quantity }, { label: 'Value USD (incl. VAT)', value: v => v.value },
       { label: 'Reason', value: v => v.reason }, { label: 'Waste', value: v => (v.waste ? 'yes' : 'no') },
-      { label: 'After sending', value: v => (v.afterSending ? 'yes' : 'no') }, { label: 'By', value: v => v.by },
+      { label: 'After sending', value: v => (v.afterSending ? 'yes' : 'no') }, { label: 'Rung up by', value: v => v.rungUpBy },
+      { label: 'Voided by', value: v => v.by }, { label: 'Approval', value: v => APPROVAL_LABELS[v.approval] },
     ], r.voids),
     sheet<DiscountRow>('Discounts', [
       { label: 'Day', value: d => d.day }, { label: 'Time', value: d => d.time }, { label: 'Branch', value: d => d.branch },
@@ -32,8 +38,17 @@ export function voidSheets(r: { voids: VoidRow[]; discounts: DiscountRow[]; void
       { label: 'Item', value: d => d.item ?? '' }, { label: 'Took off USD (incl. VAT)', value: d => d.amount },
       { label: 'Reason', value: d => d.reason }, { label: 'By', value: d => d.by },
     ], r.discounts),
-    sheet<Tally>('Voids by reason', [{ label: 'Reason', value: t => t.label }, { label: 'Count', value: t => t.count }, { label: 'Value USD', value: t => t.value }], r.voidsByReason),
-    sheet<Tally>('Discounts by reason', [{ label: 'Reason', value: t => t.label }, { label: 'Count', value: t => t.count }, { label: 'Value USD', value: t => t.value }], r.discountsByReason),
+    sheet<RefundRow>('Refunds', [
+      { label: 'Day given', value: f => f.day }, { label: 'Time', value: f => f.time }, { label: 'Branch', value: f => f.branch },
+      { label: 'Receipt', value: f => f.receipt }, { label: 'Sale day', value: f => f.originalDay }, { label: 'Given back USD (incl. VAT)', value: f => f.amount },
+      { label: 'Reason', value: f => f.reason }, { label: 'Waste', value: f => (f.waste ? 'yes' : 'no') },
+      { label: 'By', value: f => f.by }, { label: 'Approval', value: f => APPROVAL_LABELS[f.approval] },
+    ], r.refunds),
+    tallySheet('Voids by reason', 'Reason', r.voidsByReason),
+    tallySheet('Discounts by reason', 'Reason', r.discountsByReason),
+    tallySheet('Refunds by reason', 'Reason', r.refundsByReason),
+    tallySheet('By approval', 'Approval', r.byApproval),
+    tallySheet('Price rules', 'Rule', r.priceRules),
   ]
 }
 

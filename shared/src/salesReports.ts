@@ -8,13 +8,13 @@
 // same figure in the export cannot disagree about which day a check was.
 
 import {
-  checkTotals, discountReason, grossLineTotal, lineDiscount, lineTotal, voidReason,
+  checkTotals, discountReason, grossLineTotal, lineDiscount, lineTotal, voidReason, REVERSAL_ROLES,
   type Check, type CheckLine,
 } from './checks'
 import { lineUnitPrice } from './modifiers'
 import { consumptionCost, foldComboParts, lineTaken } from './recipes'
 import { goodsShareForLines } from './splits'
-import { closedAtParts } from './salesExport'
+import { closedAtParts, refundedAtParts } from './salesExport'
 import { timestampMs } from './timestamps'
 
 const r2 = (n: number) => Math.round(n * 100) / 100
@@ -60,7 +60,53 @@ export interface VoidRow {
   waste: boolean
   /** Voided after a ticket had gone to the kitchen or bar. */
   afterSending: boolean
+  /** Who struck it off. Their own sign-in is the approval (T5.1). */
   by: string
+  /** Who rang the item up in the first place (T7.9). */
+  rungUpBy: string
+  approval: Approval
+}
+
+/**
+ * Whether a reversal was approved (UPGRADE.md T5.1, T7.9). A void of food
+ * already sent, and every refund, needs a manager or an admin, from their own
+ * phone: their sign-in is the approval, so the approver is the person who did
+ * it, and the role they held is stamped with it. A void before sending needs
+ * nobody. One from before the role was stamped says so, never a guess.
+ */
+export type Approval = 'not needed' | 'manager' | 'not approved' | 'not recorded'
+
+export const APPROVAL_LABELS: Record<Approval, string> = {
+  'not needed': 'Not needed',
+  'manager': 'By a manager',
+  'not approved': 'Not by a manager',
+  'not recorded': 'Not recorded',
+}
+
+/** How a reversal was approved, from the role stamped with it. */
+export function approvalOf(needed: boolean, role: string | null | undefined): Approval {
+  if (!needed) return 'not needed'
+  if (!role) return 'not recorded'
+  return REVERSAL_ROLES.includes(role) ? 'manager' : 'not approved'
+}
+
+/** A refund, on the day it was given (T7.4's rule), never the sale's day. */
+export interface RefundRow {
+  id: string
+  day: string
+  time: string
+  branch: string
+  receipt: string
+  /** The café day the sale closed on. */
+  originalDay: string
+  /** What the check came to: what was given back. */
+  amount: number
+  reasonKey: string
+  reason: string
+  /** The food was made and lost, as the reason said. */
+  waste: boolean
+  by: string
+  approval: Approval
 }
 
 export type DiscountKind = 'comp' | 'item-percent' | 'check-percent' | 'check-amount' | 'staff-meal'
@@ -97,8 +143,23 @@ export interface VoidDiscountReport {
   voidsByStaff: Tally[]
   discountsByReason: Tally[]
   discountsByStaff: Tally[]
-  byDay: { day: string; voids: number; voidValue: number; discounts: number; discountValue: number }[]
-  totals: { voids: number; voidValue: number; wasteValue: number; discounts: number; discountValue: number }
+  refunds: RefundRow[]
+  /** Voids by who rang the item up, beside voidsByStaff (who struck it off). */
+  voidsByRungUp: Tally[]
+  /** Voids after sending and refunds, by how they were approved. */
+  byApproval: Tally[]
+  refundsByReason: Tally[]
+  refundsByStaff: Tally[]
+  /** Lines sold at a price rule (T5.12), by rule: count is the quantity, value what they came to. */
+  priceRules: Tally[]
+  byDay: { day: string; voids: number; voidValue: number; discounts: number; discountValue: number; refunds: number; refundValue: number }[]
+  totals: {
+    voids: number; voidValue: number; wasteValue: number; discounts: number; discountValue: number
+    refunds: number; refundValue: number
+    /** Voids after sending plus refunds with no manager's approval recorded, or with none given. */
+    unapproved: number
+    priceRuleValue: number
+  }
 }
 
 /** A line's worth before the void: grossLineTotal() is 0 for a void line, which is the point of a void. */
@@ -115,10 +176,38 @@ function tableOf(check: Pick<Check, 'tableNumber'>): string {
  * Every void and every discount on the checks given, with totals by reason,
  * by person and by day. Checks still open are left out: their voids and
  * discounts are not final until the check is.
+ *
+ * The exception report (UPGRADE.md T7.9) adds who rang each voided item up,
+ * whether each reversal was approved, the refunds given in the period
+ * (`refunded`, read on refundedAt, filed on the refund's day), and what sold at
+ * a price rule.
  */
-export function voidDiscountReport(checks: readonly Check[], opts: { timeZone: string }): VoidDiscountReport {
+export function voidDiscountReport(
+  checks: readonly Check[],
+  opts: { timeZone: string; refunded?: readonly Check[] },
+): VoidDiscountReport {
   const voids: VoidRow[] = []
   const discounts: DiscountRow[] = []
+  const refunds: RefundRow[] = []
+  const ruled: { key: string; label: string; value: number; count: number }[] = []
+
+  for (const check of opts.refunded ?? []) {
+    if (check.status !== 'refunded') continue
+    const { day, time } = refundedAtParts(check as Check & { refundedAt?: unknown }, opts.timeZone)
+    if (!day) continue
+    const c = check as Check & { refundedBy?: string }
+    const reason = voidReason(check.refundReasonKey ?? '')
+    refunds.push({
+      id: check.id, day, time, branch: check.branch, receipt: check.receiptNumber ?? '',
+      originalDay: closedAtParts(check.closedAt, opts.timeZone).day,
+      amount: checkTotals(check).net,
+      reasonKey: check.refundReasonKey ?? '',
+      reason: reason?.label ?? (check.refundReason || 'No reason recorded'),
+      waste: check.refundWasWaste === true,
+      by: person(c.refundedBy).label,
+      approval: approvalOf(true, check.refundedByRole),
+    })
+  }
 
   for (const check of checks) {
     if (check.status === 'open') continue
@@ -144,8 +233,13 @@ export function voidDiscountReport(checks: readonly Check[], opts: { timeZone: s
           waste: line.voidWasWaste === true,
           afterSending: Boolean(line.sentAt),
           by: who.label,
+          rungUpBy: person(line.addedByEmail).label,
+          approval: approvalOf(Boolean(line.sentAt), line.voidedByRole),
         })
         continue
+      }
+      if (line.priceRule && check.status === 'closed') {
+        ruled.push({ key: line.priceRule, label: line.priceRule, value: lineTotal(line, staff), count: line.quantity })
       }
       const d = line.discount
       if (d) {
@@ -197,8 +291,10 @@ export function voidDiscountReport(checks: readonly Check[], opts: { timeZone: s
     a.day === b.day ? a.time.localeCompare(b.time) : a.day.localeCompare(b.day)
   voids.sort(order)
   discounts.sort(order)
+  refunds.sort(order)
 
-  const days = [...new Set([...voids.map(v => v.day), ...discounts.map(d => d.day)])].sort()
+  const days = [...new Set([...voids.map(v => v.day), ...discounts.map(d => d.day), ...refunds.map(r => r.day)])].sort()
+  const reversals = [...voids.filter(v => v.afterSending), ...refunds.map(r => ({ approval: r.approval, value: r.amount }))]
   return {
     voids,
     discounts,
@@ -206,13 +302,21 @@ export function voidDiscountReport(checks: readonly Check[], opts: { timeZone: s
     voidsByStaff: tally(voids.map(v => ({ key: v.by, label: v.by, value: v.value }))),
     discountsByReason: tally(discounts.map(d => ({ key: d.reasonKey, label: d.reason, value: d.amount }))),
     discountsByStaff: tally(discounts.map(d => ({ key: d.by, label: d.by, value: d.amount }))),
+    refunds,
+    voidsByRungUp: tally(voids.map(v => ({ key: v.rungUpBy, label: v.rungUpBy, value: v.value }))),
+    byApproval: tally(reversals.map(x => ({ key: x.approval, label: APPROVAL_LABELS[x.approval], value: x.value }))),
+    refundsByReason: tally(refunds.map(r => ({ key: r.reasonKey || r.reason, label: r.reason, value: r.amount }))),
+    refundsByStaff: tally(refunds.map(r => ({ key: r.by, label: r.by, value: r.amount }))),
+    priceRules: tally(ruled),
     byDay: days.map(day => {
       const v = voids.filter(x => x.day === day)
       const d = discounts.filter(x => x.day === day)
+      const f = refunds.filter(x => x.day === day)
       return {
         day,
         voids: v.length, voidValue: r2(v.reduce((s, x) => s + x.value, 0)),
         discounts: d.length, discountValue: r2(d.reduce((s, x) => s + x.amount, 0)),
+        refunds: f.length, refundValue: r2(f.reduce((s, x) => s + x.amount, 0)),
       }
     }),
     totals: {
@@ -221,6 +325,10 @@ export function voidDiscountReport(checks: readonly Check[], opts: { timeZone: s
       wasteValue: r2(voids.filter(x => x.waste).reduce((s, x) => s + x.value, 0)),
       discounts: discounts.length,
       discountValue: r2(discounts.reduce((s, x) => s + x.amount, 0)),
+      refunds: refunds.length,
+      refundValue: r2(refunds.reduce((s, x) => s + x.amount, 0)),
+      unapproved: reversals.filter(x => x.approval === 'not approved' || x.approval === 'not recorded').length,
+      priceRuleValue: r2(ruled.reduce((s, x) => s + x.value, 0)),
     },
   }
 }

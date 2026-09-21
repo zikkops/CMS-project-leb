@@ -414,7 +414,7 @@ in USD at the cost stored with the count (`countVariance()` in
 25. **FIXED 21 Sep 2026 (T7.6): /admin/reports/vat shows output VAT by rate, the service charge's VAT apart, reversals on refunds in their period, input VAT from received deliveries, and the net position.** Was: there was no VAT report: no split by rate, no count of checks without a
     rate, and no input VAT beside output VAT.
     - Fix: **T7.6**.
-26. **Order type and happy-hour prices are recorded but barely reported.**
+26. **Order type and happy-hour prices are recorded but barely reported.** Price rules FIXED 21 Sep 2026 (T7.9): Voids & Discounts, now the exception report, shows what sold at each price rule, from closed checks. It also shows who rang each voided item up, whether each void after sending and each refund was approved by a manager (the role is stamped from 21 Sep 2026; older ones read "Not recorded"), and the refunds given in the period, on the day they were given.
     - Fix: **T7.3**, **T7.9**.
 27. **Nothing decides what happens to a card tip on a refunded check.**
     `refundOf()` returns the card amount only.

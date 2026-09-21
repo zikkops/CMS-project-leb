@@ -12,7 +12,7 @@
 // a branch, never a figure.
 
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
-import { parseExportRange, readClosedChecks, readInChunks, readSalesExport, requestedBranches } from '@big-cms/shared/server/salesExport'
+import { parseExportRange, readClosedChecks, readInChunks, readRefundedChecks, readSalesExport, requestedBranches } from '@big-cms/shared/server/salesExport'
 import { readSettings } from '@big-cms/shared/server/settings'
 import { salesSummary } from '@big-cms/shared/salesSummary'
 import { tenderSummary } from '@big-cms/shared/tenderSummary'
@@ -108,11 +108,21 @@ export async function GET(request: Request): Promise<Response> {
       )
     }
     if (report === 'voids') {
-      const { checks, branches, cutShort } = await readClosedChecks(range, { timeZone, branches: own })
+      // The exception report (T7.9): voids and discounts on the checks that
+      // closed in the period, and the refunds GIVEN in it, on refundedAt.
+      const [{ checks, branches, cutShort }, refunded] = await Promise.all([
+        readClosedChecks(range, { timeZone, branches: own }),
+        readRefundedChecks(range, { timeZone, branches: own }),
+      ])
       return Response.json(
         {
-          ok: true, from: range.from, to: range.to, branches, cutShort, checks: checks.length, ...voidDiscountReport(checks, { timeZone }),
-          byBranch: perBranch(checks, list => voidDiscountReport(list, { timeZone }).totals).map(b => ({ branch: b.branch, totals: b.report })),
+          ok: true, from: range.from, to: range.to, branches, cutShort, checks: checks.length, ...voidDiscountReport(checks, { timeZone, refunded }),
+          byBranch: chosen.length > 1 ? chosen.map(branch => ({
+            branch,
+            totals: voidDiscountReport(checks.filter(c => c.branch === branch), {
+              timeZone, refunded: refunded.filter(c => c.branch === branch),
+            }).totals,
+          })) : [],
         },
         { headers: { 'Cache-Control': 'no-store' } },
       )

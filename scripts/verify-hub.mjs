@@ -643,6 +643,16 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
     const mistap = await C.addLines(staff, checkId, C.parseLineRequests({ lines: [{ source: 'menu', refId: 'm-toast', quantity: 1 }] }), 'batch-mistap-1')
     const voided = await C.voidLine(barista, checkId, mistap.lines[0].id, 'rung-wrong', '')
     eq('a barista can still strike off a line never sent', voided.wasSent, false)
+    // The exception report reads the approval from the role stamped with it (T7.9).
+    const { id: approvalCheck } = await C.openCheck(staff, { branch, tableNumber: 41, guestCount: 1 })
+    const toVoid = await C.addLines(staff, approvalCheck, C.parseLineRequests({ lines: [{ source: 'menu', refId: 'm-toast', quantity: 1 }] }), 'batch-approval-1')
+    const firedForVoid = await C.sendCheck(staff, approvalCheck)
+    await C.voidLine(staff, approvalCheck, toVoid.lines[0].id, 'rung-wrong', '')
+    const stampedByManager = (await db.doc(`checks/${approvalCheck}`).get()).data().lines[0].voidedByRole
+    const stampedByBarista = (await db.doc(`checks/${checkId}`).get()).data().lines.find(l => l.id === mistap.lines[0].id).voidedByRole
+    eq('a void stamps the role that approved it, as it stood', [stampedByManager, stampedByBarista], ['manager', 'barista'])
+    await db.doc(`checks/${approvalCheck}`).delete()
+    for (const t of firedForVoid.tickets) await db.doc(`kitchenTickets/${t.id}`).delete()
   }
 
   // Hold and fire (UPGRADE.md T3.11), on a table of its own.

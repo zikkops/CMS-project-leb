@@ -837,6 +837,8 @@ export async function voidLine(
               voidedBy: caller.uid,
               voidedByEmail: caller.email ?? '',
               voidedAt: new Date().toISOString(),
+              // The approval, as it stood (T7.9): a later change of role must not re-judge it.
+              voidedByRole: caller.role ?? '',
               ...(plan.outcome === 'waste' ? { voidWasteUsd: plan.wasteUsd } : {}),
             }
           : l),
@@ -1617,6 +1619,7 @@ export async function refundCheck(
       status: 'refunded',
       refundedAt: FieldValue.serverTimestamp(),
       refundedBy: caller.email ?? caller.uid,
+      refundedByRole: caller.role ?? '',
       refundReason: label,
       refundReasonKey: reason.key,
       refundWasWaste: reason.isWaste,

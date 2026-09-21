@@ -812,13 +812,14 @@ Principles for every task here:
   costed", never $0 cost and 100% margin. Coverage is shown, as the food cost
   report does.
   *Done: Product Mix now has net sales before VAT and service, recipe cost from each line's snapshot, gross margin and coverage, by item and category; an item nobody could cost reads 'not costed', never $0. Combos: foldComboParts() costs parts on the combo line (gap 18), used by the mix and the Food Cost Report. verify:reports 72, verify:recipes 136. Demo reconciled: cost $1,168.74 in both.*
-- [ ] **T7.9 Discounts, comps, voids and refunds, with who approved.** Extend
+- [x] **T7.9 Discounts, comps, voids and refunds, with who approved.** Extend
   Voids & Discounts:
   - by reason, by staff member, and by approver (T5.1's manager)
   - whether the food had been sent
 
   Totals per branch and period, and a download. This is the exception report
   auditors look at.
+  *Done: Voids & Discounts is now the exception report: who rang each voided item up and who struck it off, approval (manager, not needed, not by a manager, not recorded) from voidedByRole/refundedByRole now stamped on the server, refunds given in the period on their refund day, sales at a price rule, an unapproved count, per branch and in the download. verify:reports 84, verify:hub 220.*
 - [ ] **T7.10 Receipt sequence report.** For a period and branch, every
   receipt number issued, in order:
   - **gaps** (on a hub, numbers skipped in a block are expected, and are named
