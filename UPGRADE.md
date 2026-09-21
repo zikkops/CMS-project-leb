@@ -489,10 +489,11 @@ Each needs its own plan note in the vault first, and the owner's answers.
   between marker comments. **A rules deploy goes out one collection at a time
   with approval** (CLAUDE.md, Firestore rules).
   *Done: Done 21 Sep 2026, NOT deployed. `npm run rules:generate` (scripts/generate-rules.mjs, with the pure generateRulesBlock() in scripts/rules-helpers.mjs) writes the section helpers in firestore.rules from SECTION_ACCESS, into a block between BEGIN and END GENERATED markers. A helper is generated only for a section a rule actually calls (comments ignored), so an uncalled helper cannot come back. `--check` exits 1 when the file is stale. verify:sections fails when the block is not what the generator writes; this was checked by hand-adding a role, which failed both rules checks. The regenerated file has the same 8 helpers with the same role lists (compared line by line), only reordered to SECTIONS order, and every rule outside the block is unchanged. rules:live will show that textual difference until the next approved deploy, which changes no permission. docs/adding-a-section.md step 7 and CLAUDE.md updated.*
-- [ ] **T5.11 Scheduled backups of the cloud and the hub.** A managed daily
+- [x] **T5.11 Scheduled backups of the cloud and the hub.** A managed daily
   `gcloud firestore export` (needs billing and a bucket, set up by the owner),
   and a nightly copy of `pos.db` on the counter PC (SQLite `VACUUM INTO`),
   keeping 7.
+  *Done: Done 21 Sep 2026 for the hub. OWNER TO CONFIRM and set up the cloud side. Hub: the POS server copies pos.db once a café day into backups/ beside it (pos-YYYY-MM-DD.db) and keeps 7. The copy uses SQLite VACUUM INTO (HubStore.backupTo()), so it is consistent while trading; it is written as .part and then renamed. It is checked a minute after start and every hour, from pos/instrumentation.ts. Only files of exactly that name are ever deleted. The rules are hubBackupPlan() in shared/src/hubBackup.ts. verify:hub checks the plan (4 cases) and makes a real copy of a hub file, which read back with every document. Cloud: a managed daily export needs billing and a bucket, so it is not set up. docs/scheduled-backups.md gives the owner the gcloud steps (Firestore scheduled backups, or an export to a bucket) and a quarterly restore drill; nothing was run against a project.*
 - [ ] **T5.12 Menus by time of day and happy-hour prices.** A price rule by
   day and time, judged in the café's zone on the server when the line is
   added.

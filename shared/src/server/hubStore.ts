@@ -987,6 +987,15 @@ export class HubStore {
     return Number(this.stmt.trim.run(upToSeq, before).changes)
   }
 
+  /**
+   * A consistent copy of the whole database into a new file (UPGRADE.md
+   * T5.11), by SQLite's VACUUM INTO: taken by the database itself, so it is
+   * never a torn file, and it does not stop the till. The file must not exist.
+   */
+  backupTo(file: string): void {
+    this.sql.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`)
+  }
+
   lastSeq(): number {
     return Number((this.stmt.lastSeq.get() as { seq: number | bigint }).seq)
   }

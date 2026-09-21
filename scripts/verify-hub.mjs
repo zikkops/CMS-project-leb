@@ -33,7 +33,7 @@ rmSync(out, { recursive: true, force: true })
 try {
   execSync(
     'npx tsc shared/src/server/hubStore.ts shared/src/server/checks.ts shared/src/server/tickets.ts ' +
-    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts shared/src/server/soldOut.ts shared/src/server/receiptEmail.ts shared/src/server/supplyTransfer.ts shared/src/server/activityLog.ts ' +
+    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts shared/src/server/soldOut.ts shared/src/server/receiptEmail.ts shared/src/server/supplyTransfer.ts shared/src/server/activityLog.ts shared/src/server/hubBackup.ts ' +
     `shared/src/server/drawer.ts --outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -444,6 +444,25 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
     [['products', 'p-mug', branch, -1]])
 
   const ticketId = sent.tickets[0].id
+
+  // The nightly copy (UPGRADE.md T5.11): the plan, then a real copy of this hub.
+  {
+    const HBP = await import(url('hubBackup.js'))
+    const week = ['2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18', '2026-09-19', '2026-09-20'].map(HBP.hubBackupName)
+    eq('a new day makes a copy and lets the oldest of seven go', HBP.hubBackupPlan(week, '2026-09-21'), { make: true, remove: ['pos-2026-09-14.db'] })
+    eq('a day already copied makes nothing', HBP.hubBackupPlan([...week.slice(1), 'pos-2026-09-21.db'], '2026-09-21'), { make: false, remove: [] })
+    eq('files of any other shape are never touched', HBP.hubBackupPlan(['notes.txt', 'pos.db', 'pos-2026-09-21.db.part', 'pos-yesterday.db'], '2026-09-21'), { make: true, remove: [] })
+    eq('a PC off for a fortnight keeps the newest seven, today included', HBP.hubBackupPlan(week.map(n => n.replace('2026-09', '2026-08')), '2026-09-21').remove.length, 1)
+
+    const HB = await import(url('server/hubBackup.js'))
+    const first = HB.runHubBackup(new Date(Date.UTC(2026, 8, 21, 12)))
+    const again = HB.runHubBackup(new Date(Date.UTC(2026, 8, 21, 18)))
+    eq('the hub copies its database once a day', [first.made, again.made], ['pos-2026-09-21.db', null])
+    const copy = new DatabaseSync(join(HB.hubBackupDir(), 'pos-2026-09-21.db'))
+    const rows = n => Number(n.prepare('SELECT COUNT(*) AS n FROM docs').get().n)
+    eq('...a whole copy: every document, readable as a database', rows(copy), Number(new DatabaseSync(file).prepare('SELECT COUNT(*) AS n FROM docs').get().n))
+    copy.close()
+  }
 
   // An activity entry that cannot be written never fails the request that
   // already committed (UPGRADE.md T5.9): it goes to the error reports instead.
