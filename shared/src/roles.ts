@@ -39,20 +39,26 @@ export function isRole(value: unknown): value is Role {
   return typeof value === 'string' && (ALL_ROLES as string[]).includes(value)
 }
 
-export const SECTION_ACCESS = {
-  products:         ['admin', 'manager', 'retail'] as Role[],
-  menu:          ['admin', 'manager'] as Role[],
-  events:        ['admin', 'manager', 'social'] as Role[],
-  loyalty:       ['admin', 'manager'] as Role[],
+/**
+ * Every section: who may open it, what it is called, and which feature switch
+ * governs it, declared once (UPGRADE.md T4.2). SECTION_ACCESS, SECTION_LABELS
+ * and each feature's sections are derived from it, so a section cannot be
+ * given roles in one place, a name in another and forgotten in a third.
+ */
+export const SECTIONS = {
+  products:         { roles: ['admin', 'manager', 'retail'] as Role[], label: 'Manage Products', feature: 'products' },
+  menu:          { roles: ['admin', 'manager'] as Role[], label: 'Manage Menu', feature: 'menu' },
+  events:        { roles: ['admin', 'manager', 'social'] as Role[], label: 'Manage Events', feature: 'events' },
+  loyalty:       { roles: ['admin', 'manager'] as Role[], label: 'Loyalty Approvals & Catalog', feature: 'loyalty' },
   // Submission panel — distinct from `events` above, which gates the
   // public-facing content management section, not loyalty logging.
-  loyaltyEvents: ['admin', 'manager', 'social'] as Role[],
-  branchTables:      ['admin', 'manager'] as Role[],
-  tableReservations: ['admin', 'manager'] as Role[],
-  productPurchases:     ['admin', 'manager', 'retail'] as Role[],
-  productTransfers:     ['admin', 'manager', 'retail'] as Role[],
-  weeklyOrders:       ['admin', 'manager'] as Role[],
-  weeklyOrdersSubmit: ALL_ROLES,
+  loyaltyEvents: { roles: ['admin', 'manager', 'social'] as Role[], label: 'Event Attendance', feature: 'loyaltyEvents' },
+  branchTables:      { roles: ['admin', 'manager'] as Role[], label: 'Table Map Editor', feature: 'branchTables' },
+  tableReservations: { roles: ['admin', 'manager'] as Role[], label: 'Table Reservations', feature: 'tableReservations' },
+  productPurchases:     { roles: ['admin', 'manager', 'retail'] as Role[], label: 'Record Product Sales', feature: 'productPurchases' },
+  productTransfers:     { roles: ['admin', 'manager', 'retail'] as Role[], label: 'Transfer Stock', feature: 'productPurchases' },
+  weeklyOrders:       { roles: ['admin', 'manager'] as Role[], label: 'Weekly Order Reports', feature: 'weeklyOrders' },
+  weeklyOrdersSubmit: { roles: ALL_ROLES, label: 'Submit a Weekly Order', feature: 'weeklyOrders' },
   // ── Point of sale (Phase 03) ─────────────────────────────────────────────
   // Two keys rather than one, because taking an order and working the pass are
   // different jobs done by different people. Kitchen crew belong on the KDS and
@@ -62,41 +68,70 @@ export const SECTION_ACCESS = {
   // casually because /admin/users renders a grant checkbox per key. Here that
   // is the point: "can this person take orders" is exactly the sort of thing a
   // manager needs to hand out for one shift without changing somebody's role.
-  pos:                ['admin', 'manager', 'barista'] as Role[],
-  kds:                ['admin', 'manager', 'kitchen_crew', 'barista'] as Role[],
-  endOfDay:           ['admin', 'manager'] as Role[],
-  endOfDayHistory:    ['admin', 'manager', 'social', 'retail', 'barista'] as Role[],
+  pos:                { roles: ['admin', 'manager', 'barista'] as Role[], label: 'Point of Sale', feature: 'auth' },
+  kds:                { roles: ['admin', 'manager', 'kitchen_crew', 'barista'] as Role[], label: 'Kitchen Display', feature: 'kds' },
+  endOfDay:           { roles: ['admin', 'manager'] as Role[], label: 'End of Day Reports', feature: 'endOfDay' },
+  endOfDayHistory:    { roles: ['admin', 'manager', 'social', 'retail', 'barista'] as Role[], label: 'End of Day History', feature: 'endOfDay' },
   // Consumable inventory — the item list behind the Daily Inventory Count.
   // Deliberately the same roles as dailyInventory below: the people doing the
   // counting are the ones who need to add a missing item or fix a threshold.
   // (Was gated on `products` until Aug 2026, which let a retail edit kitchen
   // supplies while locking out the kitchen crew who actually count them.)
-  supplies:           ['admin', 'manager', 'kitchen_crew', 'barista'] as Role[],
+  supplies:           { roles: ['admin', 'manager', 'kitchen_crew', 'barista'] as Role[], label: 'Inventory Management', feature: 'supplies' },
   // Floor staff who'd actually be doing a physical stock count day-to-day.
   // Anyone else (e.g. a retail or social hire helping out) can be granted
   // this section individually from Manage Users → sectionGrants.
-  dailyInventory:     ['admin', 'manager', 'kitchen_crew', 'barista'] as Role[],
+  dailyInventory:     { roles: ['admin', 'manager', 'kitchen_crew', 'barista'] as Role[], label: 'Daily Inventory Count', feature: 'dailyInventory' },
   // Deliberately narrower than endOfDayHistory above — reviewing inventory
   // counts across every department/branch is a management-only concern here,
   // not something every floor role needs visibility into.
-  dailyInventoryHistory: ['admin', 'manager'] as Role[],
+  dailyInventoryHistory: { roles: ['admin', 'manager'] as Role[], label: 'Daily Inventory History', feature: 'dailyInventory' },
   // Goods receiving. Same roles as dailyInventory on purpose: a delivery is
   // signed for at a back door by whoever is on shift, which is the same set of
   // people who do the physical count. Anyone else who genuinely receives stock
   // can be granted this individually from Manage Users.
-  deliveries: ['admin', 'manager', 'kitchen_crew', 'barista'] as Role[],
+  deliveries: { roles: ['admin', 'manager', 'kitchen_crew', 'barista'] as Role[], label: 'Goods Receiving', feature: 'receiving' },
   // Cost and variance reporting across deliveries — management-only, the same
   // reasoning as dailyInventoryHistory. Purchase prices and supplier price
   // drift are not something every floor role needs to see.
-  deliveriesReport: ['admin', 'manager'] as Role[],
+  deliveriesReport: { roles: ['admin', 'manager'] as Role[], label: 'Receiving & Cost Reports', feature: 'receiving' },
   // Food safety (Sep 2026). The floor answers the checks and logs the readings —
   // the same people who count stock and sign for deliveries.
-  foodSafety: ['admin', 'manager', 'kitchen_crew', 'barista'] as Role[],
+  foodSafety: { roles: ['admin', 'manager', 'kitchen_crew', 'barista'] as Role[], label: 'Food Safety Checks', feature: 'foodSafety' },
   // Signing the day as supervised, the history and the limits. Management only
   // (owner's decision, 14 Sep 2026: staff tick, a manager or admin signs).
   // A key rather than a role check on purpose: a café whose senior barista runs
   // the morning is exactly who a manager grants this to.
-  foodSafetyReview: ['admin', 'manager'] as Role[],
+  foodSafetyReview: { roles: ['admin', 'manager'] as Role[], label: 'Food Safety Sign-off & History', feature: 'foodSafety' },
+} satisfies Record<string, SectionDef>
+export interface SectionDef {
+  roles: Role[]
+  /** What Manage Users calls it, where a per-person grant is ticked. */
+  label: string
+  /** The feature switch that governs it: a key of features.ts's FEATURES (verify:features checks it is one). */
+  feature: string
+}
+
+/**
+ * Who may open each section: each entry's own roles array, not a copy, so
+ * useRequireRole() can still find a section by reference equality.
+ */
+export const SECTION_ACCESS = Object.fromEntries(
+  Object.entries(SECTIONS).map(([key, s]) => [key, s.roles]),
+) as { readonly [K in keyof typeof SECTIONS]: Role[] }
+
+/**
+ * What each section is called in Manage Users. Typed by the registry, so a
+ * section without a name cannot compile (two once went missing and showed as
+ * raw camelCase in the grant list).
+ */
+export const SECTION_LABELS: Record<keyof typeof SECTIONS, string> = Object.fromEntries(
+  Object.entries(SECTIONS).map(([key, s]) => [key, s.label]),
+) as Record<keyof typeof SECTIONS, string>
+
+/** The feature switch governing a section, or undefined for a key that is not one. */
+export function sectionFeature(key: string): string | undefined {
+  return Object.prototype.hasOwnProperty.call(SECTIONS, key) ? (SECTIONS as Record<string, SectionDef>)[key].feature : undefined
 }
 
 // DO NOT add a key here for staff account management. /admin/users gates on

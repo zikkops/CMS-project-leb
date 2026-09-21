@@ -403,12 +403,13 @@ Do these after T0.1, which protects them.
   till screen then means adding one entry. Today the tiles are hand-written
   JSX in `pos/app/pos/page.tsx`.
   *Done: pos/app/lib/posTiles.ts: POS_TILES (key, label, sub, icon, colour, href, feature, section) and visibleTiles(role, flags), filtered as the admin nav is: the feature on, and a role that opens the section. The floor renders its big boxes from it; the five hand-written NavTile lines and their per-tile feature switches are gone. Adding a till screen is one entry. verify:sections gains a check (6 assertions): every tile's href is a real pos page, its section and feature exist, no key twice; breaking a route on purpose failed it by name. Today's roles see what they saw (everyone with the till also has the kitchen display). Seen on the offline dev hub: Counter, Closed, Kitchen display, Drawer, and no Allergens with food safety off, as before.*
-- [ ] **T4.2 One `SECTIONS` registry.** Label, roles and feature are declared
+- [x] **T4.2 One `SECTIONS` registry.** Label, roles and feature are declared
   in one place in `roles.ts`, with `SECTION_ACCESS`, `SECTION_LABELS` and
   `features.sections` derived from it. Today one section has three names
   ("Goods Receiving", "Receive a Delivery"…).
   - Keep reference equality: derive once, and re-export the same arrays
     (`useRequireRole()` finds a section by reference).
+  *Done: Done 21 Sep 2026. `SECTIONS` in shared/src/roles.ts declares each section's roles, label and feature on one line. `SECTION_ACCESS` is derived from it, with each value the entry's own roles array, so reference equality holds. `SECTION_LABELS` is derived there too and re-exported from adminAuth.ts as the same object. `featureForSection()` reads the registry, and features no longer carry `sections` lists. verify:features now checks that every section names a real feature and has a label: 22 sections read, and a mutated feature name was caught. docs/adding-a-section.md updated.*
 - [ ] **T4.3 `npm run new:section <key>` scaffolder.** It writes the registry
   entry, the admin page stub (with `PageHeader`, `useRequireRole`), the API
   route stub (with `requireSection`, `toResponse`, `runtime = 'nodejs'`), the

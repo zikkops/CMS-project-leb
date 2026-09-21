@@ -46,30 +46,9 @@ export const ROLE_COLORS: Record<Role, string> = {
 // `SECTION_LABELS[key] ?? key`, so they appeared in the grant list as raw
 // camelCase identifiers rather than failing loudly. Adding a section to
 // SECTION_ACCESS now forces a decision about what to call it.
-export const SECTION_LABELS: Record<SectionKey, string> = {
-  products:             'Manage Products',
-  menu:              'Manage Menu',
-  events:            'Manage Events',
-  loyalty:           'Loyalty Approvals & Catalog',
-  loyaltyEvents:     'Event Attendance',
-  branchTables:      'Table Map Editor',
-  tableReservations: 'Table Reservations',
-  productPurchases:     'Record Product Sales',
-  productTransfers:     'Transfer Stock',
-  weeklyOrders:       'Weekly Order Reports',
-  weeklyOrdersSubmit: 'Submit a Weekly Order',
-  pos:                'Point of Sale',
-  kds:                'Kitchen Display',
-  endOfDay:           'End of Day Reports',
-  endOfDayHistory:    'End of Day History',
-  supplies:              'Inventory Management',
-  dailyInventory:        'Daily Inventory Count',
-  dailyInventoryHistory: 'Daily Inventory History',
-  deliveries:            'Goods Receiving',
-  deliveriesReport:      'Receiving & Cost Reports',
-  foodSafety:            'Food Safety Checks',
-  foodSafetyReview:      'Food Safety Sign-off & History',
-}
+// Declared with each section in roles.ts's SECTIONS (UPGRADE.md T4.2), and
+// re-exported here as the same object.
+export { SECTION_LABELS } from './roles'
 
 // Reads either shape — the new `branchIds` array, or the older singular
 // `branchId` from accounts created before multi-branch support existed —

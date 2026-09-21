@@ -25,14 +25,14 @@
 // tempted to use one to hide something sensitive, the answer is a rule keyed on
 // a role — not a flag. That distinction is what makes fail-open safe below.
 
+import { sectionFeature } from './roles'
+
 export interface FeatureDefinition {
   label: string
   /** Grouping in the superadmin switchboard UI. */
   group: string
   /** Other features that must be on for this one to function. */
   requires: readonly string[]
-  /** SECTION_ACCESS keys this feature governs. */
-  sections?: readonly string[]
   /** Firestore collections this feature owns, for the rules work. */
   collections?: readonly string[]
   /**
@@ -61,11 +61,11 @@ export const FEATURES = {
   pos: {
     label: 'Point of Sale', group: 'Operations', requires: ['menu'], defaultEnabled: false,
     // timeEntries: clock-ins from the staff app at a hub (UPGRADE.md T3.12).
-    sections: ['pos'], collections: ['checks', 'timeEntries'],
+    collections: ['checks', 'timeEntries'],
   },
   kds: {
     label: 'Kitchen Display', group: 'Operations', requires: ['pos'], defaultEnabled: false,
-    sections: ['kds'], collections: ['kitchenTickets'],
+    collections: ['kitchenTickets'],
   },
   // Phase 04. Off until the café is ready to take money through the till —
   // the pilot runs with the old till taking payment, and with this off a
@@ -122,15 +122,15 @@ export const FEATURES = {
   // ── Operations — the actual product ──────────────────────────────────────
   menu: {
     label: 'Menu', group: 'Operations', requires: [], defaultEnabled: true,
-    sections: ['menu'], collections: ['menuCategories', 'menuItems', 'modifierGroups'],
+    collections: ['menuCategories', 'menuItems', 'modifierGroups'],
   },
   supplies: {
     label: 'Inventory', group: 'Operations', requires: [], defaultEnabled: true,
-    sections: ['supplies'], collections: ['supplies'],
+    collections: ['supplies'],
   },
   dailyInventory: {
     label: 'Daily Count', group: 'Operations', requires: ['supplies'], defaultEnabled: true,
-    sections: ['dailyInventory', 'dailyInventoryHistory'], collections: ['dailyInventoryCounts'],
+    collections: ['dailyInventoryCounts'],
   },
   ordersTemplate: {
     label: 'Order Template', group: 'Operations', requires: [], defaultEnabled: true,
@@ -138,14 +138,13 @@ export const FEATURES = {
   },
   weeklyOrders: {
     label: 'Weekly Orders', group: 'Operations', requires: ['ordersTemplate'], defaultEnabled: true,
-    sections: ['weeklyOrders', 'weeklyOrdersSubmit'],
     collections: ['weeklyOrderReports', 'orderProviders', 'weeklyOrderLogs'],
   },
   // Phase 01. Needs both ends of the chain it bridges: something to order
   // against, and somewhere for the stock to land.
   receiving: {
     label: 'Goods Receiving', group: 'Operations', requires: ['supplies', 'weeklyOrders'], defaultEnabled: true,
-    sections: ['deliveries', 'deliveriesReport'], collections: ['deliveries'],
+    collections: ['deliveries'],
   },
   // Food safety (Sep 2026) — opening and closing checks, logged temperatures
   // and a manager's signature each day, after the FSA's Safer Food, Better
@@ -154,48 +153,44 @@ export const FEATURES = {
   // are server-only and read through routes, so no Firestore rule governs them.
   foodSafety: {
     label: 'Food Safety', group: 'Operations', requires: [], defaultEnabled: false,
-    sections: ['foodSafety', 'foodSafetyReview'],
     collections: ['foodSafetyDays', 'foodSafetyUnits'],
   },
   endOfDay: {
     label: 'End of Day', group: 'Operations', requires: [], defaultEnabled: true,
-    sections: ['endOfDay', 'endOfDayHistory'],
     collections: ['endOfDayReports', 'branchStaff', 'endOfDayLogs'],
   },
 
   // ── Front of house ───────────────────────────────────────────────────────
   branchTables: {
     label: 'Floor Plan', group: 'Front of House', requires: [], defaultEnabled: true,
-    sections: ['branchTables'], collections: ['branchTableLayouts'],
+    collections: ['branchTableLayouts'],
   },
   tableReservations: {
     label: 'Table Reservations', group: 'Front of House', requires: ['branchTables'], defaultEnabled: true,
-    sections: ['tableReservations'], collections: ['tableReservations', 'tableLocks'],
+    collections: ['tableReservations', 'tableLocks'],
   },
   events: {
     label: 'Events', group: 'Front of House', requires: [], defaultEnabled: true,
-    sections: ['events'], collections: ['events', 'eventTypes', 'eventReservations'],
+    collections: ['events', 'eventTypes', 'eventReservations'],
   },
 
   // ── Retail ───────────────────────────────────────────────────────────────
   products: {
     label: 'Product Catalogue', group: 'Retail', requires: [], defaultEnabled: true,
-    sections: ['products'], collections: ['products', 'productCategories'],
+    collections: ['products', 'productCategories'],
   },
   productPurchases: {
     label: 'Sales & Invoices', group: 'Retail', requires: ['products'], defaultEnabled: true,
-    sections: ['productPurchases', 'productTransfers'], collections: ['productPurchaseOrders'],
+    collections: ['productPurchaseOrders'],
   },
 
   // ── Loyalty ──────────────────────────────────────────────────────────────
   loyalty: {
     label: 'Loyalty Programme', group: 'Loyalty', requires: [], defaultEnabled: false,
-    sections: ['loyalty'],
     collections: ['transactions', 'transactionLog', 'redemptionItems', 'redemptions', 'tierPerks'],
   },
   loyaltyEvents: {
     label: 'Event Attendance Points', group: 'Loyalty', requires: ['loyalty', 'events'], defaultEnabled: false,
-    sections: ['loyaltyEvents'],
   },
 
   // ── Gaming pack — REMOVED ────────────────────────────────────────────────
@@ -254,19 +249,16 @@ export function isFeatureOn(
 }
 
 /**
- * Which feature governs a given SECTION_ACCESS key, or undefined for a section
- * no feature claims.
+ * Which feature governs a given SECTION_ACCESS key, or undefined for a key
+ * that is not a section.
  *
- * Derived from the registry's own `sections` lists rather than annotating
- * every navigation entry with a feature key. A second mapping would be a
- * second thing to keep in step, and this one cannot drift from the registry
- * because it IS the registry.
+ * Each section names its feature where it is declared, in roles.ts's SECTIONS
+ * (UPGRADE.md T4.2), so there is one mapping and nothing to keep in step.
+ * verify:features checks every named feature is a key of FEATURES.
  */
 export function featureForSection(sectionKey: string): FeatureKey | undefined {
-  return (Object.keys(FEATURES) as FeatureKey[]).find(k => {
-    const def = FEATURES[k] as FeatureDefinition
-    return (def.sections as readonly string[] | undefined)?.includes(sectionKey)
-  })
+  const key = sectionFeature(sectionKey)
+  return key !== undefined && key in FEATURES ? key as FeatureKey : undefined
 }
 
 /** Every feature that would break if `key` were switched off. */
