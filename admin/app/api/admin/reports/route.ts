@@ -27,31 +27,18 @@ import { readInventory } from '@big-cms/shared/server/inventoryReport'
 import { inventoryReport } from '@big-cms/shared/inventoryReport'
 import { readPurchases, readReceivedDeliveries } from '@big-cms/shared/server/receivedDeliveries'
 import { purchasesReport } from '@big-cms/shared/purchasesReport'
+import { readJournal, readMenuCategories } from '@big-cms/shared/server/journal'
 import { TIME_ENTRIES, peopleOf, timesheet, type TimeEntry } from '@big-cms/shared/timeClock'
 import { timestampMs } from '@big-cms/shared/timestamps'
 import { dayBefore, hourlySales, productMix, voidDiscountReport } from '@big-cms/shared/salesReports'
-import { adminDb } from '@big-cms/shared/server/firebaseAdmin'
 import { BRAND } from '@big-cms/shared/brand'
 import type { Check } from '@big-cms/shared/checks'
 
 export const runtime = 'nodejs'
 
-/**
- * Which category each menu item is in NOW, by the item's id. Lines do not
- * carry their category, and the menu is small (two collections, a few dozen
- * documents), so it is read whole rather than per line.
- */
-async function menuCategories(): Promise<Record<string, string>> {
-  const db = adminDb()
-  const [items, categories] = await Promise.all([db.collection('menuItems').get(), db.collection('menuCategories').get()])
-  const names = new Map(categories.docs.map(d => [d.id, String(d.data().name ?? '')]))
-  const out: Record<string, string> = {}
-  for (const d of items.docs) {
-    const name = names.get(String(d.data().categoryId ?? ''))
-    if (name) out[d.id] = name
-  }
-  return out
-}
+// Which category each menu item is in NOW (lines do not carry theirs), read
+// whole: the menu is small. Shared with the journal (T7.15).
+const menuCategories = readMenuCategories
 
 export async function GET(request: Request): Promise<Response> {
   try {
@@ -146,6 +133,15 @@ export async function GET(request: Request): Promise<Response> {
           ok: true, from: range.from, to: range.to, branches: read.branches, cutShort: read.cutShort,
           ...purchasesReport({ deliveries: read.deliveries, orderDeliveries: read.orderDeliveries, orders: read.orders, branches: read.branches, businessRate: exchangeRate }),
         },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+    if (report === 'journal') {
+      // The accountant's journal (T7.15): a sales journal per day and branch,
+      // and a refunds journal on the day each refund was given.
+      const read = await readJournal(range, { timeZone, branches: own })
+      return Response.json(
+        { ok: true, from: range.from, to: range.to, ...read },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }

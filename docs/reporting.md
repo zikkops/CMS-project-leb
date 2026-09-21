@@ -446,9 +446,8 @@ in USD at the cost stored with the count (`countVariance()` in
     A refund's waste stamp describes what was made for that check, and the
     theoretical food cost it is compared with is filed by close day too. It
     moves only if the food cost report moves with it.
-29. **Labour cost:** hourly rates now exist (T7.18). The labour report is
-    **T7.11**.
-30. **There is no journal and no chart of accounts.**
+29. **FIXED 21 Sep 2026 (T7.11). Labour cost:** hourly rates exist (T7.18), and `/admin/reports/labour` reports them.
+30. **FIXED 21 Sep 2026 (T7.15). There was no journal and no chart of accounts.** Now `/admin/reports/journal` posts a sales journal per café day and branch and a refunds journal on each refund's day (`shared/src/journal.ts`). Cash is what the drawer kept net of change, per currency; card includes its tips (Cr tips payable); sales are by category at price before discount, without VAT, with discounts as contra-revenue; service and VAT output are apart; a rounding line per currency; a check with no payments posts to "Till receipts not itemised". Every check balances in both currencies, so every journal does: checked read-only on the demo's last 60 days, 111 journals over 437 checks, all balanced. The download is a plain CSV. Codes are set at `/admin/settings/accounts` (`appSettings/accountCodes`, server-only); the defaults (1010 cash USD … 6990 rounding) are OWNER TO CONFIRM against the accountant's chart. COGS and inventory are not journalled yet.
     - Fix: **T7.15**, with the default codes recorded under T7.0.
 
 ---

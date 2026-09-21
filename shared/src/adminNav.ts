@@ -189,6 +189,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
       { label: 'Purchases', href: '/admin/reports/purchases', access: SECTION_ACCESS.endOfDay, icon: faTruck, kind: 'use', desc: 'Every delivery received, by supplier and branch: invoice, net, input VAT and total, and how much of each weekly order arrived.' },
       { label: 'Inventory', href: '/admin/reports/inventory', access: SECTION_ACCESS.endOfDay, icon: faBoxesStacked, kind: 'use', desc: 'Stock value, and each supply between two counts: received, moved, used, wasted, and what nothing explains. Cost of goods sold.' },
       { label: 'Loyalty Liability', href: '/admin/reports/loyalty', access: SECTION_ACCESS.loyalty, icon: faStar, kind: 'use', desc: 'Points issued, reversed and spent per branch, and what the scheme owes at each end, valued when a point value is set.' },
+      { label: 'Journal', href: '/admin/reports/journal', access: SECTION_ACCESS.endOfDay, icon: faFileExport, kind: 'use', desc: 'Double-entry journal lines per day and branch for the accountant, as a plain CSV. Every journal balances.' },
       { label: 'Receipt Sequence', href: '/admin/reports/receipts', access: SECTION_ACCESS.endOfDay, icon: faListOl, kind: 'use', desc: 'Every receipt number in order: gaps, duplicates, and numbers issued with nothing to show for them.' },
       { label: 'Product Mix', href: '/admin/reports/mix', access: SECTION_ACCESS.endOfDay, icon: faChartPie, kind: 'use', desc: 'Best sellers by count and revenue, with recipe cost and margin, by item and category.' },
       { label: 'Hourly Sales', href: '/admin/reports/hourly', access: SECTION_ACCESS.endOfDay, icon: faChartColumn, kind: 'use', desc: 'Takings hour by hour, beside the same day a week before.' },
@@ -237,6 +238,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
       // Admin, as Café Hubs: removing a phone is what happens to a lost one or a leaver's.
       { label: 'Staff Phones', href: '/admin/settings/phones', access: ADMIN_ONLY, icon: faUserLock, kind: 'setup', desc: 'Phones registered for fingerprint sign-in at the till: see whose, remove a lost one or a leaver\'s.' },
       // Admin only, as Staff Phones: pay is not a permission handed out for a shift (UPGRADE.md T7.18).
+      { label: 'Account Codes', href: '/admin/settings/accounts', access: ADMIN_ONLY, icon: faFileExport, kind: 'setup', desc: 'The chart of accounts the journal posts to: cash, card, VAT, tips, sales by category, discounts.' },
       { label: 'Staff Pay', href: '/admin/settings/staff-pay', access: ADMIN_ONLY, icon: faHandHoldingDollar, kind: 'setup', desc: 'Hourly rate for labour cost, and tip weight for the tips split, per person and from a date.' },
     ],
   },

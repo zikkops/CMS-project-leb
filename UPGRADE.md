@@ -860,7 +860,7 @@ Principles for every task here:
   outstanding balance at the period's end, valued at the redemption rate if
   the owner sets one (T7.0). Points are a liability, like tips.
   *Done: /admin/reports/loyalty (gated loyalty): issued, reversed and spent per branch, each movement on its own day; what the whole scheme owes at each end, worked back from today's balances through the ledger; valued at the new Business Settings 'Value of a loyalty point' (pointValueUsd, 0 = not set, OWNER TO CONFIRM a value). Gap 19: a reversal is its own movement on reversedAt, the issue stays on its day. verify:export 173.*
-- [ ] **T7.15 The accountant's journal export** (plain CSV, T7.0). One
+- [x] **T7.15 The accountant's journal export** (plain CSV, T7.0). One
   download per period and branch, as double-entry journal lines mapped to the
   chart of accounts:
   - debit cash, card clearing and tips payable
@@ -871,6 +871,7 @@ Principles for every task here:
 
   Every journal balances (debits = credits), and the verifier asserts it on
   seeded data.
+  *Done: /admin/reports/journal: sales journal per day and branch, refunds journal on the refund day (reversing, tip stays with staff); Dr cash USD / cash LBP (kept net of change) / card clearing (+tips) / discounts, Cr sales by category (price before discount, ex VAT) / service / VAT output / tips payable, rounding per currency, unpaid checks to 'Till receipts not itemised'. Each check balances in USD and LBP. Plain CSV download. Account codes at /admin/settings/accounts (defaults OWNER TO CONFIRM). Demo: 111 journals, 437 checks, all balanced. COGS/inventory not journalled (optional). verify:export 190.*
 - [ ] **T7.16 The reconciliation check.** One page, and one verifier, that
   runs a period and branch through every report above and proves they agree:
   - sales summary = sum of product mix = the export's days

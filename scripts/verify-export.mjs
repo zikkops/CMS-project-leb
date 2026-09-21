@@ -27,7 +27,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'export-verify-'))
 execSync(
-  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts shared/src/salesSummary.ts shared/src/tenderSummary.ts shared/src/vatReport.ts shared/src/cashUpReport.ts shared/src/receiptSequence.ts shared/src/purchasesReport.ts --outDir ${out} ` +
+  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts shared/src/salesSummary.ts shared/src/tenderSummary.ts shared/src/vatReport.ts shared/src/cashUpReport.ts shared/src/receiptSequence.ts shared/src/purchasesReport.ts shared/src/journal.ts --outDir ${out} ` +
   `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
@@ -45,6 +45,7 @@ const VR = await import(`file://${join(out, 'vatReport.js')}`)
 const CU = await import(`file://${join(out, 'cashUpReport.js')}`)
 const RS = await import(`file://${join(out, 'receiptSequence.js')}`)
 const PR = await import(`file://${join(out, 'purchasesReport.js')}`)
+const J = await import(`file://${join(out, 'journal.js')}`)
 const L = await import(`file://${join(out, 'loyaltyExport.js')}`)
 
 let pass = 0, fail = 0
@@ -363,6 +364,53 @@ console.log('\npurchases: per supplier and branch, both currencies, and the week
   eq('a weekly order: across every delivery booked against it, in full, in part, not yet', [r.orders[0].full, r.orders[0].part, r.orders[0].none, r.orders[0].deliveries], [1, 1, 1, 2])
   eq('a draft booked against an order has not arrived', PR.orderFulfilment(orders[0], [d({ status: 'draft' })]).full, 0)
   eq('the VAT here is the VAT report\'s input VAT, same rows', r.total.vatUsd, VR.vatReport([], deliveries, ['Main', 'Second']).total.inputVat)
+}
+
+console.log('\nthe journal: double entry per day and branch, and every one balances (UPGRADE.md T7.15)')
+{
+  const cats = { m1: 'Coffee', m2: 'Food' }
+  const bal = postings => [postings.reduce((n, p) => n + p.cents, 0), postings.reduce((n, p) => n + p.lbp, 0)]
+  const of = (postings, key, category) => postings.filter(p => p.key === key && (!category || p.category === category)).reduce((n, p) => n + p.cents, 0)
+  // $11 of coffee at 10% VAT, paid $20 cash with $9 change.
+  const simple = J.saleEntry(check({ vatRate: 0.1, lines: [line({ unitPrice: 11 })], payments: [pay({ amount: 20, appliedLbp: 1_001_000, changeUsd: 9 })] }), cats, 1)
+  eq('Cr sales without VAT, Cr VAT, Dr the cash the drawer kept', [of(simple, 'sales', 'Coffee'), of(simple, 'vat'), of(simple, 'cashUsd')], [-1000, -100, 1100])
+  eq('a check balances to the cent and to the pound', bal(simple), [0, 0])
+  // A discount, service and a card tip; half cash in lira.
+  const busy = check({
+    vatRate: 0.11, billRate: 90_000, serviceCharge: { rate: 0.1 },
+    discount: { kind: 'amount', value: 3, reasonKey: 'wait', note: '', by: 'm', byEmail: 'x' },
+    lines: [line({ unitPrice: 12.5 }), line({ id: 'l2', refId: 'm2', unitPrice: 20, quantity: 2 }), line({ id: 'l3', refId: 'mX', unitPrice: 7 })],
+    payments: [pay({ tender: 'card', amount: 30, appliedLbp: 2_700_000, tipUsd: 4 }), pay({ key: 'p2', currency: 'LBP', amount: 3_000_000, appliedLbp: 2_988_900, changeLbp: 11_100 })],
+  })
+  const e = J.saleEntry(busy, cats, 1)
+  eq('THE POINT: every check balances in both currencies', bal(e), [0, 0])
+  eq('discounts post against sales, as a debit', of(e, 'discounts') > 0, true)
+  eq('sales by category, a line off the menu under its own name', e.filter(p => p.key === 'sales').map(p => p.category).sort(), ['Coffee', 'Food', 'No longer on the menu'])
+  eq('the service charge without VAT, apart', of(e, 'service') < 0, true)
+  eq('a card tip: Dr card clearing, Cr tips payable', [e.filter(p => p.tip).map(p => [p.key, p.cents])], [[['card', 400], ['tips', -400]]])
+  eq('cash in lira is counted in lira, what was kept after change', e.find(p => p.key === 'cashLbp').lbp, 2_988_900)
+  const unpaid = J.saleEntry(check({ lines: [line({ unitPrice: 11 })] }), cats, 1)
+  eq('a check closed without payments posts to till receipts not itemised, and balances', [of(unpaid, 'unitemised'), bal(unpaid)], [1100, [0, 0]])
+  const refund = J.refundEntry(busy, cats, 1)
+  eq('a refund reverses the sale exactly, the tip left with the staff', [bal(refund), refund.some(p => p.tip), of(refund, 'vat')], [[0, 0], false, -of(e, 'vat')])
+  // Two lines of $1.05 at 11%: each rounds to 95c without VAT, but the bill's $2.10 is $1.89.
+  const noDiscount = J.saleEntry(check({ vatRate: 0.11, lines: [line({ unitPrice: 1.05 }), line({ id: 'l2', unitPrice: 1.05 })], payments: [pay({ amount: 2.1 })] }), cats, 1)
+  eq('THE TRAP: VAT rounding line by line is not a discount', [of(noDiscount, 'discounts'), bal(noDiscount)], [0, [0, 0]])
+
+  const entries = [
+    { day: '2026-09-12', branch: 'Main', kind: 'sales', postings: simple },
+    { day: '2026-09-12', branch: 'Main', kind: 'sales', postings: e },
+    { day: '2026-09-15', branch: 'Main', kind: 'refunds', postings: refund },
+  ]
+  const codes = J.readAccountCodes({ categories: { Coffee: '4010' }, accounts: { vat: { code: 'VAT-OUT', name: 'Output tax' } } })
+  const built = J.buildJournal(entries, codes)
+  eq('one sales journal per day and branch, the refund its own on its day', built.journals.map(j => [j.journal, j.checks]), [['J-20260912-MAIN-S', 2], ['J-20260915-MAIN-R', 1]])
+  eq('every journal balances, debits = credits, both currencies', [built.balanced, ...built.journals.map(j => j.debitUsd === j.creditUsd && j.debitLbp === j.creditLbp)], [true, true, true])
+  eq('lines post to the codes set, a category to its own', [built.lines.some(l => l.code === '4010' && l.account === 'Sales: Coffee'), built.lines.some(l => l.code === 'VAT-OUT' && l.account === 'Output tax')], [true, true])
+  eq('a malformed code falls back to the default, never to nothing', J.readAccountCodes({ accounts: { cashUsd: { code: 'bad code!' } } }).accounts.cashUsd.code, '1010')
+  eq('...and saving one is refused, naming it', J.accountCodesProblem({ accounts: { ...J.DEFAULT_ACCOUNT_CODES.accounts, card: { code: '', name: 'x' } } }), 'Card clearing: a code is 1 to 20 letters, digits, dots or dashes.')
+  const csvLine = built.lines[0]
+  eq('each line: date, journal, branch, code, name, description, debit and credit in both, source', J.JOURNAL_COLUMNS.map(([k]) => typeof csvLine[k]), ['string', 'string', 'string', 'string', 'string', 'string', 'number', 'number', 'number', 'number', 'string'])
 }
 
 console.log('\nthe sheets are declared once, for the UI and the file both')
