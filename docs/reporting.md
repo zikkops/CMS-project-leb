@@ -454,19 +454,21 @@ in USD at the cost stored with the count (`countVariance()` in
 
 ## 5. Reconciliations that should hold
 
+**Checked by `/admin/reports/reconcile` and `npm run verify:reconcile` since T7.16 (21 Sep 2026).** `reconcile()` in `shared/src/reconcile.ts` runs every report over one period and compares each pair to the cent: R1, R4 (as payments applied = bills paid), R5, R8 and R13, plus the journal's VAT against the VAT report and a line for checks closed with no receipt number. The verifier runs it over a generated history (288 checks, both branches, lira, tips, discounts, refunds after midnight) built with the application's own `applyPayment()` and `drawerTotals()`, and proves a tampered drawer or an uncounted payment is caught. On the demo's last 60 days, 16 of 17 lines agreed. The one that did not was real: a check closed with no receipt number ($7.75), which the product mix counted and the export did not. The mix now counts only numbered checks, and the check is named on the page. It is left in the demo data untouched.
+
 | # | Identity | Status |
 |---|---|---|
-| R1 | Sales summary = product mix = the export's days | **Holds, but cannot be seen.** For closed checks, mix revenue − check discounts + service equals the export's net, by construction. No screen shows it, and no sales summary exists. |
+| R1 | Sales summary = product mix = the export's days | **Holds, and is checked** (T7.16): the days and the summary to the cent, the mix's goods against the summary's closed checks. |
 | R2 | Export discounts = Voids & Discounts total | **Breaks** whenever a range has refunded or cancelled checks. |
 | R3 | Export day net = Hourly takings | **Breaks** with refunds. |
 | R4 | Collected − change − tips = net + VAT + service | **Holds per check** within the lira rounding, through `appliedLbp`. The tips term **cannot be checked**, because no export has tips. |
-| R5 | Drawer expected vs payments | **Holds on the till** for one shift. It **cannot be checked** against the export: no admin shift report, different day rules, and refunded tenders dropped. |
+| R5 | Drawer expected vs payments | **Holds, and is checked** (T7.16): each closed shift's stored cash in, change and card, per currency, against the payments taken into it. |
 | R6 | End of Day system = the day's shifts' expected cash | **Holds** with payments on, at the current rate. |
 | R7 | Card total = bank settlement | **Cannot be checked:** tips, and card taken in lira, are missing. |
-| R8 | VAT report = sales summary VAT | **Cannot be checked:** neither exists. Per-check rounding may leave cents, and T7.6 decides. |
+| R8 | VAT report = sales summary VAT | **Holds, and is checked** (T7.16): output and reversed, to the cent. |
 | R9 | Theoretical food cost sales = export net before VAT | **Different by design** (menu lines only, stocked branches, a share of service). It needs its own name. |
 | R10 | Tips split = pot | **Holds** (`verify:tips`). With gap 15 fixed, the inputs are now right too. |
-| R11 | Inventory roll-forward | **Cannot be checked:** there is no valuation. |
-| R12 | Receipt numbers: no unexplained gaps, no duplicates | **Cannot be checked:** there is no report. |
-| R13 | Journal debits = credits | **Cannot be checked:** there is no journal. |
-| R14 | Loyalty opening + issued − reversed − spent = closing | **Breaks:** a reversal removes its own issue. |
+| R11 | Inventory roll-forward | **Reported** (T7.12): between two counts, with the difference nothing explains. |
+| R12 | Receipt numbers: no unexplained gaps, no duplicates | **Reported** (T7.10): gaps named, duplicates listed, numbers logged as issued. |
+| R13 | Journal debits = credits | **Holds, and is checked** (T7.15, T7.16): every check balances in both currencies. |
+| R14 | Loyalty opening + issued − reversed − spent = closing | **Holds** (T7.14): the reversal is its own movement, and opening is worked back from closing. |

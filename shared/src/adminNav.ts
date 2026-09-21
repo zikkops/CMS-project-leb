@@ -33,7 +33,7 @@ import {
   faTriangleExclamation, faShieldHalved, faGear, faUserShield, faBug, faImage, faToggleOn, faPrint,
   faChampagneGlasses, faStar, faWarehouse, faMoon, faScrewdriverWrench, faTableCells,
   type IconDefinition,
-  faBan, faChartColumn, faUserClock, faListOl,
+  faBan, faChartColumn, faUserClock, faListOl, faScaleBalanced,
 } from '@fortawesome/free-solid-svg-icons'
 import { SECTION_ACCESS, ALL_ROLES, hasSectionAccess, type Role, type SectionKey } from './roles'
 import { featureForSection, isFeatureOn, type FeatureFlags } from './features'
@@ -181,6 +181,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
       { label: 'Daily Summary', href: '/admin/end-of-day/summary', access: SECTION_ACCESS.endOfDayHistory, icon: faReceipt, kind: 'use', desc: 'The day’s totals at a glance.' },
       { label: 'Tips Calculator', href: '/admin/end-of-day/tips', access: SECTION_ACCESS.endOfDay, icon: faHandHoldingDollar, kind: 'use', desc: 'Split the tips between staff after the deduction.' },
       { label: 'End of Day Log', href: '/admin/end-of-day/log', access: SECTION_ACCESS.endOfDay, icon: faScroll, kind: 'use', desc: 'Who submitted or changed which end-of-day report, and when.' },
+      { label: 'Reconciliation', href: '/admin/reports/reconcile', access: SECTION_ACCESS.endOfDay, icon: faScaleBalanced, kind: 'use', desc: 'Every report over one period, and proof they agree: sales, mix, VAT, payments, drawers and the journal.' },
       { label: 'Sales Export', href: '/admin/exports', access: SECTION_ACCESS.endOfDay, icon: faFileExport, kind: 'use', desc: 'Closed checks for a date range, with VAT and both currencies, for the accountant.' },
       { label: 'Sales Summary', href: '/admin/reports/sales', access: SECTION_ACCESS.endOfDay, icon: faReceipt, kind: 'use', desc: 'Gross, discounts, net sales without VAT, VAT, service, refunds and card tips, per branch.' },
       { label: 'Payments & Tenders', href: '/admin/reports/payments', access: SECTION_ACCESS.endOfDay, icon: faCashRegister, kind: 'use', desc: 'Cash, change and card in each currency, card tips, and refunds by tender, per branch.' },

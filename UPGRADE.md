@@ -872,7 +872,7 @@ Principles for every task here:
   Every journal balances (debits = credits), and the verifier asserts it on
   seeded data.
   *Done: /admin/reports/journal: sales journal per day and branch, refunds journal on the refund day (reversing, tip stays with staff); Dr cash USD / cash LBP (kept net of change) / card clearing (+tips) / discounts, Cr sales by category (price before discount, ex VAT) / service / VAT output / tips payable, rounding per currency, unpaid checks to 'Till receipts not itemised'. Each check balances in USD and LBP. Plain CSV download. Account codes at /admin/settings/accounts (defaults OWNER TO CONFIRM). Demo: 111 journals, 437 checks, all balanced. COGS/inventory not journalled (optional). verify:export 190.*
-- [ ] **T7.16 The reconciliation check.** One page, and one verifier, that
+- [x] **T7.16 The reconciliation check.** One page, and one verifier, that
   runs a period and branch through every report above and proves they agree:
   - sales summary = sum of product mix = the export's days
   - payments = the drawers' cash + card
@@ -882,6 +882,7 @@ Principles for every task here:
   Any difference is listed, never rounded away. Run it on seeded data in CI,
   and show it at the top of the reports section, so a mismatch is seen before
   the accountant sees it.
+  *Done: /admin/reports/reconcile (first in the reports) and npm run verify:reconcile: every report over one period, each pair compared to the cent (export days = sales summary; mix = summary on closed checks; VAT report = summary; payments = bills within lira rounding; drawers = payments taken into them per currency; journal debits = credits and its VAT = VAT report; closed checks with no receipt number = none). Verifier runs a generated 288-check history built with applyPayment/drawerTotals, and proves tampering is caught. Demo: found one closed check with no receipt number ($7.75) counted by the mix only; mix now counts numbered checks, the check is named.*
 - [ ] **T7.17 Period close.** An admin closes a period
   once it has been handed to the accountant:
   - its reports are stored as issued (the numbers and the definitions version)

@@ -188,6 +188,7 @@ console.log('\nproduct mix — what sold, by item and by category (T3.3)')
   })], { categoryOf })
   eq('an item\'s revenue is after its own discount: $10 at half is $5', discounted.items[0].revenue, 5)
   eq('...and a whole-check discount belongs to no item, so it is shown apart', discounted.totals.checkDiscounts, 2)
+  eq('a check closed with no receipt number is not a sale (T7.16)', R.productMix([check({ receiptNumber: null })], { categoryOf }).totals.checks, 0)
   eq('nothing sold: nothing to share, and no division by zero', R.productMix([], { categoryOf }).totals,
     { checks: 0, quantity: 0, revenue: 0, checkDiscounts: 0, netSales: 0, costedSales: 0, cost: null, margin: null, marginPercent: null, coverage: null, linesWithoutVatRate: 0 })
 }

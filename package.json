@@ -51,6 +51,7 @@
     "backup": "node --env-file=.env.local scripts/backup.mjs",
     "restore": "node --env-file=.env.local scripts/restore.mjs",
     "verify:tips": "node scripts/verify-tips.mjs",
+    "verify:reconcile": "node scripts/verify-reconcile.mjs",
     "verify:recipes": "node scripts/verify-recipes.mjs",
     "verify:food-safety": "node scripts/verify-food-safety.mjs",
     "verify:admin-nav": "node scripts/verify-admin-nav.mjs",

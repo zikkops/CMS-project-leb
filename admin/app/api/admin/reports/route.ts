@@ -28,6 +28,7 @@ import { inventoryReport } from '@big-cms/shared/inventoryReport'
 import { readPurchases, readReceivedDeliveries } from '@big-cms/shared/server/receivedDeliveries'
 import { purchasesReport } from '@big-cms/shared/purchasesReport'
 import { readJournal, readMenuCategories } from '@big-cms/shared/server/journal'
+import { readReconcile } from '@big-cms/shared/server/reconcile'
 import { TIME_ENTRIES, peopleOf, timesheet, type TimeEntry } from '@big-cms/shared/timeClock'
 import { timestampMs } from '@big-cms/shared/timestamps'
 import { dayBefore, hourlySales, productMix, voidDiscountReport } from '@big-cms/shared/salesReports'
@@ -133,6 +134,17 @@ export async function GET(request: Request): Promise<Response> {
           ok: true, from: range.from, to: range.to, branches: read.branches, cutShort: read.cutShort,
           ...purchasesReport({ deliveries: read.deliveries, orderDeliveries: read.orderDeliveries, orders: read.orders, branches: read.branches, businessRate: exchangeRate }),
         },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+    if (report === 'reconcile') {
+      // The reconciliation (T7.16): every report over the period, and each pair
+      // that must agree, with any difference to the cent.
+      const read = await readReconcile(range, { timeZone, branches: own })
+      return Response.json(
+        // Not spread: the reconciliation's own ok is whether the reports agree, and
+        // the response's is whether it was read.
+        { ok: true, from: range.from, to: range.to, branches: read.branches, cutShort: read.cutShort, lines: read.lines, agrees: read.ok },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }

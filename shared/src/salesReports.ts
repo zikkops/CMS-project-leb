@@ -442,7 +442,10 @@ export function productMix(
   let linesWithoutVatRate = 0
 
   checks.forEach((check, order) => {
-    if (check.status !== 'closed') return
+    // A check closed with no receipt number is in no export and no journal, so
+    // it is not a sale here either: the reconciliation found one in the demo
+    // data counted by the mix alone (T7.16), and lists any such check apart.
+    if (check.status !== 'closed' || !check.receiptNumber) return
     checkCount++
     checkDiscounts += checkTotals(check).checkDiscount
     const staff = check.staffDiscount ?? null
