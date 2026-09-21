@@ -445,6 +445,9 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
 
   const ticketId = sent.tickets[0].id
 
+  // Loyalty on a hub (UPGRADE.md T5.7): refused plainly, whatever the switch says.
+  await rejects('a hub collects no loyalty points, and says so', () => C.setLoyaltyCustomer(staff, checkId, 'ABCD2345'), e => e.status === 409 && /café hub/.test(e.message))
+
   // Moving items and merging (UPGRADE.md T5.6).
   {
     const x = await C.openCheck(staff, { branch, tableNumber: 61, guestCount: 2 })

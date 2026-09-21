@@ -15,7 +15,7 @@
 
 import { FieldValue, Timestamp, type Transaction } from 'firebase-admin/firestore'
 import { randomUUID } from 'node:crypto'
-import { adminDb } from './firebaseAdmin'
+import { adminDb, hubDbPath } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES, STOCKED_BRANCHES } from '../branches'
 import {
@@ -1045,6 +1045,12 @@ export async function setLoyaltyCustomer(
   checkId: string,
   code: string | null,
 ): Promise<{ tableNumber: number; name: string | null; tier: string | null }> {
+  // A café hub holds no customer records and sends no points up (UPGRADE.md
+  // T5.7, owner to confirm): refused plainly, never taken and then silently
+  // not credited at close.
+  if (hubDbPath()) {
+    throw new HttpError(409, 'Loyalty points are not collected on the café hub. Tell the customer this visit earns no points.')
+  }
   if (!(await serverFeatureOn('loyalty'))) {
     throw new HttpError(409, 'The loyalty programme is switched off.')
   }

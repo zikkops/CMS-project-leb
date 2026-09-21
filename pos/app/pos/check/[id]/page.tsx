@@ -60,6 +60,8 @@ import {
 import { useHubOnly, HubOnlyBanner } from '../../../lib/useHubOnly'
 import { useAllergenChart } from '../../../lib/useAllergens'
 import { startLoad } from '@big-cms/shared/startLoad'
+import { useClientValue } from '@big-cms/shared/useClientValue'
+import { onHub } from '../../../lib/backend'
 
 /** Whether this device shows allergens on the menu. Per device, like the floor's readings. */
 const ALLERGENS_KEY = 'pos-show-allergens'
@@ -334,6 +336,9 @@ export default function CheckPage() {
   // Phase 04, slice 5: a loyalty customer can be put on the check, and their
   // points land when it closes. Off, the button is not there.
   const { on: loyaltyOn } = useFeature('loyalty')
+  // A café hub holds no customer records, so it collects no points (UPGRADE.md
+  // T5.7): the till says so rather than taking a code and crediting nothing.
+  const hubbed = useClientValue(onHub, false)
   const { settings: business } = useBusinessSettings()
   // Food safety, slice 7: allergens on the menu, for when a customer asks. Off
   // with the module, and a toggle per device on top — most orders are not an
@@ -1041,12 +1046,18 @@ export default function CheckPage() {
               />
             )}
 
-            {loyaltyOn && (
+            {loyaltyOn && !hubbed && (
               <PosButton
                 icon={faUserTag} full tone={check.loyalty ? 'warn' : 'neutral'}
                 onClick={() => { setActions(false); setAddingCustomer(true) }}
                 label={check.loyalty ? `Loyalty: ${check.loyalty.name}` : 'Add loyalty customer'}
               />
+            )}
+            {loyaltyOn && hubbed && (
+              <p style={{ color: 'rgba(var(--offwhite-rgb),0.65)', fontSize: '0.92rem', lineHeight: 1.6, display: 'flex', gap: '0.5rem', alignItems: 'baseline' }}>
+                <FontAwesomeIcon icon={faUserTag} />
+                Loyalty points are not collected on the café hub. Tell the customer this visit earns no points.
+              </p>
             )}
 
             {canDiscount && serviceRate(check.serviceCharge) > 0 && (check.payments ?? []).length === 0 && (
