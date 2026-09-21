@@ -350,9 +350,9 @@ console.log('\nthe service charge on the receipt (UPGRADE.md T3.8)')
 console.log('\nemailing a receipt (UPGRADE.md T3.7)')
 {
   const E = await import(`file://${join(out, 'receiptEmail.js')}`)
-  eq('an address as typed, spaces round it taken off', E.readReceiptEmail('  rana@cafe.example  '), 'rana@cafe.example')
+  eq('an address as typed, spaces round it taken off', E.readReceiptEmail('  rana@example.com  '), 'rana@example.com')
   eq('THE TRAP: a phone number, a name, two addresses or one with a space is not an address, never sent',
-    ['70123456', 'Rana', 'a@b.com, c@d.com', 'ra na@cafe.example', 'rana@cafe', '@cafe.example', 'rana@', null, 42].map(E.readReceiptEmail),
+    ['70123456', 'Rana', 'a@example.com, c@example.com', 'ra na@example.com', 'rana@cafe', '@cafe.example', 'rana@', null, 42].map(E.readReceiptEmail),
     [null, null, null, null, null, null, null, null, null])
   eq('...nor one longer than an address can be', E.readReceiptEmail(`${'a'.repeat(250)}@b.co`), null)
   eq('the subject names the café and the receipt', E.receiptEmailSubject('Placeholder Café', 'R-0042'), 'Your receipt from Placeholder Café (R-0042)')

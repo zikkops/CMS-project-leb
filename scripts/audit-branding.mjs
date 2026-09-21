@@ -169,6 +169,11 @@ const ALLOWED = [
     why: 'A fixture asserting that a stored rateUsed is honoured. The literal is the point of the test.',
   },
   {
+    file: 'phone/www/index.html', label: 'Original font families',
+    why: 'The staff app has no app/layout.tsx: its one page loads the brand fonts it bundles ' +
+         '(www/fonts), so it looks right with no internet (UPGRADE.md T2.20).',
+  },
+  {
     file: 'docs/env-local.template.txt', label: 'Hardcoded exchange rate',
     why: 'The template that tells you what to set. Naming the value is its job.',
   },

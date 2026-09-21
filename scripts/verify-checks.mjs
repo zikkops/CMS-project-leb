@@ -430,8 +430,8 @@ console.log('\nthe service charge (UPGRADE.md T3.8)')
   eq('THE ORDER: service is charged on what is left after every discount, never on the discount', [disc.checkDiscount, disc.service, disc.net], [5, 1.5, 16.5])
   eq('taken off, or never put on, there is none', [C.checkTotals({ lines: [L()], staffDiscount: null, serviceCharge: { rate: 0, removedBy: 'm' } }).service,
     C.checkTotals({ lines: [L()], staffDiscount: null }).service], [0, 0])
-  eq('THE TRAP: a rate that is not a sensible fraction charges nothing: 11 (for 11%), negative, over 30%, text',
-    [11, -0.1, 0.5, 'x', Number.NaN].map(rate => C.serviceRate({ rate })), [0, 0, 0, 0, 0])
+  eq('THE TRAP: a rate that is not a sensible fraction charges nothing: 10 (meaning ten percent), negative, over 30%, text',
+    [10, -0.1, 0.5, 'x', Number.NaN].map(rate => C.serviceRate({ rate })), [0, 0, 0, 0, 0])
   eq('a voided line carries no service', C.checkTotals({ lines: [L(), L({ id: 'l2', status: 'void' })], staffDiscount: null, serviceCharge: { rate: 0.1 } }).service, 1)
 }
 
@@ -439,8 +439,8 @@ console.log('\n86 from the till: sold out for the café day (UPGRADE.md T3.5)')
 {
   // Beirut is UTC+3 in September.
   const at = utc => new Date(`2026-09-13T${utc}:00.000Z`)
-  eq('THE TRAP: at 01:30 in Beirut it is still last night: a dish run out of at 22:00 stays out', SO.soldOutDay('Asia/Beirut', at('22:30')), '2026-09-13')
-  eq('...at 04:30 in Beirut too', SO.soldOutDay('Asia/Beirut', at('01:30')), '2026-09-12')
+  eq('THE TRAP: at 01:30 in the café zone it is still last night: a dish run out of at 22:00 stays out', SO.soldOutDay('Asia/Beirut', at('22:30')), '2026-09-13')
+  eq('...at 04:30 there too', SO.soldOutDay('Asia/Beirut', at('01:30')), '2026-09-12')
   eq('...and from 05:00 it is a new day, back on the menu by itself', SO.soldOutDay('Asia/Beirut', at('02:30')), '2026-09-13')
   eq('the mark counts only at its own branch and on its own day',
     [SO.isSoldOut({ Main: '2026-09-13' }, 'Main', '2026-09-13'), SO.isSoldOut({ Main: '2026-09-13' }, 'Second', '2026-09-13'), SO.isSoldOut({ Main: '2026-09-12' }, 'Main', '2026-09-13')],

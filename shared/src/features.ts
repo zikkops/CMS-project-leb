@@ -60,7 +60,8 @@ export const FEATURES = {
   // not a working POS, it is a bug report.
   pos: {
     label: 'Point of Sale', group: 'Operations', requires: ['menu'], defaultEnabled: false,
-    sections: ['pos'], collections: ['checks'],
+    // timeEntries: clock-ins from the staff app at a hub (UPGRADE.md T3.12).
+    sections: ['pos'], collections: ['checks', 'timeEntries'],
   },
   kds: {
     label: 'Kitchen Display', group: 'Operations', requires: ['pos'], defaultEnabled: false,

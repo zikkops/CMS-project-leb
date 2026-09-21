@@ -56,7 +56,7 @@ const check = (over = {}) => ({
 })
 const voided = (over = {}) => line({
   id: 'v1', status: 'void', voidReason: 'Made wrong', voidReasonKey: 'made-wrong', voidWasWaste: true,
-  voidedBy: 'u-rana', voidedByEmail: 'rana@cafe.test', ...over,
+  voidedBy: 'u-rana', voidedByEmail: 'rana@example.com', ...over,
 })
 
 console.log('\nvoids — what was struck off, worth what it was rung up at')
@@ -65,14 +65,14 @@ console.log('\nvoids — what was struck off, worth what it was rung up at')
     lines: [
       line(),
       voided({ unitPrice: 5, quantity: 2, modifiers: [{ groupId: 'g', optionId: 'o', name: 'Oat', priceDelta: 0.5 }] }),
-      voided({ id: 'v2', name: 'Croissant', unitPrice: 3, voidReasonKey: 'changed-mind', voidReason: 'Customer changed their mind', voidWasWaste: false, sentAt: null, voidedByEmail: 'sam@cafe.test' }),
+      voided({ id: 'v2', name: 'Croissant', unitPrice: 3, voidReasonKey: 'changed-mind', voidReason: 'Customer changed their mind', voidWasWaste: false, sentAt: null, voidedByEmail: 'sam@example.com' }),
     ],
   })], OPTS)
   eq('two voids on one check', r.voids.length, 2)
   eq('THE TRAP: a void is worth its price with options × quantity, not the zero it adds to the bill', r.voids[0].value, 11)
   eq('the reason is the list\'s words', r.voids.map(v => v.reason), ['Made wrong', 'Customer changed their mind'])
   eq('waste and "after it was sent" come from the line', r.voids.map(v => [v.waste, v.afterSending]), [[true, true], [false, false]])
-  eq('who voided it is named', r.voids.map(v => v.by), ['rana@cafe.test', 'sam@cafe.test'])
+  eq('who voided it is named', r.voids.map(v => v.by), ['rana@example.com', 'sam@example.com'])
   eq('totals: count, value, and what of it was waste', r.totals, { voids: 2, voidValue: 14, wasteValue: 11, discounts: 0, discountValue: 0 })
   eq('by reason, the biggest first', r.voidsByReason.map(t => [t.label, t.count, t.value]), [['Made wrong', 1, 11], ['Customer changed their mind', 1, 3]])
 
@@ -84,25 +84,25 @@ console.log('\nvoids — what was struck off, worth what it was rung up at')
 
 console.log('\ndiscounts — what each one took off, stacked as the bill stacks them')
 {
-  const comp = line({ id: 'd1', name: 'Cake', unitPrice: 6, discount: { kind: 'comp', percent: 1, reasonKey: 'complaint', note: '', by: 'm', byEmail: 'rana@cafe.test' } })
-  const half = line({ id: 'd2', name: 'Latte', unitPrice: 5, discount: { kind: 'percent', percent: 0.5, reasonKey: 'regular', note: '', by: 'm', byEmail: 'rana@cafe.test' } })
+  const comp = line({ id: 'd1', name: 'Cake', unitPrice: 6, discount: { kind: 'comp', percent: 1, reasonKey: 'complaint', note: '', by: 'm', byEmail: 'rana@example.com' } })
+  const half = line({ id: 'd2', name: 'Latte', unitPrice: 5, discount: { kind: 'percent', percent: 0.5, reasonKey: 'regular', note: '', by: 'm', byEmail: 'rana@example.com' } })
   const r = R.voidDiscountReport([check({
     lines: [line(), comp, half],
-    discount: { kind: 'percent', value: 0.1, reasonKey: 'wait', note: '', by: 'm', byEmail: 'sam@cafe.test' },
+    discount: { kind: 'percent', value: 0.1, reasonKey: 'wait', note: '', by: 'm', byEmail: 'sam@example.com' },
   })], OPTS)
   eq('a comp takes the whole item, a half takes half', r.discounts.filter(d => d.item).map(d => [d.item, d.kind, d.amount]), [['Cake', 'comp', 6], ['Latte', 'item-percent', 2.5]])
   eq('THE ORDER: 10% off the check is 10% of what the items left (4 + 0 + 2.50)', r.discounts.find(d => d.kind === 'check-percent').amount, 0.65)
   eq('discount reasons read as the list says', r.discountsByReason.map(t => t.label).sort(), ['Complaint — something went wrong', 'Long wait', 'Regular or friend of the house'])
-  eq('by person', r.discountsByStaff.map(t => [t.label, t.count, t.value]), [['rana@cafe.test', 2, 8.5], ['sam@cafe.test', 1, 0.65]])
+  eq('by person', r.discountsByStaff.map(t => [t.label, t.count, t.value]), [['rana@example.com', 2, 8.5], ['sam@example.com', 1, 0.65]])
 
   const meal = R.voidDiscountReport([check({
     lines: [line({ station: 'Kitchen', unitPrice: 10 }), line({ id: 'l2', station: 'Bar', unitPrice: 4 })],
-    staffDiscount: { food: 0.5, drink: 1, appliedBy: 'm', appliedByEmail: 'rana@cafe.test' },
+    staffDiscount: { food: 0.5, drink: 1, appliedBy: 'm', appliedByEmail: 'rana@example.com' },
   })], OPTS)
-  eq('a staff meal is a discount too: half the food and all the drink', meal.discounts.map(d => [d.kind, d.amount, d.by]), [['staff-meal', 9, 'rana@cafe.test']])
+  eq('a staff meal is a discount too: half the food and all the drink', meal.discounts.map(d => [d.kind, d.amount, d.by]), [['staff-meal', 9, 'rana@example.com']])
   const both = R.voidDiscountReport([check({
-    lines: [line({ station: 'Kitchen', unitPrice: 10, discount: { kind: 'percent', percent: 0.5, reasonKey: 'regular', note: '', by: 'm', byEmail: 'rana@cafe.test' } })],
-    staffDiscount: { food: 0.5, drink: 0, appliedBy: 'm', appliedByEmail: 'rana@cafe.test' },
+    lines: [line({ station: 'Kitchen', unitPrice: 10, discount: { kind: 'percent', percent: 0.5, reasonKey: 'regular', note: '', by: 'm', byEmail: 'rana@example.com' } })],
+    staffDiscount: { food: 0.5, drink: 0, appliedBy: 'm', appliedByEmail: 'rana@example.com' },
   })], OPTS)
   eq('THE ORDER: an item discount on a staff meal is taken from what the staff rate left, so the two never exceed the line',
     both.discounts.map(d => [d.kind, d.amount]).sort(), [['item-percent', 2.5], ['staff-meal', 5]])
