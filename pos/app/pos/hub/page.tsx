@@ -73,7 +73,7 @@ function when(ms: number | null): string {
 interface PrintingStatus {
   printers: { station: string; address: string; ready: boolean }[]
   /** The latest tickets for a network printer, to print one again (UPGRADE.md T3.6). Absent from an older hub. */
-  recentTickets?: { id: string; station: string; tableNumber: number; round: number; status: string; sentAt: number; reprints: number }[]
+  recentTickets?: { id: string; station: string; tableNumber: number; orderLabel?: string; round: number; status: string; sentAt: number; reprints: number }[]
   printedToday: number
   waiting: number
   failures: { kind: string; station: string; reason: string; at: number }[]
@@ -151,7 +151,7 @@ function HubPrinters() {
         <>
           <span style={{ opacity: 0.55, marginTop: '0.4rem' }}>Recent tickets · print one again</span>
           {(printing.recentTickets ?? []).map(t => {
-            const label = `Table ${t.tableNumber}${t.round > 1 ? `, round ${t.round}` : ''}, ${t.station}`
+            const label = `${t.orderLabel ?? `Table ${t.tableNumber}`}${t.round > 1 ? `, round ${t.round}` : ''}, ${t.station}`
             return (
               <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.8rem' }}>
                 <span style={{ fontSize: '0.85rem' }}>

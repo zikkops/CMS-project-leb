@@ -49,6 +49,7 @@ export function ReadyPanel({ branch, isMobile }: { branch: string; isMobile: boo
   const cards = pickupCards(tickets.map(t => ({
     id: t.id,
     tableNumber: t.tableNumber,
+    orderLabel: t.orderLabel,
     station: t.station,
     round: t.round,
     lines: t.lines,
@@ -149,7 +150,7 @@ export function ReadyPanel({ branch, isMobile }: { branch: string; isMobile: boo
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
                   <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.55rem', color: 'var(--offwhite)', lineHeight: 1 }}>
-                    Table {c.tableNumber}
+                    {c.label}
                   </span>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 700, fontSize: '0.95rem', color: WAIT_COLOUR[level] }}>
                     <FontAwesomeIcon icon={level === 'late' ? faTriangleExclamation : faClock} />{c.waitingMinutes}m

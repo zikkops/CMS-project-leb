@@ -58,6 +58,8 @@ export interface Ticket {
   checkId: string
   branch: string
   tableNumber: number
+  /** checkLabel() of the check when it was sent, e.g. "Takeaway: Rana" (UPGRADE.md T5.5). Absent on older tickets: read "Table n". */
+  orderLabel?: string
   station: Station
   status: TicketStatus
   /** 1 for the first send on this check at this station, 2 for the next. */

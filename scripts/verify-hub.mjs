@@ -445,6 +445,26 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
 
   const ticketId = sent.tickets[0].id
 
+  // Order types (UPGRADE.md T5.5): no table, so no one-per-table rule.
+  {
+    const a = await C.openCheck(staff, { branch, tableNumber: 0, guestCount: 1, orderType: 'takeaway', orderName: 'Rana' })
+    const b = await C.openCheck(staff, { branch, tableNumber: 0, guestCount: 1, orderType: 'takeaway', orderName: '' })
+    eq('two takeaways open at once, as two checks', a.id !== b.id, true)
+    const stored = (await db.doc(`checks/${a.id}`).get()).data()
+    eq('...stored with no table, the type and the name', [stored.tableId, stored.tableNumber, stored.orderType, stored.orderName], ['', 0, 'takeaway', 'Rana'])
+    const once = await C.openCheck(staff, { branch, tableNumber: 0, guestCount: 1, orderType: 'tab', orderName: 'Sam', openId: 'tab-open-0001' })
+    const twice = await C.openCheck(staff, { branch, tableNumber: 0, guestCount: 1, orderType: 'tab', orderName: 'Sam', openId: 'tab-open-0001' })
+    eq('the same open sent twice is one tab', [once.id, twice.replayed], ['tab-open-0001', true])
+    await rejects('a tab with no name is refused', () => C.openCheck(staff, { branch, tableNumber: 0, guestCount: 1, orderType: 'tab', orderName: '  ' }), e => e.status === 400)
+    await rejects('an unknown order type is refused', () => C.openCheck(staff, { branch, tableNumber: 0, guestCount: 1, orderType: 'drive-thru' }), e => e.status === 400)
+    await rejects('a takeaway does not move to a table', () => C.moveCheck(staff, a.id, 5), e => e.status === 400)
+    await C.addLines(staff, a.id, C.parseLineRequests({ lines: [{ source: 'menu', refId: 'm-toast', quantity: 1 }] }), 'batch-takeaway-1')
+    const fired = await C.sendCheck(staff, a.id)
+    eq('the kitchen ticket says who it is for', (await db.doc(`kitchenTickets/${fired.tickets[0].id}`).get()).data().orderLabel, 'Takeaway: Rana')
+    for (const id of [a.id, b.id, once.id]) await db.doc(`checks/${id}`).delete()
+    await db.doc(`kitchenTickets/${fired.tickets[0].id}`).delete()
+  }
+
   // Food already sent is a manager's to void, and a line never sent is
   // anyone's (UPGRADE.md T5.1). Judged from the stored line, on the hub too.
   {

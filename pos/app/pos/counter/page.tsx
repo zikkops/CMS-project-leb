@@ -46,7 +46,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 import { BRAND } from '@big-cms/shared/brand'
 import { isSoldOut, soldOutDay } from '@big-cms/shared/soldOut'
-import { checkTotals, type Check } from '@big-cms/shared/checks'
+import { checkTotals, checkLabel, orderTypeOf, ORDER_TYPES, type Check } from '@big-cms/shared/checks'
 import {
   applyPayment, balance, type PayCurrency, type PaymentRequest, type Tender,
 } from '@big-cms/shared/payments'
@@ -500,7 +500,7 @@ export default function CounterPage() {
               type="button"
               onClick={() => selectTable(t.checkId)}
               aria-pressed={on}
-              aria-label={`Table ${t.tableNumber}${t.check ? '' : ', not on the server yet'}${t.waiting > 0 ? `, ${t.waiting} waiting to send` : ''}`}
+              aria-label={`${t.check ? checkLabel(t.check) : `Table ${t.tableNumber}`}${t.check ? '' : ', not on the server yet'}${t.waiting > 0 ? `, ${t.waiting} waiting to send` : ''}`}
               style={{
                 minHeight: '84px', minWidth: '96px', padding: '0.5rem 0.7rem', borderRadius: '12px', cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.3rem',
@@ -509,8 +509,13 @@ export default function CounterPage() {
                 color: 'var(--offwhite)', fontFamily: 'var(--font-inter)',
               }}
             >
-              <span style={{ fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.6)' }}>Table</span>
-              <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.7rem', lineHeight: 1 }}>{t.tableNumber}</span>
+              {/* A takeaway, delivery or tab opened on the floor shows its type and name (UPGRADE.md T5.5). */}
+              <span style={{ fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.6)' }}>
+                {t.check && orderTypeOf(t.check) !== 'dine-in' ? ORDER_TYPES.find(o => o.key === orderTypeOf(t.check!))?.label : 'Table'}
+              </span>
+              {t.check && orderTypeOf(t.check) !== 'dine-in'
+                ? <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', lineHeight: 1.1, maxWidth: '7rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.check.orderName || '—'}</span>
+                : <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.7rem', lineHeight: 1 }}>{t.tableNumber}</span>}
               {t.waiting > 0 && <StatusBadge icon={faHourglassHalf} tone="warn" label={`${t.waiting} waiting`} />}
             </button>
           )
@@ -557,7 +562,7 @@ export default function CounterPage() {
   const checkBlock = table && (
     <div style={card}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.5rem' }}>
-        <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.6rem', color: 'var(--offwhite)' }}>Table {table.tableNumber}</h2>
+        <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.6rem', color: 'var(--offwhite)' }}>{table.check ? checkLabel(table.check) : `Table ${table.tableNumber}`}</h2>
         {!table.check && <StatusBadge icon={faHourglassHalf} tone="warn" label="Not on the server yet" />}
       </div>
 

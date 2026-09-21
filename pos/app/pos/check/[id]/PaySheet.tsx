@@ -14,7 +14,7 @@
 // own — once a payment carrying the key appears, it was taken.
 
 import { useEffect, useState } from 'react'
-import { checkTotals, describeLine, lineTotal, type Check } from '@big-cms/shared/checks'
+import { checkLabel, checkTotals, describeLine, lineTotal, type Check } from '@big-cms/shared/checks'
 import {
   applyPayment, balance, fillAmount, tipProblem, CASH_LBP_STEP,
   type PayCurrency, type Tender,
@@ -301,7 +301,7 @@ export default function PaySheet({
     <Sheet label="Payment" onClose={() => { if (!busy && !locked) onDismiss() }}>
       <div style={{ fontFamily: 'var(--font-inter)', color: 'var(--offwhite)' }}>
         <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.2rem', marginBottom: '0.9rem' }}>
-          Table {check.tableNumber} — payment
+          {checkLabel(check)} — payment
         </h2>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>

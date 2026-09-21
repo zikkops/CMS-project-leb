@@ -123,6 +123,61 @@ export const VOID_REASONS: VoidReasonDef[] = [
   { key: 'other', label: 'Other', returnsToStock: false, isWaste: true },
 ]
 
+// ── Order types (UPGRADE.md T5.5) ──────────────────────────────────────────
+// A check used to be a table. Takeaway, delivery and a named tab have no
+// table, so the one-open-check-per-table rule does not apply to them: a
+// counter may have ten takeaways open at once. They are stored with
+// tableNumber 0 and an empty tableId, and everything that names a check goes
+// through checkLabel(), so nothing prints "Table 0".
+//
+// OWNER TO CONFIRM: which types a café offers and what they are called. These
+// four and their names are the safe default.
+
+export type OrderType = 'dine-in' | 'takeaway' | 'delivery' | 'tab'
+
+export interface OrderTypeDef {
+  key: OrderType
+  label: string
+  /** A tab is somebody's running bill, so it needs a name to find it by. */
+  needsName: boolean
+}
+
+export const ORDER_TYPES: readonly OrderTypeDef[] = [
+  { key: 'dine-in', label: 'Dine in', needsName: false },
+  { key: 'takeaway', label: 'Takeaway', needsName: false },
+  { key: 'delivery', label: 'Delivery', needsName: false },
+  { key: 'tab', label: 'Tab', needsName: true },
+]
+
+export const ORDER_NAME_MAX = 40
+
+/** A check's order type; anything unknown, including a check from before types, is dine-in. */
+export function orderTypeOf(check: { orderType?: unknown }): OrderType {
+  return ORDER_TYPES.some(t => t.key === check.orderType) ? check.orderType as OrderType : 'dine-in'
+}
+
+/** The name as typed, cut to one short line, or '' for none. */
+export function readOrderName(raw: unknown): string {
+  return typeof raw === 'string' ? raw.replace(/\s+/g, ' ').trim().slice(0, ORDER_NAME_MAX) : ''
+}
+
+/** What a check is called wherever it is shown or printed: "Table 12", "Takeaway: Rana", "Tab: Sam". */
+export function checkLabel(check: { orderType?: unknown; orderName?: unknown; tableNumber?: unknown }): string {
+  const type = orderTypeOf(check)
+  if (type === 'dine-in') return `Table ${typeof check.tableNumber === 'number' ? check.tableNumber : '?'}`
+  const label = ORDER_TYPES.find(t => t.key === type)!.label
+  const name = readOrderName(check.orderName)
+  return name ? `${label}: ${name}` : label
+}
+
+/** Why an order of this type cannot be opened with this name, or null. */
+export function orderOpenProblem(type: unknown, name: string): string | null {
+  const def = ORDER_TYPES.find(t => t.key === type)
+  if (!def) return 'Choose dine in, takeaway, delivery or a tab.'
+  if (def.needsName && !name) return 'A tab needs a name to find it by.'
+  return null
+}
+
 export function voidReason(key: string): VoidReasonDef | undefined {
   return VOID_REASONS.find(r => r.key === key)
 }
@@ -301,8 +356,12 @@ export interface Check {
   /** TableMarker.id from branchTableLayouts — not the printed number, which
    *  can be changed on the floor plan without meaning a different table. */
   tableId: string
-  /** Snapshotted so a closed check still reads "Table 12" after a renumber. */
+  /** Snapshotted so a closed check still reads "Table 12" after a renumber. 0 on an order with no table (orderType). */
   tableNumber: number
+  /** Absent on every check from before order types (UPGRADE.md T5.5): those are dine-in. */
+  orderType?: OrderType
+  /** Who a takeaway, delivery or tab is for, as typed at the till. Null or absent at a table. */
+  orderName?: string | null
   status: CheckStatus
   guestCount: number
   lines: CheckLine[]

@@ -32,11 +32,14 @@ import { useTillAccess } from '../lib/useTillAccess'
 import { useFeature, useFeatureFlags } from '../lib/useTillSettings'
 import { visibleTiles } from '../lib/posTiles'
 import { BRAND } from '@big-cms/shared/brand'
-import { orderedTotal, checkTotals, type Check, type CheckLine } from '@big-cms/shared/checks'
+import {
+  orderedTotal, checkTotals, checkLabel, orderTypeOf, orderOpenProblem, readOrderName, ORDER_TYPES, ORDER_NAME_MAX,
+  type Check, type CheckLine, type OrderType,
+} from '@big-cms/shared/checks'
 import { minutesWaiting, urgency } from '@big-cms/shared/tickets'
 import { todayYmd } from '@big-cms/shared/dates'
 import { closedAtParts } from '@big-cms/shared/salesExport'
-import { useOpenChecks, useChecksClosedSince, openCheck } from '../lib/usePos'
+import { useOpenChecks, useChecksClosedSince, openCheck, openOrder } from '../lib/usePos'
 import { PosButton, Chip, StatusBadge, PosLoading, Stepper, Sheet } from '../lib/posUi'
 import { floorReadings, readReadingChoice, READINGS, type ReadingKey } from '../lib/floorReadings'
 import { ReadyPanel } from '../lib/ReadyPanel'
@@ -126,8 +129,9 @@ function CheckCard({ check, now, onOpen, isMobile }: {
   const level = mins === null ? 'fresh' : urgency(mins)
 
   // Said in words as well as shown, for a screen reader (UPGRADE.md T1.13).
+  const atTable = orderTypeOf(check) === 'dine-in'
   const spoken = [
-    `Table ${check.tableNumber}`, money(total),
+    checkLabel(check), money(total),
     mins === null ? 'nothing sent yet' : `sent ${mins} minutes ago${level === 'late' ? ', late' : ''}`,
     unsent > 0 ? `${unsent} not sent` : '',
   ].filter(Boolean).join(', ')
@@ -154,10 +158,18 @@ function CheckCard({ check, now, onOpen, isMobile }: {
       <span style={{
         fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase',
         color: 'rgba(var(--offwhite-rgb),0.55)',
-      }}>Table</span>
-      <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '2.2rem' : '2.8rem', lineHeight: 1 }}>
-        {check.tableNumber}
-      </span>
+      }}>{atTable ? 'Table' : ORDER_TYPES.find(t => t.key === orderTypeOf(check))?.label}</span>
+      {atTable ? (
+        <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '2.2rem' : '2.8rem', lineHeight: 1 }}>
+          {check.tableNumber}
+        </span>
+      ) : (
+        // A name is words, not a number: smaller, and cut to the tile.
+        <span style={{
+          fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.2rem' : '1.45rem', lineHeight: 1.15,
+          textAlign: 'center', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{readOrderName(check.orderName) || '—'}</span>
+      )}
       <span style={{ fontSize: isMobile ? '1rem' : '1.15rem', fontWeight: 700 }}>{money(total)}</span>
       <span style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'center' }}>
         {/* A warning is a badge with an icon, not a 0.6rem corner number. */}
@@ -272,6 +284,11 @@ export default function FloorPage() {
   const [choosing, setChoosing] = useState(false)
 
   const [adding, setAdding] = useState(false)
+  // Dine in at a table, or a takeaway, delivery or tab (UPGRADE.md T5.5).
+  const [orderType, setOrderType] = useState<OrderType>('dine-in')
+  const [orderName, setOrderName] = useState('')
+  // One id per open sheet: a second tap, or a retry, opens the same order.
+  const [openId, setOpenId] = useState('')
   const [tableNumber, setTableNumber] = useState('')
   const [guests, setGuests] = useState('2')
   const [busy, setBusy] = useState(false)
@@ -305,6 +322,20 @@ export default function FloorPage() {
   }
 
   async function handleOpen() {
+    if (orderType !== 'dine-in') {
+      const problem = orderOpenProblem(orderType, readOrderName(orderName))
+      if (problem) { setError(problem); return }
+      setBusy(true)
+      setError('')
+      try {
+        const id = await openOrder(branch, orderType, readOrderName(orderName), openId)
+        router.push(`/pos/check/${id}`)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not open that order.')
+        setBusy(false)
+      }
+      return
+    }
     const n = Number(tableNumber)
     if (!Number.isInteger(n) || n < 1) { setError('Enter a table number.'); return }
     // Already open: go to it, rather than an error saying so (UPGRADE.md T1.3).
@@ -517,8 +548,11 @@ export default function FloorPage() {
         padding: '0.8rem 1rem',
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <PosButton icon={faPlus} label="Add table" tone="primary" size="lg" full
-            onClick={() => { setAdding(true); setTableNumber(''); setError('') }} />
+          <PosButton icon={faPlus} label="Add table or order" tone="primary" size="lg" full
+            onClick={() => {
+              setAdding(true); setTableNumber(''); setError('')
+              setOrderType('dine-in'); setOrderName(''); setOpenId(crypto.randomUUID())
+            }} />
         </div>
       </div>
 
@@ -575,11 +609,38 @@ export default function FloorPage() {
       {adding && (
         // A form, so Enter on a PC opens the table (UPGRADE.md T1.2), and a proper
         // dialog: Escape closes it, focus goes in and comes back (T2.3).
-        <Sheet label="Open a table" onClose={() => setAdding(false)} onSubmit={() => { void handleOpen() }} center={!isMobile}>
+        <Sheet label="Open a table or an order" onClose={() => setAdding(false)} onSubmit={() => { void handleOpen() }} center={!isMobile}>
           <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem', color: 'var(--offwhite)', marginBottom: '1rem' }}>
-            Open a table
+            {orderType === 'dine-in' ? 'Open a table' : `Open a ${ORDER_TYPES.find(t => t.key === orderType)?.label.toLowerCase()}`}
           </h2>
 
+          <div role="group" aria-label="Order type" style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '1.1rem' }}>
+            {ORDER_TYPES.map(t => (
+              <Chip key={t.key} label={t.label} active={orderType === t.key} onClick={() => { setOrderType(t.key); setError('') }} />
+            ))}
+          </div>
+
+          {orderType !== 'dine-in' ? (
+            <>
+              <label htmlFor="open-order-name" style={{
+                display: 'block', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.08em',
+                textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.6)', marginBottom: '0.45rem',
+              }}>{ORDER_TYPES.find(t => t.key === orderType)?.needsName ? 'Name' : 'Name (optional)'}</label>
+              <input
+                id="open-order-name"
+                value={orderName}
+                onChange={e => setOrderName(e.target.value.slice(0, ORDER_NAME_MAX))}
+                autoFocus
+                placeholder="Who it is for"
+                style={{
+                  width: '100%', minHeight: '64px', padding: '0 1rem',
+                  background: 'rgba(var(--overlay-rgb),0.05)', border: '2px solid rgba(var(--overlay-rgb),0.18)',
+                  borderRadius: '10px', color: 'var(--offwhite)',
+                  fontFamily: 'var(--font-inter)', fontSize: '1.3rem', outline: 'none',
+                }}
+              />
+            </>
+          ) : (<>
           <label htmlFor="open-table-number" style={{
             display: 'block', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.08em',
             textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.6)', marginBottom: '0.45rem',
@@ -612,6 +673,7 @@ export default function FloorPage() {
             {/* A bigger party: the stepper goes past 8 (UPGRADE.md T1.4). */}
             <Stepper label="Guests" value={Math.max(1, Number(guests) || 1)} onChange={n => setGuests(String(n))} max={60} />
           </div>
+          </>)}
 
           {error && (
             <p style={{ color: 'var(--red)', fontSize: '0.95rem', marginTop: '0.9rem' }}>
@@ -621,8 +683,10 @@ export default function FloorPage() {
 
           <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.3rem' }}>
             <PosButton icon={faXmark} label="Cancel" tone="quiet" grow={1} onClick={() => setAdding(false)} />
-            <PosButton icon={faPlus} label={busy ? 'Opening…' : `Open table ${tableNumber || ''}`} tone="primary" size="lg" grow={2}
-              type="submit" disabled={busy || !tableNumber} />
+            <PosButton icon={faPlus}
+              label={busy ? 'Opening…' : orderType === 'dine-in' ? `Open table ${tableNumber || ''}` : `Open ${ORDER_TYPES.find(t => t.key === orderType)?.label.toLowerCase()}`}
+              tone="primary" size="lg" grow={2}
+              type="submit" disabled={busy || (orderType === 'dine-in' ? !tableNumber : orderOpenProblem(orderType, readOrderName(orderName)) !== null)} />
           </div>
         </Sheet>
       )}

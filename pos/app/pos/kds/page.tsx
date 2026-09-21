@@ -168,7 +168,7 @@ function TicketCard({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginTop: '0.45rem' }}>
           <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
             <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.6rem' : '1.9rem', color: 'var(--offwhite)', lineHeight: 1 }}>
-              Table {ticket.tableNumber}
+              {ticket.orderLabel ?? `Table ${ticket.tableNumber}`}
             </span>
             {ticket.round > 1 && (
               <span style={{ fontSize: '0.9rem', color: 'rgba(var(--offwhite-rgb),0.65)', fontWeight: 600 }}>round {ticket.round}</span>

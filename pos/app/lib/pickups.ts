@@ -8,6 +8,8 @@
 export interface ReadyTicket {
   id: string
   tableNumber: number
+  /** "Table 12" or "Takeaway: Rana", as the ticket was sent (UPGRADE.md T5.5). */
+  orderLabel?: string
   station: string
   round: number
   lines: readonly { name: string; quantity: number; voided: boolean }[]
@@ -19,6 +21,8 @@ export interface ReadyTicket {
 export interface PickupCard {
   id: string
   tableNumber: number
+  /** What to call it on the card: the ticket's own label, else "Table n". */
+  label: string
   station: string
   round: number
   /** "2× Burger, 1× Fries". A voided line is not food to carry. */
@@ -41,6 +45,7 @@ export function pickupCards(tickets: readonly ReadyTicket[], now: number): Picku
       const card: PickupCard = {
         id: t.id,
         tableNumber: t.tableNumber,
+        label: t.orderLabel ?? `Table ${t.tableNumber}`,
         station: t.station,
         round: t.round,
         summary: live.length > 0 ? live.map(l => `${l.quantity}× ${l.name}`).join(', ') : 'Every item on it was cancelled',

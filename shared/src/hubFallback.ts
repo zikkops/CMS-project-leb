@@ -20,6 +20,7 @@
 // server/hubSync.ts.
 
 import { timestampMs } from './timestamps'
+import { checkLabel } from './checks'
 
 /** Server-only collection, no Firestore rule: what a hub sent up while its branch traded online. */
 export const HELD_ITEMS = 'hubHeldItems'
@@ -99,7 +100,7 @@ export function heldSummary(
   switch (collection) {
     case 'checks': {
       const lines = Array.isArray(d.lines) ? d.lines.filter(l => (l as { status?: unknown })?.status !== 'void').length : 0
-      return `Table ${text(d.tableNumber)}, ${text(d.status)}, ${lines} ${lines === 1 ? 'line' : 'lines'}${typeof d.receiptNumber === 'string' ? `, receipt ${d.receiptNumber}` : ''}`
+      return `${checkLabel(d)}, ${text(d.status)}, ${lines} ${lines === 1 ? 'line' : 'lines'}${typeof d.receiptNumber === 'string' ? `, receipt ${d.receiptNumber}` : ''}`
     }
     case 'kitchenTickets':
       return `${text(d.station, 'Kitchen')} ticket, ${text(d.status)}`

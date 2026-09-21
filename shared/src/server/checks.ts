@@ -19,7 +19,7 @@ import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES, STOCKED_BRANCHES } from '../branches'
 import {
-  CHECK_LIMITS, stationForSection, voidReason, reversalRefusal, BATCH_KEY_PATTERN, batchAlreadyApplied,
+  CHECK_LIMITS, stationForSection, voidReason, reversalRefusal, checkLabel, orderOpenProblem, orderTypeOf, readOrderName, type OrderType, BATCH_KEY_PATTERN, batchAlreadyApplied,
   checkTotals, closeBlockedReason, discountReason, serviceRate,
   type Check, type CheckLine, type LineSource, type LineDiscount, type CheckDiscount,
 } from '../checks'
@@ -399,7 +399,11 @@ export function parseOpenId(body: Record<string, unknown>): string | null {
 
 export async function openCheck(
   caller: Caller,
-  input: { branch: string; tableNumber: number; guestCount: number; openId?: string | null },
+  input: {
+    branch: string; tableNumber: number; guestCount: number; openId?: string | null
+    /** UPGRADE.md T5.5. Absent: dine-in, as every till sent before order types. */
+    orderType?: unknown; orderName?: unknown
+  },
 ): Promise<{ id: string; replayed: boolean }> {
   const db = adminDb()
 
@@ -407,6 +411,11 @@ export async function openCheck(
     throw new HttpError(400, 'Unknown branch.')
   }
   const guestCount = whole(input.guestCount, 'Guest count', 1, CHECK_LIMITS.maxGuests)
+  const orderType = input.orderType === undefined || input.orderType === null ? 'dine-in' : input.orderType
+  const orderName = readOrderName(input.orderName)
+  const orderProblem = orderOpenProblem(orderType, orderName)
+  if (orderProblem) throw new HttpError(400, orderProblem)
+  if (orderType !== 'dine-in') return openOrder(caller, input.branch, orderType as OrderType, orderName, guestCount, input.openId ?? null)
   const number = whole(input.tableNumber, 'Table number', 1, 9999)
   const table = await resolveTable(input.branch, number)
   // The service charge this check will carry (UPGRADE.md T3.8), read before
@@ -617,6 +626,8 @@ export async function sendCheck(
         checkId,
         branch: check.branch,
         tableNumber: check.tableNumber,
+        // What the pass calls it: "Table 12" or "Takeaway: Rana" (T5.5).
+        orderLabel: checkLabel(check),
         station,
         // Held until the front fires it: on the kitchen screen, greyed, and
         // not printed (the printers print a 'new' ticket).
@@ -846,6 +857,54 @@ export async function setStaffMeal(
   })
 }
 
+/**
+ * Opens a takeaway, delivery or tab (UPGRADE.md T5.5): no table, so no
+ * one-per-table rule, and several may be open at once. The till's openId
+ * makes a retried open the same check, as it does for a table.
+ */
+async function openOrder(
+  caller: Caller,
+  branch: string,
+  orderType: OrderType,
+  orderName: string,
+  guestCount: number,
+  openId: string | null,
+): Promise<{ id: string; replayed: boolean }> {
+  const db = adminDb()
+  const serviceNow = (await serverFeatureOn('serviceCharge')) ? serviceRate({ rate: (await readSettings()).serviceChargeRate }) : 0
+  return db.runTransaction(async tx => {
+    if (openId) {
+      const existing = await tx.get(db.doc(`${CHECKS}/${openId}`))
+      if (existing.exists) {
+        const d = existing.data() ?? {}
+        if (d.branch !== branch || orderTypeOf(d) !== orderType) {
+          throw new HttpError(409, 'That check id is already in use for another order.')
+        }
+        return { id: existing.id, replayed: true }
+      }
+    }
+    const ref = openId ? db.doc(`${CHECKS}/${openId}`) : db.collection(CHECKS).doc()
+    tx.set(ref, {
+      branch,
+      tableId: '',
+      tableNumber: 0,
+      orderType,
+      orderName: orderName || null,
+      status: 'open',
+      guestCount,
+      lines: [],
+      staffDiscount: null,
+      ...(serviceNow > 0 ? { serviceCharge: { rate: serviceNow } } : {}),
+      receiptNumber: null,
+      openedBy: caller.uid,
+      openedByEmail: caller.email ?? '',
+      openedAt: FieldValue.serverTimestamp(),
+      closedAt: null,
+    })
+    return { id: ref.id, replayed: false }
+  })
+}
+
 /** Moves a check to another table — a party changing seats mid-service. */
 export async function moveCheck(
   caller: Caller,
@@ -863,6 +922,7 @@ export async function moveCheck(
   return db.runTransaction(async tx => {
     const check = await readCheck(tx, checkId)
     if (check.status !== 'open') throw new HttpError(409, 'That check is closed.')
+    if (orderTypeOf(check) !== 'dine-in') throw new HttpError(400, 'Only a table\'s check moves between tables.')
     if (check.tableId === table.tableId) {
       throw new HttpError(400, 'That check is already on that table.')
     }

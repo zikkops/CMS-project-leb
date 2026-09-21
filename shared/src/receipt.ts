@@ -33,7 +33,7 @@
 // print view lays them out for a browser, and a future route handler can hand
 // the same rows to a device.
 
-import { checkTotals, grossLineTotal, serviceRate, type Check, type CheckLine } from './checks'
+import { checkTotals, checkLabel, grossLineTotal, orderTypeOf, serviceRate, type Check, type CheckLine } from './checks'
 import { zonedParts } from './dates'
 import { describeSelections } from './modifiers'
 import { billTotals, vatIncluded } from './money'
@@ -169,7 +169,9 @@ export function buildReceipt(check: Check, opts: ReceiptOptions): ReceiptRow[] {
   rows.push({ kind: 'blank' })
 
   rows.push({ kind: 'pair', left: 'Receipt', right: check.receiptNumber as string })
-  rows.push({ kind: 'pair', left: 'Table',   right: String(check.tableNumber) })
+  // A table's number, or the order type and name (UPGRADE.md T5.5).
+  if (orderTypeOf(check) === 'dine-in') rows.push({ kind: 'pair', left: 'Table',   right: String(check.tableNumber) })
+  else rows.push({ kind: 'pair', left: 'Order', right: checkLabel(check) })
   if (check.guestCount > 0) {
     rows.push({ kind: 'pair', left: 'Guests', right: String(check.guestCount) })
   }

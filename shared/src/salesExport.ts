@@ -21,7 +21,7 @@
 // arrives as an argument, so scripts/verify-export.mjs can pin each case to an
 // explicit zone, rate and date.
 
-import { checkTotals, type Check } from './checks'
+import { checkTotals, orderTypeOf, ORDER_TYPES, type Check } from './checks'
 import { vatIncluded } from './money'
 import { ymdInZone } from './dates'
 import { timestampMs } from './timestamps'
@@ -45,6 +45,8 @@ export interface CheckRow {
   time: string
   branch: string
   table: number
+  /** Dine in, Takeaway, Delivery or Tab (UPGRADE.md T5.5); a check from before types is Dine in. */
+  order: string
   guests: number
   status: string
   gross: number
@@ -152,6 +154,7 @@ export function checkRow(check: Check, opts: ExportOptions): CheckRow {
     time,
     branch: check.branch,
     table: check.tableNumber,
+    order: ORDER_TYPES.find(o => o.key === orderTypeOf(check))!.label,
     guests: check.guestCount,
     status: check.status,
     gross: totals.gross,
@@ -251,7 +254,7 @@ export function buildExport(checks: readonly Check[], opts: ExportOptions): Sale
 export const SHEETS = {
   checks: [
     ['receipt', 'Receipt'], ['day', 'Day'], ['time', 'Time'], ['branch', 'Branch'],
-    ['table', 'Table'], ['guests', 'Guests'], ['status', 'Status'],
+    ['table', 'Table'], ['order', 'Order'], ['guests', 'Guests'], ['status', 'Status'],
     ['gross', 'Gross USD'], ['staffMeal', 'Staff meal'], ['itemDiscounts', 'Item discounts'],
     ['checkDiscount', 'Check discount'], ['service', 'Service'], ['net', 'Net USD'],
     ['vatRate', 'VAT rate'], ['vat', 'VAT incl. USD'],

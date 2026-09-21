@@ -35,7 +35,7 @@ import {
 import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useTillAccess } from '../../../lib/useTillAccess'
 import {
-  lineTotal, grossLineTotal, lineDiscount, checkTotals, serviceRate, stationForSection, VOID_REASONS, reversalRefusal, reconcilePendingBatch,
+  lineTotal, grossLineTotal, lineDiscount, checkTotals, serviceRate, stationForSection, VOID_REASONS, reversalRefusal, reconcilePendingBatch, checkLabel, orderTypeOf,
   type CheckLine, type StaffDiscount,
 } from '@big-cms/shared/checks'
 import { minutesWaiting, urgency } from '@big-cms/shared/tickets'
@@ -686,7 +686,7 @@ export default function CheckPage() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '1rem', marginBottom: '1rem' }}>
         <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.8rem' : '2.2rem', color: 'var(--offwhite)', lineHeight: 1 }}>
-          Table {check.tableNumber}
+          {checkLabel(check)}
         </h1>
         <div style={{ textAlign: 'right' }}>
           <p style={{ fontSize: '0.78rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.5)' }}>Total</p>
@@ -992,7 +992,7 @@ export default function CheckPage() {
           travel to reach them. */}
       {actions && (
         <Sheet label="Check options" onClose={() => setActions(false)}>
-          <h2 style={{ ...sheetTitle, marginBottom: '1rem' }}>Table {check.tableNumber}</h2>
+          <h2 style={{ ...sheetTitle, marginBottom: '1rem' }}>{checkLabel(check)}</h2>
 
           <PosButton
             icon={check.staffDiscount ? faCheck : faUtensils} full
@@ -1057,8 +1057,11 @@ export default function CheckPage() {
                 }} />
             )}
 
-            <PosButton icon={faArrowRightArrowLeft} label="Move to another table" full tone="neutral"
-              onClick={() => { setActions(false); setMoving(true) }} />
+            {/* Only a table's check moves between tables (UPGRADE.md T5.5). */}
+            {orderTypeOf(check) === 'dine-in' && (
+              <PosButton icon={faArrowRightArrowLeft} label="Move to another table" full tone="neutral"
+                onClick={() => { setActions(false); setMoving(true) }} />
+            )}
 
             <PosButton
               icon={takesPayment ? faCashRegister : faReceipt} full tone="primary" size="lg"

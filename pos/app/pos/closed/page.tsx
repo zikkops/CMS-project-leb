@@ -27,7 +27,7 @@ import {
 import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useTillAccess } from '../../lib/useTillAccess'
 import { BRAND } from '@big-cms/shared/brand'
-import { checkTotals, VOID_REASONS, reversalRefusal, type Check } from '@big-cms/shared/checks'
+import { checkTotals, VOID_REASONS, reversalRefusal, checkLabel, orderTypeOf, ORDER_TYPES, type Check } from '@big-cms/shared/checks'
 import { ymdInZone } from '@big-cms/shared/dates'
 import { useClosedChecks, refundCheck } from '../../lib/usePos'
 import { PosButton, StatusBadge, PosLoading } from '../../lib/posUi'
@@ -127,9 +127,11 @@ function ClosedRow({ check, isMobile, canRefund, onRefund, onReceipt }: {
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           background: refunded ? 'rgba(var(--red-rgb),0.12)' : 'rgba(var(--overlay-rgb),0.06)',
         }}>
-          <span style={{ fontSize: '0.62rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.55)' }}>Table</span>
-          <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.35rem', lineHeight: 1, color: refunded ? 'var(--red)' : 'var(--offwhite)' }}>
-            {check.tableNumber}
+          <span style={{ fontSize: '0.62rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.55)' }}>
+            {orderTypeOf(check) === 'dine-in' ? 'Table' : ORDER_TYPES.find(t => t.key === orderTypeOf(check))?.label}
+          </span>
+          <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: orderTypeOf(check) === 'dine-in' ? '1.35rem' : '0.8rem', lineHeight: 1, color: refunded ? 'var(--red)' : 'var(--offwhite)', maxWidth: '5rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {orderTypeOf(check) === 'dine-in' ? check.tableNumber : (check.orderName || '—')}
           </span>
         </span>
 
@@ -263,7 +265,7 @@ function RefundPanel({ check, busy, error, onConfirm, onCancel }: {
         fontFamily: 'var(--font-inter)',
       }}>
         <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.4rem', color: 'var(--offwhite)', marginBottom: '0.2rem' }}>
-          Refund {check.receiptNumber ?? `table ${check.tableNumber}`}
+          Refund {check.receiptNumber ?? checkLabel(check)}
         </p>
         <p style={{ fontSize: '0.95rem', color: 'rgba(var(--offwhite-rgb),0.6)', marginBottom: '1rem' }}>
           {money(checkTotals(check).net)} · Why is it being refunded?

@@ -21,6 +21,9 @@ import { refuseWhileHubbed } from '@big-cms/shared/server/hubLock'
 
 export const runtime = 'nodejs'
 
+/** How the activity log names a check: its table, or none for a takeaway, delivery or tab (UPGRADE.md T5.5). */
+const where = (tableNumber: number) => tableNumber > 0 ? `table ${tableNumber}` : 'an order with no table'
+
 async function readBody(request: Request): Promise<Record<string, unknown>> {
   try {
     const body = await request.json()
@@ -72,6 +75,9 @@ export async function POST(request: Request): Promise<Response> {
       // Optional: the counter device names the check itself, so an open
       // queued offline and replayed later is recognised, not refused (7b).
       openId: parseOpenId(body),
+      // Takeaway, delivery or a tab (UPGRADE.md T5.5); absent is a table.
+      orderType: body.orderType,
+      orderName: body.orderName,
     })
     return Response.json({ ok: true, id, replayed })
   } catch (err) {
@@ -143,13 +149,13 @@ export async function PATCH(request: Request): Promise<Response> {
           ? await setLineDiscount(caller, checkId, String(body.lineId ?? ''), input)
           : await setCheckDiscount(caller, checkId, input)
         await logActivity(caller, 'update', 'POS',
-          `${r.label} — table ${r.tableNumber}` + (input ? ` — ${input.reasonKey}${input.note ? `: ${input.note}` : ''}` : ''))
+          `${r.label} — ${where(r.tableNumber)}` + (input ? ` — ${input.reasonKey}${input.note ? `: ${input.note}` : ''}` : ''))
         return Response.json({ ok: true, ...r })
       }
       case 'removeService': {
         // Logged: taking money off a bill is somebody's decision (UPGRADE.md T3.8).
         const r = await removeServiceCharge(caller, checkId)
-        await logActivity(caller, 'update', 'POS', `${r.label} — table ${r.tableNumber}`)
+        await logActivity(caller, 'update', 'POS', `${r.label} — ${where(r.tableNumber)}`)
         return Response.json({ ok: true, ...r })
       }
       case 'customer': {
@@ -158,8 +164,8 @@ export async function PATCH(request: Request): Promise<Response> {
         const code = typeof body.code === 'string' && body.code.trim() ? body.code : null
         const r = await setLoyaltyCustomer(caller, checkId, code)
         await logActivity(caller, 'update', 'POS', r.name
-          ? `Loyalty customer ${r.name} added to table ${r.tableNumber}`
-          : `Loyalty customer removed from table ${r.tableNumber}`)
+          ? `Loyalty customer ${r.name} added to ${where(r.tableNumber)}`
+          : `Loyalty customer removed from ${where(r.tableNumber)}`)
         return Response.json({ ok: true, ...r })
       }
       case 'pay': {
@@ -174,7 +180,7 @@ export async function PATCH(request: Request): Promise<Response> {
             p.changeLbp > 0 ? `${p.changeLbp.toLocaleString('en-US')} LBP` : '',
           ].filter(Boolean).join(' + ')
           await logActivity(caller, 'create', 'POS',
-            `Took ${p.tender} ${p.amount.toLocaleString('en-US')} ${p.currency} on table ${r.tableNumber}` +
+            `Took ${p.tender} ${p.amount.toLocaleString('en-US')} ${p.currency} on ${where(r.tableNumber)}` +
             (change ? ` — change ${change}` : '') +
             (r.settled ? ' — paid in full' : ''))
         }
@@ -191,7 +197,7 @@ export async function PATCH(request: Request): Promise<Response> {
         // the shelf. The note is free text beside it, required for Other.
         const result = await refundCheck(caller, checkId, String(body.reasonKey ?? ''), String(body.note ?? ''))
         await logActivity(caller, 'update', 'POS',
-          `Refunded receipt ${result.receiptNumber} (table ${result.tableNumber})` +
+          `Refunded receipt ${result.receiptNumber} (${where(result.tableNumber)})` +
           (result.restored > 0 ? ` — ${result.restored} item(s) back on the shelf` : '') +
           (result.ingredients === 'return' ? ' — ingredients back in stock' : '') +
           (result.ingredients === 'waste' ? ' — ingredients recorded as waste' : '') +

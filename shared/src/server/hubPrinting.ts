@@ -156,7 +156,7 @@ export interface PrintingStatus {
   /** Network printers at this hub's branch, by station. */
   printers: { station: Station; address: string; ready: boolean }[]
   /** The latest kitchen tickets for a network printer, to print one again (UPGRADE.md T3.6). */
-  recentTickets: { id: string; station: string; tableNumber: number; round: number; status: string; sentAt: number; reprints: number }[]
+  recentTickets: { id: string; station: string; tableNumber: number; orderLabel: string; round: number; status: string; sentAt: number; reprints: number }[]
   printedToday: number
   waiting: number
   /** The latest failures in the last day, newest first. */
@@ -181,7 +181,8 @@ export async function printingStatus(store: HubStore, now = Date.now()): Promise
       .filter(({ t }) => networkStations.has(String(t.station)) && t.status !== 'cancelled' && timestampMs(t.sentAt, 0) > now - 12 * 3600_000)
       .slice(0, 10)
       .map(({ id, t }) => ({
-        id, station: String(t.station), tableNumber: Number(t.tableNumber ?? 0), round: Number(t.round ?? 1),
+        id, station: String(t.station), tableNumber: Number(t.tableNumber ?? 0),
+        orderLabel: typeof t.orderLabel === 'string' ? t.orderLabel : `Table ${Number(t.tableNumber ?? 0)}`, round: Number(t.round ?? 1),
         status: String(t.status ?? ''), sentAt: timestampMs(t.sentAt, 0), reprints: Number(t.reprints ?? 0),
       }))
     : []

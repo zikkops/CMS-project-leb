@@ -96,7 +96,8 @@ export function buildTicketDoc(ticket: Ticket, opts: TicketDocOptions): ReceiptR
   const rows: ReceiptRow[] = []
 
   rows.push({ kind: 'center', text: ticket.station.toUpperCase(), strong: true })
-  rows.push({ kind: 'center', text: `TABLE ${ticket.tableNumber}`, strong: true })
+  // "TABLE 12", or "TAKEAWAY: RANA" (UPGRADE.md T5.5); an older ticket has no label.
+  rows.push({ kind: 'center', text: (ticket.orderLabel ?? `Table ${ticket.tableNumber}`).toUpperCase(), strong: true })
   if (opts.reprint) rows.push({ kind: 'center', text: '** REPRINT, NOT A NEW ORDER **', strong: true })
 
   // Round 1 is the first send and needs no label. Anything after it does: a

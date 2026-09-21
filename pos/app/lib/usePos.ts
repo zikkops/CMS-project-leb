@@ -578,6 +578,19 @@ export async function openCheck(
 }
 
 /**
+ * Opens a takeaway, delivery or tab (UPGRADE.md T5.5). It names the check
+ * itself, so a second tap or a retry after a lost answer opens the same one
+ * rather than a second order.
+ */
+export async function openOrder(
+  branch: string, orderType: string, orderName: string, openId: string,
+): Promise<string> {
+  const data = await call('/api/pos/checks', 'POST',
+    { branch, tableNumber: 0, guestCount: 1, orderType, orderName, openId })
+  return String(data.id ?? '')
+}
+
+/**
  * Commits the local draft.
  *
  * Called once per Send, not once per tap. Writing each line as the waiter
