@@ -27,7 +27,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'export-verify-'))
 execSync(
-  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts shared/src/salesSummary.ts shared/src/tenderSummary.ts --outDir ${out} ` +
+  `npx tsc shared/src/salesExport.ts shared/src/loyaltyExport.ts shared/src/reportPeriods.ts shared/src/reportFile.ts shared/src/salesSummary.ts shared/src/tenderSummary.ts shared/src/vatReport.ts --outDir ${out} ` +
   `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
@@ -41,6 +41,7 @@ const RP = await import(`file://${join(out, 'reportPeriods.js')}`)
 const RF = await import(`file://${join(out, 'reportFile.js')}`)
 const SS = await import(`file://${join(out, 'salesSummary.js')}`)
 const TS = await import(`file://${join(out, 'tenderSummary.js')}`)
+const VR = await import(`file://${join(out, 'vatReport.js')}`)
 const L = await import(`file://${join(out, 'loyaltyExport.js')}`)
 
 let pass = 0, fail = 0
@@ -254,6 +255,35 @@ console.log('\npayments and tenders, each currency on its own (UPGRADE.md T7.5)'
   eq('applied to bills = billed on the paid checks, tips left out', [t.appliedUsd, t.billedPaid, TS.tendersReconcile(t, 4)], [40, 40, true])
   eq('the total is the sum of the branches', Object.keys(t).every(k => Math.abs(s.byBranch.reduce((n, b) => n + b.figures[k], 0) - t[k]) < 0.005), true)
   eq('a tip counted as a sale would not reconcile', TS.tendersReconcile({ ...t, appliedUsd: t.appliedUsd + t.cardTips }, 1), false)
+}
+
+console.log('\nthe VAT report: by rate, reversals in their period, input VAT (UPGRADE.md T7.6)')
+{
+  const checks = [
+    check({ id: 'v1', receiptNumber: '21', vatRate: 0.1, lines: [line({ unitPrice: 11 })] }),
+    // The rate changed mid-period: a second line, never merged at today's rate.
+    check({ id: 'v2', receiptNumber: '22', vatRate: 0.12, lines: [line({ unitPrice: 11.2 })] }),
+    // Service charge at 10%, VAT on it.
+    check({ id: 'v3', receiptNumber: '23', vatRate: 0.1, lines: [line({ unitPrice: 22 })], serviceCharge: { rate: 0.1 } }),
+    check({ id: 'v4', receiptNumber: '24', vatRate: undefined, lines: [line({ unitPrice: 5 })] }),
+    check({ id: 'v5', receiptNumber: '25', status: 'refunded', vatRate: 0.1, lines: [line({ unitPrice: 11 })] }),
+  ]
+  const deliveries = [
+    { branch: 'Main', day: '2026-09-12', supplier: 'A', invoiceNumber: 'X1', currency: 'USD', rateUsed: 0, vatRate: 0.1, taxableSubtotal: 50, subtotal: 60, vat: 5, grand: 65 },
+    { branch: 'Main', day: '2026-09-12', supplier: 'B', invoiceNumber: 'X2', currency: 'LBP', rateUsed: 100_000, vatRate: 0.1, taxableSubtotal: 1_000_000, subtotal: 1_000_000, vat: 100_000, grand: 1_100_000 },
+  ]
+  const built = X.buildExport(checks, OPTS)
+  const r = VR.vatReport(built.checks, deliveries, ['Main', 'Second'])
+  const t = r.total
+  eq('output VAT is one line per rate the checks closed at, plus no rate', t.output.map(l => VR.rateLabel(l.rate)), ['No rate recorded', '10%', '12%'])
+  eq('each rate extracted at its own rate', t.output.find(l => l.rate === 0.12).goodsVat, 1.2)
+  eq('the service charge and its VAT are apart', [t.output.find(l => l.rate === 0.1).serviceNet, t.output.find(l => l.rate === 0.1).serviceVat], [2, 0.2])
+  eq('a check with no rate carries no VAT and is counted', [t.checksWithoutVatRate, t.output[0].billedWithoutVat], [1, 5])
+  eq('the refund reverses its VAT, at its rate', [t.refunds.length, t.refunds[0].vat], [1, 1])
+  eq('input VAT from deliveries; one in lira at its own rate', [t.input[0].deliveries, t.input[0].vatUsd], [2, 6])
+  eq('net VAT = output − reversed − input', t.netVat, Math.round((t.outputVat - t.refundVat - t.inputVat) * 100) / 100)
+  eq('output VAT here = the sales summary\'s VAT output', t.outputVat, SS.salesSummary(built.checks, ['Main', 'Second']).total.vatOutput)
+  eq('the total is the sum of the branches', r.byBranch.reduce((n, b) => n + b.figures.netVat, 0).toFixed(2), t.netVat.toFixed(2))
 }
 
 console.log('\nthe sheets are declared once, for the UI and the file both')

@@ -16,6 +16,8 @@ import { parseExportRange, readClosedChecks, readInChunks, readSalesExport, requ
 import { readSettings } from '@big-cms/shared/server/settings'
 import { salesSummary } from '@big-cms/shared/salesSummary'
 import { tenderSummary } from '@big-cms/shared/tenderSummary'
+import { vatReport } from '@big-cms/shared/vatReport'
+import { readReceivedDeliveries } from '@big-cms/shared/server/receivedDeliveries'
 import { TIME_ENTRIES, timesheet, type TimeEntry } from '@big-cms/shared/timeClock'
 import { timestampMs } from '@big-cms/shared/timestamps'
 import { dayBefore, hourlySales, productMix, voidDiscountReport } from '@big-cms/shared/salesReports'
@@ -78,6 +80,19 @@ export async function GET(request: Request): Promise<Response> {
       const paidChecks = new Set(result.payments.map(p => p.receipt)).size
       return Response.json(
         { ok: true, from: range.from, to: range.to, branches: chosen, cutShort: result.cutShort, paidChecks, ...tenderSummary(result.payments, result.checks, chosen) },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+    if (report === 'vat') {
+      // The VAT report (T7.6): output by rate from the export's rows, reversals
+      // on refunds in their own period, and input VAT from received deliveries.
+      const { exchangeRate } = await readSettings()
+      const [result, received] = await Promise.all([
+        readSalesExport(range, { timeZone, fallbackRate: exchangeRate, branches: own }),
+        readReceivedDeliveries(range, { timeZone, branches: own }),
+      ])
+      return Response.json(
+        { ok: true, from: range.from, to: range.to, branches: chosen, cutShort: result.cutShort ?? received.cutShort, ...vatReport(result.checks, received.deliveries, chosen) },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }

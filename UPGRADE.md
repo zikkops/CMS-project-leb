@@ -781,7 +781,7 @@ Principles for every task here:
   It must reconcile with the sales summary: collected − change − tips = the
   checks' net plus VAT plus service.
   *Done: Done 21 Sep 2026. /admin/reports/payments (in ADMIN_NAV under End of Day, gated on endOfDay). The arithmetic is tenderSummary() in shared/src/tenderSummary.ts, built from the export's own payment and refund rows. It shows cash in USD and in LBP as handed over, as change given and as kept; card in USD and in LBP, never converted; card tips apart, owed to staff; refunds by tender on the day they were given; and checks closed with no payment recorded. The reconciliation, applied to bills (each payment's applied lira at its check's rate) against billed on paid checks within the lira rounding, is stated under the table in words and in red when it fails. Tips never enter it. One column per branch and 'All', their sum; a CSV and Excel download. The export gains a Card LBP column (card in lira used to be dropped, gap 8) and a Card tip column on the payments sheet. FiguresTable.tsx is the shared figures-by-branch table. verify:export: 10 cases, including that a tip counted as a sale would not reconcile. Read-only on the demo project's last 60 days: 415 payments; $4,594 and 223,074,000 LBP kept in cash; $2,272.50 card; $111 cash and $52.50 card refunded; applied $9,359 = billed on paid checks $9,359 exactly; 6 checks with no payment. Not looked at signed in.*
-- [ ] **T7.6 VAT report**, for the VAT return. Per branch and period:
+- [x] **T7.6 VAT report**, for the VAT return. Per branch and period:
   - taxable sales and VAT output, per rate. Checks keep their own `vatRate`,
     so a mid-quarter rate change shows as two lines.
   - zero-rated and exempt sales, if any
@@ -792,6 +792,7 @@ Principles for every task here:
 
   A check from before rates were recorded contributes nothing and is counted
   in a "no rate recorded" line, never guessed.
+  *Done: Done 21 Sep 2026. /admin/reports/vat (in ADMIN_NAV under End of Day). The rules are in shared/src/vatReport.ts. Output VAT is one line per rate the checks closed at, so a mid-period change shows as two lines, with net sales, VAT on sales, service net and VAT on service (VAT-able by default). Checks with no rate recorded get their own line: billed with no VAT, never guessed. Refunds reverse VAT at their own rate, in the period they were given. Input VAT comes from received and disputed deliveries, not drafts, at each delivery's own rate; one invoiced in lira is converted at its own exchange rate (readReceivedDeliveries() in shared/src/server/receivedDeliveries.ts). Net VAT = output − reversed − input. Per-branch totals and 'All' as their sum, and a CSV and Excel download (position, output, refunds, input). verify:export: 9 cases, including that output VAT equals the sales summary's. Read-only on the demo project's last 60 days: 419 checks at 11% with $936.36 output VAT, 2 checks with no rate recorded, $29.29 reversed on refunds, 3 received deliveries with $114.10 input VAT, net $792.97; output matches the sales summary. Not looked at signed in.*
 - [ ] **T7.7 Cash-up and drawer report.** Per branch and period:
   - every shift: float, cash in, change, cash refunds, paid outs and pay ins
     (T3.1), safe drops, expected, counted, and over/short, in each currency

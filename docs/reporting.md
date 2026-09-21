@@ -408,7 +408,7 @@ in USD at the cost stored with the count (`countVariance()` in
 24. **Applying a held hub sale changes a closed day**, with no adjustment
     line.
     - Fix: **T7.17**.
-25. **There is no VAT report:** no split by rate, no count of checks without a
+25. **FIXED 21 Sep 2026 (T7.6): /admin/reports/vat shows output VAT by rate, the service charge's VAT apart, reversals on refunds in their period, input VAT from received deliveries, and the net position.** Was: there was no VAT report: no split by rate, no count of checks without a
     rate, and no input VAT beside output VAT.
     - Fix: **T7.6**.
 26. **Order type and happy-hour prices are recorded but barely reported.**
