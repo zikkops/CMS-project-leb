@@ -18,7 +18,9 @@
 //     array, not a copy) nor the admin-only list;
 //   - a collection a café hub pulls or pushes is not claimed by any feature;
 //   - an API route under admin/app/api or pos/app/api/pos has no caller check
-//     (routes that are public on purpose are listed below, with the reason).
+//     (routes that are public on purpose are listed below, with the reason);
+//   - a till tile (POS_TILES, pos/app/lib/posTiles.ts) points at a page that
+//     does not exist, or names a feature or a section that does not.
 
 import { execSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, readdirSync, statSync, rmSync } from 'node:fs'
@@ -163,6 +165,26 @@ const sameRoles = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([..
     }
   }
   check(`every admin and till API route checks its caller (${routes.length} routes)`, problems)
+}
+
+// ── The till's tiles (UPGRADE.md T4.1) ─────────────────────────────────────
+// Read from the source rather than compiled: the till's files import shared
+// code by package name. Each entry is one line in POS_TILES.
+{
+  const src = readFileSync(join(root, 'pos', 'app', 'lib', 'posTiles.ts'), 'utf8')
+  const tiles = [...src.matchAll(/\{ key: '([^']+)'[^\n]*?href: '([^']+)'[^\n]*?section: '([^']+)'[^\n]*\}/g)]
+    .map(m => ({ key: m[1], href: m[2], section: m[3], feature: (m[0].match(/feature: '([^']+)'/) ?? [])[1] ?? null }))
+  const problems = []
+  if (tiles.length === 0) problems.push('no tiles found: the pattern no longer matches POS_TILES')
+  const keys = tiles.map(t => t.key)
+  for (const k of keys.filter((k, i) => keys.indexOf(k) !== i)) problems.push(`${k}: two tiles share the key`)
+  for (const t of tiles) {
+    const page = join(root, 'pos', 'app', ...t.href.split('/').filter(Boolean), 'page.tsx')
+    try { statSync(page) } catch { problems.push(`${t.key}: ${t.href} is not a page`) }
+    if (!(t.section in R.SECTION_ACCESS)) problems.push(`${t.key}: no section called ${t.section}`)
+    if (t.feature && !(t.feature in F.FEATURES)) problems.push(`${t.key}: no feature called ${t.feature}`)
+  }
+  check(`every till tile points at a page, a section and a feature that exist (${tiles.length} tiles)`, problems)
 }
 
 rmSync(out, { recursive: true, force: true })

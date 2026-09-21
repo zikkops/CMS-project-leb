@@ -23,13 +23,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faPlus, faCashRegister, faReceipt, faFire, faChartColumn, faPen, faClock, faXmark, faCheck,
-  faDoorOpen, faStore, faMoneyBillWave, faCircleCheck, faTableCells, faScaleBalanced, faRotateLeft,
-  faTriangleExclamation, faUserGroup, faWheatAwnCircleExclamation, faRightFromBracket, type IconDefinition,
+  faPlus, faChartColumn, faPen, faClock, faXmark, faCheck,
+  faDoorOpen, faMoneyBillWave, faCircleCheck, faTableCells, faScaleBalanced, faRotateLeft,
+  faTriangleExclamation, faUserGroup, faRightFromBracket, type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
 import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useTillAccess } from '../lib/useTillAccess'
-import { useFeature } from '../lib/useTillSettings'
+import { useFeature, useFeatureFlags } from '../lib/useTillSettings'
+import { visibleTiles } from '../lib/posTiles'
 import { BRAND } from '@big-cms/shared/brand'
 import { orderedTotal, checkTotals, type Check, type CheckLine } from '@big-cms/shared/checks'
 import { minutesWaiting, urgency } from '@big-cms/shared/tickets'
@@ -243,8 +244,8 @@ function NavTile({ icon, label, sub, colour, onClick, isMobile }: {
 }
 
 export default function FloorPage() {
-  const { checking, blocked } = useTillAccess(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
-  const { on: allergensOn } = useFeature('foodSafety')
+  const { checking, blocked, role } = useTillAccess(SECTION_ACCESS.pos, { login: '/pos/login', home: '/pos' })
+  const { flags } = useFeatureFlags()
   // What the kitchen has ready, for whoever is nearest to run it.
   const { on: kdsOn } = useFeature('kds')
   const isMobile = useIsMobile()
@@ -255,10 +256,6 @@ export default function FloorPage() {
   // till still taking payment, precisely so a waiter who cannot send an order
   // walks ten steps to it.
   const [branch] = useState(BRAND.branches[0] ?? '')
-  // The drawer only matters once the till takes money (Phase 04). During the
-  // pilot the old till has the cash, and a Drawer link would be a screen with
-  // nothing to do on it.
-  const { on: takesPayment } = useFeature('payments')
   const { checks, error: liveError } = useOpenChecks(branch)
   // A branch a café hub trades is view-only online (S10); the routes refuse, this says so.
   const hubOnly = useHubOnly(branch)
@@ -367,16 +364,15 @@ export default function FloorPage() {
   }
   const shownReadings = READINGS.filter(r => chosen.includes(r.key))
 
-  // The other screens, in the order staff reach for them. The counter is the
-  // one that keeps working through an outage; the kitchen display is gated on
-  // its own section, and a waiter without it lands on its own explanation.
+  // The other screens, in the order staff reach for them: POS_TILES in
+  // lib/posTiles.ts, shown when their feature is on and the role may open
+  // them (UPGRADE.md T4.1). The counter is the one that keeps working through
+  // an outage.
   const navTiles = (
     <>
-      <NavTile icon={faStore} label="Counter" sub="The till, even offline" colour="#06B6D4" isMobile={isMobile} onClick={() => router.push('/pos/counter')} />
-      <NavTile icon={faReceipt} label="Closed" sub="Checks closed today" colour="#A855F7" isMobile={isMobile} onClick={() => router.push('/pos/closed')} />
-      {kdsOn && <NavTile icon={faFire} label="Kitchen display" sub="The pass" colour="#F97316" isMobile={isMobile} onClick={() => router.push('/pos/kds')} />}
-      {takesPayment && <NavTile icon={faCashRegister} label="Drawer" sub="Float, X and Z" colour="#EAB308" isMobile={isMobile} onClick={() => router.push('/pos/drawer')} />}
-      {allergensOn && <NavTile icon={faWheatAwnCircleExclamation} label="Allergens" sub="What is in each dish" colour="#EC4899" isMobile={isMobile} onClick={() => router.push('/pos/allergens')} />}
+      {visibleTiles(role, flags).map(t => (
+        <NavTile key={t.key} icon={t.icon} label={t.label} sub={t.sub} colour={t.colour} isMobile={isMobile} onClick={() => router.push(t.href)} />
+      ))}
     </>
   )
 

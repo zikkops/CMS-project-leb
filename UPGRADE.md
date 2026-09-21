@@ -398,10 +398,11 @@ cases, as the rest of the till does.
 
 Do these after T0.1, which protects them.
 
-- [ ] **T4.1 POS tile registry.** Add `POS_TILES` (label, icon, colour, route,
+- [x] **T4.1 POS tile registry.** Add `POS_TILES` (label, icon, colour, route,
   feature, section) and filter it the way the admin nav is filtered. Adding a
   till screen then means adding one entry. Today the tiles are hand-written
   JSX in `pos/app/pos/page.tsx`.
+  *Done: pos/app/lib/posTiles.ts: POS_TILES (key, label, sub, icon, colour, href, feature, section) and visibleTiles(role, flags), filtered as the admin nav is: the feature on, and a role that opens the section. The floor renders its big boxes from it; the five hand-written NavTile lines and their per-tile feature switches are gone. Adding a till screen is one entry. verify:sections gains a check (6 assertions): every tile's href is a real pos page, its section and feature exist, no key twice; breaking a route on purpose failed it by name. Today's roles see what they saw (everyone with the till also has the kitchen display). Seen on the offline dev hub: Counter, Closed, Kitchen display, Drawer, and no Allergens with food safety off, as before.*
 - [ ] **T4.2 One `SECTIONS` registry.** Label, roles and feature are declared
   in one place in `roles.ts`, with `SECTION_ACCESS`, `SECTION_LABELS` and
   `features.sections` derived from it. Today one section has three names
