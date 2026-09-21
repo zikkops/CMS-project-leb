@@ -12,7 +12,7 @@
 // a branch, never a figure.
 
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
-import { paddedWindow, parseExportRange, readClosedChecks, requestedBranches } from '@big-cms/shared/server/salesExport'
+import { parseExportRange, readClosedChecks, readInChunks, requestedBranches } from '@big-cms/shared/server/salesExport'
 import { TIME_ENTRIES, timesheet, type TimeEntry } from '@big-cms/shared/timeClock'
 import { timestampMs } from '@big-cms/shared/timestamps'
 import { dayBefore, hourlySales, productMix, voidDiscountReport } from '@big-cms/shared/salesReports'
@@ -84,10 +84,10 @@ export async function GET(request: Request): Promise<Response> {
     if (report === 'timesheet') {
       // Clock-ins from the café hubs (UPGRADE.md T3.12), ranged on `at` alone
       // with the export's padded window, then narrowed to the café days asked for.
-      const { start, end } = paddedWindow(range.from, range.to)
-      const snap = await adminDb().collection(TIME_ENTRIES).where('at', '>=', start).where('at', '<=', end).limit(20_000).get()
+      // In chunks of café days, and said when a piece meets its cap (T7.2).
+      const read = await readInChunks(TIME_ENTRIES, 'at', range, timeZone)
       const wanted = new Set(chosen)
-      const entries: TimeEntry[] = snap.docs.map(d => d.data()).filter(e => wanted.has(String(e.branch))).map(e => ({
+      const entries: TimeEntry[] = read.docs.map(d => d.data).filter(e => wanted.has(String(e.branch))).map(e => ({
         uid: String(e.uid), name: String(e.name ?? ''), branch: String(e.branch), direction: e.direction === 'out' ? 'out' : 'in', at: timestampMs(e.at, 0),
       }))
       const sheet = timesheet(entries, { timeZone, now: Date.now() })
@@ -99,7 +99,7 @@ export async function GET(request: Request): Promise<Response> {
           })
         : []
       return Response.json(
-        { ok: true, from: range.from, to: range.to, branches: [...wanted], ...sheet, shifts, byBranch },
+        { ok: true, from: range.from, to: range.to, branches: [...wanted], ...sheet, shifts, byBranch, cutShort: read.cutShort },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }

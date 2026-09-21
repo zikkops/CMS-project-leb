@@ -9,12 +9,13 @@ import { useState } from 'react'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { BRAND } from '@big-cms/shared/brand'
 import type { PersonHours, Shift, Timesheet } from '@big-cms/shared/timeClock'
-import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, type Column } from '../../../components/ui'
+import type { CutShort } from '@big-cms/shared/salesExport'
+import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
 import { ReportRange, BranchTotals, fetchReport, reportError, type RangeChoice } from '../ReportRange'
 import { ReportDownloads } from '../../../components/ui/ReportDownloads'
 import { reportHeader, timesheetSheets } from '../files'
 
-type Report = Timesheet & { from: string; to: string; branches: string[]; byBranch?: { branch: string; totals: Record<string, number> }[] }
+type Report = Timesheet & { from: string; to: string; branches: string[]; cutShort?: CutShort | null; byBranch?: { branch: string; totals: Record<string, number> }[] }
 
 const hours = (minutes: number) => `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}m`
 const clock = (ms: number) => new Date(ms).toLocaleTimeString('en-GB', { timeZone: BRAND.locale.timezone, hour: '2-digit', minute: '2-digit' })
@@ -55,6 +56,7 @@ export default function TimesheetPage() {
         lead="Who clocked in and out with the staff app at a café hub, and their hours. A clock needs the person's own fingerprint on their own registered phone." />
       <ReportRange onRun={run} busy={busy} />
       {error && <ErrorLine>{error}</ErrorLine>}
+      <CutShortNote cut={report?.cutShort} />
       {busy && !report && <Loading label="Reading the clock-ins…" />}
       {report && (
         <>

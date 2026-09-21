@@ -19,7 +19,7 @@ import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import { BRAND } from '@big-cms/shared/brand'
 import { todayYmd } from '@big-cms/shared/dates'
-import { cutShortMessage, type SalesExport } from '@big-cms/shared/salesExport'
+import { cutShortMessage, type CutShort, type SalesExport } from '@big-cms/shared/salesExport'
 import type { LoyaltyExport } from '@big-cms/shared/loyaltyExport'
 import { downloadSalesWorkbook, downloadLoyaltyWorkbook, downloadDaysCsv } from './workbook'
 import { ReportRange, type RangeChoice } from '../../components/ui/ReportRange'
@@ -69,7 +69,7 @@ export default function SalesExportPage() {
   const [to, setTo] = useState(today)
   const [report, setReport] = useState<Report>('sales')
   const [data, setData] = useState<SalesExport | null>(null)
-  const [loyalty, setLoyalty] = useState<LoyaltyExport | null>(null)
+  const [loyalty, setLoyalty] = useState<(LoyaltyExport & { cutShort?: CutShort | null }) | null>(null)
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
 
@@ -181,6 +181,13 @@ export default function SalesExportPage() {
           } />
         </div>
 
+        {loyalty?.cutShort && !data && (
+          <p role="alert" style={{
+            color: 'var(--red)', fontSize: '0.85rem', lineHeight: 1.6, marginTop: '1.2rem',
+            background: 'rgba(var(--red-rgb),0.08)', border: '1px solid rgba(var(--red-rgb),0.25)',
+            borderRadius: '4px', padding: '0.8rem 0.9rem',
+          }}>{cutShortMessage(loyalty.cutShort)}</p>
+        )}
         {data?.cutShort && (
           <p role="alert" style={{
             color: 'var(--red)', fontSize: '0.85rem', lineHeight: 1.6, marginTop: '1.2rem',

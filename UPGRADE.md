@@ -739,11 +739,12 @@ Principles for every task here:
     here, show it on every report, and make the reports that sit side by side
     use the same one.
   *Done: Done 21 Sep 2026. Downloads (part 1, commit 9b8c58f): Product Mix, Voids & Discounts, Hourly and Timesheet have CSV and Excel downloads. Every file opens with the header block (shared/src/reportFile.ts: business, report, branches, period, currencies, day rule, when, definitions version). CSV cells that look like formulas are defused. The café day is decided and recorded in shared/src/reportDefinitions.ts and docs/reporting.md: sales, VAT and accounting use the calendar day on the receipt, and counting cash uses the cash-up day and is reconciled per shift. Part 2: EOD History, Daily Summary, Tips and Daily Inventory History are on ReportRange, with BranchTotals and downloads: History and Summary for any range, Inventory History with a range table above its calendar, Tips split per branch over the chosen range with each day's tip weight. verify:export has the file cases. The pages were not looked at signed in.*
-- [ ] **T7.2 Longer ranges without a silent cut.** `MAX_RANGE_DAYS` (100) and
+- [x] **T7.2 Longer ranges without a silent cut.** `MAX_RANGE_DAYS` (100) and
   the 20,000-check read cap stop a year's report. Read the range in café-day
   chunks and add them up, so a fiscal year (or last year for comparison) works
   and the cap warning (T5.8) never fires on an ordinary request. Keep a hard
   upper bound, stated on screen.
+  *Done: Done 21 Sep 2026. Every report read goes through readInChunks() (shared/src/server/salesExport.ts): the sales export and its refunds, food cost, the loyalty ledger (transactions, and redemptions by both fields) and the timesheet. It reads a month of café days at a time (rangeChunks() in reportPeriods.ts), each piece with the padded window and its own 20,000 cap. Overlapping padding keeps each document once. If any piece meets its cap, the answer is whole only through the day before the earliest cut, and the page says so. The loyalty and timesheet reads used to cut short silently; they now warn too. A report may cover up to 460 days (MAX_REPORT_DAYS, a year and a quarter, so last year can sit beside this one), and a longer request is refused with that number. Covered by verify:export (chunks cover a year with no day missed or repeated) and verify:hub (400 days read in monthly pieces: every document once, nothing cut).*
 - [ ] **T7.3 The sales summary report**, the one an accountant asks for
   first. A new `/admin/reports/sales`, per branch and consolidated:
   - gross sales, then staff meals, item discounts, check discounts and comps,

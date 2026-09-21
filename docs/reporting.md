@@ -355,7 +355,7 @@ in USD at the cost stored with the count (`countVariance()` in
     download has a header block.** T7.1 (in progress) adds one picker with
     quick periods and several branches, and per-branch totals for the reports.
     - Fix: **T7.1**, **T7.1b**, then every report task.
-12. **Ranges stop at 100 days or 20,000 documents.** The loyalty and timesheet
+12. **FIXED 21 Sep 2026 (T7.2). Ranges stopped at 100 days or 20,000 documents.** Every report read (the export, refunds, food cost, loyalty, timesheet) now goes through `readInChunks()`, a month of café days at a time, each piece with its own cap. A report covers up to 460 days (`MAX_REPORT_DAYS`: last year beside this one). The loyalty and timesheet reads now say when they are cut short too. Was: The loyalty and timesheet
     reads hit that limit **without a warning**.
     - Fix: **T7.2**.
 13. **Older checks' LBP moves with today's rate.**

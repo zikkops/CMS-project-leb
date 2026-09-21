@@ -314,6 +314,13 @@ console.log('\nthe periods and branches a report is asked for (UPGRADE.md T7.1)'
   eq('no branch, or all, is every branch of theirs', [RP.readBranchList('', own), RP.readBranchList('all', own)], [own, own])
   eq('several branches, in the café\'s order, without repeats', RP.readBranchList('Third, Main,Main', own), ['Main', 'Third'])
   eq('a branch that is not theirs refuses the request', typeof RP.readBranchList('Main,Elsewhere', ['Main']), 'string')
+  // Long ranges are read a month of café days at a time (T7.2).
+  const year = RP.rangeChunks('2026-01-01', '2026-12-31')
+  eq('a year in pieces of at most 31 days, first to last', [year.length, year[0], year[year.length - 1].to], [12, { from: '2026-01-01', to: '2026-01-31' }, '2026-12-31'])
+  eq('...with no day missed and none twice', year.reduce((n, p) => n + RP.dayCount(p.from, p.to), 0), 365)
+  eq('...each piece starting the day after the last', year.every((p, i) => i === 0 || p.from === RP.addDays(year[i - 1].to, 1)), true)
+  eq('one day is one piece; an upside-down range none', [RP.rangeChunks('2026-09-21', '2026-09-21').length, RP.rangeChunks('2026-09-22', '2026-09-21').length], [1, 0])
+  eq('a year and a quarter is the longest a report asks for', RP.MAX_REPORT_DAYS >= 365 + 92, true)
 }
 
 console.log('\nevery download opens with the same header block (UPGRADE.md T7.1b)')

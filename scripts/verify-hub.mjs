@@ -33,7 +33,7 @@ rmSync(out, { recursive: true, force: true })
 try {
   execSync(
     'npx tsc shared/src/server/hubStore.ts shared/src/server/checks.ts shared/src/server/tickets.ts ' +
-    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts shared/src/server/soldOut.ts shared/src/server/receiptEmail.ts shared/src/server/supplyTransfer.ts shared/src/server/activityLog.ts shared/src/server/hubBackup.ts shared/src/server/staffPay.ts shared/src/server/endOfDay.ts ' +
+    'shared/src/server/hubWatch.ts shared/src/server/hubSession.ts shared/src/server/soldOut.ts shared/src/server/receiptEmail.ts shared/src/server/supplyTransfer.ts shared/src/server/activityLog.ts shared/src/server/hubBackup.ts shared/src/server/staffPay.ts shared/src/server/endOfDay.ts shared/src/server/salesExport.ts ' +
     `shared/src/server/drawer.ts --outDir ${out} --rootDir shared/src --module esnext --target es2022 ` +
     '--moduleResolution bundler --skipLibCheck --strict --types node --lib es2023,dom --resolveJsonModule',
     { stdio: 'pipe' },
@@ -444,6 +444,19 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
     [['products', 'p-mug', branch, -1]])
 
   const ticketId = sent.tickets[0].id
+
+  // A long range is read in pieces and each document kept once (UPGRADE.md T7.2).
+  {
+    const SX = await import(url('server/salesExport.js'))
+    const base = Date.UTC(2025, 0, 1, 12)
+    const b = db.batch()
+    for (let i = 0; i < 400; i++) b.set(db.doc(`longRange/d${i}`), { at: Timestamp.fromMillis(base + i * 86_400_000) })
+    await b.commit()
+    const all = await SX.readInChunks('longRange', 'at', { from: '2025-01-01', to: '2026-02-04' }, BRAND.locale.timezone)
+    eq('400 days read in monthly pieces: every document, once, nothing cut', [all.docs.length, new Set(all.docs.map(d => d.id)).size, all.cutShort], [400, 400, null])
+    const part = await SX.readInChunks('longRange', 'at', { from: '2025-03-01', to: '2025-03-31' }, BRAND.locale.timezone)
+    eq('...and one month reads that month (with its padding)', part.docs.length >= 31 && part.docs.length <= 34, true)
+  }
 
   // End of Day keeps what the form sends (docs/reporting.md, gap 15): the
   // lines' names and amounts, and each attendee's shift. It used to store

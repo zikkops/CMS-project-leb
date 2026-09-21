@@ -88,3 +88,24 @@ export function readBranchList(raw: string | null | undefined, own: readonly str
   if (stranger) return `${stranger} is not one of your branches.`
   return own.filter(b => asked.includes(b))
 }
+
+// ── Long ranges (UPGRADE.md T7.2) ──────────────────────────────────────────
+// A fiscal year, or last year beside this one, is read in chunks of café days
+// and added up, so no single read meets its cap on an ordinary request. The
+// hard bound is stated on screen, never met silently.
+
+/** The longest range a report may ask for: a year and a quarter, for last year beside this one. */
+export const MAX_REPORT_DAYS = 460
+
+/** The range as consecutive pieces of at most `size` café days, first to last. */
+export function rangeChunks(from: string, to: string, size = 31): { from: string; to: string }[] {
+  const out: { from: string; to: string }[] = []
+  if (!(size >= 1) || from > to) return out
+  let start = from
+  while (start <= to) {
+    const end = addDays(start, size - 1)
+    out.push({ from: start, to: end < to ? end : to })
+    start = addDays(end, 1)
+  }
+  return out
+}

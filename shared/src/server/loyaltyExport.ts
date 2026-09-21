@@ -10,46 +10,29 @@
 // owner is asking about. So it queries both fields and unions by id. Both are
 // single-field ranges, so neither needs a composite index.
 
-import { requestedBranches } from './salesExport'
-import { adminDb } from './firebaseAdmin'
+import { requestedBranches, readInChunks } from './salesExport'
+import type { CutShort } from '../salesExport'
 import { buildLoyaltyExport, dayOf, type LoyaltyExport } from '../loyaltyExport'
 import type { ExportRequest } from './salesExport'
-
-/** One day either side, as instants, so no café day can fall outside the query. */
-function paddedWindow(from: string, to: string): { start: Date; end: Date } {
-  return {
-    start: new Date(Date.parse(`${from}T00:00:00Z`) - 86_400_000),
-    end: new Date(Date.parse(`${to}T00:00:00Z`) + 2 * 86_400_000),
-  }
-}
-
-async function rangeOn(collection: string, field: string, start: Date, end: Date) {
-  const snap = await adminDb().collection(collection)
-    .where(field, '>=', start)
-    .where(field, '<=', end)
-    .orderBy(field, 'asc')
-    .limit(20_000)
-    .get()
-  return snap.docs
-}
 
 export async function readLoyaltyExport(
   range: ExportRequest,
   opts: { timeZone: string; branches: string[] },
-): Promise<LoyaltyExport & { from: string; to: string; branches: string[] }> {
-  const { start, end } = paddedWindow(range.from, range.to)
+): Promise<LoyaltyExport & { from: string; to: string; branches: string[]; cutShort: CutShort | null }> {
   const wanted = new Set(requestedBranches(range, opts.branches))
 
-  const txDocs = await rangeOn('transactions', 'createdAt', start, end)
+  // In chunks of café days (T7.2), each with its own cap, and said when one
+  // is met: a points ledger cut short understates the liability.
+  const tx = await readInChunks('transactions', 'createdAt', range, opts.timeZone)
+  const txDocs = tx.docs.map(d => ({ id: d.id, data: () => d.data }))
 
   // Requested-in-window and confirmed-in-window, unioned: see the note above.
+  const requested = await readInChunks('redemptions', 'createdAt', range, opts.timeZone)
+  const confirmed = await readInChunks('redemptions', 'confirmedAt', range, opts.timeZone)
   const byId = new Map<string, Record<string, unknown>>()
-  for (const d of [
-    ...await rangeOn('redemptions', 'createdAt', start, end),
-    ...await rangeOn('redemptions', 'confirmedAt', start, end),
-  ]) {
-    byId.set(d.id, { id: d.id, ...d.data() })
-  }
+  for (const d of [...requested.docs, ...confirmed.docs]) byId.set(d.id, { id: d.id, ...d.data })
+  const cuts = [tx.cutShort, requested.cutShort, confirmed.cutShort].filter((c): c is CutShort => c !== null)
+  const cutShort = cuts.sort((a, b) => a.completeThrough.localeCompare(b.completeThrough))[0] ?? null
 
   const inRange = (day: string) => Boolean(day) && day >= range.from && day <= range.to
   const branchOk = (b: unknown) => wanted.size === 0 || wanted.has(String(b ?? ''))
@@ -63,6 +46,7 @@ export async function readLoyaltyExport(
 
   return {
     ...buildLoyaltyExport(transactions, redemptions, { timeZone: opts.timeZone }),
+    cutShort,
     from: range.from,
     to: range.to,
     branches: [...wanted],

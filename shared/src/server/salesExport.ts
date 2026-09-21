@@ -18,7 +18,7 @@ import { adminDb } from './firebaseAdmin'
 import { HttpError } from './auth'
 import { buildExport, closedAtParts, exportCutShort, refundedAtParts, EXPORT_CHECK_CAP, type CutShort, type SalesExport } from '../salesExport'
 import type { Check } from '../checks'
-import { readBranchList } from '../reportPeriods'
+import { readBranchList, rangeChunks, MAX_REPORT_DAYS } from '../reportPeriods'
 
 /**
  * The widest range one request may ask for.
@@ -27,7 +27,10 @@ import { readBranchList } from '../reportPeriods'
  * that is a request to read the entire history in one go, and an export that
  * can do that by accident is an export that will.
  */
-export const MAX_RANGE_DAYS = 100
+// A year and a quarter (UPGRADE.md T7.2): last year beside this one. Read in
+// chunks (readInChunks()), so the length no longer decides whether a read is
+// cut short; this bound is only there so nothing asks for the whole history.
+export const MAX_RANGE_DAYS = MAX_REPORT_DAYS
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/
 
@@ -48,7 +51,7 @@ export function parseExportRange(params: URLSearchParams): ExportRequest {
 
   const days = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1
   if (days > MAX_RANGE_DAYS) {
-    throw new HttpError(400, `That is ${days} days. Export ${MAX_RANGE_DAYS} at a time or fewer.`)
+    throw new HttpError(400, `That is ${days} days. A report covers at most ${MAX_RANGE_DAYS} days (a year and a quarter).`)
   }
   return { from, to, branch: params.get('branch') ?? '' }
 }
@@ -103,15 +106,10 @@ export async function readRefundedChecks(
   range: ExportRequest,
   opts: { timeZone: string; branches: string[] },
 ): Promise<Check[]> {
-  const { start, end } = paddedWindow(range.from, range.to)
-  const snap = await adminDb().collection('checks')
-    .where('refundedAt', '>=', start)
-    .where('refundedAt', '<=', end)
-    .limit(EXPORT_CHECK_CAP)
-    .get()
+  const read = await readInChunks('checks', 'refundedAt', range, opts.timeZone)
   const wanted = new Set(requestedBranches(range, opts.branches))
-  return snap.docs
-    .map(doc => ({ id: doc.id, ...doc.data() }) as Check)
+  return read.docs
+    .map(doc => ({ id: doc.id, ...doc.data }) as Check)
     .filter(c => c.status === 'refunded' && wanted.has(c.branch))
     .filter(c => {
       const { day } = refundedAtParts(c as Check & { refundedAt?: unknown }, opts.timeZone)
@@ -124,26 +122,50 @@ export async function readRefundedChecks(
  * for: the export's read, shared by the reports (UPGRADE.md T3.2–T3.4) so a
  * report and the export cannot disagree about which day a check was.
  */
+/**
+ * Documents of a collection whose `field` (a Timestamp) falls in the café days
+ * asked for, read a month of café days at a time (UPGRADE.md T7.2), oldest
+ * first, each piece with the padded window and its own cap. Pieces overlap by
+ * their padding, so documents are kept once. If any piece meets its cap, the
+ * answer is whole only through the day before the first place it was cut.
+ * Ranged on the one field, so no composite index is needed.
+ */
+export async function readInChunks(
+  collection: string,
+  field: string,
+  range: Pick<ExportRequest, 'from' | 'to'>,
+  timeZone: string,
+): Promise<{ docs: { id: string; data: Record<string, unknown> }[]; cutShort: CutShort | null }> {
+  const seen = new Map<string, Record<string, unknown>>()
+  let cutShort: CutShort | null = null
+  for (const piece of rangeChunks(range.from, range.to)) {
+    const { start, end } = paddedWindow(piece.from, piece.to)
+    const snap = await adminDb().collection(collection)
+      .where(field, '>=', start)
+      .where(field, '<=', end)
+      .orderBy(field, 'asc')
+      .limit(EXPORT_CHECK_CAP)
+      .get()
+    for (const doc of snap.docs) if (!seen.has(doc.id)) seen.set(doc.id, doc.data())
+    const last = snap.docs[snap.docs.length - 1]
+    const cut = last ? exportCutShort(snap.size, EXPORT_CHECK_CAP, closedAtParts(last.data()[field], timeZone).day) : null
+    // The earliest cut is where the whole answer stops being complete.
+    if (cut && (!cutShort || cut.completeThrough < cutShort.completeThrough)) cutShort = cut
+  }
+  return { docs: [...seen.entries()].map(([id, data]) => ({ id, data })), cutShort }
+}
+
 export async function readClosedChecks(
   range: ExportRequest,
   opts: { timeZone: string; branches: string[] },
 ): Promise<{ checks: Check[]; branches: string[]; cutShort: CutShort | null }> {
-  const { start, end } = paddedWindow(range.from, range.to)
-
   // Ranged on closedAt alone: a single-field range needs no composite index,
   // and the alternative — branch equality plus this range — needs one per
   // shape. The branch filter happens below, on a result set already bounded
-  // by the date window.
-  const query = adminDb().collection('checks')
-    .where('closedAt', '>=', start)
-    .where('closedAt', '<=', end)
-    .orderBy('closedAt', 'asc')
-    .limit(EXPORT_CHECK_CAP)
-
-  const snap = await query.get()
-  // Oldest first, so what was cut is the end of the range (T5.8).
-  const last = snap.docs[snap.docs.length - 1]
-  const cutShort = last ? exportCutShort(snap.size, EXPORT_CHECK_CAP, closedAtParts(last.data().closedAt, opts.timeZone).day) : null
+  // by the date window. Read in chunks, so a year does not meet the cap (T7.2).
+  const read = await readInChunks('checks', 'closedAt', range, opts.timeZone)
+  const cutShort = read.cutShort
+  const snap = { docs: read.docs.map(d => ({ id: d.id, data: () => d.data })) }
 
   const wanted = new Set(requestedBranches(range, opts.branches))
   const checks: Check[] = []

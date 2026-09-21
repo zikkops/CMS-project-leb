@@ -10,9 +10,8 @@
 // It runs on the server because checks are readable only by POS and KDS
 // accounts, and the people reading a food cost report are neither.
 
-import { adminDb } from './firebaseAdmin'
-import { paddedWindow, type ExportRequest, requestedBranches } from './salesExport'
-import { closedAtParts, exportCutShort, EXPORT_CHECK_CAP, type CutShort } from '../salesExport'
+import { type ExportRequest, requestedBranches, readInChunks } from './salesExport'
+import { closedAtParts, type CutShort } from '../salesExport'
 import { shareForLines } from '../splits'
 import {
   theoreticalFoodCost, wasteSummary,
@@ -24,17 +23,11 @@ export async function readTheoreticalFoodCost(
   range: ExportRequest,
   opts: { timeZone: string; branches: readonly string[] },
 ): Promise<TheoreticalFoodCost & { checks: number; waste: WasteSummary; from: string; to: string; branches: string[]; cutShort: CutShort | null }> {
-  const { start, end } = paddedWindow(range.from, range.to)
-
-  const snap = await adminDb().collection('checks')
-    .where('closedAt', '>=', start)
-    .where('closedAt', '<=', end)
-    .orderBy('closedAt', 'asc')
-    .limit(EXPORT_CHECK_CAP)
-    .get()
-  // Said, never silent: a food cost over a cut-short range is a wrong percentage (T5.8).
-  const last = snap.docs[snap.docs.length - 1]
-  const cutShort = last ? exportCutShort(snap.size, EXPORT_CHECK_CAP, closedAtParts(last.data().closedAt, opts.timeZone).day) : null
+  // In chunks (T7.2), and said, never silent, when a piece meets its cap: a
+  // food cost over a cut-short range is a wrong percentage (T5.8).
+  const read = await readInChunks('checks', 'closedAt', range, opts.timeZone)
+  const cutShort = read.cutShort
+  const snap = { docs: read.docs.map(d => ({ id: d.id, data: () => d.data })) }
 
   const wanted = new Set(requestedBranches(range, opts.branches))
   const sold: SoldLine[] = []
