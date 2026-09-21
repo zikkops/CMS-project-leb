@@ -12,7 +12,7 @@
 
 import { requireSection, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
 import {
-  parseLineRequests, parseBatchKey, openCheck, addLines, sendCheck, voidLine, moveCheck, closeCheck,
+  parseLineRequests, parseBatchKey, openCheck, addLines, sendCheck, voidLine, moveCheck, moveLines, mergeChecks, closeCheck,
   setStaffMeal, refundCheck, addPayment, parsePaymentRequest, parsePaymentKey, setLoyaltyCustomer,
   setLineDiscount, setCheckDiscount, removeServiceCharge, fireHeld, parseDiscountInput, parseOpenId, parseMadeOffline,
 } from '@big-cms/shared/server/checks'
@@ -120,6 +120,24 @@ export async function PATCH(request: Request): Promise<Response> {
           (result.restored > 0 ? ` — ${result.restored} back on the shelf` : '') +
           (result.ingredients === 'return' ? ' — ingredients back in stock' : '') +
           (result.ingredients === 'waste' ? ' — ingredients recorded as waste' : ''))
+        return Response.json({ ok: true, ...result })
+      }
+      case 'moveLines':
+      case 'merge': {
+        // Items to another open check, or the whole table into it (UPGRADE.md
+        // T5.6). The key makes a retried move one move. The receiving check is
+        // at the same branch (moveProblem), so the lock above covers it.
+        const toCheckId = typeof body.toCheckId === 'string' ? body.toCheckId : ''
+        if (!toCheckId) throw new HttpError(400, 'Choose the check to move them to.')
+        const moveKey = parseBatchKey({ batchKey: body.moveKey })
+        const result = body.action === 'merge'
+          ? await mergeChecks(caller, checkId, toCheckId, moveKey)
+          : await moveLines(caller, checkId, toCheckId, Array.isArray(body.lineIds) ? body.lineIds.map(String) : [], moveKey)
+        if (!result.duplicate) {
+          await logActivity(caller, 'update', 'POS', body.action === 'merge'
+            ? `Merged ${result.from} into ${result.to} (${result.moved} item${result.moved === 1 ? '' : 's'})`
+            : `Moved ${result.moved} item${result.moved === 1 ? '' : 's'} from ${result.from} to ${result.to}`)
+        }
         return Response.json({ ok: true, ...result })
       }
       case 'move': {

@@ -30,7 +30,7 @@ import {
   faArrowLeft, faPaperPlane, faPlus, faMinus, faEllipsisVertical, faTrashCan, faNoteSticky, faChair,
   faLayerGroup, faSliders, faBan, faRotateLeft, faPercent, faUserTag, faArrowRightArrowLeft,
   faCashRegister, faReceipt, faXmark, faUtensils, faCheck, faPen, faHourglassHalf, faUserGroup,
-  faCircleCheck, faTriangleExclamation, faWheatAwnCircleExclamation, faFire, faPause,
+  faCircleCheck, faTriangleExclamation, faWheatAwnCircleExclamation, faFire, faPause, faObjectGroup,
 } from '@fortawesome/free-solid-svg-icons'
 import { SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { useTillAccess } from '../../../lib/useTillAccess'
@@ -43,6 +43,7 @@ import { isNetworkFailure } from '@big-cms/shared/netErrors'
 import { useFeature, useBusinessSettings } from '../../../lib/useTillSettings'
 import PaySheet from './PaySheet'
 import CustomerSheet from './CustomerSheet'
+import MoveItemsSheet from './MoveItemsSheet'
 import DiscountSheet from './DiscountSheet'
 import { MenuPicker, ModifierSheet } from './MenuPicker'
 import { lineUnitPrice, describeSelections } from '@big-cms/shared/modifiers'
@@ -387,6 +388,8 @@ export default function CheckPage() {
   const [printedAgain, setPrintedAgain] = useState('')
   const [moving, setMoving] = useState(false)
   const [actions, setActions] = useState(false)
+  // Items to another check, or this check merged into one (UPGRADE.md T5.6).
+  const [shifting, setShifting] = useState<'move' | 'merge' | null>(null)
   const [lineMenu, setLineMenu] = useState<CheckLine | null>(null)
   // The draft whose kitchen note is being written, and the line being voided for "Other".
   const [noteFor, setNoteFor] = useState<number | null>(null)
@@ -1057,6 +1060,12 @@ export default function CheckPage() {
                 }} />
             )}
 
+            {/* Items to another open check, or two tables into one (T5.6). */}
+            <PosButton icon={faArrowRightArrowLeft} label="Move items to another check" full tone="neutral"
+              onClick={() => { setActions(false); setShifting('move') }} />
+            <PosButton icon={faObjectGroup} label="Merge into another check" full tone="neutral"
+              onClick={() => { setActions(false); setShifting('merge') }} />
+
             {/* Only a table's check moves between tables (UPGRADE.md T5.5). */}
             {orderTypeOf(check) === 'dine-in' && (
               <PosButton icon={faArrowRightArrowLeft} label="Move to another table" full tone="neutral"
@@ -1162,6 +1171,16 @@ export default function CheckPage() {
           onCancel={() => setOtherVoid(null)}
           onSubmit={text => { const lineId = otherVoid; setOtherVoid(null); void handleVoid(lineId, 'other', text) }}
         />
+      )}
+
+      {shifting && (
+        <MoveItemsSheet check={check} mode={shifting} money={money}
+          onClose={() => setShifting(null)}
+          onDone={result => {
+            setShifting(null)
+            if ('error' in result) setError(result.error)
+            else if ('mergedInto' in result) router.push(`/pos/check/${result.mergedInto}`)
+          }} />
       )}
 
       {moving && (

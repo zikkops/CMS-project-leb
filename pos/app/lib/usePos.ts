@@ -649,6 +649,16 @@ export async function moveCheck(checkId: string, tableNumber: number): Promise<v
   await call('/api/pos/checks', 'PATCH', { checkId, action: 'move', tableNumber })
 }
 
+/** Items to another open check (UPGRADE.md T5.6). The same key on a retry: it moves once. */
+export async function moveLinesTo(checkId: string, toCheckId: string, lineIds: string[], moveKey: string): Promise<void> {
+  await call('/api/pos/checks', 'PATCH', { checkId, action: 'moveLines', toCheckId, lineIds, moveKey })
+}
+
+/** This whole check into another (UPGRADE.md T5.6); this one ends cancelled. */
+export async function mergeInto(checkId: string, toCheckId: string, moveKey: string): Promise<void> {
+  await call('/api/pos/checks', 'PATCH', { checkId, action: 'merge', toCheckId, moveKey })
+}
+
 export async function setStaffMeal(checkId: string, on: boolean): Promise<void> {
   await call('/api/pos/checks', 'PATCH', { checkId, action: 'staffMeal', on })
 }

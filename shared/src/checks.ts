@@ -123,6 +123,47 @@ export const VOID_REASONS: VoidReasonDef[] = [
   { key: 'other', label: 'Other', returnsToStock: false, isWaste: true },
 ]
 
+// ── Moving items between checks, and merging (UPGRADE.md T5.6) ─────────────
+// A party splits across two tables, or two tables become one. Lines move as
+// they are, sent or not, with their discounts; a moved line carries the key of
+// the move that took it, so a move sent twice (a lost answer) moves once.
+//
+// Money stays whole by refusing what would split it: a check with a payment
+// on it gives nothing away, because the payment belongs to what it paid for.
+// A check may RECEIVE items when it has payments; it then simply owes more.
+// A staff meal and an ordinary check price the same line differently, so
+// items move only between two of the same kind.
+//
+// The kitchen ticket for a line already sent keeps the table it was sent
+// from: it is a record of what the pass was told, and the food goes where the
+// front carries it.
+
+/** Why these lines cannot move from one check to the other, or null. */
+export function moveProblem(
+  from: Pick<Check, 'id' | 'branch' | 'status' | 'lines' | 'payments' | 'staffDiscount'>,
+  to: Pick<Check, 'id' | 'branch' | 'status' | 'staffDiscount'>,
+  lineIds: readonly string[],
+): string | null {
+  if (from.id === to.id) return 'Choose another check to move them to.'
+  if (from.status !== 'open' || to.status !== 'open') return 'Both checks have to be open.'
+  if (from.branch !== to.branch) return 'Both checks have to be at the same branch.'
+  if ((from.payments ?? []).length > 0) return 'This check has a payment on it, so nothing moves off it: the payment belongs to what it paid for.'
+  if (Boolean(from.staffDiscount) !== Boolean(to.staffDiscount)) return 'Items move only between two staff meals or two ordinary checks.'
+  if (lineIds.length === 0) return 'Choose the items to move.'
+  if (new Set(lineIds).size !== lineIds.length) return 'An item is chosen twice.'
+  for (const id of lineIds) {
+    const line = from.lines.find(l => l.id === id)
+    if (!line) return 'An item is no longer on this check.'
+    if (line.status === 'void') return 'A voided item stays where it was voided.'
+  }
+  return null
+}
+
+/** Whether a move with this key already reached the receiving check. */
+export function moveAlreadyApplied(lines: readonly { movedKey?: string }[], moveKey: string | null): boolean {
+  return moveKey !== null && lines.some(l => l.movedKey === moveKey)
+}
+
 // ── Order types (UPGRADE.md T5.5) ──────────────────────────────────────────
 // A check used to be a table. Takeaway, delivery and a named tab have no
 // table, so the one-open-check-per-table rule does not apply to them: a
@@ -290,6 +331,11 @@ export interface CheckLine {
    * existed.
    */
   batchKey?: string
+  /** Moved here from another check (UPGRADE.md T5.6): which, by whom, when, and the move's key. */
+  movedFrom?: string
+  movedBy?: string
+  movedAt?: string
+  movedKey?: string
   /** Set when a ticket was created for it; null while still a draft. */
   sentAt: string | null
   /**
@@ -409,6 +455,8 @@ export interface Check {
   /** Why it was refunded: the VOID_REASONS label and key, stamped by refundCheck(). */
   refundReason?: string
   refundReasonKey?: string
+  /** Set when this check was merged into another (UPGRADE.md T5.6); it is then cancelled. */
+  mergedInto?: string
   /** Copied from the reason when the refund happened, so a later change to the list cannot re-classify it. */
   refundWasWaste?: boolean
   /** What the wasted ingredients cost; null when an ingredient had no cost; absent when nothing was wasted. */

@@ -445,6 +445,32 @@ console.log('\nthe till\'s own server code, unchanged, over the hub')
 
   const ticketId = sent.tickets[0].id
 
+  // Moving items and merging (UPGRADE.md T5.6).
+  {
+    const x = await C.openCheck(staff, { branch, tableNumber: 61, guestCount: 2 })
+    const y = await C.openCheck(staff, { branch, tableNumber: 62, guestCount: 3 })
+    const added = await C.addLines(staff, x.id, C.parseLineRequests({ lines: [
+      { source: 'menu', refId: 'm-toast', quantity: 1 }, { source: 'menu', refId: 'm-toast', quantity: 2 },
+    ] }), 'batch-move-1')
+    const [first, second] = added.lines
+    const moved = await C.moveLines(staff, x.id, y.id, [first.id], 'move-key-0001')
+    const again = await C.moveLines(staff, x.id, y.id, [first.id], 'move-key-0001')
+    const lines = async id => (await db.doc(`checks/${id}`).get()).data().lines
+    eq('an item moves to the other check, and a retry moves nothing more', [moved.moved, again.duplicate, (await lines(x.id)).length, (await lines(y.id)).length], [1, true, 1, 1])
+    eq('...and says where it came from', (await lines(y.id))[0].movedFrom, x.id)
+    const merged = await C.mergeChecks(staff, x.id, y.id, 'merge-key-0001')
+    const mergedAgain = await C.mergeChecks(staff, x.id, y.id, 'merge-key-0001')
+    const xDoc = (await db.doc(`checks/${x.id}`).get()).data()
+    const yDoc = (await db.doc(`checks/${y.id}`).get()).data()
+    eq('merged: everything on the other check, the guests added, this one cancelled into it',
+      [merged.moved, mergedAgain.duplicate, yDoc.lines.map(l => l.id).sort(), yDoc.guestCount, xDoc.status, xDoc.mergedInto],
+      [1, true, [first.id, second.id].sort(), 5, 'cancelled', y.id])
+    await db.doc(`checks/${y.id}`).update({ payments: [{ id: 'p-1', amount: 1 }] })
+    const z = await C.openCheck(staff, { branch, tableNumber: 63, guestCount: 1 })
+    await rejects('nothing moves off a check with a payment on it', () => C.moveLines(staff, y.id, z.id, [first.id], 'move-key-0002'), e => e.status === 409)
+    for (const id of [x.id, y.id, z.id]) await db.doc(`checks/${id}`).delete()
+  }
+
   // Order types (UPGRADE.md T5.5): no table, so no one-per-table rule.
   {
     const a = await C.openCheck(staff, { branch, tableNumber: 0, guestCount: 1, orderType: 'takeaway', orderName: 'Rana' })

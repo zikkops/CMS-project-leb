@@ -449,6 +449,24 @@ console.log('\n86 from the till: sold out for the café day (UPGRADE.md T3.5)')
     [{}, {}, { Third: '2026-09-13' }])
 }
 
+console.log('\nMoving items between checks (UPGRADE.md T5.6)')
+{
+  const a = { id: 'a', branch: 'Main', status: 'open', staffDiscount: null, payments: [], lines: [line({ id: 'l1' }), line({ id: 'l2', status: 'void' })] }
+  const b = { id: 'b', branch: 'Main', status: 'open', staffDiscount: null }
+  eq('an item moves to another open check', C.moveProblem(a, b, ['l1']), null)
+  eq('not to the same check', typeof C.moveProblem(a, a, ['l1']), 'string')
+  eq('not to a closed one', typeof C.moveProblem(a, { ...b, status: 'closed' }, ['l1']), 'string')
+  eq('not across branches', typeof C.moveProblem(a, { ...b, branch: 'Other' }, ['l1']), 'string')
+  eq('nothing moves off a check with a payment on it', /payment/.test(C.moveProblem({ ...a, payments: [{}] }, b, ['l1']) ?? ''), true)
+  eq('not from a staff meal to an ordinary check', typeof C.moveProblem({ ...a, staffDiscount: { rate: 0.5 } }, b, ['l1']), 'string')
+  eq('a voided item stays where it was voided', typeof C.moveProblem(a, b, ['l2']), 'string')
+  eq('an item not on the check is refused', typeof C.moveProblem(a, b, ['nope']), 'string')
+  eq('an item chosen twice is refused', typeof C.moveProblem(a, b, ['l1', 'l1']), 'string')
+  eq('nothing chosen is refused', typeof C.moveProblem(a, b, []), 'string')
+  eq('a move whose key is already on the other check is done', C.moveAlreadyApplied([{ movedKey: 'k-1' }], 'k-1'), true)
+  eq('...a move without a key never is', C.moveAlreadyApplied([{ movedKey: 'k-1' }], null), false)
+}
+
 console.log('\nOrder types (UPGRADE.md T5.5)')
 eq('a check from before order types is dine-in', C.orderTypeOf({}), 'dine-in')
 eq('an unknown type is dine-in, never trusted', C.orderTypeOf({ orderType: 'drive-thru' }), 'dine-in')

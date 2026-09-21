@@ -19,7 +19,7 @@ import { adminDb } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES, STOCKED_BRANCHES } from '../branches'
 import {
-  CHECK_LIMITS, stationForSection, voidReason, reversalRefusal, checkLabel, orderOpenProblem, orderTypeOf, readOrderName, type OrderType, BATCH_KEY_PATTERN, batchAlreadyApplied,
+  CHECK_LIMITS, stationForSection, voidReason, reversalRefusal, checkLabel, orderOpenProblem, orderTypeOf, readOrderName, moveProblem, moveAlreadyApplied, type OrderType, BATCH_KEY_PATTERN, batchAlreadyApplied,
   checkTotals, closeBlockedReason, discountReason, serviceRate,
   type Check, type CheckLine, type LineSource, type LineDiscount, type CheckDiscount,
 } from '../checks'
@@ -902,6 +902,86 @@ async function openOrder(
       closedAt: null,
     })
     return { id: ref.id, replayed: false }
+  })
+}
+
+/**
+ * Moves items from one open check to another (UPGRADE.md T5.6). The rules are
+ * moveProblem() in checks.ts. Safe to send twice: every moved line carries the
+ * move's key, and a key already on the receiving check is an answer, not a
+ * second move.
+ */
+export async function moveLines(
+  caller: Caller,
+  fromId: string,
+  toId: string,
+  lineIds: readonly string[],
+  moveKey: string | null,
+): Promise<{ moved: number; duplicate: boolean; from: string; to: string }> {
+  const db = adminDb()
+  return db.runTransaction(async tx => {
+    const from = await readCheck(tx, fromId)
+    const to = await readCheck(tx, toId)
+    if (moveAlreadyApplied(to.lines, moveKey)) {
+      return { moved: 0, duplicate: true, from: checkLabel(from), to: checkLabel(to) }
+    }
+    const problem = moveProblem(from, to, lineIds)
+    if (problem) throw new HttpError(409, problem)
+    const moving = new Set(lineIds)
+    const stamp = { movedFrom: fromId, movedBy: caller.uid, movedAt: new Date().toISOString(), ...(moveKey ? { movedKey: moveKey } : {}) }
+    tx.update(db.doc(`${CHECKS}/${fromId}`), {
+      lines: from.lines.filter(l => !moving.has(l.id)),
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+    tx.update(db.doc(`${CHECKS}/${toId}`), {
+      lines: [...to.lines, ...from.lines.filter(l => moving.has(l.id)).map(l => ({ ...l, ...stamp }))],
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+    return { moved: moving.size, duplicate: false, from: checkLabel(from), to: checkLabel(to) }
+  })
+}
+
+/**
+ * Two tables become one (UPGRADE.md T5.6): every item still standing moves to
+ * the other check, the guests add up, and this check ends as cancelled with
+ * `mergedInto`, keeping its voided lines as the record. Refused, like any
+ * move, when this check has a payment on it. Sent twice with its key, the
+ * second is an answer.
+ */
+export async function mergeChecks(
+  caller: Caller,
+  fromId: string,
+  toId: string,
+  moveKey: string | null,
+): Promise<{ moved: number; duplicate: boolean; from: string; to: string }> {
+  const db = adminDb()
+  return db.runTransaction(async tx => {
+    const from = await readCheck(tx, fromId)
+    const to = await readCheck(tx, toId)
+    if (from.status === 'cancelled' && from.mergedInto === toId) {
+      return { moved: 0, duplicate: true, from: checkLabel(from), to: checkLabel(to) }
+    }
+    const standing = from.lines.filter(l => l.status !== 'void')
+    const problem = moveProblem(from, to, standing.map(l => l.id))
+    // An empty check merges too: it just closes into the other.
+    if (problem && standing.length > 0) throw new HttpError(409, problem)
+    if (standing.length === 0 && (from.id === to.id || from.status !== 'open' || to.status !== 'open' || from.branch !== to.branch)) {
+      throw new HttpError(409, moveProblem(from, to, ['-']) ?? 'Those checks cannot be merged.')
+    }
+    const stamp = { movedFrom: fromId, movedBy: caller.uid, movedAt: new Date().toISOString(), ...(moveKey ? { movedKey: moveKey } : {}) }
+    tx.update(db.doc(`${CHECKS}/${fromId}`), {
+      lines: from.lines.filter(l => l.status === 'void'),
+      status: 'cancelled',
+      mergedInto: toId,
+      closedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+    tx.update(db.doc(`${CHECKS}/${toId}`), {
+      lines: [...to.lines, ...standing.map(l => ({ ...l, ...stamp }))],
+      guestCount: Math.min(CHECK_LIMITS.maxGuests, (to.guestCount || 1) + (from.guestCount || 1)),
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+    return { moved: standing.length, duplicate: false, from: checkLabel(from), to: checkLabel(to) }
   })
 }
 
