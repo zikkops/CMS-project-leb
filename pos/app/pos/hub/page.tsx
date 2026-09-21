@@ -16,7 +16,7 @@ import QRCode from 'qrcode'
 import { BRAND } from '@big-cms/shared/brand'
 import { startLoad } from '@big-cms/shared/startLoad'
 import { ErrorNote, Chip, PosButton } from '../../lib/posUi'
-import { faPrint } from '@fortawesome/free-solid-svg-icons'
+import { faPrint, faXmark } from '@fortawesome/free-solid-svg-icons'
 
 // Duplicated per file by convention — see CLAUDE.md. Don't refactor to share.
 function useIsMobile(breakpoint = 768) {
@@ -84,6 +84,55 @@ interface PrintingStatus {
  * failed today, and a test page for whoever is setting one up. Shown only on
  * the counter PC: the route refuses anywhere else.
  */
+interface HubSessionRow { id: string; name: string; email: string | null; device: string; scope: string | null; startedAt: number }
+
+/**
+ * Everybody signed in at this hub (T6.5), with End beside each: for instance
+ * somebody who went home still signed in on the counter PC. Shown only on the
+ * counter PC: the route lists everyone only for this PC or a manager.
+ */
+function HubSessions() {
+  const [sessions, setSessions] = useState<HubSessionRow[] | null>(null)
+  const [note, setNote] = useState('')
+
+  async function load() {
+    try {
+      const res = await fetch('/api/hub/sessions', { cache: 'no-store' })
+      if (res.ok) setSessions(((await res.json()) as { sessions: HubSessionRow[] }).sessions)
+    } catch { /* this PC's own hub; the next look says more */ }
+  }
+
+  useEffect(() => {
+    startLoad(load)
+  }, [])
+
+  async function end(s: HubSessionRow) {
+    setNote('')
+    try {
+      const res = await fetch('/api/hub/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: s.id }) })
+      const data = await res.json().catch(() => ({})) as { error?: string }
+      setNote(res.ok ? `Ended ${s.scope === 'kds' ? 'the kitchen screen' : s.name || s.email || 'the session'} on ${s.device}.` : (data.error ?? 'It was not ended.'))
+      await load()
+    } catch {
+      setNote('No answer from the hub.')
+    }
+  }
+
+  if (!sessions || sessions.length === 0) return null
+  return (
+    <div style={{ ...row, flexDirection: 'column', gap: '0.5rem' }}>
+      <span style={{ opacity: 0.55 }}>Signed in at this hub</span>
+      {sessions.map(s => (
+        <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', alignItems: 'center' }}>
+          <span>{s.scope === 'kds' ? 'Kitchen screen' : s.name || s.email || 'Someone'} · {s.device} · since {new Date(s.startedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+          <PosButton icon={faXmark} label="End" tone="quiet" size="sm" onClick={() => { void end(s) }} />
+        </div>
+      ))}
+      {note && <span style={{ fontSize: '0.82rem' }}>{note}</span>}
+    </div>
+  )
+}
+
 function HubPrinters() {
   const [printing, setPrinting] = useState<PrintingStatus | null>(null)
   const [note, setNote] = useState('')
@@ -370,6 +419,7 @@ export default function HubPage() {
               </div>
             )}
             <HubPrinters />
+            <HubSessions />
             {/* Sending up and taking down usually fail for the same reason and
                 say so in the same words: each problem once (UPGRADE.md T1.7). */}
             {[...new Set([status.pushError, status.lastError, status.receiptError].filter((m): m is string => Boolean(m)))].map(m => (

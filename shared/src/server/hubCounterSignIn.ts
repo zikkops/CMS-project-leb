@@ -158,6 +158,7 @@ export async function collectCounterSignIn(
   const staff = await pulledStaff(db, taken.uid)
   if (!staff) throw new HttpError(403, 'This account cannot sign in to the till.')
   const { token, caller } = await startHubSession({
+    device: 'Counter PC',
     uid: taken.uid,
     staff: true,
     role: staff.role,

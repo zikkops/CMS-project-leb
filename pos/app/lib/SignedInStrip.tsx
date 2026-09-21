@@ -12,7 +12,7 @@
 
 import { useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
-import { faUserGroup, faUsers } from '@fortawesome/free-solid-svg-icons'
+import { faUserGroup, faUsers, faList } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { backend } from './backend'
 import { setSharedSwitch, useSharedDevice, useSharedSwitch } from './sharedDevice'
@@ -31,6 +31,13 @@ export function SharedDeviceChip() {
   const on = useSharedSwitch()
   if (!online) return null
   return <Chip icon={faUsers} label="Shared device" active={on} size="sm" onClick={() => setSharedSwitch(!on)} />
+}
+
+/** Where you are signed in at the hub, and ending it (T6.5). Hub only. */
+export function SessionsButton() {
+  const onHub = useClientValue(() => backend().kind === 'hub', false)
+  if (!onHub) return null
+  return <PosButton icon={faList} label="Sessions" tone="quiet" size="sm" onClick={() => { window.location.href = '/pos/sessions' }} />
 }
 
 export function SignedInStrip() {

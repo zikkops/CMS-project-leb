@@ -42,6 +42,8 @@ export interface HubSessionClaims {
   scope?: unknown
   /** For a counter PC sign-in (S25): the session ends after this long without a tap. */
   idleMs?: unknown
+  /** Where the session is (T6.5): "Counter PC", the phone's name, "Kitchen screen". A label, never a proof. */
+  device?: unknown
 }
 
 export interface HubCaller extends Caller {
@@ -99,6 +101,7 @@ export async function startHubSession(
     superadmin: caller.superadmin,
     scope: caller.scope,
     idleMs: caller.idleMs,
+    device: typeof claims.device === 'string' && claims.device.trim() ? claims.device.trim().slice(0, 60) : 'Till',
     lastActiveAt: Timestamp.fromMillis(now),
     startedAt: Timestamp.fromMillis(now),
     expiresAt: Timestamp.fromMillis(expiresAt),
@@ -108,7 +111,7 @@ export async function startHubSession(
 }
 
 /** Checks a Firebase sign-in and starts a hub session for it. */
-export async function signInAtHub(idToken: string): Promise<{ token: string; caller: HubCaller }> {
+export async function signInAtHub(idToken: string, device = 'Till'): Promise<{ token: string; caller: HubCaller }> {
   if (!idToken) throw new HttpError(401, 'Not signed in.')
   let claims: HubSessionClaims
   try {
@@ -118,7 +121,7 @@ export async function signInAtHub(idToken: string): Promise<{ token: string; cal
     // signs in again, and the sentence tells them what the hub needs.
     throw new HttpError(401, 'That sign-in could not be checked. Sign in again — the hub needs the internet to check it.')
   }
-  return startHubSession(claims)
+  return startHubSession({ ...claims, device })
 }
 
 /** Who a hub session belongs to, or null when there is none, it ended, or it has run out. */
@@ -187,6 +190,63 @@ export async function liveHubSessions(now = Date.now()): Promise<number> {
     const idleMs = readIdle(d.idleMs)
     return idleMs === null || !idleOver(timestampMs(d.lastActiveAt, 0), idleMs, now)
   }).length
+}
+
+/** A live session as a list shows it (T6.5): the token's hash is its id, and the token itself is never read. */
+export interface HubSessionView {
+  id: string
+  uid: string
+  email: string | null
+  name: string
+  device: string
+  scope: HubScope | null
+  startedAt: number
+  lastActiveAt: number
+  expiresAt: number
+}
+
+/** Every live session on this hub: not ended, not run out, not idle past its limit. */
+export async function listHubSessions(now = Date.now()): Promise<HubSessionView[]> {
+  const db = adminDb()
+  const snap = await db.collection(SESSIONS).where('endedAt', '==', null).get()
+  const live = snap.docs.filter(doc => {
+    const d = doc.data() ?? {}
+    if (!(timestampMs(d.expiresAt, 0) > now)) return false
+    const idleMs = readIdle(d.idleMs)
+    return idleMs === null || !idleOver(timestampMs(d.lastActiveAt, 0), idleMs, now)
+  })
+  const uids = [...new Set(live.map(doc => String(doc.data()?.uid ?? '')).filter(uid => uid && !uid.startsWith('screen:')))]
+  const people = new Map<string, string>()
+  for (const uid of uids) {
+    const first = (await db.doc(`users/${uid}`).get()).data()?.firstName
+    people.set(uid, typeof first === 'string' ? first.trim().slice(0, 40) : '')
+  }
+  return live.map(doc => {
+    const d = doc.data() ?? {}
+    const uid = String(d.uid ?? '')
+    return {
+      id: doc.id, uid, email: typeof d.email === 'string' ? d.email : null, name: people.get(uid) ?? '',
+      device: typeof d.device === 'string' ? d.device : 'Till', scope: readScope(d.scope),
+      startedAt: timestampMs(d.startedAt, 0), lastActiveAt: timestampMs(d.lastActiveAt, 0), expiresAt: timestampMs(d.expiresAt, 0),
+    }
+  }).sort((a, b) => b.startedAt - a.startedAt)
+}
+
+/** The id a session is listed under: the hash of its token. */
+export const sessionIdOf = (token: string): string => (isHubToken(token) ? hashOf(token) : '')
+
+/** Ends a session by its listed id (T6.5). Its data, for the log, or null when there was nothing live to end. */
+export async function endHubSessionById(id: unknown): Promise<{ uid: string; device: string } | null> {
+  if (typeof id !== 'string' || !/^[0-9a-f]{64}$/.test(id)) return null
+  const db = adminDb()
+  const ref = db.doc(`${SESSIONS}/${id}`)
+  return db.runTransaction(async tx => {
+    const snap = await tx.get(ref)
+    const d = snap.data()
+    if (!snap.exists || !d || d.endedAt) return null
+    tx.update(ref, { endedAt: FieldValue.serverTimestamp() })
+    return { uid: String(d.uid ?? ''), device: typeof d.device === 'string' ? d.device : 'Till' }
+  })
 }
 
 /** Signs a session out. False when there was nothing live to end. */

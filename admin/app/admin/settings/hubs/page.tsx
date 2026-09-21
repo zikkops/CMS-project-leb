@@ -46,6 +46,10 @@ interface HubRow {
   onlineByEmail: string
   caughtUpAt: number | null
   heldWaiting: number
+  /** Who is signed in at the hub, as it last reported (T6.5). */
+  sessions: { id: string; name: string; email: string; device: string; kitchenScreen: boolean; startedAt: number; lastActiveAt: number }[]
+  sessionsAt: number | null
+  endSessions: string[]
 }
 
 type HubAction = 'revoke' | 'online' | 'handback'
@@ -123,7 +127,7 @@ function ago(ms: number | null, now: number): string {
 }
 
 function HubCard({
-  hub, now, confirming, busy, onAsk, onCancel, onConfirm,
+  hub, now, confirming, busy, onAsk, onCancel, onConfirm, onEndSession,
 }: {
   hub: HubRow
   now: number
@@ -132,6 +136,7 @@ function HubCard({
   onAsk: (action: HubAction) => void
   onCancel: () => void
   onConfirm: (action: HubAction) => void
+  onEndSession?: (sessionId: string) => void
 }) {
   const online = hub.onlineSince !== null
   const confirmText: Record<HubAction, string> = {
@@ -177,6 +182,22 @@ function HubCard({
               {hub.heldWaiting === 1 ? 'One item it sent up waits' : `${hub.heldWaiting} items it sent up wait`} in Held Hub Sales.
             </a></>
           )}
+        </div>
+      )}
+
+      {!hub.revoked && (hub.sessions ?? []).length > 0 && (
+        <div style={{ marginTop: '0.7rem', fontFamily: 'var(--font-inter)', fontSize: '0.82rem', color: 'rgba(var(--offwhite-rgb),0.8)' }}>
+          <p style={{ marginBottom: '0.35rem', color: 'rgba(var(--offwhite-rgb),0.55)' }}>
+            Signed in there{hub.sessionsAt ? `, as of ${ago(hub.sessionsAt, now)}` : ''}. Ending one happens at the hub&apos;s next sync, within two minutes.
+          </p>
+          {hub.sessions.map(s => (
+            <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', alignItems: 'center', padding: '0.3rem 0' }}>
+              <span>{s.kitchenScreen ? 'Kitchen screen' : s.name || s.email || 'Someone'} · {s.device} · since {when(s.startedAt)}</span>
+              {(hub.endSessions ?? []).includes(s.id)
+                ? <span style={{ color: 'rgba(var(--offwhite-rgb),0.55)' }}>Ending at the next sync</span>
+                : onEndSession && <button type="button" onClick={() => onEndSession(s.id)} disabled={busy} style={button('quiet', busy)}>End</button>}
+            </div>
+          ))}
         </div>
       )}
 
@@ -274,6 +295,19 @@ export default function HubsPage() {
       // A refused hand-back says what is still in the way (S23).
       setError(err instanceof Error ? err.message : 'Could not change the hub.')
       setConfirming(null)
+    } finally {
+      setActing(false)
+    }
+  }
+
+  async function endSession(id: string, sessionId: string) {
+    setActing(true)
+    setError('')
+    try {
+      await unwrap(await authedFetch('/api/admin/hubs', 'PATCH', { deviceId: id, action: 'endSession', sessionId }))
+      await loadHubs()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not end that session.')
     } finally {
       setActing(false)
     }
@@ -384,6 +418,7 @@ export default function HubsPage() {
               onAsk={action => setConfirming({ id: hub.id, action })}
               onCancel={() => setConfirming(null)}
               onConfirm={action => act(hub.id, action)}
+              onEndSession={sessionId => { void endSession(hub.id, sessionId) }}
             />
           ))}
         </section>

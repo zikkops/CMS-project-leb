@@ -22,7 +22,9 @@ import { networkInterfaces } from 'node:os'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { addressesOnPublicNetwork, hubLink, lanAddresses, normalizeFingerprint, type NetInterface } from '../hubNetwork'
-import { HttpError } from './auth'
+import { HttpError, type Caller } from './auth'
+import { endHubSessionById, listHubSessions } from './hubSession'
+import { logActivity } from './activityLog'
 import { encodeHubValue, type HubStore } from './hubStore'
 import { stable } from '../backupCodec'
 import { BRANCHES } from '../branches'
@@ -573,11 +575,41 @@ export async function refillReceipts(fetchImpl: Fetch = fetch, now = new Date())
   }
 }
 
-/** Send up, pull, then receipt numbers. Each failure is recorded on its own and stops nothing else. */
+/**
+ * Tells the cloud who is signed in here (T6.5), and ends the sessions an admin
+ * asked it to end from the admin panel. Labels and times only: never a token.
+ */
+export async function reportSessions(fetchImpl: Fetch = fetch, now = Date.now()): Promise<{ ended: number }> {
+  hubOnly()
+  const credential = await readCredential()
+  if (!credential || credential.revoked) return { ended: 0 }
+  const sessions = (await listHubSessions(now)).map(s => ({
+    id: s.id, uid: s.uid, name: s.name, email: s.email ?? '', device: s.device, kitchenScreen: s.scope === 'kds',
+    startedAt: s.startedAt, lastActiveAt: s.lastActiveAt, expiresAt: s.expiresAt,
+  }))
+  const { status, body } = await cloudFetch(fetchImpl, `${credential.cloudUrl}/api/hub-sync/sessions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: deviceAuthHeader(credential.deviceId, credential.secret) },
+    body: JSON.stringify({ sessions }),
+  })
+  if (status !== 200) return { ended: 0 }
+  let ended = 0
+  for (const id of Array.isArray(body.end) ? body.end : []) {
+    const gone = await endHubSessionById(id)
+    if (!gone) continue
+    ended++
+    const actor: Caller = { uid: 'cloud:admin', email: null, role: 'admin', branchIds: [], superadmin: false, isStaff: true }
+    await logActivity(actor, 'update', 'POS', `A session on ${gone.device} was ended from the admin panel`)
+  }
+  return { ended }
+}
+
+/** Send up, pull, then receipt numbers and who is signed in. Each failure is recorded on its own and stops nothing else. */
 export async function syncOnce(fetchImpl: Fetch = fetch): Promise<void> {
   try { await pushToCloud(fetchImpl) } catch { /* recorded in the status */ }
   try { await pullFromCloud(fetchImpl) } catch { /* recorded in the status */ }
   try { await refillReceipts(fetchImpl) } catch { /* recorded in the status */ }
+  try { await reportSessions(fetchImpl) } catch { /* the next sync tells it again */ }
 }
 
 /** Starts syncing every two minutes. Once per process; nothing on a server that is not a hub. */

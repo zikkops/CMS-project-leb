@@ -389,6 +389,44 @@ console.log('\na hub pairs and fetches receipt numbers through its own code')
   const next = await I.issueInvoiceNumber()
   eq('its next receipt is the first of that block', next.sequence, 1401)
   eq('its page says how many are left', (await S.hubSyncStatus()).receiptsLeft, 499)
+
+  // Where people are signed in, and ending it from anywhere (UPGRADE.md T6.5).
+  const HSS = await import(url('hubSessions.js'))
+  const SESS = await import(url('server/hubSession.js'))
+  eq('you end your own sessions; a manager or admin ends anybody\'s', [
+    HSS.canEndSession({ uid: 'a', role: 'barista' }, 'a'), HSS.canEndSession({ uid: 'a', role: 'barista' }, 'b'),
+    HSS.canEndSession({ uid: 'a', role: 'manager' }, 'b'), HSS.canEndSession({ uid: 'a', role: 'kitchen_crew', superadmin: true }, 'b'),
+  ], [true, false, true, true])
+  eq('only a manager or admin sees everybody\'s', [HSS.seesEverySession({ role: 'barista' }), HSS.seesEverySession({ role: 'admin' })], [false, true])
+  eq('what a hub reports is cleaned: no id, no row', HSS.readSessionReport([{ id: 'x' }, { id: 'a'.repeat(64), name: 'N'.repeat(99), device: '' }]).map(s => [s.name.length, s.device]), [[40, 'Till']])
+
+  await db.doc('users/u-sess').set({ isStaff: true, role: 'barista', branchIds: [branch], firstName: 'Maya' })
+  const counterS = await SESS.startHubSession({ uid: 'u-sess', staff: true, role: 'barista', device: 'Counter PC', idleMs: 900_000 })
+  const phoneS = await SESS.startHubSession({ uid: 'u-sess', staff: true, role: 'barista', device: 'Pixel 8' })
+  const listed = (await SESS.listHubSessions()).filter(s => s.uid === 'u-sess')
+  eq('each session is listed with its device and the person\'s first name, never its token', [listed.map(s => s.device).sort(), listed[0].name, JSON.stringify(listed).includes(counterS.token)], [['Counter PC', 'Pixel 8'], 'Maya', false])
+  eq('...under the hash of its token', listed.some(s => s.id === SESS.sessionIdOf(phoneS.token)), true)
+  eq('ending one by its id signs that one out, and only that one', [Boolean(await SESS.endHubSessionById(SESS.sessionIdOf(counterS.token))), await SESS.callerFromHubToken(counterS.token), Boolean(await SESS.callerFromHubToken(phoneS.token))], [true, null, true])
+  eq('ending it twice ends nothing', await SESS.endHubSessionById(SESS.sessionIdOf(counterS.token)), null)
+
+  // The cloud's side, through the hub's own sync code and the cloud's own functions.
+  const withSessions = async (href, init = {}) => {
+    const target = new URL(href)
+    if (target.pathname !== '/api/hub-sync/sessions') return cloud(href, init)
+    const request = new Request(href, { method: 'POST', headers: init.headers, body: init.body })
+    const end = await D.noteSessions(await D.deviceFromRequest(request), JSON.parse(init.body).sessions)
+    return new Response(JSON.stringify({ ok: true, end }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }
+  await S.reportSessions(withSessions)
+  const row = () => D.listDevices().then(list => list.find(h => h.name === 'Hub under test'))
+  eq('the hub reports who is signed in there, with every sync', (await row()).sessions.filter(s => s.uid === 'u-sess').map(s => [s.name, s.device]), [['Maya', 'Pixel 8']])
+  const hubId = (await row()).id
+  await rejects('an admin cannot end a session the hub does not list', () => D.requestEndSession(hubId, 'f'.repeat(64)), e => e.status === 404)
+  await D.requestEndSession(hubId, SESS.sessionIdOf(phoneS.token))
+  eq('an admin\'s end request waits for the next sync', (await row()).endSessions, [SESS.sessionIdOf(phoneS.token)])
+  eq('THE POINT: at the next sync the hub ends it', [(await S.reportSessions(withSessions)).ended, await SESS.callerFromHubToken(phoneS.token)], [1, null])
+  await S.reportSessions(withSessions)
+  eq('...and once it is gone from the report, the request is done', (await row()).endSessions, [])
 }
 
 console.log('\nwhat a hub sends up: the rules')

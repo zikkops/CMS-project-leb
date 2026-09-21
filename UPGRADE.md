@@ -600,7 +600,7 @@ mutations caught by name, and is checked on the emulator against a built hub.
   - The device never sees a password, and the phone never sees the device's
     secret.
   *Done: Online till: 'Show a code to scan' on the sign-in page (cloud only); QR = /pos/approve#r=<id> (id in the fragment), four check digits from the id on both screens; the staff member's signed-in phone approves on /pos/approve (requireStaff); the device collects a one-use Firebase custom token (createCustomToken) and signInWithCustomToken. /api/staff-signin: ask capped at 2,000 a day (unauthenticated), body capped before parsing, secrets hashed, 2 minutes, one use, logged; staffSignInRequests server-only, no rule, no rules deploy; 404 on a hub. verify:hub-sync 458, 4 mutations caught. Not run live.*
-- [ ] **T6.5 See where you are signed in, and end it from anywhere.**
+- [x] **T6.5 See where you are signed in, and end it from anywhere.**
   - The staff app lists your live sessions: counter PC, kitchen screen, or
     another phone, with when each started. You can end any of them.
   - The hub page (`/pos/hub`) and a new admin page list everyone signed in at
@@ -609,6 +609,7 @@ mutations caught by name, and is checked on the emulator against a built hub.
   - `hubSessions` gains a readable label (device, started, last tap). The
     token stays hashed.
   - Ending a session is logged.
+  *Done: Hub sessions carry a device label (Counter PC, the phone's name, Kitchen screen, Browser on the café wifi); listHubSessions()/endHubSessionById() by the token's hash. /api/hub/sessions: your own, or everyone's for a manager/admin or the counter PC; end by POST, logged. /pos/sessions page (also what the staff app shows), Sessions button on the hub floor, list with End on /pos/hub. Cloud: the hub reports sessions each sync (/api/hub-sync/sessions); Café Hubs shows them with End, which the hub carries out at its next sync. verify:hub-sync 470, 4 mutations caught. Not looked at signed in.*
 - [ ] **T6.6 Signing in clocks you in, signing out clocks you out** (owner's
   answer, 21 Sep 2026). There is no separate step and no prompt. It writes the
   existing `timeEntries` through the same path as `clockWithKey()`, so the

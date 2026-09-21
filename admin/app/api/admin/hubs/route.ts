@@ -13,7 +13,7 @@
 // may pair a PC.
 
 import { requireRole, toResponse, HttpError, type Caller } from '@big-cms/shared/server/auth'
-import { createPairingCode, handBackToHub, listDevices, revokeDevice, startOnlineTrading } from '@big-cms/shared/server/hubDevices'
+import { createPairingCode, handBackToHub, listDevices, requestEndSession, revokeDevice, startOnlineTrading } from '@big-cms/shared/server/hubDevices'
 import { logActivity } from '@big-cms/shared/server/activityLog'
 
 export const runtime = 'nodejs'
@@ -68,6 +68,12 @@ export async function PATCH(request: Request): Promise<Response> {
             `${hub.branch} switched to the online till while café hub "${hub.name}" is out of action; what it sends up is held for a manager`)
         }
         return Response.json({ ok: true, ...hub })
+      }
+      case 'endSession': {
+        // Ending somebody's hub session from the admin panel (T6.5): the hub ends it at its next sync.
+        const { hub, session } = await requestEndSession(body.deviceId, body.sessionId)
+        await logActivity(actor, 'update', 'Café Hubs', `Asked café hub "${hub.name}" to end ${session.name || session.email || 'a'}${session.name || session.email ? '\'s' : ''} session on ${session.device}`)
+        return Response.json({ ok: true })
       }
       case 'handback': {
         const hub = await handBackToHub(actor, body.deviceId)

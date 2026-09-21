@@ -12,6 +12,7 @@
 import { bearerToken, toResponse, HttpError } from '@big-cms/shared/server/auth'
 import { adminDb, hubDbPath } from '@big-cms/shared/server/firebaseAdmin'
 import { readFirstName } from '@big-cms/shared/staffProfiles'
+import { isCounterHost } from '@big-cms/shared/counterSignIn'
 import { signInAtHub, callerFromHubToken, endHubSession, touchHubSession, type HubCaller } from '@big-cms/shared/server/hubSession'
 import { logActivity } from '@big-cms/shared/server/activityLog'
 
@@ -33,7 +34,7 @@ async function describe(caller: HubCaller) {
 export async function POST(request: Request): Promise<Response> {
   try {
     hubOnly()
-    const { token, caller } = await signInAtHub(bearerToken(request))
+    const { token, caller } = await signInAtHub(bearerToken(request), isCounterHost(request.headers.get('host')) ? 'Counter PC' : 'Browser on the café wifi')
     // Logged: on a hub a sign-in is good for the night, so who started one and
     // when is worth finding again.
     await logActivity(caller, 'create', 'POS', `Signed in at the café hub, until ${new Date(caller.expiresAt).toISOString()}`)

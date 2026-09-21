@@ -248,6 +248,7 @@ export async function collectApproval(
   if (taken.kind === 'screen') {
     const pairing = (await db.doc(DEVICE_DOC).get()).data()
     const { token, caller } = await startHubSession({
+      device: 'Kitchen screen',
       uid: `${SCREEN_UID_PREFIX}${id}`,
       staff: true,
       role: SCREEN_ROLE,
@@ -259,6 +260,6 @@ export async function collectApproval(
 
   const staff = await pulledStaff(db, taken.uid)
   if (!staff) throw new HttpError(403, 'This account cannot sign in to the till.')
-  const { token, caller } = await sessionForStaff(taken.uid, staff, now)
+  const { token, caller } = await sessionForStaff(taken.uid, staff, now, 'Phone, with a manager\'s approval')
   return { status: 'approved', kind: 'person', token, caller, approvedBy: taken.approvedBy }
 }

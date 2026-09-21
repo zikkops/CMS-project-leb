@@ -30,6 +30,7 @@ import { PUSH_BATCH, moveField, moveProblem, pushProblem, type PushedDoc, type S
 import { STAFF_KEYS, staffKeyRecord } from '../staffKeys'
 import { STAFF_PROFILES, readFirstName } from '../staffProfiles'
 import { HELD_ITEMS, caughtUp, handBackProblem, heldSummary, isHeldDecision, onlineSinceOf, type HeldStatus } from '../hubFallback'
+import { isSessionId, pendingEnds, readSessionReport, type ReportedSession } from '../hubSessions'
 
 const DEVICES = 'hubDevices'
 const CODES = 'hubPairingCodes'
@@ -59,6 +60,11 @@ export interface HubDeviceRow extends HubDevice {
   caughtUpAt: number | null
   /** What this hub sent up while its branch traded online, still waiting for a manager (S22). */
   heldWaiting: number
+  /** Who is signed in at this hub, as it last reported (T6.5), and when. */
+  sessions: ReportedSession[]
+  sessionsAt: number | null
+  /** Sessions an admin asked to end, not yet gone from the hub's report. */
+  endSessions: string[]
 }
 
 /** A one-time code for pairing a hub at a branch. Returned once; stored as a hash. */
@@ -188,7 +194,43 @@ export async function listDevices(db: Firestore = adminDb()): Promise<HubDeviceR
       onlineByEmail: String(d.onlineByEmail ?? ''),
       caughtUpAt: timestampMs(d.caughtUpAt, 0) || null,
       heldWaiting: heldBy.get(doc.id) ?? 0,
+      sessions: readSessionReport(d.sessions),
+      sessionsAt: timestampMs(d.sessionsAt, 0) || null,
+      endSessions: Array.isArray(d.endSessions) ? d.endSessions.filter(isSessionId) : [],
     }
+  })
+}
+
+/**
+ * A hub reports who is signed in there (T6.5), with every sync. Kept on its row
+ * for the admin panel, and answered with the sessions an admin asked to end
+ * that the hub still reports: once one is gone from the report, it ended, and
+ * the request is dropped.
+ */
+export async function noteSessions(device: HubDevice, raw: unknown, db: Firestore = adminDb()): Promise<string[]> {
+  const sessions = readSessionReport(raw)
+  const ref = db.doc(`${DEVICES}/${device.id}`)
+  return db.runTransaction(async tx => {
+    const d = (await tx.get(ref)).data() ?? {}
+    const end = pendingEnds(Array.isArray(d.endSessions) ? d.endSessions : [], sessions)
+    tx.update(ref, { sessions, sessionsAt: FieldValue.serverTimestamp(), endSessions: end })
+    return end
+  })
+}
+
+/** An admin asks a hub to end one of its sessions (T6.5); it happens at the hub's next sync. */
+export async function requestEndSession(rawId: unknown, sessionId: unknown, db: Firestore = adminDb()): Promise<{ hub: HubDevice; session: ReportedSession }> {
+  const id = deviceIdOf(rawId)
+  if (!id || !isSessionId(sessionId)) throw new HttpError(400, 'Choose a session to end.')
+  const ref = db.doc(`${DEVICES}/${id}`)
+  return db.runTransaction(async tx => {
+    const snap = await tx.get(ref)
+    if (!snap.exists) throw new HttpError(404, 'There is no such café hub.')
+    const d = snap.data() ?? {}
+    const session = readSessionReport(d.sessions).find(s => s.id === sessionId)
+    if (!session) throw new HttpError(404, 'That session is no longer listed. It may have ended already.')
+    tx.update(ref, { endSessions: FieldValue.arrayUnion(sessionId) })
+    return { hub: { id: snap.id, branch: String(d.branch ?? ''), name: String(d.name ?? ''), onlineSince: onlineSinceOf(d), caughtUpAt: timestampMs(d.caughtUpAt, 0) || null }, session }
   })
 }
 

@@ -99,8 +99,9 @@ export async function pulledStaff(db: Firestore, uid: string): Promise<Record<st
 }
 
 /** A hub session for a pulled staff record, until 05:00 (S14, S17). */
-export function sessionForStaff(uid: string, staff: Record<string, unknown>, now: number): Promise<{ token: string; caller: HubCaller }> {
+export function sessionForStaff(uid: string, staff: Record<string, unknown>, now: number, device = 'Phone'): Promise<{ token: string; caller: HubCaller }> {
   return startHubSession({
+    device,
     uid,
     staff: true,
     role: staff.role,
@@ -136,5 +137,5 @@ export async function signInWithKey(
   // The staff record the hub pulled decides who they are now (stage 4).
   const staff = await pulledStaff(db, record.uid)
   if (!staff) throw new HttpError(403, 'This account cannot sign in to the till.')
-  return sessionForStaff(record.uid, staff, now)
+  return sessionForStaff(record.uid, staff, now, record.deviceName || 'Phone')
 }
