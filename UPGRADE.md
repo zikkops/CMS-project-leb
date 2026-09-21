@@ -533,13 +533,20 @@ cases to `verify:hub-sync` (or a new verifier for the online till), with
 mutations caught by name, and is checked on the emulator against a built hub.
 
 - [ ] **T6.0 The owner's answers first** (owner). Answer and record these
-  here before T6.3 onwards:
+  here before T6.3 onwards.
+  *Owner's answers, 21 Sep 2026:*
+  - **Signing in clocks you in, and signing out clocks you out.** So T6.6 is
+    decided and is no longer an owner task.
+  - **A photo of a code is useless anyway**, because signing in at a hub needs
+    the café wifi. That holds for T6.3. T6.4 (the online till) is not tied to
+    the wifi, so there the code's two minutes, single use and the approving
+    phone's own sign-in do that job.
+
+  Still to answer:
   - Which devices are **shared** (the counter PC, a kitchen tablet, a
     waiter's tablet at the pass) and which are one person's phone?
   - Should the **online till** (no hub) get scan-to-sign-in too (T6.4), or
     only hub cafés?
-  - Should signing in **clock you in**, and signing out clock you out
-    (T6.6), or stay separate?
   - What idle limit should shared online devices have? The counter PC uses
     15 minutes (S25).
   - Printed badges: no (the default, T6.8), or yes with a PIN?
@@ -595,10 +602,16 @@ mutations caught by name, and is checked on the emulator against a built hub.
   - `hubSessions` gains a readable label (device, started, last tap). The
     token stays hashed.
   - Ending a session is logged.
-- [ ] **T6.6 Check out at the end of a shift** (owner, from T6.0). Signing
-  out offers "Clock out too", and signing in offers "Clock in". Both write the
-  existing `timeEntries` through `clockWithKey()`, so the timesheet (T3.3)
-  sees them. The 05:00 expiry stays as the backstop. A person still clocked in
+- [ ] **T6.6 Signing in clocks you in, signing out clocks you out** (owner's
+  answer, 21 Sep 2026). There is no separate step and no prompt. It writes the
+  existing `timeEntries` through the same path as `clockWithKey()`, so the
+  timesheet (T3.3) sees it:
+  - A second sign-in on another device while already clocked in does not clock
+    in twice (`nextDirection()`).
+  - Signing out of one device while signed in on another does not clock out
+    until the last session ends.
+  - A kitchen screen session (`screen:…`) is a device, not a person, and never
+    clocks anyone. The 05:00 expiry stays as the backstop. A person still clocked in
   at 05:00 is flagged on the timesheet as "no clock-out", never clocked out
   silently at a guessed time.
 - [ ] **T6.7 Idle sign-out on shared online devices.** A per-device "This is a
@@ -615,6 +628,217 @@ mutations caught by name, and is checked on the emulator against a built hub.
   - it never signs anyone in on a hub on its own
 
   Record the decision here either way.
+
+---
+
+## Tier 7: reporting the accountant can rely on (added 21 Sep 2026)
+
+The owner's request: every number that needs reporting, checked against
+common accounting practice. Each report works for **one branch or all
+branches (with a column per branch and a consolidated total), for one day or
+any range between two dates**.
+
+**What exists today** (sweep of 21 Sep 2026):
+- **Sales Export** (`/admin/exports`): days, checks and payments, with branch
+  and range, and an XLSX download.
+- **Product Mix, Voids & Discounts, Hourly Sales and Timesheet**
+  (`/admin/reports/*`): range pickers, but no download.
+- **Food Cost Report:** a range.
+- **EOD History, Daily Summary, Tips, Daily Inventory History:** a single day,
+  or a list, with no range and no download.
+- **Drawer X/Z:** on the till only.
+
+Each of these was built on its own, and several use their own words for the
+same number.
+
+**The standards this tier follows.** These are general practice, not a
+particular country's law; T7.0 confirms the Lebanese specifics.
+- **Revenue is IFRS 15:** recognised when the check closes.
+- **Net sales** = gross sales − discounts − comps − refunds, **excluding VAT**.
+- **VAT is output tax**, extracted from VAT-inclusive prices at each check's
+  own rate.
+- **Tips are a liability** owed to staff, never revenue.
+- **Service charge** is its own revenue line.
+- **A refund belongs to the period it happens in**, as a credit note against
+  its original receipt. The original sale is never rewritten.
+- **Inventory is valued at weighted average cost.**
+- **Receipt numbers are audited for gaps and duplicates.**
+- **Every figure reconciles to another:** sales to payments to the drawer.
+
+Principles for every task here:
+- **One reading of the checks.** Every report reads through the export's
+  `readClosedChecks()` (café day, padded window), so two reports can never
+  disagree about which day a check belongs to.
+- **One definitions module:** a new `shared/src/reportDefinitions.ts`, pure.
+  A report names its figures from it and never re-derives them.
+- **Every report downloads as CSV and XLSX.** Each file carries a header block:
+  business, branch(es), period, currency, generated at, and the definitions
+  version.
+- **Every task adds its cases to `verify:export`** (or a new
+  `verify:accounting`), with mutations caught by name. The run on
+  `npm run seed:pos` data is part of the check, not optional.
+
+- [ ] **T7.0 The reporting audit, written down** (owner, for the answers).
+  Produce `docs/reporting.md`:
+  - every figure the system reports: where it is computed, its definition,
+    which reports show it, and whether it reconciles
+  - every gap against the standards above
+
+  Then record the owner's answers here:
+  - The **fiscal year's start**, and whether a period ever **locks**.
+  - Is the **service charge** subject to VAT in Lebanon?
+  - Which **journal format** the accountant imports (plain CSV journal, Xero,
+    QuickBooks or another).
+  - The **chart of accounts** names and numbers to map to.
+  - Whether reports show **LBP beside USD** at each check's own rate (the
+    export already does), or USD only.
+- [ ] **T7.1 One period and branch picker for every report.** Promote
+  `ReportRange` (`admin/app/admin/reports/ReportRange.tsx`) to the admin UI
+  kit:
+  - one day or a from–to range
+  - quick picks: today, yesterday, this week, last week, this month, last
+    month, this quarter, and the same period last year
+  - one branch, several, or all
+
+  The server takes `branch` as a list, or `all`. With several, every report
+  answers with a column per branch and a consolidated total that is the sum of
+  the columns, never a separate calculation. Move EOD History, Daily Summary,
+  Tips and Daily Inventory History onto it. "Today" and every day boundary is
+  the café's day in `BRAND.locale.timezone`.
+- [ ] **T7.2 Longer ranges without a silent cut.** `MAX_RANGE_DAYS` (100) and
+  the 20,000-check read cap stop a year's report. Read the range in café-day
+  chunks and add them up, so a fiscal year (or last year for comparison) works
+  and the cap warning (T5.8) never fires on an ordinary request. Keep a hard
+  upper bound, stated on screen.
+- [ ] **T7.3 The sales summary report**, the one an accountant asks for
+  first. A new `/admin/reports/sales`, per branch and consolidated:
+  - gross sales, then staff meals, item discounts, check discounts and comps,
+    each shown separately
+  - refunds, filed by refund date (T7.4)
+  - net sales excluding VAT, VAT output, and service charge
+  - total collected, and card tips shown apart as a liability
+  - check count, guests, and average check
+
+  Each line's definition comes from `reportDefinitions.ts` and is shown on
+  hover. This page must reconcile with the payments report (T7.5) and the
+  drawer (T7.7) to the cent, and the verifier asserts that it does.
+- [ ] **T7.4 Refunds in the period they happen** (a correction to today's
+  behaviour).
+  - The export and the food cost report file a refund under the day its check
+    CLOSED (`salesExport.ts` counts a refunded check's net against its close
+    day). An accountant records a refund as a credit note on the day it is
+    given.
+  - Report refunds by `refundedAt`, naming the original receipt and its day.
+    The original day's sales stay as they were.
+  - A refund spanning two periods then shows in both: a sale in March and a
+    refund in April.
+  - Waste stays filed with the check, as the food cost report explains, or
+    moves too; T7.0 decides and the reason is recorded.
+- [ ] **T7.5 Payments and tenders report.** Per branch and period:
+  - cash USD, cash LBP (and its USD value at each check's rate), card, and
+    change given
+  - card tips separately. Today the export does not show tips at all; T3.9
+    recorded them.
+  - refunds by tender
+
+  It must reconcile with the sales summary: collected − change − tips = the
+  checks' net plus VAT plus service.
+- [ ] **T7.6 VAT report**, for the VAT return. Per branch and period:
+  - taxable sales and VAT output, per rate. Checks keep their own `vatRate`,
+    so a mid-quarter rate change shows as two lines.
+  - zero-rated and exempt sales, if any
+  - refunds' VAT reversed in their own period
+  - service charge's VAT, per T7.0
+  - input VAT from received deliveries (`deliveries` store their VAT), so the
+    net VAT position is on one page
+
+  A check from before rates were recorded contributes nothing and is counted
+  in a "no rate recorded" line, never guessed.
+- [ ] **T7.7 Cash-up and drawer report.** Per branch and period:
+  - every shift: float, cash in, change, cash refunds, paid outs and pay ins
+    (T3.1), safe drops, expected, counted, and over/short, in each currency
+    and never netted at a rate
+  - the day's End of Day figure beside it
+
+  Z closes listed with their number and who closed them. Moved to admin from
+  the till, where it is today only as a single shift.
+- [ ] **T7.8 Product and category sales with cost and margin.** Extend
+  Product Mix with:
+  - net sales excluding VAT per item and per category, and quantity
+  - theoretical cost from the recipe snapshots, with gross margin and margin %
+  - combos shown as sold, with their parts beneath (T5.13)
+
+  An item with no costed recipe shows its sales, a blank cost and "not
+  costed", never $0 cost and 100% margin. Coverage is shown, as the food cost
+  report does.
+- [ ] **T7.9 Discounts, comps, voids and refunds, with who approved.** Extend
+  Voids & Discounts:
+  - by reason, by staff member, and by approver (T5.1's manager)
+  - whether the food had been sent
+
+  Totals per branch and period, and a download. This is the exception report
+  auditors look at.
+- [ ] **T7.10 Receipt sequence report.** For a period and branch, every
+  receipt number issued, in order:
+  - **gaps** (on a hub, numbers skipped in a block are expected, and are named
+    with the block)
+  - **duplicates**, which must be none
+  - numbers issued with no check
+
+  The audit trail that proves no sale went missing.
+- [ ] **T7.11 Labour report.** From the timesheet (T3.12, T6.6), per branch
+  and period:
+  - hours per person and in total
+  - shifts with no clock-out, flagged
+  - labour cost if an hourly rate is stored (T7.0 decides where; a rate is
+    personal data, so admin only)
+  - labour cost as a share of net sales
+
+  Tips per person from the tips split, for payroll.
+- [ ] **T7.12 Inventory valuation and movement report.** Per branch, at a
+  date:
+  - stock on hand × weighted average cost = inventory value
+  - over a period: opening + received (deliveries) − used (theoretical, from
+    sales) − waste ± transfers (T3.14) ± count adjustments = closing, with
+    the variance between theoretical and counted
+
+  This gives cost of goods sold for the period the way an accountant computes
+  it: opening + purchases − closing.
+- [ ] **T7.13 Purchases report.** Received deliveries per supplier, branch
+  and period, with invoice number, net, input VAT, total, currency and rate.
+  It reconciles with the weekly orders' fulfilment, and feeds T7.6's input VAT
+  and T7.12's purchases.
+- [ ] **T7.14 Loyalty liability.** The points ledger (`loyaltyExport.ts`) as a
+  report with the picker: points issued, reversed and redeemed, and the
+  outstanding balance at the period's end, valued at the redemption rate if
+  the owner sets one (T7.0). Points are a liability, like tips.
+- [ ] **T7.15 The accountant's journal export** (owner, format from T7.0). One
+  download per period and branch, as double-entry journal lines mapped to the
+  chart of accounts:
+  - debit cash, card clearing and tips payable
+  - credit sales by category, service charge, VAT output and tips payable
+  - discounts as contra-revenue
+  - refunds as reversing entries on their own date
+  - optionally, COGS and inventory from T7.12
+
+  Every journal balances (debits = credits), and the verifier asserts it on
+  seeded data.
+- [ ] **T7.16 The reconciliation check.** One page, and one verifier, that
+  runs a period and branch through every report above and proves they agree:
+  - sales summary = sum of product mix = the export's days
+  - payments = the drawers' cash + card
+  - VAT report = the sales summary's VAT
+  - journal debits = credits
+
+  Any difference is listed, never rounded away. Run it on seeded data in CI,
+  and show it at the top of the reports section, so a mismatch is seen before
+  the accountant sees it.
+- [ ] **T7.17 Period close** (owner, from T7.0). An admin closes a period
+  once it has been handed to the accountant:
+  - its reports are stored as issued (the numbers and the definitions version)
+  - anything that later changes a closed day (a late refund, a held hub sale
+    applied) is shown against the closed figures as a post-close adjustment,
+    never silently changing a report already sent
 
 ---
 
