@@ -14,6 +14,7 @@ import type { FileColumn } from '@big-cms/shared/reportFile'
 import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
 import { ReportRange, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
 import { ReportDownloads, type ReportSheet } from '../../../components/ui/ReportDownloads'
+import { BarChart } from '../../../components/ui/Charts'
 import { ClosedPeriodNote, type ClosedNote } from '../ClosedPeriodNote'
 import { reportHeader } from '../files'
 
@@ -90,6 +91,14 @@ export default function SalesSummaryPage() {
               ? <EmptyState title="No closed checks and no refunds in this period." />
               : <DataTable columns={columns} rows={rows} rowKey={r => r.key} empty="Nothing to show." />}
           </Panel>
+          {report.byBranch.length > 1 && (
+            <BarChart title="Net sales by branch" unit="usd" note="Excluding VAT and service, the figure the accountant divides everything else into."
+              points={report.byBranch.map(b => ({ label: b.branch, value: b.figures.netSales }))} />
+          )}
+          {report.byOrderType.length > 1 && (
+            <BarChart title="Billed by order type" unit="usd" note="What each way of ordering took, the bill as the customer saw it."
+              points={report.byOrderType.map(o => ({ label: o.order, value: o.billed }))} />
+          )}
           {report.byOrderType.length > 1 && (
             <Panel title="By order type">
               <DataTable

@@ -16,11 +16,29 @@ import type { FileColumn } from '@big-cms/shared/reportFile'
 import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
 import { ReportRange, BranchTotals, reportError, usd, type RangeChoice } from '../ReportRange'
 import { ReportDownloads, type ReportSheet } from '../../../components/ui/ReportDownloads'
+import { LineChart } from '../../../components/ui/Charts'
 import { reportHeader } from '../files'
 
 type Report = LoyaltyLiability & {
   from: string; to: string; branches: string[]; asOf: string; cutShort?: CutShort | null
   period: LoyaltyExport
+}
+
+/** The branches folded together, one point per day, for the chart. */
+function loyaltySeries(days: readonly LoyaltyDayRow[]) {
+  const by = new Map<string, { issued: number; reversed: number; spent: number }>()
+  for (const d of days) {
+    const at = by.get(d.day) ?? { issued: 0, reversed: 0, spent: 0 }
+    by.set(d.day, { issued: at.issued + d.issued, reversed: at.reversed + d.reversed, spent: at.spent + d.spent })
+  }
+  const rows = [...by.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  const points = (pick: (f: { issued: number; reversed: number; spent: number }) => number) =>
+    rows.map(([day, f]) => ({ label: day, value: pick(f), short: day.slice(5) }))
+  return [
+    { name: 'Issued', points: points(f => f.issued) },
+    { name: 'Spent', points: points(f => f.spent) },
+    { name: 'Reversed', points: points(f => f.reversed) },
+  ]
 }
 
 const sheet = <T,>(name: string, columns: FileColumn<T>[], rows: readonly T[]) => ({ name, columns, rows }) as unknown as ReportSheet<never>
@@ -100,6 +118,10 @@ export default function LoyaltyLiabilityPage() {
                 : ` Valued at $${report.pointValueUsd} a point.`}
             </p>
           </Panel>
+          {/* Three series on one scale, because points are points: issued
+              against what came back is the whole question. */}
+          <LineChart title="Points, by day" unit="count" note="Every branch together. Spending is a customer taking value back, not a sale."
+            series={loyaltySeries(report.period.days)} />
           <Panel title="By day">
             <DataTable columns={dayColumns} rows={report.period.days} rowKey={d => `${d.day}|${d.branch}`} empty={<EmptyState title="No points moved in this period." />} />
           </Panel>

@@ -13,6 +13,7 @@ import type { FileColumn } from '@big-cms/shared/reportFile'
 import { Page, PageHeader, Panel, DataTable, ErrorLine, Loading, CutShortNote } from '../../../components/ui'
 import { ReportRange, BranchTotals, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
 import { ReportDownloads, type ReportSheet } from '../../../components/ui/ReportDownloads'
+import { BarChart } from '../../../components/ui/Charts'
 import { ClosedPeriodNote, type ClosedNote } from '../ClosedPeriodNote'
 import { reportHeader } from '../files'
 
@@ -70,6 +71,16 @@ export default function VatReportPage() {
           ]} />
           <BranchTotals rows={report.byBranch.map(b => ({ branch: b.branch, totals: { outputVat: b.figures.outputVat, refundVat: b.figures.refundVat, inputVat: b.figures.inputVat, netVat: b.figures.netVat } }))}
             columns={[{ key: 'outputVat', label: 'Output VAT', money: true }, { key: 'refundVat', label: 'Reversed', money: true }, { key: 'inputVat', label: 'Input VAT', money: true }, { key: 'netVat', label: 'Net VAT', money: true }]} />
+          {/* Diverging: the net can be owed or reclaimable, and which way it
+              points is the answer somebody came for. */}
+          <BarChart title="The VAT position" unit="usd" diverging
+            note="Output less what was reversed on refunds, less input VAT on deliveries, is what is owed."
+            points={[
+              { label: 'Output VAT', value: t.outputVat },
+              { label: 'Reversed on refunds', value: -t.refundVat },
+              { label: 'Input VAT', value: -t.inputVat },
+              { label: 'Net owed', value: t.netVat },
+            ]} />
           <Panel title={`Net VAT ${usd(t.netVat)} = output ${usd(t.outputVat)} − reversed on refunds ${usd(t.refundVat)} − input ${usd(t.inputVat)}`}>
             <DataTable
               columns={[

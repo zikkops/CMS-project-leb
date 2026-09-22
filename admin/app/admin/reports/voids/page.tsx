@@ -19,6 +19,7 @@ import type { CutShort } from '@big-cms/shared/salesExport'
 import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
 import { ReportRange, BranchTotals, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
 import { ReportDownloads } from '../../../components/ui/ReportDownloads'
+import { BarChart } from '../../../components/ui/Charts'
 import { reportHeader, voidSheets } from '../files'
 
 type Report = VoidDiscountReport & { from: string; to: string; branches: string[]; checks: number; cutShort?: CutShort | null; byBranch?: { branch: string; totals: Record<string, number> }[] }
@@ -110,6 +111,10 @@ export default function VoidsReportPage() {
             </div>
           </Panel>
 
+          <BarChart title="Voids by reason" unit="usd" note="What was struck off, by why. The tables below have the counts."
+            points={report.voidsByReason.map(t => ({ label: t.label, value: t.value }))} />
+          <BarChart title="Given away, by reason" unit="usd" note="Discounts and comps, by why."
+            points={report.discountsByReason.map(t => ({ label: t.label, value: t.value }))} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '0 1.5rem' }}>
             <Panel title="Voids by reason">{tallyTable(report.voidsByReason, 'Reason', 'No voids in this range.')}</Panel>
             <Panel title="Voids by who voided them">{tallyTable(report.voidsByStaff, 'Person', 'No voids in this range.')}</Panel>

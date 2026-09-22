@@ -15,6 +15,7 @@ import type { FileColumn } from '@big-cms/shared/reportFile'
 import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
 import { ReportRange, BranchTotals, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
 import { ReportDownloads, type ReportSheet } from '../../../components/ui/ReportDownloads'
+import { BarChart } from '../../../components/ui/Charts'
 import { reportHeader } from '../files'
 
 type Report = InventoryReport & { from: string; to: string; branches: string[]; lookbackFrom: string; cutShort?: CutShort | null }
@@ -108,6 +109,15 @@ export default function InventoryReportPage() {
               {' '}Opening counts are looked for back to {report.lookbackFrom}. The value now uses one average cost per supply across branches.
             </p>
           </Panel>
+          {/* Diverging, because the difference has a direction: less on the
+              shelf than there should be is not the same problem as more. */}
+          <BarChart title="What the cost of goods was" unit="usd" diverging
+            note="Used by sales and waste are known; the difference is what the counts found and nothing explains."
+            points={[
+              { label: 'Used by sales', value: t.usedValue },
+              { label: 'Waste', value: t.wasteValue },
+              { label: 'Difference', value: t.varianceValue },
+            ]} />
           <Panel title="By supply">
             <DataTable columns={rowColumns} rows={report.rows} rowKey={r => `${r.branch}|${r.supplyId}`}
               search={(r, s) => `${r.name} ${r.branch}`.toLowerCase().includes(s)} searchLabel="Find a supply"

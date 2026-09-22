@@ -13,6 +13,7 @@ import type { CutShort } from '@big-cms/shared/salesExport'
 import { Page, PageHeader, Panel, EmptyState, ErrorLine, Loading, CutShortNote } from '../../../components/ui'
 import { ReportRange, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
 import { ReportDownloads } from '../../../components/ui/ReportDownloads'
+import { BarChart } from '../../../components/ui/Charts'
 import { FiguresTable, figuresSheet } from '../FiguresTable'
 import { reportHeader } from '../files'
 
@@ -52,6 +53,15 @@ export default function PaymentsReportPage() {
               ? <EmptyState title="No payments in this period." />
               : <FiguresTable defs={TENDER_FIGURE_ROWS} byBranch={report.byBranch} total={report.total} />}
           </Panel>
+          {/* Dollars only: lira on the same scale would be a bar a million
+              times the others, and the two are not one quantity anyway. */}
+          <BarChart title="How the money came in, US dollars" unit="usd"
+            note="Cash kept is what stayed in the drawer, after change. Lira cash is in the table above, on its own scale."
+            points={[
+              { label: 'Cash kept', value: t.cashUsdKept },
+              { label: 'Card', value: t.cardUsd },
+              { label: 'Change given', value: t.changeUsd },
+            ]} />
           <p role={agrees ? undefined : 'alert'} style={{ fontFamily: 'var(--font-inter)', fontSize: '0.88rem', lineHeight: 1.6, color: agrees ? 'rgba(var(--offwhite-rgb),0.7)' : 'var(--red)' }}>
             {agrees
               ? `Applied to bills (${usd(t.appliedUsd)}) matches what the paid checks billed (${usd(t.billedPaid)}) within the lira rounding.`

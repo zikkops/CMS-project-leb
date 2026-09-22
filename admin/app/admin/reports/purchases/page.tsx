@@ -14,6 +14,7 @@ import type { FileColumn } from '@big-cms/shared/reportFile'
 import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
 import { ReportRange, BranchTotals, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
 import { ReportDownloads, type ReportSheet } from '../../../components/ui/ReportDownloads'
+import { BarChart } from '../../../components/ui/Charts'
 import { reportHeader } from '../files'
 
 type Report = PurchasesReport & { from: string; to: string; branches: string[]; cutShort?: CutShort | null }
@@ -111,6 +112,10 @@ export default function PurchasesReportPage() {
             </p>
             <DataTable columns={supplierColumns} rows={report.bySupplier} rowKey={s => s.supplier} empty={<EmptyState title="Nothing was received in this period." />} />
           </Panel>
+          {/* The top suppliers only: past a handful the bars are unreadable
+              and the table below says it better. */}
+          <BarChart title="Spend by supplier" unit="usd" note="Net of VAT, biggest first. The table has every supplier."
+            points={report.bySupplier.slice(0, 8).map(s => ({ label: s.supplier, value: s.totals.netUsd }))} />
           <Panel title="Weekly orders these deliveries were booked against">
             <DataTable columns={orderColumns} rows={report.orders} rowKey={o => o.id} empty={<EmptyState title="No delivery in this period was booked against a weekly order." />} />
           </Panel>

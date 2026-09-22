@@ -14,6 +14,7 @@ import type { FileColumn } from '@big-cms/shared/reportFile'
 import { Page, PageHeader, Panel, DataTable, ErrorLine, Loading, type Column } from '../../../components/ui'
 import { ReportRange, BranchTotals, fetchReport, reportError, type RangeChoice } from '../ReportRange'
 import { ReportDownloads, type ReportSheet } from '../../../components/ui/ReportDownloads'
+import { BarChart } from '../../../components/ui/Charts'
 import { reportHeader } from '../files'
 
 type Report = CashUpReport & { from: string; to: string; branches: string[] }
@@ -92,6 +93,11 @@ export default function CashUpReportPage() {
           <Panel title={`${report.total.shifts} shift${report.total.shifts === 1 ? '' : 's'}${report.total.openShifts ? `, ${report.total.openShifts} still open` : ''} · counted ${both(report.total.counted)} against ${both(report.total.expectedClosed)} · difference ${both(report.total.difference)}`}>
             <DataTable columns={shiftColumns} rows={report.shifts} rowKey={s => s.id} empty="No drawer shifts in this period." />
           </Panel>
+          {/* Diverging, because the direction is the point: over and short
+              are different problems, not one bigger number. */}
+          <BarChart title="Cash difference by branch, US dollars" unit="usd" diverging
+            note="Counted less what the drawer should hold. Over is not better than short — both mean the count and the till disagree."
+            points={report.byBranch.map(b => ({ label: b.branch, value: b.totals.difference.usd }))} />
           <Panel title="By cash-up day">
             <DataTable columns={dayColumns} rows={report.days} rowKey={d => `${d.branch}|${d.cashUpDay}`} empty="Nothing counted in this period." />
           </Panel>

@@ -8,14 +8,33 @@
 
 import { useState } from 'react'
 import { useRequireRole, type Role } from '@big-cms/shared/adminAuth'
-import type { LabourDay, LabourPerson, LabourReport, LabourShift } from '@big-cms/shared/labourReport'
+import { labourPercentOf, type LabourDay, type LabourPerson, type LabourReport, type LabourShift } from '@big-cms/shared/labourReport'
 import type { CutShort } from '@big-cms/shared/salesExport'
 import type { FileColumn } from '@big-cms/shared/reportFile'
 import { BRAND } from '@big-cms/shared/brand'
 import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
 import { ReportRange, BranchTotals, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
 import { ReportDownloads, type ReportSheet } from '../../../components/ui/ReportDownloads'
+import { LineChart } from '../../../components/ui/Charts'
 import { reportHeader } from '../files'
+
+/**
+ * The branches folded into one row per day, for the charts. The percentage is
+ * worked out again from the folded figures with the report's own function —
+ * an average of percentages is a different number, and the wrong one.
+ */
+function foldDays(days: readonly LabourDay[], lbpRate: number): { day: string; costUsd: number; labourPercent: number | null }[] {
+  const by = new Map<string, { costUsd: number; costLbp: number; netSales: number; minutes: number }>()
+  for (const d of days) {
+    const at = by.get(d.day) ?? { costUsd: 0, costLbp: 0, netSales: 0, minutes: 0 }
+    by.set(d.day, { costUsd: at.costUsd + d.costUsd, costLbp: at.costLbp + d.costLbp, netSales: at.netSales + d.netSales, minutes: at.minutes + d.minutes })
+  }
+  return [...by.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([day, f]) => ({
+    day,
+    costUsd: Math.round(f.costUsd * 100) / 100,
+    labourPercent: labourPercentOf(f.costUsd, f.costLbp, f.netSales, lbpRate, f.minutes),
+  }))
+}
 
 type Report = LabourReport & { from: string; to: string; branches: string[]; cutShort?: CutShort | null }
 
@@ -65,6 +84,10 @@ export default function LabourReportPage() {
 
   if (checking) return <Loading />
   const flagged = report ? report.shifts.filter(s => s.flagged) : []
+  // `days` is one row per branch per day; the charts draw the café as a
+  // whole, so the branches are folded together and the percentage is worked
+  // out again from the folded figures rather than averaged.
+  const byDay = foldDays(report?.days ?? [], report?.lbpRate ?? 0)
   return (
     <Page width="wide">
       <PageHeader title="Labour"
@@ -137,6 +160,13 @@ export default function LabourReportPage() {
                 rows={report.unmatchedTips} rowKey={t => `${t.branch}:${t.name}`} empty={null} />
             </Panel>
           )}
+          {/* Two charts, never one with two scales: pay is dollars and labour
+              is a percentage, and a second axis is the way to make two
+              unrelated shapes look like one story. */}
+          <LineChart title="Pay, by day" unit="usd" note="Every branch together, at each day's own rate."
+            series={[{ name: 'Pay', points: byDay.map(d => ({ label: d.day, value: d.costUsd, short: d.day.slice(5) })) }]} />
+          <LineChart title="Labour as a share of net sales, by day" unit="percent" note="Blank days had no sales to divide into."
+            series={[{ name: 'Labour %', points: byDay.filter(d => d.labourPercent !== null).map(d => ({ label: d.day, value: d.labourPercent ?? 0, short: d.day.slice(5) })) }]} />
           <Panel title="By day">
             <DataTable columns={dayColumns} rows={report.days} rowKey={d => `${d.branch}|${d.day}`} empty={<EmptyState title="Nothing in this period." />} />
           </Panel>

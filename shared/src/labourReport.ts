@@ -91,13 +91,19 @@ export interface LabourReport {
 
 const r2 = (n: number) => Math.round(n * 100) / 100
 
-function percent(costUsd: number, costLbp: number, netSales: number, lbpRate: number, minutes: number): number | null {
+/**
+ * Labour cost ÷ net sales, lira converted at the business rate. Exported so a
+ * page folding days or branches together works it out the same way rather than
+ * averaging percentages, which is not the same number.
+ */
+export function labourPercentOf(costUsd: number, costLbp: number, netSales: number, lbpRate: number, minutes: number): number | null {
   // No hours recorded is no figure, never 0%: that would read as free labour.
   if (!(netSales > 0) || minutes <= 0) return null
   if (costLbp > 0 && !(lbpRate > 0)) return null
   const cost = costUsd + (costLbp > 0 ? costLbp / lbpRate : 0)
   return Math.round((cost / netSales) * 10_000) / 10_000
 }
+const percent = labourPercentOf
 
 /** One shift at its day's rate. Open or too long: flagged and not costed. */
 export function costShift(shift: Shift, history: readonly PayEntry[]): LabourShift {

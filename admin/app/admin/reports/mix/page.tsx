@@ -18,6 +18,7 @@ import type { CutShort } from '@big-cms/shared/salesExport'
 import { Page, PageHeader, Panel, DataTable, EmptyState, ErrorLine, Loading, CutShortNote, type Column } from '../../../components/ui'
 import { ReportRange, BranchTotals, fetchReport, reportError, usd, type RangeChoice } from '../ReportRange'
 import { ReportDownloads } from '../../../components/ui/ReportDownloads'
+import { BarChart } from '../../../components/ui/Charts'
 import { reportHeader, mixSheets } from '../files'
 
 type Report = ProductMix & { from: string; to: string; branches: string[]; cutShort?: CutShort | null; byBranch?: { branch: string; totals: Record<string, number> }[] }
@@ -110,6 +111,10 @@ export default function ProductMixPage() {
               {report.totals.linesWithoutVatRate > 0 && ` ${report.totals.linesWithoutVatRate} line${report.totals.linesWithoutVatRate === 1 ? ' was' : 's were'} on checks that recorded no VAT rate, and count at full price.`}
             </p>
           </Panel>
+          <BarChart title="Revenue by category" unit="usd" note="What each part of the menu took, before VAT is taken out."
+            points={report.categories.map(c => ({ label: c.category, value: c.revenue }))} />
+          <BarChart title="Ten best sellers by revenue" unit="usd" note="The table below has every item, and can be sorted by count instead."
+            points={report.items.slice(0, 10).map(i => ({ label: i.name, value: i.revenue }))} />
           <Panel title="By category">
             <DataTable columns={categoryColumns} rows={report.categories} rowKey={c => c.category}
               empty={<EmptyState title="Nothing sold in this range." />} />
