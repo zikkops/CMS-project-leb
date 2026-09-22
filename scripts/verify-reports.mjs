@@ -21,7 +21,7 @@ import { join } from 'node:path'
 
 const out = mkdtempSync(join(tmpdir(), 'reports-verify-'))
 execSync(
-  `npx tsc shared/src/salesReports.ts shared/src/timeClock.ts shared/src/waitlist.ts --outDir ${out} ` +
+  `npx tsc shared/src/salesReports.ts shared/src/timeClock.ts shared/src/waitlist.ts shared/src/metrics.ts --outDir ${out} ` +
   `--module esnext --target es2022 --skipLibCheck --moduleResolution bundler --strict`,
   { stdio: 'pipe' },
 )
@@ -30,6 +30,7 @@ for (const file of readdirSync(out).filter(f => f.endsWith('.js'))) {
   writeFileSync(p, readFileSync(p, 'utf8').replace(/from '(\.\.?\/[^']+?)'/g, "from '$1.js'"))
 }
 const R = await import(`file://${join(out, 'salesReports.js')}`)
+const M = await import(`file://${join(out, 'metrics.js')}`)
 
 let pass = 0, fail = 0
 const eq = (name, got, want) => {
@@ -324,6 +325,50 @@ console.log('\nper-branch totals add up to the consolidated figure (UPGRADE.md T
   const mixOpts = { categoryOf: () => ({ category: 'Drinks', section: 'Beverage' }) }
   const mixSum = add(['Main', 'Second'].map(b => R.productMix(per(b), mixOpts).totals))
   eq('product mix: Main + Second = all', mixSum, summed(R.productMix(checks, mixOpts).totals, mixSum))
+}
+
+console.log('')
+console.log('the metrics list (UPGRADE.md T7.19)')
+{
+  eq('every metric names a group that exists, and no key is used twice',
+    [M.METRICS.every(d => M.METRIC_GROUPS.some(g => g.key === d.group)), new Set(M.METRICS.map(d => d.key)).size === M.METRICS.length],
+    [true, true])
+  eq('every group has at least one metric, so no chip comes back empty',
+    M.METRIC_GROUPS.filter(g => !M.METRICS.some(d => d.group === g.key)).map(g => g.key), [])
+  eq('every default is a real metric', M.DEFAULT_METRICS.filter(k => M.metric(k) === null), [])
+  eq('THE TRAP: the defaults are inside the cap, so a first visit is never refused', M.DEFAULT_METRICS.length <= M.MAX_METRICS, true)
+
+  eq('an empty search with no category is everything offered', M.searchMetrics('', []).length, M.METRICS.length)
+  eq('a search matches the label, the help, the group and the key',
+    [M.searchMetrics('vat', []).some(d => d.key === 'vatOutput'),
+     M.searchMetrics('pay', []).some(d => d.key === 'payUsd'),
+     M.searchMetrics('cash', []).some(d => d.group === 'cash'),
+     M.searchMetrics('netSales', []).some(d => d.key === 'netSales')],
+    [true, true, true, true])
+  eq('all the words must match, not any of them',
+    [M.searchMetrics('cash counted', []).length > 0, M.searchMetrics('cash zzzz', []).length], [true, 0])
+  eq('a category narrows it, and two categories are both offered',
+    [new Set(M.searchMetrics('', ['cash']).map(d => d.group)).size,
+     new Set(M.searchMetrics('', ['cash', 'labour']).map(d => d.group)).size],
+    [1, 2])
+  eq('the search ignores case', M.searchMetrics('VAT', []).length, M.searchMetrics('vat', []).length)
+
+  eq('THE TRAP: only the groups the chosen metrics belong to are read',
+    M.groupsNeeded(['netSales', 'cashCountedUsd']), ['sales', 'cash'])
+  // Asked beside a metric in ANOTHER group, so a key nobody knows cannot
+  // hide behind a group the caller wanted anyway.
+  eq('a key nobody knows asks for no read at all',
+    [M.groupsNeeded(['hours', 'nonsense']), M.groupsNeeded(['nonsense'])], [['labour'], []])
+  eq('nothing chosen reads nothing', M.groupsNeeded([]), [])
+  eq('the groups come back in the list\'s own order, whatever order they were asked in',
+    M.groupsNeeded(['pointsIssued', 'netSales', 'hours']), M.groupsNeeded(['hours', 'pointsIssued', 'netSales']))
+
+  eq('THE TRAP: pay is dropped for anybody but an admin, and kept for one',
+    [M.allowedMetrics(false, ['netSales', 'payUsd', 'hours']), M.allowedMetrics(true, ['netSales', 'payUsd', 'hours'])],
+    [['netSales'], ['netSales', 'payUsd', 'hours']])
+  eq('a key nobody knows is dropped for an admin too', M.allowedMetrics(true, ['netSales', 'nonsense']), ['netSales'])
+  eq('dropping pay drops its read as well, not just its column',
+    M.groupsNeeded(M.allowedMetrics(false, ['netSales', 'payUsd'])), ['sales'])
 }
 
 rmSync(out, { recursive: true, force: true })

@@ -30,6 +30,8 @@ import { purchasesReport } from '@big-cms/shared/purchasesReport'
 import { readJournal, readMenuCategories } from '@big-cms/shared/server/journal'
 import { readReconcile } from '@big-cms/shared/server/reconcile'
 import { closedNotes } from '@big-cms/shared/server/periodClose'
+import { readMetrics } from '@big-cms/shared/server/metrics'
+import { MAX_METRICS } from '@big-cms/shared/metrics'
 import { TIME_ENTRIES, peopleOf, timesheet, type TimeEntry } from '@big-cms/shared/timeClock'
 import { timestampMs } from '@big-cms/shared/timestamps'
 import { dayBefore, hourlySales, productMix, voidDiscountReport } from '@big-cms/shared/salesReports'
@@ -236,6 +238,22 @@ export async function GET(request: Request): Promise<Response> {
           ok: true, branches, cutShort, ...hourlySales(checks, { timeZone, day: range.to }),
           byBranch: perBranch(checks, list => hourlySales(list, { timeZone, day: range.to }).totals).map(b => ({ branch: b.branch, totals: b.report })),
         },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+    if (report === 'metrics') {
+      // The metrics explorer (T7.19): any metric in the system, chosen by the
+      // browser, over the same range. Only the groups those metrics belong to
+      // are read, so asking for two numbers does not run every report. Pay is
+      // dropped rather than refused, and said so, because a saved choice a
+      // manager cannot change would otherwise make the page useless to them.
+      const keys = (params.get('keys') ?? '').split(',').map(k => k.trim()).filter(Boolean)
+      if (keys.length === 0) throw new HttpError(400, 'Choose at least one metric.')
+      if (keys.length > MAX_METRICS) throw new HttpError(400, `That is more than ${MAX_METRICS} metrics at once.`)
+      const isAdmin = caller.role === 'admin' || caller.superadmin === true
+      const result = await readMetrics(range, { timeZone, branches: chosen, keys, isAdmin })
+      return Response.json(
+        { ok: true, from: range.from, to: range.to, ...result },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }

@@ -935,6 +935,32 @@ Principles for every task here:
   cases in `verify:export`.
   *Done: Done 21 Sep 2026. Staff Pay (`/admin/settings/staff-pay`, admin only, in ADMIN_NAV under Administration beside Staff Phones) lists every staff account by first name, with today's hourly rate (USD or LBP) and tip weight. An admin changes them from a chosen day, and the history is kept and shown. The rules are in shared/src/staffPay.ts: readPayEntry refuses a bad value instead of saving a default, and payOn, hourlyRateOn and tipWeightOn read what was in force on a day. An empty rate is 'not set', never $0. Stored server-only in `staffPay/{uid}` behind /api/admin/staff-pay, with no Firestore rule (so no rules deploy), never on users/{uid} and never pulled to a hub. Changes are logged with before and after, under 'Staff pay'. The tips split (tips.ts) now uses shift points × weight, taking each day at that day's weight, still summing to the pot to the cent. Weight 0 is out of the tips and gets no leftover cent, and a nonsense weight counts as 1. The tips page reads the weights (without rates, via ?weights=1 gated on endOfDay) and matches attendance names to staff by email or a unique first name; a guest counts at 1. It shows 'Weighted points', and if the weights cannot be read it says everybody counts at 1. Covered by verify:tips (20 new cases, 46 in all; removing the weighting was caught) and verify:hub (history, the log's before value, weights without rates, refusals). The pages were not looked at signed in.*
 
+- [x] **T7.19 Graphs on the reports, and a metrics explorer** (owner's
+  request, 22 Sep 2026). Two halves:
+
+  - **Charts on the reports.** An inline-SVG kit at
+    `admin/app/components/ui/Charts.tsx` (`BarChart`, `LineChart`), in the
+    same hand-written style as the rest of the admin controls, drawn on the
+    reports where a shape says something a column of numbers does not.
+  - **`/admin/reports/metrics`**: every figure the reports work out, listed
+    with a search box and category chips, switched on and off one at a time,
+    over the same range picker as every other report.
+
+  Rules:
+  - **The page works nothing out.** Every figure comes from the server, from
+    the same function the report of that name uses, so the explorer and the
+    report can never print different answers to one question.
+  - **Only the groups the chosen metrics belong to are read.** Ticking net
+    sales runs the sales export; it does not also run the inventory and
+    labour reads to fill in figures nobody asked for.
+  - **Pay is admin-only, and is dropped rather than refused**, with a line
+    saying so: a saved choice a manager cannot change would otherwise make
+    the page useless to them.
+  - **One value axis, never two.** Two measures of different size are two
+    charts. Series colours are `--chart-1…6` in fixed order, never cycled,
+    never the brand hues.
+  *Done: Done 22 Sep 2026. shared/src/metrics.ts is the list: 62 metrics in 10 groups, each with a unit, a help line and whether it moves daily, plus searchMetrics(), groupsNeeded() and allowedMetrics(). shared/src/server/metrics.ts runs only the reads those groups need and answers { values, days, byBranch, refused }; the route is report=metrics on /api/admin/reports, gated on endOfDay with MAX_METRICS of 40. The page has the search box, the category chips, per-metric tick boxes remembered per browser (through useClientValue, not a setState in an effect), tiles, a LineChart per daily metric and a BarChart per branch, and the same downloads as every other report. Charts.tsx is the kit: --chart-1…6 were chosen by running the dataviz validator against this surface (#0F0F11) rather than by eye — the brand hues failed its lightness band and chroma floor, so the tokens are deliberately not them. Charts went on Sales Summary, Payments, VAT, Cash-up, Purchases, Inventory, Loyalty, Labour, Product Mix and Voids & Discounts; Hourly already had one. labourPercentOf() was exported so the labour chart folds branches with the report's own arithmetic instead of averaging percentages. 16 new cases in verify:reports (101 in all); 6 mutations to the metrics rules, all caught by name.*
+
 ---
 
 ## Not in this list, on purpose

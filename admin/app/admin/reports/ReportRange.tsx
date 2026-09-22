@@ -19,9 +19,10 @@ export type { RangeChoice } from '../../components/ui/ReportRange'
 import type { RangeChoice } from '../../components/ui/ReportRange'
 
 /** Asks the server for one report over a range. The branch is '' for every branch the person has, or a comma list. */
-export async function fetchReport<T>(report: string, range: RangeChoice): Promise<T> {
+export async function fetchReport<T>(report: string, range: RangeChoice, extra?: Record<string, string>): Promise<T> {
   const params = new URLSearchParams({ report, from: range.from, to: range.to })
   if (range.branch) params.set('branch', range.branch)
+  for (const [k, v] of Object.entries(extra ?? {})) params.set(k, v)
   return await unwrap(await authedFetch(`/api/admin/reports?${params}`, 'GET')) as T
 }
 
