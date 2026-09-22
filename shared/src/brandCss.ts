@@ -87,6 +87,24 @@ export function brandCssVars(): string {
      panel, below the page; --on-accent is text on a bright chip or button.
      Write rgba(var(--overlay-rgb), 0.08), never rgba(255,255,255,0.08):
      verify:brand fails on the literal in app code. */
+  /* Chart series (UPGRADE.md T7.19). NOT the brand hues, deliberately: a
+     client configures those, and no configurable set can promise the thing a
+     chart needs — that two adjacent series stay apart for a colour-blind
+     reader. These six are a fixed order, validated against this dark surface
+     (lightness band, chroma floor, CVD separation, normal-vision floor and
+     3:1 contrast). Assign them in order and never cycle: a seventh series
+     folds into Other. Charts on a light surface would need their own steps. */
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --chart-6: #9085e9;
+  /* A difference that can go either way: gain, loss, and a neutral middle. */
+  --chart-up:      #199e70;
+  --chart-down:    #e66767;
+  --chart-neutral: #8a8a86;
+
   --overlay-rgb:  255, 255, 255;
   --surface-deep: #0a0a0a;
   --on-accent:    #0a0a0a;
