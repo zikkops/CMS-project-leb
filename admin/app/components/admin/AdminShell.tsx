@@ -14,7 +14,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'firebase/auth'
 import { auth } from '@big-cms/shared/firebase'
 import { useAdminUser, ROLE_LABELS } from '@big-cms/shared/adminAuth'
-import { ADMIN_NAV, sectionForPath, visibleNav, filterNav, navSearchActive, navSearchLetters, NAV_SEARCH_MIN, type AdminNavSection, type AdminNavItem } from '@big-cms/shared/adminNav'
+import { sectionForPath, visibleNav, filterNav, activeNavHref, navSearchActive, navSearchLetters, NAV_SEARCH_MIN, type AdminNavSection, type AdminNavItem } from '@big-cms/shared/adminNav'
 import { useFeatureFlags } from '@big-cms/shared/useFeatures'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
@@ -215,15 +215,11 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     router.replace('/admin/login')
   }
 
-  const allNavHrefs = ADMIN_NAV.flatMap(s => s.items.map(i => i.href))
-
-  function isActive(href: string) {
-    if (pathname === href) return true
-    // Prefix-match only when no nav item exactly matches the current path,
-    // so /admin/events doesn't steal the highlight from /admin/events/reservations.
-    const hasExactMatch = allNavHrefs.includes(pathname)
-    return !hasExactMatch && pathname.startsWith(href + '/')
-  }
+  // Exactly one item is lit, worked out once rather than tested per item:
+  // three nav pages are prefixes of /admin/supplies/daily/history/<date>, and
+  // asking each one "am I a prefix?" lit all three.
+  const activeHref = pathname ? activeNavHref(pathname) : null
+  const isActive = (href: string) => href === activeHref
 
   const { flags, loading: featuresLoading } = useFeatureFlags()
 

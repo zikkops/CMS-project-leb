@@ -277,6 +277,25 @@ export function sectionForPath(pathname: string): { section: AdminNavSection; it
   return best
 }
 
+/**
+ * The ONE sidebar item that should be lit for a path, or null on a page no
+ * item owns (the dashboard, a login screen).
+ *
+ * It is sectionForPath()'s longest match, deliberately: the highlighted item
+ * and the guide strip at the top of the page are then the same answer, worked
+ * out once.
+ *
+ * The bug this fixes: the sidebar tested every item with
+ * `pathname.startsWith(href + '/')` and lit all of them. On
+ * /admin/supplies/daily/history/2026-09-16 — a page no nav item names, so
+ * there was no exact match to fall back on — /admin/supplies,
+ * /admin/supplies/daily and /admin/supplies/daily/history were all prefixes,
+ * and three pages looked open at once. Only the longest is where you are.
+ */
+export function activeNavHref(pathname: string): string | null {
+  return sectionForPath(pathname)?.item.href ?? null
+}
+
 /** Who is looking: their role and their per-person section changes. */
 export interface NavViewer {
   role: Role | null

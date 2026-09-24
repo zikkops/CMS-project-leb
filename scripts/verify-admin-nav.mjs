@@ -130,6 +130,39 @@ console.log('\nthe sidebar\'s filter box (filterNav)')
     ['', 'h', 'hu', 'hub'].map(q => N.NAV_SEARCH_MIN - N.navSearchLetters(q)), [3, 2, 1, 0])
 }
 
+console.log('\nwhich sidebar item is lit (activeNavHref)')
+{
+  const all = N.ADMIN_NAV
+  const hrefs = all.flatMap(s => s.items.map(i => i.href))
+  // The bug, reported 24 Sep 2026 with a screenshot: three pages looked open
+  // at once. /admin/supplies, /admin/supplies/daily and
+  // /admin/supplies/daily/history are ALL prefixes of a count's date page,
+  // and the sidebar asked each item "am I a prefix?" instead of asking once
+  // which item is the longest match.
+  eq('THE TRAP: a page under several nav pages lights only the longest match',
+    N.activeNavHref('/admin/supplies/daily/history/2026-09-16'), '/admin/supplies/daily/history')
+  eq('...and the shorter prefixes are dark',
+    ['/admin/supplies', '/admin/supplies/daily'].map(h => N.activeNavHref('/admin/supplies/daily/history/2026-09-16') === h),
+    [false, false])
+  eq('never more than one item is lit, on any nav page or any page under one',
+    [...hrefs, ...hrefs.map(h => `${h}/123`), '/admin/supplies/daily/history/2026-09-16']
+      .map(p => hrefs.filter(h => h === N.activeNavHref(p)).length)
+      .filter(n => n > 1).length,
+    0)
+  eq('a nav page lights itself, not a longer page that starts with it',
+    [N.activeNavHref('/admin/supplies'), N.activeNavHref('/admin/supplies/daily')],
+    ['/admin/supplies', '/admin/supplies/daily'])
+  eq('the dashboard lights no section item', N.activeNavHref('/admin'), null)
+  eq('a page outside the panel lights nothing', N.activeNavHref('/admin/login'), null)
+  eq('a path that merely starts with the same letters is not underneath it',
+    N.activeNavHref('/admin/suppliesomething'), null)
+  // The guide strip at the top of the page and the lit sidebar item have to
+  // be the same page, or the two disagree about where you are.
+  eq('the lit item is the one the guide strip names',
+    [...hrefs, '/admin/supplies/daily/history/2026-09-16'].every(p => N.activeNavHref(p) === (N.sectionForPath(p)?.item.href ?? null)),
+    true)
+}
+
 console.log('\nhow Manage Users groups the per-person grants (sectionGroups)')
 {
   const R = await import(`file://${join(out, 'roles.js')}`)
