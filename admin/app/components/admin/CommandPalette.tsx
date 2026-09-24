@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faMagnifyingGlass, faGear } from '@fortawesome/free-solid-svg-icons'
-import { filterNav, type AdminNavSection } from '@big-cms/shared/adminNav'
+import { filterNav, navSearchActive, navSearchLetters, NAV_SEARCH_MIN, type AdminNavSection } from '@big-cms/shared/adminNav'
 
 export function CommandPalette({ sections, onGo, onClose }: {
   sections: AdminNavSection[]
@@ -20,7 +20,12 @@ export function CommandPalette({ sections, onGo, onClose }: {
   const [query, setQuery] = useState('')
   const [at, setAt] = useState(0)
   const input = useRef<HTMLInputElement>(null)
+  // Everything, until the search has enough letters to mean something —
+  // filterNav() holds that rule, so this and the sidebar cannot disagree
+  // about when a search has begun.
   const results = filterNav(sections, query).flatMap(s => s.items.map(item => ({ item, section: s })))
+  const lettersWanted = NAV_SEARCH_MIN - navSearchLetters(query)
+  const typingStill = !navSearchActive(query) && navSearchLetters(query) > 0
   const chosen = Math.min(at, Math.max(0, results.length - 1))
 
   useEffect(() => { input.current?.focus() }, [])
@@ -48,7 +53,7 @@ export function CommandPalette({ sections, onGo, onClose }: {
             value={query}
             onChange={e => { setQuery(e.target.value); setAt(0) }}
             onKeyDown={onKey}
-            placeholder="Go to a page…"
+            placeholder={`Go to a page… ${NAV_SEARCH_MIN} letters`}
             aria-label="Go to a page"
             role="combobox"
             aria-expanded={results.length > 0}
@@ -59,6 +64,11 @@ export function CommandPalette({ sections, onGo, onClose }: {
           <kbd style={{ fontSize: '0.7rem', color: 'rgba(var(--offwhite-rgb),0.4)', border: '1px solid rgba(var(--overlay-rgb),0.15)', borderRadius: '4px', padding: '0.1rem 0.35rem' }}>Esc</kbd>
         </div>
         <ul id="palette-results" role="listbox" style={{ listStyle: 'none', margin: 0, padding: '0.4rem', maxHeight: '50vh', overflowY: 'auto' }}>
+          {typingStill && (
+            <li aria-live="polite" style={{ padding: '0.9rem', fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>
+              {lettersWanted === 1 ? 'One more letter…' : `${lettersWanted} more letters…`}
+            </li>
+          )}
           {results.length === 0 && (
             <li style={{ padding: '0.9rem', fontSize: '0.88rem', color: 'rgba(var(--offwhite-rgb),0.45)' }}>No page matches.</li>
           )}

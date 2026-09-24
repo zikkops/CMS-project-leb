@@ -339,12 +339,42 @@ export function sectionGroups(): { title: string; keys: SectionKey[] }[] {
 }
 
 /**
+ * How many letters a nav search needs before it narrows anything (owner's
+ * request, 24 Sep 2026).
+ *
+ * One or two letters match most of the menu — "s" is in almost every page's
+ * description — so the list heaves about while somebody is still typing and
+ * lands on something that looks arbitrary. Three is where the answer starts
+ * being worth reading.
+ */
+export const NAV_SEARCH_MIN = 3
+
+/**
+ * The letters typed, NOT counting spaces: "a b" is two letters, not three, so
+ * a space can never be what tips a search over the line.
+ */
+export function navSearchLetters(query: string): number {
+  return query.replace(/\s+/g, '').length
+}
+
+/** Whether what has been typed is long enough to narrow the menu. */
+export function navSearchActive(query: string): boolean {
+  return navSearchLetters(query) >= NAV_SEARCH_MIN
+}
+
+/**
  * The navigation narrowed to what a filter typed into the sidebar matches
  * (UPGRADE.md T2.14): an item whose label or description contains every word,
- * in any case; a section with none left is dropped. An empty filter changes
- * nothing.
+ * in any case; a section with none left is dropped.
+ *
+ * Under NAV_SEARCH_MIN letters it changes nothing, so the sidebar and the
+ * Ctrl+K finder cannot disagree about when a search has started — which is
+ * exactly how the two nav lists drifted apart before there was one of them.
+ * Both screens say how many letters are still wanted, because a menu that
+ * ignores typing without a word about it reads as broken.
  */
 export function filterNav(sections: AdminNavSection[], query: string): AdminNavSection[] {
+  if (!navSearchActive(query)) return sections
   const words = query.toLowerCase().split(/\s+/).filter(Boolean)
   if (words.length === 0) return sections
   return sections

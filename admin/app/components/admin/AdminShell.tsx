@@ -14,7 +14,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'firebase/auth'
 import { auth } from '@big-cms/shared/firebase'
 import { useAdminUser, ROLE_LABELS } from '@big-cms/shared/adminAuth'
-import { ADMIN_NAV, sectionForPath, visibleNav, filterNav, type AdminNavSection, type AdminNavItem } from '@big-cms/shared/adminNav'
+import { ADMIN_NAV, sectionForPath, visibleNav, filterNav, navSearchActive, navSearchLetters, NAV_SEARCH_MIN, type AdminNavSection, type AdminNavItem } from '@big-cms/shared/adminNav'
 import { useFeatureFlags } from '@big-cms/shared/useFeatures'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
@@ -260,7 +260,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     setOpenChoice(next)
     try { window.localStorage.setItem(NAV_OPEN_KEY, JSON.stringify(next)) } catch { /* private mode */ }
   }
-  const filtering = navFilter.trim() !== ''
+  // Searching means the filter is actually narrowing something, not merely
+  // that a key has been pressed: under NAV_SEARCH_MIN letters the menu is
+  // whole, so the sections must not all spring open either.
+  const filtering = navSearchActive(navFilter)
+  const lettersWanted = NAV_SEARCH_MIN - navSearchLetters(navFilter)
+  const typingStill = lettersWanted > 0 && navSearchLetters(navFilter) > 0
 
   // Ctrl+K / ⌘K opens the page finder from anywhere (UPGRADE.md T2.15).
   const [palette, setPalette] = useState(false)
@@ -322,7 +327,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             type="search"
             value={navFilter}
             onChange={e => setNavFilter(e.target.value)}
-            placeholder="Find a page…  (Ctrl+K)"
+            placeholder={`Find a page… ${NAV_SEARCH_MIN} letters (Ctrl+K)`}
             aria-label="Find a page"
             style={{
               width: '100%', boxSizing: 'border-box', minHeight: '38px', marginBottom: '0.8rem',
@@ -330,6 +335,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               padding: '0.45rem 0.7rem', color: 'var(--offwhite)', fontFamily: 'var(--font-inter)', fontSize: '0.85rem', outline: 'none',
             }}
           />
+        )}
+        {/* Typing that is not searching yet says so. Without this the menu
+            simply ignores the first two letters, which reads as a search box
+            that does not work. */}
+        {!compact && typingStill && (
+          <p aria-live="polite" style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.45)', padding: '0 0.55rem 0.8rem' }}>
+            {lettersWanted === 1 ? 'One more letter…' : `${lettersWanted} more letters…`}
+          </p>
         )}
         {filtering && shownSections.length === 0 && (
           <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.8rem', color: 'rgba(var(--offwhite-rgb),0.45)', padding: '0 0.55rem 0.8rem' }}>

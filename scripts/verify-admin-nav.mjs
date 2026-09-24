@@ -113,6 +113,21 @@ console.log('\nthe sidebar\'s filter box (filterNav)')
     return text.includes('receipt') && text.includes('printers')
   }), true)
   eq('a section with nothing left is dropped', N.filterNav(all, 'zzzz-nothing').length, 0)
+
+  // The minimum (owner's request, 24 Sep 2026). One or two letters match most
+  // of the menu, so the list heaves about while somebody is still typing.
+  const whole = JSON.stringify(all)
+  eq(`the minimum is ${N.NAV_SEARCH_MIN} letters`, N.NAV_SEARCH_MIN, 3)
+  eq('THE TRAP: under the minimum the menu is WHOLE, not empty and not narrowed',
+    ['', 'h', 'hu'].map(q => JSON.stringify(N.filterNav(all, q)) === whole), [true, true, true])
+  eq('at the minimum it narrows', JSON.stringify(N.filterNav(all, 'hub')) === whole, false)
+  eq('a word that would match nothing still narrows once it is long enough',
+    [N.filterNav(all, 'zz').length === all.length, N.filterNav(all, 'zzz').length], [true, 0])
+  eq('spaces are not letters, so a space can never tip a search over the line',
+    [N.navSearchLetters('a b'), N.navSearchLetters('  hub  '), N.navSearchActive('a b'), N.navSearchActive('  hub  ')],
+    [2, 3, false, true])
+  eq('how many letters are still wanted, for what the sidebar says',
+    ['', 'h', 'hu', 'hub'].map(q => N.NAV_SEARCH_MIN - N.navSearchLetters(q)), [3, 2, 1, 0])
 }
 
 console.log('\nhow Manage Users groups the per-person grants (sectionGroups)')
