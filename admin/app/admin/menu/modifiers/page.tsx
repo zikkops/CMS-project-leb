@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { Page, PageHeader } from '../../../components/ui'
 import { useRequireRole, SECTION_ACCESS } from '@big-cms/shared/adminAuth'
 import { authedFetch, unwrap } from '@big-cms/shared/apiClient'
 import { db } from '@big-cms/shared/firebase'
@@ -337,25 +338,15 @@ export default function ModifiersPage() {
   if (checking) return null
 
   return (
-    <div style={{ maxWidth: '760px' }}>
-      <Link href="/admin/menu" style={{
-        fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.16em',
-        textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)',
-        textDecoration: 'none', display: 'block', marginBottom: '0.6rem',
-      }}>← Manage Menu</Link>
-
-      <h1 style={{
-        fontFamily: 'var(--font-cinzel)', fontSize: isMobile ? '1.5rem' : '1.9rem',
-        color: 'var(--offwhite)', marginBottom: '0.5rem',
-      }}>Item options</h1>
-      <p style={{
-        fontFamily: 'var(--font-inter)', fontSize: '0.85rem',
-        color: 'rgba(var(--offwhite-rgb),0.4)', lineHeight: 1.7, marginBottom: '1.75rem', maxWidth: '56ch',
-      }}>
-        The choices a waiter is asked for when they add an item at the till —
-        size, milk, extras. Define a group once and attach it to as many items
-        as need it, so adding oat milk is one edit rather than fourteen.
-      </p>
+    <Page width="narrow">
+      <PageHeader
+        title="Item options"
+        lead="The choices a waiter is asked for when they add an item at the till — size, milk, extras. Define a group once and attach it to as many items as need it, so adding oat milk is one edit rather than fourteen."
+        actions={<Link href="/admin/menu" style={{
+          fontFamily: 'var(--font-inter)', fontSize: '0.68rem', letterSpacing: '0.16em',
+          textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', textDecoration: 'none',
+        }}>← Manage Menu</Link>}
+      />
 
       {error && (
         <p style={{
@@ -445,6 +436,6 @@ export default function ModifiersPage() {
           letterSpacing: '0.12em', textTransform: 'uppercase',
         }}>+ New option group</button>
       )}
-    </div>
+    </Page>
   )
 }
