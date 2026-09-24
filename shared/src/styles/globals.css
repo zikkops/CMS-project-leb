@@ -20,6 +20,18 @@ body {
   background-color: var(--brand-background);
   color: var(--brand-foreground);
   min-height: 100vh;
+
+  /* A long unbroken token — a uid, a device id, an invoice number, a SKU —
+     has nowhere to break, so on a phone it drags the whole page sideways and
+     every other page element with it. This panel is full of them.
+
+     It must be `anywhere`, not `break-word`: only `anywhere` counts towards
+     an element's minimum content width, which is what lets a flex or grid
+     item actually shrink. Measured at 375px with a 40-character id in a flex
+     row — `normal` and `break-word` both overflowed to 422px, `anywhere`
+     fitted. Text that deliberately does not wrap sets `white-space: nowrap`,
+     which still wins, so nothing meant to stay on one line is affected. */
+  overflow-wrap: anywhere;
 }
 
 html {
