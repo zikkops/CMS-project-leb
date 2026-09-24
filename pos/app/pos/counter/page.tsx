@@ -148,7 +148,7 @@ export default function CounterPage() {
   // A branch a café hub trades is view-only online (S10). The outbox would
   // only queue refusals, so the screen says so first.
   const hubOnly = useHubOnly(branch)
-  const menu = usePosMenu()
+  const menu = usePosMenu(branch)
   const { settings } = useBusinessSettings()
   const { on: takesPayment } = useFeature('payments')
   // The kitchen's Ready pops up here (owner's decision, 14 Sep 2026). With no

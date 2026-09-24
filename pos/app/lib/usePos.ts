@@ -31,6 +31,7 @@ import type { LocalDoc } from './backend/queries'
 import type { Check, Station } from '@big-cms/shared/checks'
 import type { PaymentRequest } from '@big-cms/shared/payments'
 import type { DenomCount, DrawerMovement, DrawerTotals, Money2 } from '@big-cms/shared/drawer'
+import { tillMenu } from '@big-cms/shared/posLayout'
 import { readSoldOut } from '@big-cms/shared/soldOut'
 import { ACTIVE_TICKET_STATUSES, type Ticket } from '@big-cms/shared/tickets'
 import { effectivePrice, saleIsActive } from '@big-cms/shared/productPricing'
@@ -414,7 +415,7 @@ export interface PosMenuItem {
 
 export interface PosMenu {
   items: PosMenuItem[]
-  categories: { id: string; name: string; section: string; image: string }[]
+  categories: { id: string; name: string; section: string; image: string; posHidden?: unknown }[]
   groups: Record<string, import('@big-cms/shared/modifiers').ModifierGroup>
   loading: boolean
 }
@@ -427,7 +428,7 @@ export interface PosMenu {
  * persistence serves it from cache after the first load. Fetching per
  * category would be a network round trip between every tap.
  */
-export function usePosMenu(): PosMenu {
+export function usePosMenu(branch?: string): PosMenu {
   const { ready } = useAuthReady()
   const [items, setItems] = useState<PosMenuItem[]>([])
   const [categories, setCategories] = useState<PosMenu['categories']>([])
@@ -448,6 +449,7 @@ export function usePosMenu(): PosMenu {
           name: String(d.data.name ?? ''),
           section: String(d.data.section ?? ''),
           image: String(d.data.image ?? ''),
+          posHidden: d.data.posHidden,
         })))
         setLoaded(l => ({ ...l, cats: true }))
       }, () => setLoaded(l => ({ ...l, cats: true }))),
@@ -473,6 +475,7 @@ export function usePosMenu(): PosMenu {
               ? data.modifierGroupIds as string[] : [],
             image: typeof data.image === 'string' ? data.image : '',
             soldOut: readSoldOut(data.soldOut),
+            posHidden: data.posHidden,
           }
         }))
         setLoaded(l => ({ ...l, items: true }))
@@ -508,9 +511,16 @@ export function usePosMenu(): PosMenu {
     }
   })
 
+  // What this branch's till shows (UPGRADE.md T7.20). Applied here, so every
+  // screen that reads the menu agrees about it — the order screen and the
+  // counter both come through this hook. With no branch given nothing is
+  // hidden, because a screen that does not know where it is must not start
+  // guessing what to leave out.
+  const shown = branch ? tillMenu(categories, joined, branch) : { categories, items: joined }
+
   return {
-    items: joined,
-    categories,
+    items: shown.items,
+    categories: shown.categories,
     groups,
     loading: !(loaded.items && loaded.cats && loaded.groups),
   }

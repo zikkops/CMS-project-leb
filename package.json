@@ -44,6 +44,7 @@
     "rules:live": "node --env-file=.env.local scripts/check-rules.mjs",
     "verify:export": "node scripts/verify-export.mjs",
     "verify:reports": "node scripts/verify-reports.mjs",
+    "verify:pos-layout": "node scripts/verify-pos-layout.mjs",
     "audit:mobile": "node scripts/audit-mobile.mjs",
     "seed:pos": "node --env-file=.env.local scripts/seed-pos.mjs",
     "seed:stock": "node --env-file=.env.local scripts/seed-stock.mjs",

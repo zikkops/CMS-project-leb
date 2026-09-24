@@ -331,7 +331,7 @@ export default function CheckPage() {
   // A branch a café hub trades is view-only online (S10).
   const hubOnly = useHubOnly(check?.branch ?? '')
   const now = useNow()
-  const menu = usePosMenu()
+  const menu = usePosMenu(check?.branch)
   // Phase 04: with the payments feature on, Close goes through the payment
   // sheet. Off — the pilot — it is the v1 confirmation, unchanged.
   const { on: takesPayment } = useFeature('payments')

@@ -104,6 +104,7 @@ export const ADMIN_NAV: AdminNavSection[] = [
       { label: 'Item Options', href: '/admin/menu/modifiers', access: SECTION_ACCESS.menu, icon: faSliders, kind: 'setup', desc: 'Sizes, milks and extras offered on items, and what they cost.' },
       // Admin only, reading as well as writing: a recipe is what a dish costs,
       // which is margin (owner's decision, 14 Sep 2026).
+      { label: 'POS Layout', href: '/admin/menu/pos-layout', access: SECTION_ACCESS.menu, icon: faCashRegister, kind: 'setup', desc: 'What each branch’s till shows of the menu — hide a whole category, or single dishes, without taking them off the website.' },
       { label: 'Recipes & Costing', href: '/admin/menu/recipes', access: ADMIN_ONLY, icon: faBookOpen, kind: 'setup', desc: 'What each dish is made of, what it costs to make, its allergens and a suggested price.' },
     ],
   },
