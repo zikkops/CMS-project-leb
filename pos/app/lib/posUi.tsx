@@ -319,8 +319,15 @@ export function ErrorNote({ message, details, tone = 'danger' }: {
       {split.rest && (
         <>
           {' '}
+          {/* It sits inline in a sentence, so it cannot simply be 44px tall
+              without pushing the line apart. The padding grows the hit area
+              and the equal negative margin takes the space back, so it is a
+              finger-sized target that looks exactly like a word. Measured
+              16px tall before this — half of what everything else on the
+              till is built to. */}
           <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} style={{
-            background: 'none', border: 'none', padding: '0 0.2rem', color: 'inherit', cursor: 'pointer',
+            background: 'none', border: 'none', color: 'inherit', cursor: 'pointer',
+            padding: '0.85rem 0.4rem', margin: '-0.85rem -0.2rem',
             fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 700, textDecoration: 'underline',
           }}>{open ? 'Less' : 'Details'}</button>
           {open && <span style={{ display: 'block', marginTop: '0.4rem', opacity: 0.85, fontSize: '0.88rem' }}>{split.rest}</span>}

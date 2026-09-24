@@ -34,6 +34,25 @@ body {
   overflow-wrap: anywhere;
 }
 
+/*
+  Tables are the exception, and they have to be.
+
+  A wide table is meant to SCROLL inside its own wrapper — that is what the
+  overflowX: 'auto' around every one of them is for. `anywhere` takes a cell's
+  minimum width down to a single character, so the table dutifully squeezes
+  itself into whatever it is given and never triggers that scroll: an
+  eight-column report came out as columns of one letter stacked vertically,
+  which is worse than the overflow it was meant to prevent.
+
+  Measured on a real one at 375px: with `anywhere` the table shrank to 286px
+  and did not scroll; with `normal` it is its natural 909px and scrolls inside
+  a 286px wrapper, with the page still 375px wide. A long id in a cell simply
+  makes that column wide, and the wrapper scrolls to it.
+*/
+table, th, td {
+  overflow-wrap: normal;
+}
+
 html {
   /* Literal rather than a var: this paints before the layout's injected style
      is parsed, so a var here would flash the browser default first. Keep it in
