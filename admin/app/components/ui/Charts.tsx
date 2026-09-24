@@ -19,7 +19,7 @@
 //     underneath, so nothing is only available by eye or only by colour.
 //   · Grid and axes recede; the marks carry the ink.
 
-import { useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 
 export type ChartUnit = 'usd' | 'lbp' | 'count' | 'percent' | 'hours'
 
@@ -45,6 +45,42 @@ const ink = 'var(--offwhite)'
 const inkSoft = 'rgba(var(--offwhite-rgb),0.62)'
 const inkFaint = 'rgba(var(--overlay-rgb),0.12)'
 const font = 'var(--font-inter)'
+
+/** Deliberately duplicated rather than imported — see CLAUDE.md. */
+function useIsMobile(bp = 880) {
+  const [v, setV] = useState(false)
+  useEffect(() => {
+    const fn = () => setV(window.innerWidth < bp)
+    fn(); window.addEventListener('resize', fn); return () => window.removeEventListener('resize', fn)
+  }, [bp])
+  return v
+}
+
+/**
+ * The drawing's own width. The SVG scales to its container, so this is really
+ * a choice about how big the text comes out: at 720 units in a 360px-wide
+ * phone every label renders at half size, which is why the first version was
+ * unreadable on a phone. A narrow viewBox on a narrow screen keeps roughly
+ * one unit to one pixel, and the 11px labels stay 11px.
+ */
+const chartWidth = (isMobile: boolean) => (isMobile ? 360 : 720)
+const LABEL_PX = 11
+/** Room for the value axis and its numbers. */
+const AXIS_W = 56
+
+/**
+ * Roughly how wide a string is at LABEL_PX, without touching the DOM.
+ * Measuring properly costs a layout read per render, and this only has to be
+ * close enough to decide whether a name fits in a column.
+ */
+const textWidth = (s: string) => s.length * 6.1
+
+/** A name cut to the room it has, with an ellipsis, never overlapping its neighbour. */
+function clip(s: string, room: number): string {
+  if (textWidth(s) <= room) return s
+  const keep = Math.max(1, Math.floor(room / 6.1) - 1)
+  return `${s.slice(0, keep).trimEnd()}…`
+}
 
 /** How a value is written, by what it is. */
 export function formatValue(value: number, unit: ChartUnit): string {
@@ -118,19 +154,30 @@ function Empty({ label }: { label: string }) {
 }
 
 /**
- * Magnitude across a handful of named things. `diverging` colours each bar by
- * its direction instead of one hue — for a difference, an over and a short.
+ * Magnitude across a handful of named things.
+ *
+ * It lays itself out on its side when the names will not fit standing up —
+ * ten dish names under vertical bars overlap into mush, and squinting past
+ * that is not something to ask of a reader. On its side each name has a whole
+ * row to itself and reads left to right, which is what a ranked list wants
+ * anyway.
+ *
+ * `diverging` colours each bar by its direction instead of one hue — for a
+ * difference, an over and a short.
  */
-export function BarChart({ title, note, points, unit, diverging = false, height = 200, empty = 'Nothing to show for this period.' }: {
+export function BarChart({ title, note, points, unit, diverging = false, height = 200, layout = 'auto', empty = 'Nothing to show for this period.' }: {
   title?: string
   note?: ReactNode
   points: readonly ChartPoint[]
   unit: ChartUnit
   diverging?: boolean
   height?: number
+  /** 'auto' turns the chart on its side when the names need it. */
+  layout?: 'auto' | 'vertical' | 'horizontal'
   empty?: string
 }) {
   const [hover, setHover] = useState<number | null>(null)
+  const isMobile = useIsMobile()
   const id = useId()
   if (points.length === 0) return <Frame title={title} note={note} table={null}><Empty label={empty} /></Frame>
 
@@ -140,38 +187,90 @@ export function BarChart({ title, note, points, unit, diverging = false, height 
   const top = niceTop(max)
   const bottom = min < 0 ? -niceTop(-min) : 0
   const span = top - bottom || 1
+  const table = <NumbersTable head={['', title ?? 'Value']} rows={points.map(p => [p.label, formatValue(p.value, unit)])} />
 
-  const W = 720
-  const padL = 56
+  const W = chartWidth(isMobile)
+  const nameOf = (p: ChartPoint) => p.short ?? p.label
+  const widest = Math.max(...points.map(p => textWidth(nameOf(p))))
+  const standing = (W - AXIS_W - 12) / points.length
+  // Standing up only while every name fits in its own column, with a little
+  // air either side. Otherwise on its side, where there is a row each.
+  const sideways = layout === 'horizontal' || (layout === 'auto' && widest > standing - 6)
+
+  if (sideways) {
+    const gutter = Math.min(W * 0.42, widest + 8)
+    const valueRoom = Math.max(...points.map(p => textWidth(compact(p.value, unit)))) + 14
+    const rowH = isMobile ? 30 : 28
+    const padT = 6
+    const padB = 6
+    const plotW = Math.max(20, W - gutter - valueRoom)
+    const tall = points.length * rowH + padT + padB
+    const x = (v: number) => gutter + ((v - bottom) / span) * plotW
+    const zeroX = x(0)
+    const barH = Math.min(22, rowH - 6)
+
+    return (
+      <Frame title={title} note={note} table={table}>
+        <svg viewBox={`0 0 ${W} ${tall}`} style={{ width: '100%', height: 'auto' }} role="img"
+          aria-label={`${title ?? 'Chart'}: ${points.length} values, largest ${formatValue(max, unit)}`}>
+          {min < 0 && <line x1={zeroX} x2={zeroX} y1={padT} y2={tall - padB} stroke="rgba(var(--offwhite-rgb),0.45)" strokeWidth={1} />}
+          {points.map((p, i) => {
+            const rowY = padT + i * rowH
+            const barY = rowY + (rowH - barH) / 2
+            const from = p.value >= 0 ? zeroX : x(p.value)
+            const w = Math.max(2, Math.abs(x(p.value) - zeroX))
+            const colour = diverging ? (p.value >= 0 ? 'var(--chart-up)' : 'var(--chart-down)') : seriesColour(0)
+            return (
+              <g key={`${id}-${p.label}-${i}`} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}>
+                <rect x={0} y={rowY} width={W} height={rowH} fill={hover === i ? 'rgba(var(--overlay-rgb),0.06)' : 'transparent'} />
+                <text x={gutter - 6} y={rowY + rowH / 2 + 4} textAnchor="end" fill={inkSoft} fontSize={LABEL_PX} fontFamily={font}>
+                  {clip(nameOf(p), gutter - 8)}
+                  <title>{p.label}</title>
+                </text>
+                <rect x={from} y={barY} width={w} height={barH} rx={4} fill={colour} opacity={hover === null || hover === i ? 1 : 0.55} />
+                {/* Every value in one column at the right, not trailing its
+                    own bar: a short negative bar's figure landed on top of
+                    the name, and a column is easier to read down anyway. The
+                    bars can never reach it — valueRoom is held back from
+                    plotW. */}
+                <text x={W - 2} y={rowY + rowH / 2 + 4} textAnchor="end" fill={inkSoft} fontSize={LABEL_PX} fontFamily={font}>
+                  {compact(p.value, unit)}
+                </text>
+              </g>
+            )
+          })}
+        </svg>
+      </Frame>
+    )
+  }
+
+  const padL = AXIS_W
   const padR = 12
   const padT = 14
   const padB = 34
+  const tall = isMobile ? Math.max(height, 180) : height
   const plotW = W - padL - padR
-  const plotH = height - padT - padB
+  const plotH = tall - padT - padB
   const y = (v: number) => padT + ((top - v) / span) * plotH
   const zeroY = y(0)
   // 2px of surface between bars, whatever the count (a gap, not a ratio).
   const slot = plotW / points.length
   const barW = Math.max(3, Math.min(48, slot - 2))
-  // Every label would collide past a dozen or so: thin them, keep the ends.
-  const every = Math.ceil(points.length / 12)
+  // Keep only the names that fit, and always the last one.
+  const every = Math.max(1, Math.ceil(widest / Math.max(1, slot - 4)))
 
   return (
-    <Frame
-      title={title}
-      note={note}
-      table={<NumbersTable head={['', title ?? 'Value']} rows={points.map(p => [p.label, formatValue(p.value, unit)])} />}
-    >
+    <Frame title={title} note={note} table={table}>
       <div style={{ position: 'relative' }}>
         {/* Scaled by width, with the height following: a fixed height and a
             viewBox of its own aspect letterboxes the drawing in a narrow
             column, which reads as a chart floating in a gap. */}
-        <svg viewBox={`0 0 ${W} ${height}`} style={{ width: '100%', height: 'auto' }} role="img"
+        <svg viewBox={`0 0 ${W} ${tall}`} style={{ width: '100%', height: 'auto' }} role="img"
           aria-label={`${title ?? 'Chart'}: ${points.length} values, largest ${formatValue(max, unit)}`}>
           {[top, (top + bottom) / 2, bottom].map(v => (
             <g key={v}>
               <line x1={padL} x2={W - padR} y1={y(v)} y2={y(v)} stroke={inkFaint} strokeWidth={1} />
-              <text x={padL - 8} y={y(v) + 4} textAnchor="end" fill={inkSoft} fontSize={11} fontFamily={font}>{compact(v, unit)}</text>
+              <text x={padL - 8} y={y(v) + 4} textAnchor="end" fill={inkSoft} fontSize={LABEL_PX} fontFamily={font}>{compact(v, unit)}</text>
             </g>
           ))}
           {points.map((p, i) => {
@@ -191,8 +290,8 @@ export function BarChart({ title, note, points, unit, diverging = false, height 
           })}
           {min < 0 && <line x1={padL} x2={W - padR} y1={zeroY} y2={zeroY} stroke="rgba(var(--offwhite-rgb),0.45)" strokeWidth={1} />}
           {points.map((p, i) => (i % every === 0 || i === points.length - 1 ? (
-            <text key={`x-${i}`} x={padL + i * slot + slot / 2} y={height - 12} textAnchor="middle" fill={inkSoft} fontSize={11} fontFamily={font}>
-              {p.short ?? p.label}
+            <text key={`x-${i}`} x={padL + i * slot + slot / 2} y={tall - 12} textAnchor="middle" fill={inkSoft} fontSize={LABEL_PX} fontFamily={font}>
+              {clip(nameOf(p), slot + 6)}
             </text>
           ) : null))}
         </svg>
@@ -224,6 +323,7 @@ export function LineChart({ title, note, series, unit, height = 220, empty = 'No
   empty?: string
 }) {
   const [hover, setHover] = useState<number | null>(null)
+  const isMobile = useIsMobile()
   const live = series.filter(s => s.points.length > 0)
   if (live.length === 0) return <Frame title={title} note={note} table={null}><Empty label={empty} /></Frame>
 
@@ -235,16 +335,30 @@ export function LineChart({ title, note, series, unit, height = 220, empty = 'No
   const bottom = min < 0 ? -niceTop(-min) : 0
   const span = top - bottom || 1
 
-  const W = 720
-  const padL = 56
-  const padR = live.length > 1 ? 92 : 14
+  const W = chartWidth(isMobile)
+  const padL = AXIS_W
+  // No room on a phone to write the series name beside its last point: the
+  // legend under the chart carries identity there instead.
+  const named = live.length > 1 && !isMobile
+  const padR = named ? 92 : 14
   const padT = 14
   const padB = 34
+  const tall = isMobile ? Math.max(height, 200) : height
   const plotW = W - padL - padR
-  const plotH = height - padT - padB
+  const plotH = tall - padT - padB
   const x = (i: number) => padL + (labels.length === 1 ? plotW / 2 : (i / (labels.length - 1)) * plotW)
   const y = (v: number) => padT + ((top - v) / span) * plotH
-  const every = Math.ceil(labels.length / 10)
+  // Thin the dates to what actually fits, not to a guessed count: eight
+  // 'MM-DD' labels do not fit in 300 units however few of them there are.
+  const widestLabel = Math.max(...live[0].points.map(p => textWidth(p.short ?? p.label)))
+  const every = Math.max(1, Math.ceil(widestLabel / Math.max(1, plotW / Math.max(1, labels.length - 1))))
+  // The last date always shows, so any kept label too close to it is dropped
+  // rather than drawn over it: '09-13' and '09-14' ran together at the right
+  // edge until this. Half a label's width each side is the clearance.
+  const last = labels.length - 1
+  const shownLabels = labels
+    .map((_, i) => i)
+    .filter(i => i === last || (i % every === 0 && x(last) - x(i) >= widestLabel))
 
   return (
     <Frame
@@ -255,13 +369,13 @@ export function LineChart({ title, note, series, unit, height = 220, empty = 'No
         rows={labels.map((label, i) => [label, ...live.map(s => formatValue(s.points[i]?.value ?? 0, unit))])} />}
     >
       <div style={{ position: 'relative' }}>
-        <svg viewBox={`0 0 ${W} ${height}`} style={{ width: '100%', height: 'auto' }} role="img"
+        <svg viewBox={`0 0 ${W} ${tall}`} style={{ width: '100%', height: 'auto' }} role="img"
           aria-label={`${title ?? 'Chart'}: ${live.map(s => s.name).join(', ')} over ${labels.length} points`}
           onMouseLeave={() => setHover(null)}>
           {[top, (top + bottom) / 2, bottom].map(v => (
             <g key={v}>
               <line x1={padL} x2={W - padR} y1={y(v)} y2={y(v)} stroke={inkFaint} strokeWidth={1} />
-              <text x={padL - 8} y={y(v) + 4} textAnchor="end" fill={inkSoft} fontSize={11} fontFamily={font}>{compact(v, unit)}</text>
+              <text x={padL - 8} y={y(v) + 4} textAnchor="end" fill={inkSoft} fontSize={LABEL_PX} fontFamily={font}>{compact(v, unit)}</text>
             </g>
           ))}
           {min < 0 && <line x1={padL} x2={W - padR} y1={y(0)} y2={y(0)} stroke="rgba(var(--offwhite-rgb),0.45)" strokeWidth={1} />}
@@ -275,8 +389,8 @@ export function LineChart({ title, note, series, unit, height = 220, empty = 'No
                 {s.points.length <= 20 && s.points.map((p, i) => (
                   <circle key={i} cx={x(i)} cy={y(p.value)} r={4} fill={seriesColour(si)} stroke="var(--black)" strokeWidth={2} />
                 ))}
-                {live.length > 1 && (
-                  <text x={W - padR + 6} y={y(s.points[s.points.length - 1]?.value ?? 0) + 4} fill={seriesColour(si)} fontSize={11} fontFamily={font}>
+                {named && (
+                  <text x={W - padR + 6} y={y(s.points[s.points.length - 1]?.value ?? 0) + 4} fill={seriesColour(si)} fontSize={LABEL_PX} fontFamily={font}>
                     {s.name}
                   </text>
                 )}
@@ -291,11 +405,11 @@ export function LineChart({ title, note, series, unit, height = 220, empty = 'No
               width={Math.max(6, plotW / Math.max(1, labels.length))} height={plotH} fill="transparent"
               onMouseEnter={() => setHover(i)} />
           ))}
-          {labels.map((label, i) => (i % every === 0 || i === labels.length - 1 ? (
-            <text key={`x-${label}-${i}`} x={x(i)} y={height - 12} textAnchor="middle" fill={inkSoft} fontSize={11} fontFamily={font}>
-              {live[0].points[i]?.short ?? label}
+          {shownLabels.map(i => (
+            <text key={`x-${i}`} x={x(i)} y={tall - 12} textAnchor="middle" fill={inkSoft} fontSize={LABEL_PX} fontFamily={font}>
+              {live[0].points[i]?.short ?? labels[i]}
             </text>
-          ) : null))}
+          ))}
         </svg>
         {hover !== null && (
           <div role="status" style={{
