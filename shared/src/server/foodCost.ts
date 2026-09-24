@@ -62,6 +62,9 @@ export async function readTheoreticalFoodCost(
         consumesPerServing: line.consumesPerServing,
         consumesUnknown: line.consumesUnknown,
         source: line.source,
+        // Carried through, or the food cost would count a games hour as a dish
+        // whose recipe nobody wrote and report worse coverage for it.
+        ...(line.charge === true ? { charge: true } : {}),
         // The line's share of what the check charged for goods — staff meal,
         // item discount and its part of any whole-check discount taken off,
         // and no service charge, which is not the food's price (T7.8).

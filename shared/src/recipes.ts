@@ -577,6 +577,8 @@ export interface SoldLine extends ConsumingLine {
   vatRate: number | null
   /** 'product' is merchandise off the shelf — not food, so not in food cost. */
   source?: string
+  /** A games hour, an event fee: sold, but nothing a recipe could cost. */
+  charge?: boolean
 }
 
 export interface TheoreticalFoodCost {
@@ -623,7 +625,10 @@ export function theoreticalFoodCost(lines: readonly SoldLine[]): TheoreticalFood
   let linesWithoutVatRate = 0
 
   for (const l of lines) {
-    if (l.status === 'void' || l.source === 'product' || !Number.isFinite(l.salesUsd)) continue
+    // A charge is left out of BOTH sides, not counted as a dish somebody
+    // forgot to write a recipe for: in the denominator it would drag coverage
+    // down and read as a gap in the recipes, when there is nothing to cost.
+    if (l.status === 'void' || l.source === 'product' || l.charge === true || !Number.isFinite(l.salesUsd)) continue
     const rate = l.vatRate
     const hasRate = typeof rate === 'number' && Number.isFinite(rate) && rate >= 0 && rate < 1
     if (!hasRate) linesWithoutVatRate++

@@ -3,7 +3,14 @@
 
 import type { PriceRule, TimeWindow } from '@big-cms/shared/timePricing'
 
-export type Section = 'Food' | 'Beverage' | 'Sweets'
+/**
+ * 'Charges' is for what a café sells that is not food or drink — a games
+ * hour, an event fee, room hire (owner's request, 24 Sep 2026). A category in
+ * it is a folder on the till like any other, but its items fire to no kitchen
+ * station, take no staff-meal rate and are left out of the food cost rather
+ * than counted as dishes with a recipe missing.
+ */
+export type Section = 'Food' | 'Beverage' | 'Sweets' | 'Charges'
 
 export interface Category {
   id: string
@@ -47,7 +54,7 @@ export const EMPTY_ITEM = {
 
 export type ItemForm = typeof EMPTY_ITEM
 
-export const SECTIONS: Section[] = ['Food', 'Beverage', 'Sweets']
+export const SECTIONS: Section[] = ['Food', 'Beverage', 'Sweets', 'Charges']
 
 export const smallButton: React.CSSProperties = {
   background: 'transparent', border: '1px solid rgba(var(--overlay-rgb),0.15)', color: 'rgba(var(--offwhite-rgb),0.75)',
@@ -58,6 +65,7 @@ export const sectionColors: Record<Section, string> = {
   Food:     'var(--teal)',
   Beverage: 'var(--purple)',
   Sweets:   'var(--red)',
+  Charges:  'var(--navy)',
 }
 
 export const inputStyle = {

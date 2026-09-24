@@ -394,7 +394,7 @@ export interface ProductMix {
 export const RETAIL = 'Retail'
 export const OFF_MENU = 'No longer on the menu'
 
-interface CostSums { netSales: number; costedSales: number; costSum: number; costedAny: boolean }
+interface CostSums { netSales: number; costedSales: number; costSum: number; costedAny: boolean; chargeSales: number }
 
 /** Margin figures from the sums: null, never 0, when nothing could be costed. */
 function marginOf(s: CostSums) {
@@ -406,7 +406,12 @@ function marginOf(s: CostSums) {
     cost,
     margin,
     marginPercent: margin !== null && s.costedSales > 0 ? Math.round((margin / s.costedSales) * 10_000) / 10_000 : null,
-    coverage: s.netSales > 0 ? Math.round((s.costedSales / s.netSales) * 10_000) / 10_000 : null,
+    // Over what COULD be costed, not over all of it. A games hour is revenue
+    // with nothing to cost, so counting it in the denominator would report
+    // Games as 0% covered and read as a recipe somebody forgot to write.
+    coverage: s.netSales - s.chargeSales > 0
+      ? Math.round((s.costedSales / (s.netSales - s.chargeSales)) * 10_000) / 10_000
+      : null,
   }
 }
 
@@ -415,6 +420,7 @@ const sumCosts = (rows: readonly CostSums[]): CostSums => ({
   costedSales: rows.reduce((s, r) => s + r.costedSales, 0),
   costSum: rows.reduce((s, r) => s + r.costSum, 0),
   costedAny: rows.some(r => r.costedAny),
+  chargeSales: rows.reduce((s, r) => s + r.chargeSales, 0),
 })
 
 /**
@@ -458,7 +464,7 @@ export function productMix(
       const row: Row = items.get(key) ?? {
         key, name: line.name, category, quantity: 0, revenue: 0, share: 0, inCombos: 0,
         netSales: 0, costedSales: 0, cost: null, margin: null, marginPercent: null, coverage: null,
-        uncostedLines: 0, noRecipeLines: 0, costSum: 0, costedAny: false, lastSeen: -1,
+        uncostedLines: 0, noRecipeLines: 0, costSum: 0, costedAny: false, chargeSales: 0, lastSeen: -1,
       }
       if (order >= row.lastSeen) { row.name = line.name; row.lastSeen = order }
       items.set(key, row)
@@ -479,6 +485,10 @@ export function productMix(
       // Each line to the cent, so branches and items add up to the total exactly.
       const exVat = r2(hasRate ? goods / (1 + (rate as number)) : goods)
       row.netSales += exVat
+      // A charge sells and is counted, but nothing about it is a recipe: it is
+      // neither costed nor missing a recipe, so it touches none of the cost
+      // counters and is kept out of the coverage denominator.
+      if (line.charge === true) { row.chargeSales += exVat; continue }
       const c = consumptionCost({ consumes: lineTaken(line), unknown: [...(line.consumesUnknown ?? [])] })
       if (c.reason === 'ok') { row.costedAny = true; row.costedSales += exVat; row.costSum += c.costUsd as number }
       else if (c.reason === 'incomplete') row.uncostedLines++

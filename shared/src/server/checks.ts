@@ -19,7 +19,7 @@ import { adminDb, hubDbPath } from './firebaseAdmin'
 import { HttpError, type Caller } from './auth'
 import { BRANCHES, STOCKED_BRANCHES } from '../branches'
 import {
-  CHECK_LIMITS, stationForSection, voidReason, reversalRefusal, checkLabel, orderOpenProblem, orderTypeOf, readOrderName, moveProblem, moveAlreadyApplied, type OrderType, BATCH_KEY_PATTERN, batchAlreadyApplied,
+  CHECK_LIMITS, stationForSection, isChargeSection, voidReason, reversalRefusal, checkLabel, orderOpenProblem, orderTypeOf, readOrderName, moveProblem, moveAlreadyApplied, type OrderType, BATCH_KEY_PATTERN, batchAlreadyApplied,
   checkTotals, closeBlockedReason, discountReason, serviceRate,
   type Check, type CheckLine, type LineSource, type LineDiscount, type CheckDiscount,
 } from '../checks'
@@ -287,6 +287,11 @@ async function buildLines(
       // receipt can say why a cocktail was $5.
       ...(priced.rule ? { priceRule: priced.rule } : {}),
       station: stationForSection(sectionByCategory.get(String(data.categoryId ?? ''))),
+      // Stamped rather than worked out later from the station: a combo's own
+      // line ALSO has no station (it fires nowhere; its parts do), so "no
+      // station" cannot be what means "not food" without taking every combo
+      // out of the food cost with it.
+      ...(isChargeSection(sectionByCategory.get(String(data.categoryId ?? ''))) ? { charge: true as const } : {}),
       modifiers: selections,
       ...(consumption && consumption.consumes.length > 0 ? { consumesPerServing: consumption.consumes } : {}),
       ...(consumption && consumption.unknown.length > 0 ? { consumesUnknown: consumption.unknown } : {}),

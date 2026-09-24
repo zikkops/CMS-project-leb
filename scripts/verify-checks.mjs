@@ -78,6 +78,16 @@ eq('Food to Kitchen', C.stationForSection('Food'), 'Kitchen')
 eq('Beverage to Bar', C.stationForSection('Beverage'), 'Bar')
 eq('Sweets to Sweets', C.stationForSection('Sweets'), 'Sweets')
 eq('unknown section has no station', C.stationForSection('Cocktails'), null)
+eq('Charges fires nowhere — nobody cooks a games hour', C.stationForSection(C.CHARGES_SECTION), null)
+
+console.log('\nisChargeSection — sold, but not food (T7.21)')
+eq('the Charges section is one', C.isChargeSection('Charges'), true)
+// The mutation this exists for: reading "has no station" as "is a charge".
+// A category whose section is missing or misspelt already fires to no station,
+// which is loud; quietly calling it a charge as well would drop real food out
+// of the food cost, where nobody would see it.
+eq('THE TRAP: a section nobody mapped is NOT a charge, however station-less it is',
+  ['Cocktails', '', null, undefined, 'Food'].map(s => C.isChargeSection(s)), [false, false, false, false, false])
 eq('merchandise has no station', C.stationForSection(null), null)
 
 console.log('\ndraftsByStation — one ticket per station per send')

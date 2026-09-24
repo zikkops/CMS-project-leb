@@ -64,11 +64,23 @@ export type Station = 'Kitchen' | 'Bar' | 'Sweets'
 
 export const STATIONS: Station[] = ['Kitchen', 'Bar', 'Sweets']
 
+/**
+ * CHARGES is deliberately absent: a games hour or an event fee is rung up and
+ * paid for like anything else, but there is no pass to fire it to and nobody
+ * cooks it (owner's request, 24 Sep 2026).
+ */
 const STATION_FOR_SECTION: Record<string, Station> = {
   Food: 'Kitchen',
   Beverage: 'Bar',
   Sweets: 'Sweets',
 }
+
+/** The section for things that are sold but are not food or drink. */
+export const CHARGES_SECTION = 'Charges'
+
+/** Whether a section is one of those. */
+export const isChargeSection = (section: string | null | undefined): boolean =>
+  String(section ?? '') === CHARGES_SECTION
 
 /** null for merchandise, and for a section nobody has mapped yet. */
 export function stationForSection(section: string | null | undefined): Station | null {
@@ -318,6 +330,18 @@ export interface CheckLine {
   course: number | null
   /** Snapshotted at add time, for the same reason the price is. */
   station: Station | null
+  /**
+   * Sold, but not food or drink: a games hour, an event fee (owner's request,
+   * 24 Sep 2026). Stamped at add time from the category's section.
+   *
+   * It is its own field rather than "has no station", because a combo's own
+   * line has no station either — it fires nowhere and its parts do — and
+   * reading it that way would take every combo out of the food cost.
+   *
+   * Absent on every line written before this existed, which reads as food, and
+   * is right: there were no charges to mistake them for.
+   */
+  charge?: true
   status: LineStatus
   /** "no ice", "allergy — nuts". Reaches the ticket. */
   note: string

@@ -236,6 +236,21 @@ console.log('\nproduct mix: cost and margin, and combos costed whole (UPGRADE.md
   eq('...so the total cost is counted once', cm.totals.cost, 2.5)
   const halfCosted = R.productMix([check({ vatRate: 0.1, lines: [combo[0], combo[1], line({ id: 'kf', refId: 'fries', name: 'Fries', unitPrice: 0, comboOf: 'k' })] })], { categoryOf })
   eq('a combo with a part nobody costed is not costed on the parts that were', halfCosted.items.find(i => i.key === 'menu:combo').cost, null)
+
+  // A games hour or an event fee (T7.21): revenue, with nothing to cost.
+  const withCharge = R.productMix([
+    check({ id: 'a', vatRate: 0.1, lines: [costed] }),
+    check({ id: 'g', vatRate: 0.1, lines: [line({ id: 'gm', refId: 'games', name: 'Games hour', unitPrice: 11, station: null, charge: true })] }),
+  ], { categoryOf: { ...categoryOf, games: 'Games' } })
+  const games = withCharge.items.find(i => i.key === 'menu:games')
+  eq('THE TRAP (T7.21): a charge sells and is counted as revenue', [games.quantity, games.netSales], [1, 10])
+  eq('...but reads as nothing to cost, never 0% covered with a recipe missing',
+    [games.cost, games.coverage, games.noRecipeLines], [null, null, 0])
+  eq('...and it cannot drag the whole mix\'s coverage down either',
+    withCharge.totals.coverage, R.productMix([check({ id: 'a', vatRate: 0.1, lines: [costed] })], { categoryOf }).totals.coverage)
+  eq('THE TRAP: only an exact true is a charge, so a stray value still costs as food',
+    R.productMix([check({ vatRate: 0.1, lines: [line({ id: 'gm', refId: 'm2', unitPrice: 11, charge: 'yes' })] })], { categoryOf })
+      .items[0].noRecipeLines, 1)
 }
 
 console.log('\nhourly sales, beside the same day last week (T3.4)')

@@ -28,7 +28,7 @@ import { vatRateOn } from '@big-cms/shared/businessSettings'
 import { todayYmd } from '@big-cms/shared/dates'
 import { BRAND } from '@big-cms/shared/brand'
 import { formatUsd } from '@big-cms/shared/money'
-import { stationForSection } from '@big-cms/shared/checks'
+import { isChargeSection, stationForSection } from '@big-cms/shared/checks'
 import { ALLERGENS_EU14 } from '@big-cms/shared/foodSafety'
 import { dishAllergens, readAllergenKeys, readProposedAllergens, type AllergenSupply } from '@big-cms/shared/allergens'
 import {
@@ -570,8 +570,11 @@ export default function RecipesPage() {
       list.push(item)
       byCategory.set(item.categoryId, list)
     }
+    // A games hour or an event fee has no ingredients, so it is not something
+    // to be asked for a recipe for: a Charges category is left off this page
+    // rather than sitting here for ever as a dish nobody has costed.
     const known = [...categories].sort((a, b) => a.order - b.order)
-      .filter(c => byCategory.has(c.id))
+      .filter(c => byCategory.has(c.id) && !isChargeSection(c.section))
       .map(c => ({ id: c.id, name: c.name, items: byCategory.get(c.id)! }))
     const orphans = items.filter(i => !categories.some(c => c.id === i.categoryId))
     const all = orphans.length ? [...known, { id: '', name: 'Uncategorised', items: orphans }] : known

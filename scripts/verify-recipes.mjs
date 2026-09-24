@@ -281,6 +281,18 @@ console.log('\ntheoretical food cost — the POS checks\' own sales, before VAT'
     r4(R.theoreticalFoodCost([costed, uncosted]).costPercent), r4(withoutGaps.costPercent))
   eq('...they lower the coverage instead', r4(R.theoreticalFoodCost([costed, uncosted]).coverage), 0.6667)
 
+  // A games hour or an event fee (T7.21): sold, but nothing a recipe costs.
+  const charge = { status: 'sent', quantity: 1, salesUsd: 11.3, vatRate: 0.13, charge: true }
+  const withCharge = R.theoreticalFoodCost([costed, noRecipe, uncosted, voided, charge])
+  eq('THE TRAP: a charge is not a dish whose recipe is missing — it is left out of both sides',
+    [withCharge.salesExVatUsd, withCharge.linesWithoutRecipe], [all.salesExVatUsd, all.linesWithoutRecipe])
+  eq('...so it cannot move the food cost or the coverage',
+    [r4(withCharge.costPercent), r4(withCharge.coverage)], [r4(all.costPercent), r4(all.coverage)])
+  eq('a charge on its own leaves nothing to report, rather than 0%',
+    [R.theoreticalFoodCost([charge]).costPercent, R.theoreticalFoodCost([charge]).coverage], [null, null])
+  eq('THE TRAP: only an exact true is a charge — a stray value must not drop real sales',
+    R.theoreticalFoodCost([{ ...noRecipe, charge: 'yes' }]).salesExVatUsd, 4)
+
   const noRate = R.theoreticalFoodCost([{ ...costed, vatRate: null }])
   eq('a check with no recorded VAT rate is counted at full price', noRate.salesExVatUsd, 11.3)
   eq('...and flagged, never guessed at today\'s rate', noRate.linesWithoutVatRate, 1)
