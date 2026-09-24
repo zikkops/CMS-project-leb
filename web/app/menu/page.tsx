@@ -273,7 +273,7 @@ export default function MenuPage() {
                         padding: '0.9rem 1.5rem',
                         borderLeft: `3px solid ${sectionColors[s]}`,
                         marginBottom: isCollapsed ? '0.5rem' : '0.5rem',
-                        background: hoveredSection === s ? `${sectionColors[s]}20` : sectionBg[s],
+                        background: hoveredSection === s ? `color-mix(in srgb, ${sectionColors[s]} 13%, transparent)` : sectionBg[s],
                         border: 'none',
                         cursor: 'pointer',
                         transition: 'background 0.2s ease',
@@ -344,7 +344,7 @@ export default function MenuPage() {
                               width: '100%',
                               textAlign: 'left',
                               background: activeCategory === cat.id
-                                ? `${sectionColors[s]}10`
+                                ? `color-mix(in srgb, ${sectionColors[s]} 6%, transparent)`
                                 : 'transparent',
                               border: 'none',
                               borderLeft: `2px solid ${activeCategory === cat.id ? sectionColors[s] : 'transparent'}`,
@@ -454,7 +454,7 @@ export default function MenuPage() {
                                     height: isMobile ? '40px' : '50px',
                                     borderRadius: '4px',
                                     objectFit: 'cover',
-                                    border: `1px solid ${sectionColors[s]}40`,
+                                    border: `1px solid color-mix(in srgb, ${sectionColors[s]} 25%, transparent)`,
                                     flexShrink: 0,
                                   }}
                                 />
@@ -480,7 +480,7 @@ export default function MenuPage() {
                             {/* Gradient divider */}
                             <div style={{
                               height: '1px',
-                              background: `linear-gradient(to right, ${sectionColors[s]}40, transparent)`,
+                              background: `linear-gradient(to right, color-mix(in srgb, ${sectionColors[s]} 25%, transparent), transparent)`,
                               marginBottom: '1.5rem',
                             }} />
 
@@ -516,7 +516,7 @@ export default function MenuPage() {
                                           fontSize: '0.6rem',
                                           padding: '0.15rem 0.5rem',
                                           borderRadius: '50px',
-                                          backgroundColor: `${sectionColors[s]}20`,
+                                          backgroundColor: `color-mix(in srgb, ${sectionColors[s]} 13%, transparent)`,
                                           color: sectionColors[s],
                                           fontFamily: 'var(--font-inter)',
                                           whiteSpace: 'nowrap',

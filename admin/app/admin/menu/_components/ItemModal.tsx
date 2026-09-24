@@ -148,7 +148,7 @@ export default function ItemModal({
                     padding: '0.6rem',
                     borderRadius: '2px',
                     border: `1px solid ${form.available === val ? sectionColors[activeSection] : 'rgba(var(--overlay-rgb),0.1)'}`,
-                    backgroundColor: form.available === val ? `${sectionColors[activeSection]}20` : 'transparent',
+                    backgroundColor: form.available === val ? `color-mix(in srgb, ${sectionColors[activeSection]} 13%, transparent)` : 'transparent',
                     color: form.available === val ? sectionColors[activeSection] : 'rgba(var(--offwhite-rgb),0.4)',
                     cursor: 'pointer',
                     fontFamily: 'var(--font-inter)',

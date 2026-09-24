@@ -43,7 +43,7 @@ function HeroButton({
       style={{
         position: 'relative',
         overflow: 'hidden',
-        backgroundColor: hovered ? `${color}30` : `${color}15`,
+        backgroundColor: hovered ? `color-mix(in srgb, ${color} 19%, transparent)` : `color-mix(in srgb, ${color} 8%, transparent)`,
         color: '#fff',
         padding: '0.75rem 1.5rem',
         borderRadius: '2px',
@@ -51,11 +51,11 @@ function HeroButton({
         letterSpacing: '0.12em',
         textTransform: 'uppercase',
         fontFamily: 'var(--font-inter)',
-        border: `1px solid ${hovered ? color : `${color}60`}`,
+        border: `1px solid ${hovered ? color : `color-mix(in srgb, ${color} 38%, transparent)`}`,
         backdropFilter: 'blur(10px)',
         transition: 'all 0.3s ease',
         boxShadow: hovered
-          ? `0 0 20px ${color}50, inset 0 0 20px ${color}15`
+          ? `0 0 20px color-mix(in srgb, ${color} 31%, transparent), inset 0 0 20px color-mix(in srgb, ${color} 8%, transparent)`
           : 'none',
         cursor: 'pointer',
         whiteSpace: 'nowrap',

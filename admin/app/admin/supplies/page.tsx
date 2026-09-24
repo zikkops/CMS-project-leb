@@ -367,7 +367,7 @@ export default function SuppliesPage() {
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
           {SUPPLY_BRANCHES.map(b => (
             <button key={b} onClick={() => setBranch(b)} style={{
-              background: branch === b ? `${BRANCH_COLOR(b)}18` : 'transparent',
+              background: branch === b ? `color-mix(in srgb, ${BRANCH_COLOR(b)} 9%, transparent)` : 'transparent',
               border: `1px solid ${branch === b ? BRANCH_COLOR(b) : 'rgba(var(--overlay-rgb),0.09)'}`,
               color: branch === b ? BRANCH_COLOR(b) : 'rgba(var(--offwhite-rgb),0.35)',
               borderRadius: '6px', padding: '0.5rem 1.25rem',
@@ -438,7 +438,7 @@ export default function SuppliesPage() {
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: group.color, flexShrink: 0 }} />
                   <span style={{ fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: group.color, fontWeight: 600 }}>{group.key}</span>
                   <span style={{ fontSize: '0.65rem', color: 'rgba(var(--offwhite-rgb),0.25)' }}>({group.items.length})</span>
-                  <span style={{ flex: 1, height: '1px', background: `${group.color}25` }} />
+                  <span style={{ flex: 1, height: '1px', background: `color-mix(in srgb, ${group.color} 15%, transparent)` }} />
                   {(() => {
                     const n = group.items.filter(s => statusAt(s, branch) !== 'ok').length
                     return n > 0 ? <span style={{ background: 'var(--red)', color: '#fff', borderRadius: '3px', padding: '0.05rem 0.4rem', fontSize: '0.6rem', fontWeight: 700 }}>{n} low</span> : null
@@ -469,7 +469,7 @@ export default function SuppliesPage() {
                               )}
                             </div>
                           </div>
-                          <span style={{ background: `${S_COLOR[st]}20`, color: S_COLOR[st], border: `1px solid ${S_COLOR[st]}40`, borderRadius: '3px', padding: '0.1rem 0.45rem', fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          <span style={{ background: `color-mix(in srgb, ${S_COLOR[st]} 13%, transparent)`, color: S_COLOR[st], border: `1px solid color-mix(in srgb, ${S_COLOR[st]} 25%, transparent)`, borderRadius: '3px', padding: '0.1rem 0.45rem', fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap', flexShrink: 0 }}>
                             {S_LABEL[st]}
                           </span>
                         </div>

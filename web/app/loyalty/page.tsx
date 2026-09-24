@@ -396,7 +396,7 @@ export default function LoyaltyPage() {
                     <div style={{
                       width: '48px', height: '48px',
                       borderRadius: '50%',
-                      backgroundColor: `${card.color}20`,
+                      backgroundColor: `color-mix(in srgb, ${card.color} 13%, transparent)`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       marginBottom: '1.25rem',
                     }}>
@@ -451,10 +451,10 @@ export default function LoyaltyPage() {
                           backgroundColor: color, border: '3px solid var(--black)',
                         }} />
                         <div style={{
-                          border: `1px solid ${color}35`,
+                          border: `1px solid color-mix(in srgb, ${color} 21%, transparent)`,
                           borderLeft: `3px solid ${color}`,
                           borderRadius: '4px',
-                          background: `${color}0d`,
+                          background: `color-mix(in srgb, ${color} 5%, transparent)`,
                           padding: '1.25rem 1.4rem',
                         }}>
                           <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.05rem', color }}>{tier.label}</p>
@@ -477,10 +477,10 @@ export default function LoyaltyPage() {
                       <div key={tier.label} style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
                         <div style={{
                           flex: 1,
-                          border: `1px solid ${color}35`,
+                          border: `1px solid color-mix(in srgb, ${color} 21%, transparent)`,
                           borderTop: `3px solid ${color}`,
                           borderRadius: '4px',
-                          background: `${color}0d`,
+                          background: `color-mix(in srgb, ${color} 5%, transparent)`,
                           padding: '1.5rem 1.25rem',
                           textAlign: 'center',
                           minHeight: '180px',
@@ -522,10 +522,10 @@ export default function LoyaltyPage() {
                     const color = tierColor(p.tier)
                     return (
                       <div key={p.id} style={{
-                        border: `1px solid ${color}30`,
+                        border: `1px solid color-mix(in srgb, ${color} 19%, transparent)`,
                         borderLeft: `3px solid ${color}`,
                         borderRadius: '4px',
-                        background: `${color}0a`,
+                        background: `color-mix(in srgb, ${color} 4%, transparent)`,
                         padding: '1.1rem 1.25rem',
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>

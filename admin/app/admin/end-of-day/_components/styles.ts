@@ -31,6 +31,6 @@ export const labelStyle: React.CSSProperties = {
 export const sectionHeader = (color: string): React.CSSProperties => ({
   display: 'flex', alignItems: 'center', gap: '0.6rem',
   paddingBottom: '0.6rem',
-  borderBottom: `1px solid ${color}40`,
+  borderBottom: `1px solid color-mix(in srgb, ${color} 25%, transparent)`,
   marginBottom: '1.25rem',
 })

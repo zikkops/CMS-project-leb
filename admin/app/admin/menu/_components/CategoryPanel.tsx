@@ -56,7 +56,7 @@ export default function CategoryPanel({
             padding: '0.8rem 1rem',
             borderBottom: '1px solid rgba(var(--overlay-rgb),0.04)',
             backgroundColor: activeCategory === cat.id
-              ? `${sectionColors[activeSection]}15`
+              ? `color-mix(in srgb, ${sectionColors[activeSection]} 8%, transparent)`
               : 'transparent',
             cursor: 'pointer',
             borderLeft: activeCategory === cat.id

@@ -26,8 +26,8 @@ export function DiffBlock({ label, value, color }: { label: string; value: strin
   return (
     <div style={{
       textAlign: 'center',
-      background: `${color}12`,
-      border: `1px solid ${color}30`,
+      background: `color-mix(in srgb, ${color} 7%, transparent)`,
+      border: `1px solid color-mix(in srgb, ${color} 19%, transparent)`,
       borderRadius: '4px',
       padding: '1rem',
     }}>
@@ -44,7 +44,7 @@ export function HintBox({ hints, color }: { hints: string[]; color: string }) {
       padding: '0.75rem 1rem',
       background: 'rgba(var(--overlay-rgb),0.02)',
       border: '1px solid rgba(var(--overlay-rgb),0.06)',
-      borderLeft: `3px solid ${color}50`,
+      borderLeft: `3px solid color-mix(in srgb, ${color} 31%, transparent)`,
       borderRadius: '2px',
     }}>
       <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(var(--offwhite-rgb),0.3)', marginBottom: '0.45rem' }}>

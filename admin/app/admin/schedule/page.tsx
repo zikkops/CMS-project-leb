@@ -183,7 +183,7 @@ export default function TodaySchedulePage() {
                       display: 'flex', alignItems: 'center', gap: '0.45rem',
                       fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase',
                       color: cfg.color, fontFamily: 'var(--font-inter)', fontWeight: 600,
-                      background: `${cfg.color}18`, padding: '0.2rem 0.65rem', borderRadius: '2px',
+                      background: `color-mix(in srgb, ${cfg.color} 9%, transparent)`, padding: '0.2rem 0.65rem', borderRadius: '2px',
                     }}>
                       <FontAwesomeIcon icon={cfg.icon} style={{ width: '11px' }} />
                       {cfg.label}

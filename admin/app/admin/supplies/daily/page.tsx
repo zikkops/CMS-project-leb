@@ -241,7 +241,7 @@ function DailyInventoryInner() {
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             {departmentOptions.map(d => (
               <button key={d} onClick={() => setDepartment(d)} style={{
-                background: department === d ? `${supplyCategoryColor(d)}18` : 'transparent',
+                background: department === d ? `color-mix(in srgb, ${supplyCategoryColor(d)} 9%, transparent)` : 'transparent',
                 border: `1px solid ${department === d ? supplyCategoryColor(d) : 'rgba(var(--overlay-rgb),0.09)'}`,
                 color: department === d ? supplyCategoryColor(d) : 'rgba(var(--offwhite-rgb),0.35)',
                 borderRadius: '6px', padding: '0.5rem 1.25rem',

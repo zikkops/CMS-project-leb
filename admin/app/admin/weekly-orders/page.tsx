@@ -139,7 +139,7 @@ export default function WeeklyOrdersPage() {
               const active = deptFilter === d
               return (
                 <button key={d} onClick={() => setDeptFilter(d)} style={{
-                  backgroundColor: active ? (d === 'all' ? 'rgba(var(--overlay-rgb),0.08)' : `${color}18`) : 'transparent',
+                  backgroundColor: active ? (d === 'all' ? 'rgba(var(--overlay-rgb),0.08)' : `color-mix(in srgb, ${color} 9%, transparent)`) : 'transparent',
                   border: `1px solid ${active ? (d === 'all' ? 'rgba(var(--overlay-rgb),0.2)' : color) : 'rgba(var(--overlay-rgb),0.08)'}`,
                   color: active ? (d === 'all' ? 'var(--offwhite)' : color) : 'rgba(var(--offwhite-rgb),0.35)',
                   padding: '0.4rem 0.9rem', borderRadius: '2px', fontSize: '0.7rem',

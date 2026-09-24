@@ -154,7 +154,7 @@ export default function TierPerksPage() {
                     <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.1rem', color, minWidth: '80px' }}>{p.tier}</span>
                     <span style={{
                       fontSize: '0.62rem', padding: '0.2rem 0.6rem', borderRadius: '2px',
-                      backgroundColor: `${color}25`, color,
+                      backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`, color,
                       fontFamily: 'var(--font-inter)', letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap',
                     }}>{tier}</span>
                   </div>

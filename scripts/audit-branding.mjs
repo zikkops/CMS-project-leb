@@ -97,6 +97,20 @@ const PATTERNS = [
     severity: 'medium',
   },
   {
+    // Found the hard way, 24 Sep 2026: the home page's buttons had
+    // `border: 1px solid ${color}60` with color = 'var(--teal)'. That is
+    // `var(--teal)60`, which is not a colour, so the browser threw the whole
+    // declaration away — no border, no tint, no glow. On hover the colour
+    // became plain `var(--teal)`, which IS valid, so a 1px border appeared
+    // from nowhere and every button jumped 2px. Thirty-three of these were
+    // live across the customer site and the panel. CLAUDE.md has warned about
+    // it since the dashboard hit it; nothing was checking.
+    label: 'Hex alpha appended to a colour variable',
+    re: /\$\{[^{}]*[Cc]olor[^{}]*\}[0-9a-fA-F]{2}(?![0-9a-fA-F])/,
+    why: 'var(--x)60 is not a colour and is silently dropped. Use color-mix(in srgb, <colour> N%, transparent).',
+    severity: 'high',
+  },
+  {
     label: 'Original palette as rgba() channels',
     // The form the hex pattern above cannot see, and the one that hid roughly
     // fifteen hundred frozen colours: a translucent colour written as literal

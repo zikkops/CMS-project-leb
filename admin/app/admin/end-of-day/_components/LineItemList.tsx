@@ -81,7 +81,7 @@ export function LineItemList({
         type="button" onClick={addLine}
         style={{
           backgroundColor: 'transparent',
-          border: `1px dashed ${color}50`,
+          border: `1px dashed color-mix(in srgb, ${color} 31%, transparent)`,
           color: color,
           padding: '0.5rem 1rem',
           borderRadius: '2px', fontSize: '0.75rem',
