@@ -1,7 +1,7 @@
 {
   "name": "big-cms-counter",
   "productName": "BIG CMS POS",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "The BIG CMS POS for the café's Windows counter PC: online, or as the café's hub.",
   "author": "BIG CMS",
@@ -20,11 +20,33 @@
   "build": {
     "appId": "com.bigcms.pos",
     "productName": "BIG CMS POS",
-    "files": ["main.js", "policy.js", "hubLan.js", "update.js", "preload.js", "offline.html", "setup.html", "package.json", "!**/node_modules/**"],
-    "extraResources": [{ "from": "hub-bundle", "to": ".", "filter": ["hub/**/*"] }],
+    "files": [
+      "main.js",
+      "policy.js",
+      "hubLan.js",
+      "update.js",
+      "preload.js",
+      "offline.html",
+      "setup.html",
+      "package.json",
+      "!**/node_modules/**"
+    ],
+    "extraResources": [
+      {
+        "from": "hub-bundle",
+        "to": ".",
+        "filter": [
+          "hub/**/*"
+        ]
+      }
+    ],
     "npmRebuild": false,
-    "directories": { "output": "dist" },
-    "win": { "target": "nsis" },
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    },
     "nsis": {
       "artifactName": "BIG-CMS-POS-Setup-${version}.${ext}",
       "oneClick": false,
