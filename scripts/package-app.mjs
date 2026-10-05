@@ -199,6 +199,28 @@ REQUIRED environment variables, set on the SERVER:
   The repo's root .env.local is NOT in this folder and is not read at runtime.
   That is deliberate — it holds a service-account private key, and shipping it
   inside a deployable is how that key ends up somewhere it should not be.
+
+ALSO SET THESE, on a host that counts processes (Hostinger/CloudLinux):
+
+    UV_THREADPOOL_SIZE=2
+    MALLOC_ARENA_MAX=2
+
+  CloudLinux's nproc limit counts THREADS, not processes. Untuned, one Next
+  server is a main thread, four libuv thread-pool threads and V8 workers sized
+  from the HOST machine's core count — not your plan's share of it. Three apps
+  like that can hit a 100-200 task limit at idle, with no visitors and nothing
+  in the app to explain it.
+
+  Neither is NEXT_PUBLIC_*, so a restart applies them. No rebuild.
+  Check with: ps -eo pid,comm,nlwp | grep node
+
+  Do NOT add NODE_OPTIONS. --v8-pool-size would cap the V8 pool above, but a
+  panel that feeds ONE variable list to the build as well as the runtime passes
+  it to every child process next build spawns. Turbopack runs the PostCSS loader
+  for globals.css in a child it connects to; with NODE_OPTIONS set that child
+  died instantly ("exited before we could connect to it with exit status: 0",
+  no stdout, no stderr) and the build failed as a TurbopackInternalError on a
+  CSS file. 5 Oct 2026. See docs/deploying.md.
 `)
 
 console.log(`\n  dist/${app}/`)

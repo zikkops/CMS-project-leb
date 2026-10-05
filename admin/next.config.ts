@@ -30,25 +30,21 @@ const nextConfig: NextConfig = {
   // gives an app with no dependencies, because a workspace hoists them to the
   // repo root. This is what makes each app genuinely "copy it and run it".
   output: 'standalone',
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'i.ibb.co',
-      },
-      // Demo placeholder photography. Must stay in step with the CSP's img-src
-      // in proxy.ts — allowing a host in only one of the two places fails
-      // silently rather than erroring.
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'api.dicebear.com',
-      },
-    ],
-  },
+  // Nothing in this app imports next/image — checked 5 Oct 2026 — so the image
+  // optimizer is dead weight here, and the remotePatterns list that used to sit
+  // in this block was configuration for a code path that does not exist.
+  //
+  // Leaving it on is not free: it keeps /_next/image reachable, an endpoint that
+  // makes this server resize an arbitrary allowed-host image on request. sharp
+  // draws on the libuv thread pool, and on a host that counts THREADS against a
+  // process limit (CloudLinux nproc, which is what this runs under on Hostinger)
+  // an open resize endpoint nothing uses is a process amplifier.
+  //
+  // Plain <img> is unaffected — every one of those is governed by the CSP's
+  // img-src in shared/src/csp.ts, which this does not touch. If a page here ever
+  // does need next/image, put remotePatterns back and keep it in step with that
+  // img-src: allowing a host in only one of the two places fails silently.
+  images: { unoptimized: true },
   async headers() {
     return [
       {

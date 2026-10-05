@@ -346,8 +346,72 @@ are read **at runtime**, so they belong here and not in a file:
 | `FIREBASE_SERVICE_ACCOUNT` | ✔ | ✔ | ✔ |
 | `IMGBB_API_KEY` | ✔ | — | ✔ |
 | `CRON_SECRET` | ✔ | — | — |
+| `UV_THREADPOOL_SIZE` | ✔ | ✔ | ✔ |
+| `MALLOC_ARENA_MAX` | ✔ | ✔ | ✔ |
 
 Values are the same ones in your `.env.local`.
+
+### Three of these are about the process limit, not about the app
+
+`UV_THREADPOOL_SIZE`, `NODE_OPTIONS` and `MALLOC_ARENA_MAX` have nothing to do
+with this codebase. They are about what Hostinger counts.
+
+Hostinger's plans run on CloudLinux, whose process limit (`nproc`) counts
+**every thread, not every process**. One Next server is never one task: it is a
+main thread, four libuv thread-pool threads, and V8 platform workers sized from
+**the host machine's core count — not your plan's share of it**. On a shared box
+advertising dozens of cores that is ten to thirty tasks per app, and you are
+running three apps. Three untuned servers can exhaust a 100–200 task limit
+**at idle, before a single visitor arrives** — which is what it looks like from
+the outside: the limit is hit, and nothing in the app explains why.
+
+So set these on all three applications:
+
+```
+UV_THREADPOOL_SIZE=2
+MALLOC_ARENA_MAX=2
+```
+
+`MALLOC_ARENA_MAX` caps glibc's per-thread allocation arenas, which Next's own
+self-hosting guide flags for image optimization on glibc Linux. Both are read
+directly by libuv and glibc, and neither changes how `node` itself starts.
+
+Neither is `NEXT_PUBLIC_*`, so **restarting is enough — no rebuild.**
+
+#### Do NOT set `NODE_OPTIONS` here
+
+It is the obvious third one — `--v8-pool-size=2` caps exactly the V8 worker pool
+described above — and it broke the build on 5 Oct 2026.
+
+hPanel feeds ONE variable list to both the build and the runtime, and
+`NODE_OPTIONS` is inherited by every child process `next build` spawns.
+Turbopack runs the PostCSS loader for `globals.css` in a child process it then
+connects to; with `NODE_OPTIONS` set, that child died instantly — *"node process
+exited before we could connect to it with exit status: 0"*, stdout and stderr
+both empty — and the build failed as a `TurbopackInternalError` on a CSS file.
+
+That reads like a Next or Tailwind bug and is not one. Two AI analyses of the
+log both diagnosed it as a Turbopack/PostCSS incompatibility and proposed
+`npm audit fix --force`, a Next major upgrade, and an `experimental.turbopack:
+false` option that does not exist. The giveaway was in the first five lines of
+the log, not the stack trace: the failing build had restored *the source of the
+last successful one*. Same code, new environment.
+
+So the V8 pool size has no safe home on this hosting. Take the thread reduction
+from the two variables above, and from `images: { unoptimized: true }` on the
+apps that import no `next/image`.
+
+Confirm it worked, over SSH, before and after:
+
+```bash
+ps -eo pid,comm,nlwp | grep node   # nlwp = threads per process
+ps -eLf | grep -c '[n]ode'         # total tasks — the number nproc counts
+```
+
+Teens or twenties of `nlwp` per app before, low single digits after, is the fix
+working. If the total is still near the limit with all three apps tuned, the
+next thing to look at is a restart loop — a crashing app whose old tasks have
+not gone away.
 
 Two rules that explain the whole shape of this:
 
@@ -536,6 +600,7 @@ panel does nothing.
 | `/admin` 404s everywhere, including the subdomain | `ADMIN_HOST` does not match the hostname exactly, or was set before the subdomain resolved. |
 | Uploads fail with a clear error | `IMGBB_API_KEY` unset — or set as `NEXT_PUBLIC_IMGBB_API_KEY`, which nothing reads. `npm run check:env` catches this one. |
 | `Killed` during install or build | Out of memory. See above. |
+| hPanel says the process/entry-process limit is hit | Node's defaults assume a dedicated machine; CloudLinux counts threads. Set the three variables in [Step 8](#three-of-these-are-about-the-process-limit-not-about-the-app) and restart. |
 | Refuses to build, lists `NEXT_PUBLIC_FIREBASE_*` | Working as intended — Step 4. |
 
 ---
